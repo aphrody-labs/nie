@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::fmt;
 use std::io::Write as _;
 
+#[cfg(feature = "host")]
 use serde::Serialize;
 
 #[derive(Debug, Default)]
@@ -14,6 +15,7 @@ pub(crate) struct CapturedOutput {
 }
 
 /// Stable response envelope returned by native MCP command tools.
+#[cfg(feature = "host")]
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct CapturedCommand {
     /// Whether the command completed without an error.
@@ -28,6 +30,7 @@ pub struct CapturedCommand {
     pub truncated: bool,
 }
 
+#[cfg(feature = "host")]
 impl CapturedCommand {
     pub(crate) fn from_result(result: Result<(), String>, captured: CapturedOutput) -> Self {
         match result {
@@ -66,6 +69,7 @@ thread_local! {
     static CAPTURE: RefCell<Option<CapturedOutput>> = const { RefCell::new(None) };
 }
 
+#[cfg(feature = "host")]
 pub(crate) fn capture<T>(operation: impl FnOnce() -> T) -> (T, CapturedOutput) {
     CAPTURE.with(|slot| {
         assert!(slot.borrow().is_none(), "nested CLI output capture");

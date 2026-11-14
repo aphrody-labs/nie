@@ -653,7 +653,14 @@ fn texture(
     let (l, h, rgba) = aphrody_nie_formats::g4tx_encode::decode_png_to_rgba8(&image)
         .map_err(|e| anyhow::anyhow!("« {} » : {e}", png.display()))?;
     let dds = if bc7 {
-        aphrody_nie_formats::g4tx_encode::encode_dds_bc7_mipmapped(l, h, &rgba)
+        #[cfg(feature = "textures-encode")]
+        {
+            aphrody_nie_formats::g4tx_encode::encode_dds_bc7_mipmapped(l, h, &rgba)
+        }
+        #[cfg(not(feature = "textures-encode"))]
+        {
+            Err("BC7 encoding requires building aphrody-nie-cli with `--features textures-encode`".to_string())
+        }
     } else {
         aphrody_nie_formats::g4tx_encode::encode_dds_bgra8(l, h, &rgba)
     }

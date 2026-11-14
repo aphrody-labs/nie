@@ -24,7 +24,7 @@ host = [
 anyhow = { workspace = true }
 hex = "0.4"
 rusqlite = { workspace = true, optional = true }
-sha2 = "0.10"
+sha2 = { workspace = true }
 serde = { workspace = true, features = ["std", "derive"] }
 serde_json = { workspace = true }
 yolo-re-core = { path = "../yolo-re-core", version = "1.4.8", optional = true, default-features = false }

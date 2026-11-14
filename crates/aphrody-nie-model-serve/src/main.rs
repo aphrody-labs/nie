@@ -87,9 +87,14 @@ use aphrody_nie_model_serve::menu;
 #[derive(Parser)]
 #[command(name = "aphrody-nie-model-serve", version, about)]
 struct Cli {
+    /// Source du jeu cloud-first : chemin local ou URI distante (`r2://...`, `ievr-vfs:`,
+    /// `s3://...`, `gdrive://...`, `https://...`). Prioritaire sur `--game-dir`.
+    #[arg(long, env = "NIE_GAME_SOURCE")]
+    source: Option<String>,
+
     /// Répertoire racine du jeu (contient `data/cpk_list.cfg.bin`). Résolu automatiquement
-    /// s'il est absent (`NIE_GAME_DIR`, sinon le répertoire courant ou un ancêtre).
-    #[arg(long)]
+    /// s'il est absent (`NIE_GAME_SOURCE`, `NIE_GAME_DIR`, sinon le répertoire courant ou un ancêtre).
+    #[arg(long, env = "NIE_GAME_DIR")]
     game_dir: Option<PathBuf>,
 
     /// Répertoire des GLB pré-convertis. Défaut : `<game-dir>/data/dx11/model`.
@@ -2882,6 +2887,15 @@ fn avatar_json_response(status: u16, body: &[u8]) -> Vec<u8> {
     response
 }
 
+fn sha256_hex_slice(bytes: &[u8]) -> String {
+    use std::fmt::Write as _;
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        let _ = write!(s, "{b:02x}");
+    }
+    s
+}
+
 /// Cache identity includes original bytes and the conversion contract, never only their length.
 fn video_cache_key(vfs_path: &str, bytes: &[u8]) -> String {
     use sha2::{Digest, Sha256};
@@ -2890,7 +2904,7 @@ fn video_cache_key(vfs_path: &str, bytes: &[u8]) -> String {
     digest.update(vfs_path.as_bytes());
     digest.update([0]);
     digest.update(bytes);
-    format!("video_v2_{:x}", digest.finalize())
+    format!("video_v2_{}", sha256_hex_slice(&digest.finalize()))
 }
 
 /// Readers can see only a complete container, including when two requests finish together.
@@ -3084,7 +3098,7 @@ fn build_and_cache(state: &State, code: &str, tenue: Tenue) -> Result<Assembled>
     info!("assemblage live : {code}");
     let suffixe = tenue.suffixe_cache();
     let mut assembled = assemble_code(state, code, tenue)?;
-    let sha = format!("{:x}", Sha256::digest(&assembled.glb));
+    let sha = sha256_hex_slice(&Sha256::digest(&assembled.glb));
     if assembled.report.is_null() {
         assembled.report = serde_json::json!({ "code": code });
     }
@@ -6558,14 +6572,42 @@ fn main() -> Result<()> {
 
     let cli = Cli::parse();
 
-    // Tous les chemins dérivent de la racine du jeu, résolue à l'exécution : le même binaire
-    // sert un serveur Linux et un poste Windows sans qu'aucun chemin de machine ne soit compilé
-    // dedans. `var/` vit à côté du jeu, comme le reste des artefacts régénérables.
-    let racine = cli
-        .game_dir
-        .clone()
-        .unwrap_or_else(aphrody_nie_formats::vfs::resolve_game_dir);
-    info!("racine du jeu : {}", racine.display());
+    let source_override = cli
+        .source
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_owned)
+        .or_else(|| {
+            cli.game_dir
+                .as_ref()
+                .map(|p| p.to_string_lossy().into_owned())
+        });
+
+    let resolved_source =
+        aphrody_nie_formats::game_source::resolve(source_override.as_deref()).ok();
+    let is_remote_source = resolved_source
+        .as_deref()
+        .is_some_and(aphrody_nie_formats::game_source::is_remote);
+
+    // En mode cloud-first (VFS distant `r2://`, `ievr-vfs:`, `https://`, ...), les artefacts
+    // locaux régénérables (`var/`, `model-cache`) vivent sous `NIE_WORK_DIR` / répertoire courant
+    // plutôt que dans le chemin de la source distante.
+    let racine = if is_remote_source {
+        std::env::var_os("NIE_WORK_DIR")
+            .map(PathBuf::from)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| PathBuf::from("."))
+    } else {
+        cli.game_dir
+            .clone()
+            .unwrap_or_else(aphrody_nie_formats::vfs::resolve_game_dir)
+    };
+    info!(
+        "source du jeu : {} (racine locale : {})",
+        resolved_source.as_deref().unwrap_or("locale"),
+        racine.display()
+    );
     let var = racine.join("var");
     let glb_dir = cli
         .glb_dir
@@ -6604,11 +6646,16 @@ fn main() -> Result<()> {
     fs::create_dir_all(&cache_dir)
         .with_context(|| format!("création cache_dir {}", cache_dir.display()))?;
 
-    // Initialise le VFS.
-    let mut vfs = Vfs::new();
-    let game_data = racine.join("data");
-    vfs.init(&game_data)
-        .with_context(|| format!("init VFS depuis {}", game_data.display()))?;
+    // Initialise le VFS (local ou cloud-first `remote-vfs`).
+    let mut vfs = aphrody_nie_formats::vfs::open_source(source_override.as_deref())
+        .with_context(|| {
+            format!(
+                "init VFS depuis {}",
+                resolved_source
+                    .as_deref()
+                    .unwrap_or(&racine.display().to_string())
+            )
+        })?;
     info!("VFS initialisé ({} fichiers indexés)", vfs.asset_count());
 
     // Index supplémentaire : rend lisibles les fichiers des CPK hors cpk_list.cfg.bin

@@ -8,6 +8,7 @@
 #   core         apps/rg-bot/src/core.ts: Discord gateways (rg, azalee, achillea),
 #                ranked Colyseus, unified API /v1, bot admin       :8810
 #   cron         packages/rg-cron/src/scheduler.ts (Bun.cron)     :8811, opt-in
+#   nie          crates/aphrody-nie-cli (--features cloud), musl  :8790
 #   model-serve  crates/aphrody-nie-model-serve, static musl      :8792
 #
 # Policy: Alpine runtimes, pinned versions, non-root uid 1000 (matches the host `ubuntu`
@@ -17,6 +18,7 @@
 ARG BUN_VERSION=canary
 ARG ALPINE_VERSION=3.24
 ARG RUST_IMAGE=rust:1-alpine3.24
+ARG GO_IMAGE=golang:1.27-alpine
 # rust-toolchain.toml says `nightly`; pin a dated nightly here for reproducible images.
 ARG RUST_TOOLCHAIN=nightly
 
@@ -127,22 +129,41 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
 CMD ["bun", "/app/packages/rg-cron/src/scheduler.ts"]
 
 # ---------------------------------------------------------------------------
-# model-serve: static musl binary on bare Alpine
+# nie-rclone: pure Go static binary (R2 / S3 / Google Drive VFS transport)
 # ---------------------------------------------------------------------------
-FROM ${RUST_IMAGE} AS model-serve-build
+FROM ${GO_IMAGE} AS nie-rclone-build
+WORKDIR /src
+COPY native/go/rclone-core/go.mod native/go/rclone-core/go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+COPY native/go/rclone-core ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/nie-rclone ./cmd/nie-rclone \
+    && ! ldd /out/nie-rclone 2>/dev/null | grep -q "=>"
+
+# ---------------------------------------------------------------------------
+# Shared Rust musl builder base for nie and model-serve
+# ---------------------------------------------------------------------------
+FROM ${RUST_IMAGE} AS rust-base
 ARG RUST_TOOLCHAIN
 ENV RUSTUP_TOOLCHAIN=${RUST_TOOLCHAIN} \
     CARGO_TERM_COLOR=never
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
-RUN apk add --no-cache musl-dev=1.2.6-r3 pkgconf=2.5.1-r0 perl=5.42.3-r0 make=4.4.1-r4 git=2.54.1-r0
+RUN apk add --no-cache musl-dev=1.2.6-r3 pkgconf=2.5.1-r0 perl=5.42.3-r0 make=4.4.1-r4 git=2.54.1-r0 \
+    && rustup toolchain install "${RUST_TOOLCHAIN}" --profile minimal
 WORKDIR /src
 COPY rust-toolchain.toml Cargo.toml Cargo.lock ./
 COPY crates ./crates
+
+# ---------------------------------------------------------------------------
+# model-serve: static musl binary on bare Alpine
+# ---------------------------------------------------------------------------
+FROM rust-base AS model-serve-build
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/src/target \
-    rustup toolchain install "${RUST_TOOLCHAIN}" --profile minimal \
-    && cargo build --locked --release -p aphrody-nie-model-serve --features host \
+    cargo build --locked --release -p aphrody-nie-model-serve --features host \
     && install -D -m 0755 target/release/aphrody-nie-model-serve /out/aphrody-nie-model-serve \
     && ! ldd /out/aphrody-nie-model-serve 2>/dev/null | grep -q "=>"
 
@@ -151,15 +172,48 @@ RUN addgroup -g 1000 -S nie && adduser -u 1000 -S -G nie -h /srv/nie nie \
     && mkdir -p /data/game /var/cache/nie-model-serve /srv/nie \
     && chown nie:nie /var/cache/nie-model-serve /srv/nie
 COPY --from=model-serve-build /out/aphrody-nie-model-serve /usr/local/bin/aphrody-nie-model-serve
+COPY --from=nie-rclone-build /out/nie-rclone /usr/local/bin/nie-rclone
 ENV NIE_GAME_DIR=/data/game \
     NIE_MODEL_SERVE_HOST=0.0.0.0 \
     NIE_MODEL_SERVE_PORT=8792 \
     NIE_MODEL_CACHE_DIR=/var/cache/nie-model-serve \
-    NIE_MODEL_SERVE_THREADS=8
+    NIE_MODEL_SERVE_THREADS=8 \
+    NIE_WORK_DIR=/srv/nie \
+    NIE_RCLONE_BIN=/usr/local/bin/nie-rclone \
+    RCLONE_CACHE_DIR=/var/cache/nie-model-serve
 USER 1000:1000
 WORKDIR /srv/nie
 EXPOSE 8792
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
     CMD ["wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8792/health"]
-# Shell form so the env defaults above (overridable per service) reach the CLI flags.
-CMD ["sh", "-c", "exec aphrody-nie-model-serve --game-dir \"${NIE_GAME_DIR:-/data/game}\" --port \"${NIE_MODEL_SERVE_PORT:-8792}\" --cache-dir \"${NIE_MODEL_CACHE_DIR:-/var/cache/nie-model-serve}\" --threads \"${NIE_MODEL_SERVE_THREADS:-8}\" $NIE_MODEL_SERVE_ARGS"]
+# Env NIE_GAME_SOURCE / NIE_GAME_DIR resolve inside the binary so cloud URIs override /data/game cleanly.
+CMD ["sh", "-c", "exec aphrody-nie-model-serve --port \"${NIE_MODEL_SERVE_PORT:-8792}\" --cache-dir \"${NIE_MODEL_CACHE_DIR:-/var/cache/nie-model-serve}\" --threads \"${NIE_MODEL_SERVE_THREADS:-8}\" $NIE_MODEL_SERVE_ARGS"]
+
+# ---------------------------------------------------------------------------
+# nie: pure-Rust cloud HTTP server + VFS/format CLI on bare Alpine
+# ---------------------------------------------------------------------------
+FROM rust-base AS nie-build
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/src/target \
+    cargo build --locked --release -p aphrody-nie-cli --no-default-features --features cloud --bin nie \
+    && install -D -m 0755 target/release/nie /out/nie \
+    && ! ldd /out/nie 2>/dev/null | grep -q "=>"
+
+FROM alpine:${ALPINE_VERSION} AS nie
+RUN addgroup -g 1000 -S nie && adduser -u 1000 -S -G nie -h /srv/nie nie \
+    && mkdir -p /data/game /var/cache/nie /srv/nie \
+    && chown nie:nie /var/cache/nie /srv/nie
+COPY --from=nie-build /out/nie /usr/local/bin/nie
+COPY --from=nie-rclone-build /out/nie-rclone /usr/local/bin/nie-rclone
+ENV NIE_HOST=0.0.0.0 \
+    NIE_PORT=8790 \
+    NIE_WORK_DIR=/srv/nie \
+    NIE_RCLONE_BIN=/usr/local/bin/nie-rclone \
+    RCLONE_CACHE_DIR=/var/cache/nie
+USER 1000:1000
+WORKDIR /srv/nie
+EXPOSE 8790
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
+    CMD ["wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8790/health"]
+CMD ["sh", "-c", "exec nie serve --host \"${NIE_HOST:-0.0.0.0}\" --port \"${NIE_PORT:-8790}\" $NIE_ARGS"]

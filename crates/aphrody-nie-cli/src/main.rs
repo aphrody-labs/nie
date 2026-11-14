@@ -1,11 +1,13 @@
-#![cfg(feature = "host")]
+#![cfg(any(feature = "cloud", feature = "host"))]
 
 //! `nie` — pilote la boucle RE autonome (seed → propagate → coverage) et la frontière redis.
 #![forbid(unsafe_code)]
 #![allow(clippy::pedantic)]
 
 mod output;
+#[cfg(feature = "host")]
 pub use output::CapturedCommand;
+#[cfg(feature = "host")]
 pub mod api;
 
 // The CLI is also an in-process library for the native MCP server. These
@@ -16,6 +18,7 @@ macro_rules! println {
     () => {{ $crate::output::write_stdout(format_args!(""), true) }};
     ($($arg:tt)*) => {{ $crate::output::write_stdout(format_args!($($arg)*), true) }};
 }
+#[cfg(feature = "host")]
 macro_rules! eprint {
     ($($arg:tt)*) => {{ $crate::output::write_stderr(format_args!($($arg)*), false) }};
 }
@@ -24,39 +27,64 @@ macro_rules! eprintln {
     ($($arg:tt)*) => {{ $crate::output::write_stderr(format_args!($($arg)*), true) }};
 }
 
+#[cfg(feature = "host")]
 mod atlas_cmd;
+#[cfg(feature = "host")]
 mod avatar_cmd;
 mod decode_cmd;
+#[cfg(feature = "host")]
 mod icons_cmd;
+#[cfg(feature = "host")]
 mod img_cmd;
+#[cfg(feature = "host")]
 mod lua_audit_cmd;
+#[cfg(feature = "host")]
 mod lua_cmd;
+#[cfg(feature = "host")]
 mod lua_run_cmd;
+#[cfg(feature = "host")]
 mod mcp;
+#[cfg(feature = "host")]
 mod mem_lua;
+#[cfg(feature = "host")]
 mod menu_predecode;
+#[cfg(feature = "host")]
 mod mod_cmd;
+#[cfg(feature = "host")]
 mod mode_index;
 mod net_cmd;
+#[cfg(feature = "host")]
 mod ocgen_cmd;
+#[cfg(feature = "host")]
 mod play_cmd;
+#[cfg(feature = "host")]
 mod render_cmd;
+#[cfg(feature = "host")]
 mod search_cmd;
+#[cfg(feature = "host")]
 mod seed_ui;
+mod serve_cmd;
 mod steam_turbo;
+#[cfg(feature = "host")]
 mod strings_cmd;
+#[cfg(feature = "host")]
 pub mod vfs_bundle;
+#[cfg(feature = "host")]
 mod video_cmd;
+#[cfg(feature = "host")]
 mod vn_cmd;
 
+#[cfg(feature = "host")]
 use std::io::Write;
 use std::path::PathBuf;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
+#[cfg(feature = "host")]
 use sha2::{Digest, Sha256};
 
 /// Image base de nie.exe (PE32+ Level-5).
+#[cfg(feature = "host")]
 const NIE_IMAGE_BASE: i64 = 0x1_4000_0000;
 
 /// Parse une adresse décimale ou hexadécimale (`0x...`).
@@ -69,6 +97,7 @@ fn parse_addr(s: &str) -> Result<i64, String> {
     }
 }
 
+#[cfg(feature = "host")]
 fn default_data_root() -> PathBuf {
     std::env::var_os("NIE_REPO_ROOT")
         .map(PathBuf::from)
@@ -90,13 +119,19 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Cmd {
+    /// Serveur HTTP cloud-first (VFS distant, formats, requêtes game-data, sondes /health & /ready).
+    #[command(name = "serve")]
+    Serve(serve_cmd::ServeArgs),
     /// Lance l'exécution headless du moteur de jeu nie (simulation, menu, match, rendu).
+    #[cfg(feature = "host")]
     Play(play_cmd::PlayArgs),
     /// Mode multijoueur en ligne, matchmaking Inacode, simulation déterministe et ladder ranked.
     Net(net_cmd::NetArgs),
     /// Start the native Model Context Protocol server on stdio.
+    #[cfg(feature = "host")]
     Mcp,
     /// Probe non-destructively the native `nie.exe` or Ghidra Computer Use surface.
+    #[cfg(feature = "host")]
     #[command(name = "computer-use")]
     ComputerUse {
         surface: String,
@@ -110,11 +145,13 @@ enum Cmd {
     /// `viola` porte les opérations de bas niveau sur les archives ; `mod` porte le cycle de
     /// travail par-dessus — et surtout l'**édition**, que la CLI ne savait pas faire : les
     /// encodeurs `cfgbin`/`g4tx` existaient sans aucun appelant ici.
+    #[cfg(feature = "host")]
     Mod {
         #[command(subcommand)]
         op: mod_cmd::ModOp,
     },
     /// Opérations du lanceur IEVR Ultimate Team (chiffrement équipe, conteneurs .utmod, parking de save).
+    #[cfg(feature = "host")]
     Launcher {
         #[command(subcommand)]
         op: LauncherOp,
@@ -122,6 +159,7 @@ enum Cmd {
     /// Opérations de modding LEVEL-5 — le périmètre de l'outil Viola, en Rust natif.
     ///
     /// Porte les opérations de dump/pack/merge qui appartenaient aux anciens toolkits.
+    #[cfg(feature = "host")]
     Viola {
         #[command(subcommand)]
         op: ViolaOp,
@@ -149,6 +187,7 @@ enum Cmd {
     /// **iecode** (`{entries}`/`{lists}`) — celle que lisent les parseurs typés de `aphrody-nie-data`
     /// (golden tests, `export_*`), PAS celle de `nie decode` (structure brute, générique).
     /// Idempotent : saute un `.json` déjà plus récent que son `.cfg.bin` sauf `--force`.
+    #[cfg(feature = "host")]
     RefreshTypedJson {
         /// Répertoire à parcourir (récursif).
         dir: PathBuf,
@@ -227,6 +266,7 @@ enum Cmd {
         toutes: bool,
     },
     /// Rend un GLB en captures PNG ou turntable GIF pour la QA visuelle reproductible.
+    #[cfg(feature = "host")]
     Render {
         #[command(subcommand)]
         op: RenderOp,
@@ -236,6 +276,7 @@ enum Cmd {
     /// Cible les scripts décompilés (`data/lua_scripts/decompiled/`) : fonctions déclarées,
     /// appels, chaînes, et erreurs de syntaxe laissées par le décompilateur. Le bytecode
     /// `.lua.bin` ne se traite pas ici — il s'exécute (`aphrody_nie_lua`), il ne se lit pas.
+    #[cfg(feature = "host")]
     Lua {
         /// Fichier `.lua` ou répertoire à parcourir récursivement.
         src: PathBuf,
@@ -256,6 +297,7 @@ enum Cmd {
         limit: usize,
     },
     /// Exécute un `.lua.bin` brut dans la VM Lua 5.2, avec `INCLUDE` résolu depuis le VFS.
+    #[cfg(feature = "host")]
     #[command(name = "lua-run")]
     LuaRun {
         /// Chemin disque ou chemin logique VFS (ex. `data/common/script/lua/menu/main_menu...`).
@@ -274,6 +316,7 @@ enum Cmd {
         disassemble: bool,
     },
     /// Exécute en lot les chunks Lua bruts du VFS et mesure les trous de l'hôte moteur.
+    #[cfg(feature = "host")]
     #[command(name = "lua-audit")]
     LuaAudit {
         /// Sous-racine du jeu (défaut : résolution automatique).
@@ -290,6 +333,7 @@ enum Cmd {
         menu_host: bool,
     },
     /// Importe le savoir fusionné (index Ghidra aphrody-nie-index.json) dans la base de connaissance.
+    #[cfg(feature = "host")]
     Seed {
         /// Base sqlite cible.
         #[arg(long, default_value = "var/nie.sqlite")]
@@ -305,6 +349,7 @@ enum Cmd {
     /// commandes, objets et composants de menu ; textures avec `--textures`).
     ///
     /// Rend inversables les CRC-32 croisés dans les `cfg.bin`, les `objbin` et le binaire.
+    #[cfg(feature = "host")]
     SeedUi {
         /// Base sqlite cible.
         #[arg(long, default_value = "var/nie.sqlite")]
@@ -322,6 +367,7 @@ enum Cmd {
     /// Les chaînes sont lues dans les sections de données (ASCII et UTF-16LE), les bornes de
     /// fonction viennent de `.pdata`, et une référence n'est retenue que si sa cible coïncide
     /// **exactement** avec le début d'une chaîne.
+    #[cfg(feature = "host")]
     Strings {
         /// Binaire à lire. Doit être celui qui est indexé (résolution par sha256).
         #[arg(long)]
@@ -351,6 +397,7 @@ enum Cmd {
     /// Cherche des fichiers par chemin sur le disque (moteur `ignore`, celui de ripgrep/fd).
     ///
     /// Complète `nie vfs find`, qui ne voit que l'intérieur des CPK.
+    #[cfg(feature = "host")]
     Find {
         /// Sous-chaîne cherchée dans le chemin (vide = tout lister).
         #[arg(default_value = "")]
@@ -387,6 +434,7 @@ enum Cmd {
         count: bool,
     },
     /// Cherche une expression régulière dans le contenu des fichiers (moteur de ripgrep).
+    #[cfg(feature = "host")]
     Grep {
         /// Expression régulière.
         pattern: String,
@@ -416,16 +464,19 @@ enum Cmd {
         files_with_matches: bool,
     },
     /// Édition d'image (info, redimensionnement, recadrage, conversion, superposition).
+    #[cfg(feature = "host")]
     Img {
         #[command(subcommand)]
         op: ImgOp,
     },
     /// Catalogue des modes de jeu : écrans, calques, objets, assets et scripts par mode.
+    #[cfg(feature = "host")]
     Mode {
         #[command(subcommand)]
         op: ModeOp,
     },
     /// Icônes du jeu : index (nom → atlas + rectangle) et décodage en PNG.
+    #[cfg(feature = "host")]
     Icons {
         #[command(subcommand)]
         op: icons_cmd::IconsCmd,
@@ -434,6 +485,7 @@ enum Cmd {
         game_dir: Option<PathBuf>,
     },
     /// Éditeur d'avatar (`chara_edit`) : catalogue, parts, recettes de presets, export résolu.
+    #[cfg(feature = "host")]
     Avatar {
         #[command(subcommand)]
         op: avatar_cmd::AvatarCmd,
@@ -445,6 +497,7 @@ enum Cmd {
         db: PathBuf,
     },
     /// Génération 3D d'un personnage original : morphologie, chara_edit, couleurs mesurées.
+    #[cfg(feature = "host")]
     #[command(name = "oc", visible_alias = "ocgen")]
     Ocgen {
         #[command(subcommand)]
@@ -452,16 +505,19 @@ enum Cmd {
     },
     /// Index unique de toutes les surfaces RE : fichiers, crates, docs, base de
     /// connaissance, forge, binaires, outils, métriques et route vers les 100 %.
+    #[cfg(feature = "host")]
     Atlas {
         #[command(subcommand)]
         op: atlas_cmd::AtlasCmd,
     },
     /// Affiche la couverture (fonctions classifiées) du binaire indexé.
+    #[cfg(feature = "host")]
     Coverage {
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
     },
     /// Opérations sur la frontière BFS redis.
+    #[cfg(feature = "host")]
     Queue {
         #[command(subcommand)]
         op: QueueOp,
@@ -471,6 +527,7 @@ enum Cmd {
         tag: String,
     },
     /// Propage les labels sur le call-graph (auto-ML, ancrage strings + label-spreading).
+    #[cfg(feature = "host")]
     Propagate {
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
@@ -478,6 +535,7 @@ enum Cmd {
         rounds: usize,
     },
     /// Extrait les classes RTTI MSVC depuis nie_eacpatched.exe et les ingère dans la base.
+    #[cfg(feature = "host")]
     Rtti {
         /// Base sqlite cible.
         #[arg(long, default_value = "var/nie.sqlite")]
@@ -487,6 +545,7 @@ enum Cmd {
         exe: PathBuf,
     },
     /// Triage PE/ELF via aphrody-re : sections + imports/exports ingérés dans la base.
+    #[cfg(feature = "host")]
     Index {
         /// Base sqlite cible.
         #[arg(long, default_value = "var/nie.sqlite")]
@@ -496,6 +555,7 @@ enum Cmd {
         exe: PathBuf,
     },
     /// Récupère les arêtes d'appel manquantes par désassemblage iced-x86 de `.text`.
+    #[cfg(feature = "host")]
     Disasm {
         /// Base sqlite cible.
         #[arg(long, default_value = "var/nie.sqlite")]
@@ -505,6 +565,7 @@ enum Cmd {
         exe: PathBuf,
     },
     /// Découvre les fonctions AUTORITAIRES via `.pdata` et mesure le désalignement Ghidra.
+    #[cfg(feature = "host")]
     Pdata {
         /// Base sqlite cible.
         #[arg(long, default_value = "var/nie.sqlite")]
@@ -514,6 +575,7 @@ enum Cmd {
         exe: PathBuf,
     },
     /// Refonde la carte sur `.pdata` (vrais débuts), ré-ancre Ghidra, disasm + propage. Couverture HONNÊTE.
+    #[cfg(feature = "host")]
     Rebuild {
         /// Base sqlite cible.
         #[arg(long, default_value = "var/nie.sqlite")]
@@ -525,6 +587,7 @@ enum Cmd {
         rounds: usize,
     },
     /// Récupère les fonctions feuilles de `.text` invisibles à `.pdata`.
+    #[cfg(feature = "host")]
     Recover {
         /// Base sqlite cible.
         #[arg(long, default_value = "var/nie.sqlite")]
@@ -547,12 +610,14 @@ enum Cmd {
         op: SaveOp,
     },
     /// Exploration game-data depuis le miroir SQLite (personnages, skills, items, équipes).
+    #[cfg(feature = "host")]
     Wiki {
         #[command(subcommand)]
         op: WikiOp,
     },
     /// Construit le manifeste CRC32->chemin pour tous les fichiers .g4md/.g4mg des CPK.
     /// Utilisé pour résoudre les ModelIdCrc des inagle_uniforms vers les chemins réels.
+    #[cfg(feature = "host")]
     UniformMap {
         /// Répertoire racine du jeu (contenant `data/cpk_list.cfg.bin`). Résolu
         /// automatiquement s'il est absent (cf. `NIE_GAME_DIR`).
@@ -563,6 +628,7 @@ enum Cmd {
         out: PathBuf,
     },
     /// Scanne les fichiers .g4tx dans les CPK du jeu et produit un manifeste NDJSON d'en-têtes.
+    #[cfg(feature = "host")]
     Textures {
         /// Répertoire racine du jeu (contenant `data/cpk_list.cfg.bin`). Résolu
         /// automatiquement s'il est absent (cf. `NIE_GAME_DIR`).
@@ -588,6 +654,7 @@ enum Cmd {
     /// à <game_dir>/data/dx11/menu/.../<nom>.png (idempotent : skip si non-vide).
     ///
     /// Scans and pre-decodes every indexed menu texture from the game VFS.
+    #[cfg(feature = "host")]
     MenuPredecode {
         /// Répertoire racine du jeu (contenant `data/packs/`). Résolu automatiquement s'il
         /// est absent (cf. `NIE_GAME_DIR`).
@@ -602,6 +669,7 @@ enum Cmd {
     /// Le jeu doit tourner ; s'attache à un process existant, ne le lance jamais, ne le stoppe pas.
     /// Le backend est choisi par la plateforme : process_vm_readv sous Linux/Wine, ou
     /// OpenProcess/ReadProcessMemory sous Windows natif.
+    #[cfg(feature = "host")]
     Mem {
         #[command(subcommand)]
         op: MemOp,
@@ -616,6 +684,7 @@ enum Cmd {
 
     /// Alimente le visual novel `nie-vn-engine` avec les assets réels du jeu (voix, textures,
     /// musique) : produit un catalogue local, jamais versionné.
+    #[cfg(feature = "host")]
     Vn {
         #[command(subcommand)]
         op: vn_cmd::VnCmd,
@@ -625,6 +694,7 @@ enum Cmd {
     },
 
     /// Cinématiques USM/Sofdec2 : inventaire, métadonnées, remux MP4 sans réencodage, catalogue.
+    #[cfg(feature = "host")]
     Video {
         #[command(subcommand)]
         op: video_cmd::VideoCmd,
@@ -639,6 +709,7 @@ enum Cmd {
     /// Proton le fait tourner, `mem` le lit. Le lancement passe par le Proton livré AVEC le jeu
     /// (`<racine>/files`), jamais par le Wine de la distribution : lui n'a ni DXVK ni
     /// vkd3d-proton.
+    #[cfg(feature = "host")]
     Live {
         #[command(subcommand)]
         op: LiveOp,
@@ -646,6 +717,7 @@ enum Cmd {
 }
 
 /// Sous-commandes de `nie mode` (catalogue des modes de jeu).
+#[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum ModeOp {
     /// (Re)construit le catalogue dans la base : un mode, ses écrans et ses assets.
@@ -695,6 +767,7 @@ enum ModeOp {
 }
 
 /// Sous-commandes de `nie render` (contrôle visuel de GLB assemblés).
+#[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum RenderOp {
     /// Rend une vue fixe d'un GLB en PNG (qualité sans perte).
@@ -738,6 +811,7 @@ enum RenderOp {
 }
 
 /// Sous-commandes de `nie img` (édition d'image via la bibliothèque `image`).
+#[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum ImgOp {
     /// Dimensions, format et espace colorimétrique, sans rien réécrire.
@@ -862,6 +936,7 @@ enum ImgOp {
 }
 
 /// Sous-commandes de `nie mem` (RE runtime via aphrody-nie-trace).
+#[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum MemOp {
     /// Liste les plages mémoire (filtrées par --module sauf --all).
@@ -1023,6 +1098,7 @@ enum VfsOp {
         benchmark: usize,
     },
     /// Build the deterministic initial browser VFS from this licensed local installation.
+    #[cfg(feature = "host")]
     Bundle {
         #[arg(long, default_value = "main_menu")]
         screen: String,
@@ -1234,6 +1310,7 @@ enum VfsOp {
 ///
 /// Les opérations sont natives et ne dépendent d'aucun toolkit externe
 /// (cf. `docs/IECODE-MIGRATION.md`).
+#[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum ViolaOp {
     /// Extrait le VFS complet vers un dossier — packs ordonnés par volume, mappés en mémoire,
@@ -1352,6 +1429,7 @@ enum ViolaOp {
 }
 
 /// Opérations du lanceur IEVR Ultimate Team (chiffrement équipe, conteneurs .utmod, parking de save).
+#[cfg(feature = "host")]
 #[derive(Subcommand)]
 pub enum LauncherOp {
     /// Cryptographie des équipes IEVR Ultimate Team (AES-256-GCM + PBKDF2).
@@ -1386,6 +1464,7 @@ pub enum LauncherOp {
     },
 }
 
+#[cfg(feature = "host")]
 #[derive(Subcommand)]
 pub enum LauncherUtOp {
     /// Liste les packs de cartes IEVR Ultimate Team avec leurs prix et taux de drop.
@@ -1444,6 +1523,7 @@ pub enum LauncherUtOp {
     },
 }
 
+#[cfg(feature = "host")]
 #[derive(Subcommand)]
 pub enum LauncherSpiritOp {
     /// Liste ou recherche dans les 142 cartes d'esprits héros et fabled.
@@ -1469,6 +1549,7 @@ pub enum LauncherSpiritOp {
     },
 }
 
+#[cfg(feature = "host")]
 #[derive(Subcommand)]
 pub enum LauncherEacOp {
     /// Analyse un exécutable ou un binaire pour repérer les sites de contrôle EAC.
@@ -1489,6 +1570,7 @@ pub enum LauncherEacOp {
     },
 }
 
+#[cfg(feature = "host")]
 #[derive(Subcommand)]
 pub enum LauncherTeamOp {
     /// Déchiffre un fichier JSON d'équipe exporté depuis la plateforme web.
@@ -1515,6 +1597,7 @@ pub enum LauncherTeamOp {
     },
 }
 
+#[cfg(feature = "host")]
 #[derive(Subcommand)]
 pub enum LauncherPackageOp {
     /// Inspecte les métadonnées et l'en-tête d'un conteneur .utmod / UTMOD2.
@@ -1524,6 +1607,7 @@ pub enum LauncherPackageOp {
     },
 }
 
+#[cfg(feature = "host")]
 #[derive(Subcommand)]
 pub enum LauncherSaveOp {
     /// Stationne la sauvegarde Steam de manière atomique vers .bk et installe la sauvegarde mod.
@@ -1602,6 +1686,7 @@ enum SaveOp {
         out: Option<std::path::PathBuf>,
     },
     /// Stationne la sauvegarde Steam de manière atomique vers .bk et installe la sauvegarde mod (aphrody-nie-launcher).
+    #[cfg(feature = "host")]
     Park {
         #[arg(long)]
         live_save: std::path::PathBuf,
@@ -1609,6 +1694,7 @@ enum SaveOp {
         mod_save: std::path::PathBuf,
     },
     /// Restaure la sauvegarde Steam originale depuis son fichier .bk (aphrody-nie-launcher).
+    #[cfg(feature = "host")]
     Restore {
         #[arg(long)]
         live_save: std::path::PathBuf,
@@ -1616,6 +1702,7 @@ enum SaveOp {
         mod_save: std::path::PathBuf,
     },
     /// Injecte une équipe déchiffrée dans l'équipe 2 d'une sauvegarde IEVR PC (aphrody-nie-launcher).
+    #[cfg(feature = "host")]
     InjectTeam {
         #[arg(long)]
         save: std::path::PathBuf,
@@ -1626,6 +1713,7 @@ enum SaveOp {
     },
 }
 
+#[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum QueueOp {
     /// Empile une adresse (décimale ou hex `0x...`).
@@ -1641,6 +1729,7 @@ enum QueueOp {
     Reset,
 }
 
+#[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum WikiOp {
     /// Print an exact joined character card as JSON using the shared wiki library.
@@ -1893,6 +1982,7 @@ enum WikiOp {
     },
 }
 
+#[cfg(feature = "host")]
 fn wiki_cmd(op: WikiOp) -> anyhow::Result<()> {
     use aphrody_nie_wiki::{mirror, query, render};
 
@@ -2536,6 +2626,7 @@ fn steam_cmd(op: SteamOp) -> anyhow::Result<()> {
 /// désigne l'arbre dont `nie` lit le VFS (sur cette machine, le dépôt lui-même), tandis que
 /// `NIE_GAME_PATH` désigne l'installation Steam, seule à porter `files/` et donc Proton. Les
 /// confondre rend un « wine introuvable » sur une racine par ailleurs parfaitement valide.
+#[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum LiveOp {
     /// Affiche l'environnement résolu — chemins, Proton, display — sans rien lancer.
@@ -2617,7 +2708,7 @@ enum LiveOp {
 /// rien à traverser. La sous-commande reste néanmoins déclarée sur toutes les plateformes, pour
 /// que la surface de la CLI — et donc celle du serveur MCP qui la réexpose — ne dépende pas de
 /// la machine qui a compilé le binaire.
-#[cfg(target_os = "linux")]
+#[cfg(all(feature = "host", target_os = "linux"))]
 fn live_cmd(op: LiveOp) -> anyhow::Result<()> {
     use aphrody_nie_trace::proton;
 
@@ -2899,7 +2990,7 @@ fn live_cmd(op: LiveOp) -> anyhow::Result<()> {
     }
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(all(feature = "host", not(target_os = "linux")))]
 fn live_cmd(_op: LiveOp) -> anyhow::Result<()> {
     anyhow::bail!(
         "`nie live` pilote Proton, qui n'existe que sous Linux. Sur un hôte Windows le jeu est \
@@ -2979,6 +3070,8 @@ fn run() -> anyhow::Result<()> {
 
 fn dispatch(cli: Cli) -> anyhow::Result<()> {
     match cli.cmd {
+        Cmd::Serve(args) => serve_cmd::run(args),
+        #[cfg(feature = "host")]
         Cmd::Play(args) => play_cmd::run(args),
         Cmd::Net(args) => {
             let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -2986,12 +3079,14 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
                 .build()?;
             runtime.block_on(net_cmd::exec_net(args))
         }
+        #[cfg(feature = "host")]
         Cmd::Mcp => {
             let runtime = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()?;
             runtime.block_on(mcp::serve_stdio())
         }
+        #[cfg(feature = "host")]
         Cmd::ComputerUse {
             surface,
             executable,
@@ -3003,8 +3098,11 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
             );
             Ok(())
         }
+        #[cfg(feature = "host")]
         Cmd::Mod { op } => mod_cmd::executer(op),
+        #[cfg(feature = "host")]
         Cmd::Launcher { op } => launcher_cmd(op),
+        #[cfg(feature = "host")]
         Cmd::Viola { op } => viola_cmd(op),
         Cmd::Format { src } => decode_cmd::format(&src),
         Cmd::Decode { src, out, quiet } => {
@@ -3015,10 +3113,12 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
                 decode_cmd::file(&src, out.as_deref(), quiet)
             }
         }
+        #[cfg(feature = "host")]
         Cmd::RefreshTypedJson { dir, force, quiet } => {
             decode_cmd::refresh_typed(&dir, force, quiet)
         }
         Cmd::Steam { op } => steam_cmd(op),
+        #[cfg(feature = "host")]
         Cmd::Live { op } => live_cmd(op),
         Cmd::Info { game_dir, json } => info_cmd(game_dir, json),
         Cmd::Locales {
@@ -3048,6 +3148,7 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
                 )
             }
         }
+        #[cfg(feature = "host")]
         Cmd::Render { op } => match op {
             RenderOp::GlbPng {
                 glb,
@@ -3076,6 +3177,7 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
                 fps,
             ),
         },
+        #[cfg(feature = "host")]
         Cmd::Lua {
             src,
             functions,
@@ -3093,6 +3195,7 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
                 limit,
             },
         ),
+        #[cfg(feature = "host")]
         Cmd::LuaRun {
             script,
             game_dir,
@@ -3106,6 +3209,7 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
             menu_host,
             disassemble,
         ),
+        #[cfg(feature = "host")]
         Cmd::LuaAudit {
             game_dir,
             prefix,
@@ -3117,12 +3221,15 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
             instruction_limit,
             menu_host,
         ),
+        #[cfg(feature = "host")]
         Cmd::Seed { db, json, exe } => seed(&db, &json, exe.as_deref()),
+        #[cfg(feature = "host")]
         Cmd::SeedUi {
             db,
             game_dir,
             textures,
         } => seed_ui_cmd(&db, game_dir, textures),
+        #[cfg(feature = "host")]
         Cmd::Strings {
             exe,
             db,
@@ -3144,6 +3251,7 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
                 sample,
             },
         ),
+        #[cfg(feature = "host")]
         Cmd::Find {
             pattern,
             dir,
@@ -3170,6 +3278,7 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
             count,
         })
         .map(|_| ()),
+        #[cfg(feature = "host")]
         Cmd::Grep {
             pattern,
             dir,
@@ -3192,15 +3301,19 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
             files_with_matches,
         })
         .map(|_| ()),
+        #[cfg(feature = "host")]
         Cmd::Icons { op, game_dir } => {
             let racine = game_dir.unwrap_or_else(aphrody_nie_formats::vfs::resolve_game_dir);
             icons_cmd::run(&op, &racine)
         }
+        #[cfg(feature = "host")]
         Cmd::Avatar { op, game_dir, db } => {
             let racine = game_dir.unwrap_or_else(aphrody_nie_formats::vfs::resolve_game_dir);
             avatar_cmd::run(&op, &racine, &db)
         }
+        #[cfg(feature = "host")]
         Cmd::Ocgen { op } => ocgen_cmd::run(&op),
+        #[cfg(feature = "host")]
         Cmd::Mode { op } => match op {
             ModeOp::Index { db, game_dir } => {
                 let vfs = open_vfs(game_dir)?;
@@ -3333,6 +3446,7 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
                 Ok(())
             }
         },
+        #[cfg(feature = "host")]
         Cmd::Img { op } => img_cmd::run(&match op {
             ImgOp::Info { src } => img_cmd::Op::Info { src },
             ImgOp::Recolor {
@@ -3440,15 +3554,25 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
                 amplification,
             },
         }),
+        #[cfg(feature = "host")]
         Cmd::Atlas { op } => atlas_cmd::run(op),
+        #[cfg(feature = "host")]
         Cmd::Coverage { db } => coverage(&db),
+        #[cfg(feature = "host")]
         Cmd::Queue { op, redis, tag } => queue(op, &redis, &tag),
+        #[cfg(feature = "host")]
         Cmd::Propagate { db, rounds } => propagate(&db, rounds),
+        #[cfg(feature = "host")]
         Cmd::Rtti { db, exe } => rtti(&db, &exe),
+        #[cfg(feature = "host")]
         Cmd::Index { db, exe } => index(&db, &exe),
+        #[cfg(feature = "host")]
         Cmd::Disasm { db, exe } => disasm(&db, &exe),
+        #[cfg(feature = "host")]
         Cmd::Pdata { db, exe } => pdata(&db, &exe),
+        #[cfg(feature = "host")]
         Cmd::Rebuild { db, exe, rounds } => rebuild(&db, &exe, rounds),
+        #[cfg(feature = "host")]
         Cmd::Recover {
             db,
             exe,
@@ -3456,8 +3580,11 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
             ghidra_csv,
         } => recover_cmd(&db, &exe, dry_run, ghidra_csv.as_deref()),
         Cmd::Save { op } => save_cmd(op),
+        #[cfg(feature = "host")]
         Cmd::Wiki { op } => wiki_cmd(op),
+        #[cfg(feature = "host")]
         Cmd::UniformMap { game_dir, out } => uniform_map(&racine_jeu(game_dir), &out),
+        #[cfg(feature = "host")]
         Cmd::Textures {
             game_dir,
             limit,
@@ -3471,16 +3598,20 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
             use_redis,
             &redis_url,
         ),
+        #[cfg(feature = "host")]
         Cmd::Mem { op } => mem_cmd(op),
+        #[cfg(feature = "host")]
         Cmd::MenuPredecode {
             game_dir,
             redis_url,
         } => menu_predecode_cmd(&racine_jeu(game_dir), &redis_url),
         Cmd::Vfs { op } => vfs_cmd(op),
+        #[cfg(feature = "host")]
         Cmd::Vn { op, game_dir } => {
             let vfs = open_vfs(game_dir)?;
             vn_cmd::run(&op, &vfs)
         }
+        #[cfg(feature = "host")]
         Cmd::Video { op, game_dir } => {
             let vfs = open_vfs(game_dir)?;
             video_cmd::run(&op, &vfs)
@@ -3493,6 +3624,7 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
 /// The command runs on the same 64 MiB stack as the standalone binary. The
 /// returned JSON-friendly record is the shared adapter used by every MCP tool;
 /// no child process, shell, Bun runtime, or FFI boundary is involved.
+#[cfg(feature = "host")]
 #[must_use]
 pub fn execute_captured(command: String, args: Vec<String>) -> CapturedCommand {
     if args.len() > 128 {
@@ -3534,7 +3666,11 @@ pub fn execute_captured(command: String, args: Vec<String>) -> CapturedCommand {
 
 // ─── nie mem — RE en direct via aphrody-nie-trace (Linux/Wine et Windows natif) ────────────
 
-fn mem_cmd(op: MemOp) -> anyhow::Result<()> {
+#[cfg(feature = "host")]
+mod host_only_cmds {
+    use super::*;
+
+    pub(crate) fn mem_cmd(op: MemOp) -> anyhow::Result<()> {
     match op {
         MemOp::Maps { pid, module, all } => mem_maps(pid, &module, all),
         MemOp::Base { pid, module } => mem_base(pid, &module),
@@ -4085,7 +4221,7 @@ fn mem_hexdump(data: &[u8], base: u64) {
     }
 }
 
-fn seed(
+pub(crate) fn seed(
     db_path: &std::path::Path,
     json: &std::path::Path,
     exe: Option<&std::path::Path>,
@@ -4136,7 +4272,7 @@ fn seed(
     Ok(())
 }
 
-fn seed_ui_cmd(
+pub(crate) fn seed_ui_cmd(
     db_path: &std::path::Path,
     game_dir: Option<PathBuf>,
     textures: bool,
@@ -4165,7 +4301,7 @@ fn seed_ui_cmd(
     Ok(())
 }
 
-fn strings_cmd_run(
+pub(crate) fn strings_cmd_run(
     db_path: &std::path::Path,
     exe: &std::path::Path,
     opts: &strings_cmd::Options,
@@ -4227,7 +4363,7 @@ fn analysis_binary(conn: &aphrody_nie_index::rusqlite::Connection) -> anyhow::Re
     .context("aucun binaire indexé — lancer `nie seed` d'abord")
 }
 
-fn coverage(db_path: &std::path::Path) -> anyhow::Result<()> {
+pub(crate) fn coverage(db_path: &std::path::Path) -> anyhow::Result<()> {
     let db = aphrody_nie_index::Db::open(db_path)?;
     let bin: i64 = analysis_binary(db.conn())?;
     let cov = aphrody_nie_index::query::coverage(db.conn(), bin)?;
@@ -4244,7 +4380,7 @@ fn coverage(db_path: &std::path::Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn queue(op: QueueOp, redis: &str, tag: &str) -> anyhow::Result<()> {
+pub(crate) fn queue(op: QueueOp, redis: &str, tag: &str) -> anyhow::Result<()> {
     let mut f = aphrody_nie_queue::Frontier::connect(redis, tag)?;
     match op {
         QueueOp::Push { addr } => {
@@ -4264,7 +4400,7 @@ fn queue(op: QueueOp, redis: &str, tag: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn propagate(db_path: &std::path::Path, rounds: usize) -> anyhow::Result<()> {
+pub(crate) fn propagate(db_path: &std::path::Path, rounds: usize) -> anyhow::Result<()> {
     let mut db = aphrody_nie_index::Db::open(db_path).context("ouverture base")?;
     let bin: i64 = analysis_binary(db.conn())?;
 
@@ -4284,7 +4420,7 @@ fn propagate(db_path: &std::path::Path, rounds: usize) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn rtti(db_path: &std::path::Path, exe_path: &std::path::Path) -> anyhow::Result<()> {
+pub(crate) fn rtti(db_path: &std::path::Path, exe_path: &std::path::Path) -> anyhow::Result<()> {
     let mut db = aphrody_nie_index::Db::open(db_path).context("ouverture base")?;
     let bin: i64 = db
         .conn()
@@ -4306,7 +4442,7 @@ fn rtti(db_path: &std::path::Path, exe_path: &std::path::Path) -> anyhow::Result
     Ok(())
 }
 
-fn index(db_path: &std::path::Path, exe_path: &std::path::Path) -> anyhow::Result<()> {
+pub(crate) fn index(db_path: &std::path::Path, exe_path: &std::path::Path) -> anyhow::Result<()> {
     let mut db = aphrody_nie_index::Db::open(db_path).context("ouverture base")?;
     let bin: i64 = db
         .conn()
@@ -4325,7 +4461,7 @@ fn index(db_path: &std::path::Path, exe_path: &std::path::Path) -> anyhow::Resul
     Ok(())
 }
 
-fn disasm(db_path: &std::path::Path, exe_path: &std::path::Path) -> anyhow::Result<()> {
+pub(crate) fn disasm(db_path: &std::path::Path, exe_path: &std::path::Path) -> anyhow::Result<()> {
     let mut db = aphrody_nie_index::Db::open(db_path).context("ouverture base")?;
     let bin: i64 = db
         .conn()
@@ -4355,7 +4491,7 @@ fn disasm(db_path: &std::path::Path, exe_path: &std::path::Path) -> anyhow::Resu
     Ok(())
 }
 
-fn pdata(db_path: &std::path::Path, exe_path: &std::path::Path) -> anyhow::Result<()> {
+pub(crate) fn pdata(db_path: &std::path::Path, exe_path: &std::path::Path) -> anyhow::Result<()> {
     let mut db = aphrody_nie_index::Db::open(db_path).context("ouverture base")?;
     let bin: i64 = db
         .conn()
@@ -4401,7 +4537,7 @@ fn pdata_binary_id(db: &aphrody_nie_index::Db) -> anyhow::Result<i64> {
         .context("binaire #pdata absent — lancer `nie rebuild` d'abord")
 }
 
-fn recover_cmd(
+pub(crate) fn recover_cmd(
     db_path: &std::path::Path,
     exe_path: &std::path::Path,
     dry_run: bool,
@@ -4495,7 +4631,7 @@ fn recover_cmd(
     Ok(())
 }
 
-fn rebuild(
+pub(crate) fn rebuild(
     db_path: &std::path::Path,
     exe_path: &std::path::Path,
     rounds: usize,
@@ -4587,7 +4723,7 @@ struct TexEntry<'a> {
     regions_detail: Vec<TexRegion<'a>>,
 }
 
-fn textures(
+pub(crate) fn textures(
     game_dir: &std::path::Path,
     limit: usize,
     manifest_path: &std::path::Path,
@@ -4790,6 +4926,12 @@ fn textures(
 
     Ok(())
 }
+}
+#[cfg(feature = "host")]
+use host_only_cmds::{
+    coverage, disasm, index, mem_cmd, pdata, propagate, queue, recover_cmd, rebuild, rtti, seed,
+    seed_ui_cmd, strings_cmd_run, textures,
+};
 
 fn save_cmd(op: SaveOp) -> anyhow::Result<()> {
     use aphrody_nie_save::io::{
@@ -4868,18 +5010,21 @@ fn save_cmd(op: SaveOp) -> anyhow::Result<()> {
                 out_path.display()
             );
         }
+        #[cfg(feature = "host")]
         SaveOp::Park {
             live_save,
             mod_save,
         } => {
             launcher_save_park(&live_save, &mod_save)?;
         }
+        #[cfg(feature = "host")]
         SaveOp::Restore {
             live_save,
             mod_save,
         } => {
             launcher_save_restore(&live_save, &mod_save)?;
         }
+        #[cfg(feature = "host")]
         SaveOp::InjectTeam { save, team, out } => {
             launcher_save_inject_team(&save, &team, out.as_deref())?;
         }
@@ -4887,7 +5032,11 @@ fn save_cmd(op: SaveOp) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn launcher_save_park(
+#[cfg(feature = "host")]
+mod host_launcher_and_maps {
+    use super::*;
+
+    pub(crate) fn launcher_save_park(
     live_save: &std::path::Path,
     mod_save: &std::path::Path,
 ) -> anyhow::Result<()> {
@@ -4904,7 +5053,7 @@ fn launcher_save_park(
     Ok(())
 }
 
-fn launcher_save_restore(
+pub(crate) fn launcher_save_restore(
     live_save: &std::path::Path,
     mod_save: &std::path::Path,
 ) -> anyhow::Result<()> {
@@ -4917,7 +5066,7 @@ fn launcher_save_restore(
     Ok(())
 }
 
-fn launcher_save_inject_team(
+pub(crate) fn launcher_save_inject_team(
     save_path: &std::path::Path,
     team_path: &std::path::Path,
     out: Option<&std::path::Path>,
@@ -4964,7 +5113,7 @@ fn launcher_save_inject_team(
     Ok(())
 }
 
-fn launcher_cmd(op: LauncherOp) -> anyhow::Result<()> {
+pub(crate) fn launcher_cmd(op: LauncherOp) -> anyhow::Result<()> {
     match op {
         LauncherOp::Team { cmd } => match cmd {
             LauncherTeamOp::Decrypt {
@@ -5333,7 +5482,7 @@ fn launcher_ut_cmd(op: LauncherUtOp) -> anyhow::Result<()> {
 ///
 /// Le CRC32 est calculé avec l'algorithme du jeu (accumulteur sans inversion finale,
 /// sur le nom de fichier complet sans extension, en minuscules, sans chemin).
-fn uniform_map(game_dir: &std::path::Path, out: &std::path::Path) -> anyhow::Result<()> {
+pub(crate) fn uniform_map(game_dir: &std::path::Path, out: &std::path::Path) -> anyhow::Result<()> {
     use aphrody_nie_formats::vfs::Vfs;
     use std::io::Write as IoWrite;
 
@@ -5371,7 +5520,7 @@ fn uniform_map(game_dir: &std::path::Path, out: &std::path::Path) -> anyhow::Res
 // MenuPredecode
 // ---------------------------------------------------------------------------
 
-fn menu_predecode_cmd(game_dir: &std::path::Path, redis_url: &str) -> anyhow::Result<()> {
+pub(crate) fn menu_predecode_cmd(game_dir: &std::path::Path, redis_url: &str) -> anyhow::Result<()> {
     // dump_root = game_dir/data (les sprite logicalPaths commencent par "dx11/...")
     let dump_root = game_dir.join("data");
     let packs_dir = game_dir.join("data").join("packs");
@@ -5384,6 +5533,12 @@ fn menu_predecode_cmd(game_dir: &std::path::Path, redis_url: &str) -> anyhow::Re
     );
     Ok(())
 }
+}
+#[cfg(feature = "host")]
+use host_launcher_and_maps::{
+    launcher_cmd, launcher_save_inject_team, launcher_save_park, launcher_save_restore,
+    menu_predecode_cmd, uniform_map,
+};
 
 // ─── nie vfs — explorateur CPK (VFS) ─────────────────────────────────────────────
 
@@ -5866,6 +6021,7 @@ fn convert_sprites(
     Ok(())
 }
 
+#[cfg(feature = "host")]
 fn viola_cmd(op: ViolaOp) -> anyhow::Result<()> {
     match op {
         ViolaOp::Dump {
@@ -6181,6 +6337,7 @@ fn vfs_cmd(op: VfsOp) -> anyhow::Result<()> {
             }
             Ok(())
         }
+        #[cfg(feature = "host")]
         VfsOp::Bundle {
             screen,
             locale,
@@ -6556,7 +6713,7 @@ fn vfs_cat(
         return Ok(());
     }
     let n = data.len().min(len);
-    mem_hexdump(&data[..n], 0);
+    print_hexdump(&data[..n], 0);
     if data.len() > n {
         println!(
             "  … {} octet(s) de plus (--len pour en voir davantage)",
@@ -6564,6 +6721,31 @@ fn vfs_cat(
         );
     }
     Ok(())
+}
+
+fn print_hexdump(data: &[u8], base: u64) {
+    for (i, line) in data.chunks(16).enumerate() {
+        let off = base + (i * 16) as u64;
+        let mut hex = String::new();
+        for j in 0..16 {
+            if j < line.len() {
+                hex.push_str(&format!("{:02x} ", line[j]));
+            } else {
+                hex.push_str("   ");
+            }
+        }
+        let ascii: String = line
+            .iter()
+            .map(|&b| {
+                if (0x20..0x7f).contains(&b) {
+                    b as char
+                } else {
+                    '.'
+                }
+            })
+            .collect();
+        println!("  0x{off:012x}  {hex} {ascii}");
+    }
 }
 
 fn vfs_extract(
@@ -6934,6 +7116,7 @@ fn vfs_formats(
 /// Vrai si `have` (optionnel) contient `want`, insensible à la casse — `want=None` = pas de
 /// filtre. Sous-chaîne plutôt qu'égalité stricte : les catégories réelles du miroir sont
 /// bilingues (ex. `"Tir/Shoot"`, `"Défense/Block"`) — `--category Tir` doit matcher.
+#[cfg(feature = "host")]
 fn matches_filter(have: Option<&str>, want: Option<&str>) -> bool {
     match want {
         None => true,
@@ -6943,6 +7126,7 @@ fn matches_filter(have: Option<&str>, want: Option<&str>) -> bool {
 
 /// Entrée JSON d'un résultat de recherche chara/waza (`--json`) — consommée par
 /// `plugins/nie-blender/nie_bridge.py` (panneau de recherche Blender) ou tout autre script.
+#[cfg(feature = "host")]
 #[derive(serde::Serialize)]
 struct SearchJsonEntry {
     id: String,
@@ -7026,7 +7210,6 @@ fn vfs_search_chara(
     position: Option<&str>,
     opts: SearchOpts<'_>,
 ) -> anyhow::Result<()> {
-    use aphrody_nie_wiki::{mirror, query as wiki_query};
     let SearchOpts {
         show_paths,
         json,
@@ -7046,6 +7229,14 @@ fn vfs_search_chara(
             game_dir,
         );
     }
+    #[cfg(not(feature = "host"))]
+    {
+        let _ = db;
+        anyhow::bail!("--db wiki SQLite mirror requires the `host` feature");
+    }
+    #[cfg(feature = "host")]
+    {
+    use aphrody_nie_wiki::{mirror, query as wiki_query};
     let conn = mirror::open(db)?;
     let mut matches = wiki_query::search_characters(&conn, query)?;
     matches.retain(|m| {
@@ -7107,6 +7298,7 @@ fn vfs_search_chara(
         }
     }
     Ok(())
+    }
 }
 
 /// Cherche une technique/waza dans le miroir wiki (nom FR/EN/JA, ID ou code interne), avec
@@ -7118,7 +7310,6 @@ fn vfs_search_waza(
     element: Option<&str>,
     opts: SearchOpts<'_>,
 ) -> anyhow::Result<()> {
-    use aphrody_nie_wiki::{mirror, query as wiki_query};
     let SearchOpts {
         show_paths,
         json,
@@ -7138,6 +7329,14 @@ fn vfs_search_waza(
             game_dir,
         );
     }
+    #[cfg(not(feature = "host"))]
+    {
+        let _ = db;
+        anyhow::bail!("--db wiki SQLite mirror requires the `host` feature");
+    }
+    #[cfg(feature = "host")]
+    {
+    use aphrody_nie_wiki::{mirror, query as wiki_query};
     let conn = mirror::open(db)?;
     let mut matches = wiki_query::search_skills(&conn, query)?;
     matches.retain(|m| {
@@ -7200,9 +7399,11 @@ fn vfs_search_waza(
         }
     }
     Ok(())
+    }
 }
 
 /// Liste les chemins VFS contenant `needle` (code interne d'un chara/waza), bornés à `limit`.
+#[cfg(feature = "host")]
 fn vfs_print_related(vfs: &aphrody_nie_formats::vfs::Vfs, needle: &str, limit: usize) {
     let mut hits: Vec<&str> = vfs
         .iter()

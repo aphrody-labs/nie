@@ -156,6 +156,7 @@ pub fn dir(src: &Path, out: &Path, quiet: bool) -> anyhow::Result<()> {
 
 /// Liste récursivement les `*.cfg.bin` d'un répertoire (famille RDBN/T2B uniquement — les
 /// textures/lua n'ont pas de forme « iecode »).
+#[cfg(feature = "host")]
 fn collect_cfg_bin(dir: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
     let Ok(rd) = fs::read_dir(dir) else {
@@ -182,6 +183,7 @@ fn collect_cfg_bin(dir: &Path) -> Vec<PathBuf> {
 ///
 /// # Erreurs
 /// Si `dir` ne contient aucun `.cfg.bin`.
+#[cfg(feature = "host")]
 pub fn refresh_typed(dir: &Path, force: bool, quiet: bool) -> anyhow::Result<()> {
     let files = collect_cfg_bin(dir);
     if files.is_empty() {

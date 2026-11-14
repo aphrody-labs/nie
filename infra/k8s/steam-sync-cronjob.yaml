@@ -1,0 +1,56 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nie-vfs-sync
+  namespace: rosegriffon-nie
+  labels:
+    app.kubernetes.io/name: nie-vfs-sync
+    app.kubernetes.io/part-of: rosegriffon
+spec:
+  schedule: "0 4 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: nie-vfs-sync
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+          containers:
+            - name: sync
+              image: ghcr.io/rosegriffon/nie:latest
+              imagePullPolicy: IfNotPresent
+              command: ["sh", "-c"]
+              args:
+                - 'nie vfs remotes && nie vfs stats --source "${NIE_GAME_SOURCE}"'
+              envFrom:
+                - configMapRef:
+                    name: nie-config
+                - secretRef:
+                    name: nie-secrets
+                    optional: true
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: cache
+                  mountPath: /var/cache/nie
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: cache
+              persistentVolumeClaim:
+                claimName: nie-cache-pvc
+            - name: tmp
+              emptyDir:
+                sizeLimit: 256Mi

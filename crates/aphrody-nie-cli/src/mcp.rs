@@ -1142,7 +1142,8 @@ mod tests {
         let commands = crate::Cli::command()
             .get_subcommands()
             .map(clap::Command::get_name)
-            .filter(|name| *name != "mcp")
+            // Exclude long-running blocking daemon commands from synchronous in-process cli_* MCP tools.
+            .filter(|name| !matches!(*name, "mcp" | "serve"))
             .map(str::to_owned)
             .collect::<Vec<_>>();
         assert_eq!(commands.len(), 47);

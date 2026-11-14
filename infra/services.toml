@@ -23,6 +23,27 @@ domain = "rosegriffon.fr"
 [repo]
 url = "https://github.com/aphrody-labs/rosegriffon.git"
 
+[services.nie]
+entry = "crates/aphrody-nie-cli"
+dockerfile = "infra/docker/Dockerfile"
+target = "nie"
+compose = "compose.yaml"
+port = 8790
+health = "/health"
+role = "prod"
+platforms = ["vps", "cloudflare"]
+requires = ["r2", "cache"]
+state = ["cache/nie", "nie"]
+env = [
+  "NIE_HOST",
+  "NIE_PORT",
+  "NIE_GAME_DIR",
+  "NIE_GAME_SOURCE",
+  "NIE_WORK_DIR",
+  "NIE_RAW_VFS_TOKEN",
+]
+upstream = { name = "nie_serve", keepalive = 16 }
+
 [services.model-serve]
 entry = "crates/aphrody-nie-model-serve"
 dockerfile = "infra/docker/Dockerfile"
@@ -32,13 +53,15 @@ port = 8792
 health = "/health"
 role = "prod"
 platforms = ["vps"]
-requires = ["gpu", "long-cpu", "disk"]
+requires = ["gpu", "long-cpu", "disk", "r2"]
 state = ["game/ievr", "cache/model-serve", "nie"]
 env = [
   "NIE_GAME_DIR",
+  "NIE_GAME_SOURCE",
   "NIE_MODEL_SERVE_HOST",
   "NIE_MODEL_SERVE_PORT",
   "NIE_MODEL_CACHE_DIR",
+  "NIE_WORK_DIR",
 ]
 upstream = { name = "model_serve", keepalive = 16 }
 

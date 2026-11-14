@@ -16,5 +16,5 @@ serde = ["dep:serde"]
 
 [dependencies]
 thiserror = { workspace = true }
-sha2 = "0.10"
+sha2 = { workspace = true }
 serde = { workspace = true, features = ["std", "derive"], optional = true }

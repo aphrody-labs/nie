@@ -57,15 +57,39 @@ x-common: &common
     options: { max-size: "20m", max-file: "5" }
 
 services:
+  nie:
+    <<: [*common, *env]
+    image: ${RG_REGISTRY:-rosegriffon}/nie:${RG_TAG:-latest}
+    build: { <<: *build, target: nie }
+    environment:
+      NIE_HOST: 0.0.0.0
+      NIE_PORT: "8790"
+      NIE_GAME_DIR: /data/game
+      NIE_GAME_SOURCE: ${NIE_GAME_SOURCE:-}
+      NIE_WORK_DIR: /srv/nie
+      NIE_RCLONE_BIN: /usr/local/bin/nie-rclone
+      RCLONE_CACHE_DIR: /var/cache/nie
+    volumes:
+      - ${RG_SRV_ROOT:-/srv/rosegriffon}/game/ievr:/data/game:ro
+      - ${RG_SRV_ROOT:-/srv/rosegriffon}/cache/nie:/var/cache/nie
+      - ${RG_SRV_ROOT:-/srv/rosegriffon}/nie:/srv/nie
+    deploy:
+      resources:
+        limits: { memory: 1g }
+
   model-serve:
     <<: [*common, *env]
     image: ${RG_REGISTRY:-rosegriffon}/model-serve:${RG_TAG:-latest}
     build: { <<: *build, target: model-serve }
     environment:
       NIE_GAME_DIR: /data/game
+      NIE_GAME_SOURCE: ${NIE_GAME_SOURCE:-}
       NIE_MODEL_SERVE_HOST: 0.0.0.0
       NIE_MODEL_SERVE_PORT: "8792"
       NIE_MODEL_CACHE_DIR: /var/cache/nie-model-serve
+      NIE_WORK_DIR: /srv/nie
+      NIE_RCLONE_BIN: /usr/local/bin/nie-rclone
+      RCLONE_CACHE_DIR: /var/cache/nie-model-serve
     volumes:
       - ${RG_SRV_ROOT:-/srv/rosegriffon}/game/ievr:/data/game:ro
       - ${RG_SRV_ROOT:-/srv/rosegriffon}/cache/model-serve:/var/cache/nie-model-serve

@@ -31,21 +31,18 @@ real-audio = ["host"]
 
 [dependencies]
 aphrody-nie-core = { path = "../aphrody-nie-core", version = "1.4.8", default-features = false, optional = true }
-aphrody-nie-formats = { path = "../aphrody-nie-formats", version = "1.4.8", default-features = false, features = ["std", "serde", "textures"] }
+aphrody-nie-formats = { path = "../aphrody-nie-formats", version = "1.4.8", default-features = false, features = ["std", "serde", "textures", "remote-vfs"] }
 aphrody-nie-data = { path = "../aphrody-nie-data", version = "1.4.8", default-features = false, optional = true, features = ["serde", "std"] }
 aphrody-nie-explore = { path = "../aphrody-nie-explore", version = "1.4.8", optional = true }
 aphrody-nie-sql = { path = "../aphrody-nie-sql", version = "1.4.8", optional = true }
-anyhow = { version = "1.0.104", default-features = false, optional = true }
+anyhow = { workspace = true, features = ["std"], optional = true }
 clap = { version = "4.5", default-features = false, features = ["derive", "color", "env", "std"], optional = true }
-serde_json = { version = "1.0.154", default-features = false, features = ["std"], optional = true }
-serde = { version = "1.0.228", default-features = false, features = [
-  "std",
-  "derive",
-] }
-tokio = { version = "1.49", default-features = false, features = ["rt", "net", "time", "sync"], optional = true }
-sha2 = { version = "0.10", optional = true }
+serde_json = { workspace = true, features = ["std"], optional = true }
+serde = { workspace = true, features = ["std", "derive"] }
+tokio = { workspace = true, features = ["rt", "net", "time", "sync"], optional = true }
+sha2 = { workspace = true, optional = true }
 tracing = { workspace = true, optional = true }
-tracing-subscriber = { version = "0.3.20", default-features = false, features = ["fmt", "env-filter", "ansi", "tracing-log"], optional = true }
+tracing-subscriber = { workspace = true, features = ["fmt", "env-filter", "ansi", "tracing-log"], optional = true }
 
 [[bin]]
 name = "aphrody-nie-model-serve"

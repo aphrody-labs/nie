@@ -288,6 +288,8 @@ pub enum FileFormat {
     Lip = 30,
     /// DirectX Bytecode shader Microsoft (`DXBC`).
     Dxbc = 31,
+    /// Image RIFF WebP (`RIFF....WEBP`).
+    Webp = 32,
 }
 
 /// Descripteur complet et standardisé d'un format de fichier VFS.
@@ -360,6 +362,7 @@ impl FileFormat {
             29 => Self::Hca,
             30 => Self::Lip,
             31 => Self::Dxbc,
+            32 => Self::Webp,
             _ => Self::Unknown,
         }
     }
@@ -399,6 +402,7 @@ impl FileFormat {
             Self::Hca => "HCA",
             Self::Lip => "p3lip",
             Self::Dxbc => "DXBC",
+            Self::Webp => "WEBP",
             Self::Unknown => "?",
         }
     }
@@ -438,6 +442,7 @@ impl FileFormat {
             Self::Hca => ".hca",
             Self::Lip => ".p3lip",
             Self::Dxbc => ".vfxo",
+            Self::Webp => ".webp",
             Self::Unknown => ".bin",
         }
     }
@@ -477,6 +482,7 @@ impl FileFormat {
             Self::Hca => "audio/x-cri-hca",
             Self::Lip => "application/x-level5-lip",
             Self::Dxbc => "application/x-ms-dxbc",
+            Self::Webp => "image/webp",
             Self::Unknown => "application/octet-stream",
         }
     }
@@ -485,7 +491,7 @@ impl FileFormat {
     #[must_use]
     pub const fn category(self) -> &'static str {
         match self {
-            Self::G4tx | Self::Dds | Self::Png => "texture",
+            Self::G4tx | Self::Dds | Self::Png | Self::Webp => "texture",
             Self::G4md | Self::G4mg | Self::G4mt | Self::G4sk | Self::Agi => "model",
             Self::G4pk
             | Self::G4ra
@@ -950,6 +956,19 @@ impl FileFormat {
                 compression_supported: false,
                 description: "DirectX Compiled Shader Bytecode",
             },
+            Self::Webp => FormatDescriptor {
+                id: 32,
+                name: "WEBP",
+                magic_hex: "0x50424557",
+                magic_ascii: "RIFFWEBP",
+                extension: ".webp",
+                mime_type: "image/webp",
+                category: "texture",
+                is_big_endian: false,
+                encryption_supported: false,
+                compression_supported: true,
+                description: "RIFF WebP image (web portraits and thumbnails)",
+            },
             Self::Unknown => FormatDescriptor {
                 id: 0,
                 name: "?",
@@ -1001,6 +1020,7 @@ impl FileFormat {
             Self::Hca,
             Self::Lip,
             Self::Dxbc,
+            Self::Webp,
         ]
     }
 }
@@ -1074,6 +1094,8 @@ pub fn detect(bytes: &[u8]) -> FileFormat {
         FileFormat::Dds
     } else if bytes.len() >= 8 && bytes[..8] == [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A] {
         FileFormat::Png
+    } else if starts(bytes, b"RIFF") && bytes.len() >= 12 && bytes[8..12] == *b"WEBP" {
+        FileFormat::Webp
     } else if starts(bytes, b"RIFF") {
         FileFormat::Riff
     } else if starts(bytes, b"XPCK") {
@@ -1103,6 +1125,8 @@ mod tests {
         assert_eq!(detect(b"G4MG....."), FileFormat::G4mg);
         assert_eq!(detect(b"AFS2...."), FileFormat::Awb);
         assert_eq!(detect(b"RDBN...."), FileFormat::CfgBin);
+        assert_eq!(detect(b"RIFF\x00\x00\x00\x00WAVEfmt "), FileFormat::Riff);
+        assert_eq!(detect(b"RIFF\x00\x00\x00\x00WEBPVP8 "), FileFormat::Webp);
         assert_eq!(detect(b"random"), FileFormat::Unknown);
         assert_eq!(detect(b""), FileFormat::Unknown);
     }

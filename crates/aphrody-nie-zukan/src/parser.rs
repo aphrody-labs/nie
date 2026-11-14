@@ -74,9 +74,9 @@ pub fn parse_chara_list(html: &str) -> Result<(Vec<CharaListEntry>, u32)> {
     let mut entries = Vec::new();
 
     // Liens model_view (contiennent le character_id)
-    let model_a_sel = sel("a[href*='/chara_model_view/']");
-    // Liens chara_param
-    let param_a_sel = sel("a[href*='/chara_param/']");
+    let model_a_sel = sel("a[href*='/chara_model_view/?q=']");
+    // Liens chara_param avec ?q= (exclut le lien de navigation '/en/chara_param/')
+    let param_a_sel = sel("a[href*='/chara_param/?q=']");
     // Nom du personnage
     let name_sel = sel(".nameBox .name");
 
@@ -629,6 +629,28 @@ mod tests {
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].game_id, "c01000010");
         assert!(entries[0].name.contains("円堂"));
+    }
+
+    #[test]
+    fn parse_chara_list_ignores_nav_param_links() {
+        let html = r#"<!DOCTYPE html><html><body>
+        <nav><a href="/en/chara_param/">Parameters</a><a href="/en/chara_model_view/">Model</a></nav>
+        <ul>
+          <li>
+            <div class="nameBox"><span class="name">Byron Love</span></div>
+            <a href="/en/chara_model_view/?q=hN2cl56NnpyLmo2glpvdxaTdnM_Oz8_Oxs_P3aKC">Model</a>
+            <a href="/en/chara_param/?q=hN2ZlpOLmo2gnJeejZ6glpugjIuN3cWk3ZzPzs_PzsbPz92igg%3D%3D">Param</a>
+          </li>
+        </ul>
+        </body></html>"#;
+
+        let (entries, _pages) = parse_chara_list(html).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].game_id, "c01001900");
+        assert_eq!(
+            entries[0].q_param,
+            "hN2ZlpOLmo2gnJeejZ6glpugjIuN3cWk3ZzPzs_PzsbPz92igg%3D%3D"
+        );
     }
 
     #[test]

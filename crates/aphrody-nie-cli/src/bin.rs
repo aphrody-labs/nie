@@ -1,4 +1,4 @@
-#![cfg(feature = "host")]
+#![cfg(any(feature = "cloud", feature = "host"))]
 
 //! Thin executable binding for the reusable `aphrody_nie_cli` library.
 
