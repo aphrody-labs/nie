@@ -37,9 +37,7 @@ thiserror = { workspace = true }
 # (`gpu`, `webgpu`).
 bevy_app = { workspace = true, optional = true }
 bevy_asset = { workspace = true, optional = true }
-bevy_ecs = { workspace = true, optional = true }
 bevy_image = { workspace = true, optional = true }
-bevy_math = { workspace = true, optional = true }
 bevy_mesh = { workspace = true, optional = true }
 # `TypePath` (exigé par `Asset` et `AssetLoader`) se dérive depuis `bevy_reflect`, que
 # `bevy_asset` ne réexporte pas.
@@ -56,9 +54,7 @@ default = []
 bevy = [
   "dep:bevy_app",
   "dep:bevy_asset",
-  "dep:bevy_ecs",
   "dep:bevy_image",
-  "dep:bevy_math",
   "dep:bevy_mesh",
   "dep:bevy_reflect",
   "dep:bevy-wgpu-types",

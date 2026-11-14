@@ -11,14 +11,14 @@ import {
   initSync,
   menu_presentation_json,
   WasmBitmapFont,
-} from "../../../../nie-web/src/nie-wasm-web/nie_wasm.js";
+} from "../../../../../apps/rg-website/src/lib/nie-wasm-web/nie_wasm.js";
 const [report, directory] = process.argv.slice(2);
 assert(report && directory, "Expected native JSON and private font directory");
 const native = JSON.parse(readFileSync(report, "utf8"));
 assert.equal(native.schemaVersion, 1);
 const wasm = readFileSync(
   new URL(
-    "../../../packages/nie-web/public/static/game/nie_wasm_bg.wasm",
+    "../../../../../apps/rg-website/public/wasm/nie_wasm_bg.wasm",
     import.meta.url,
   ),
 );

@@ -38,9 +38,9 @@
  */
 
 import { sql } from "../lib/db.js";
-import { DISCORD_TOKEN, GUILD_ID } from "../lib/discord.js";
+import { GUILD_ID } from "../lib/discord.js";
+import { appelDiscord } from "../lib/discord-rest.js";
 
-const API_DISCORD = "https://discord.com/api/v10";
 const PREFIXE = "[Cron Discord]";
 /** Taille de page maximale acceptée par `GET /channels/{id}/messages`. */
 const TAILLE_PAGE = 100;
@@ -157,59 +157,6 @@ export interface StatsVeille {
 }
 
 // ─── APPELS REST DISCORD ─────────────────────────────────────────────────────
-
-/**
- * Appel REST Discord avec le jeton du bot.
- *
- * On passe par `fetch` natif plutôt que par le client discord.js (qui gérerait
- * déjà les 429 via sa file d'attente) pour une raison précise : le rattrapage
- * doit continuer à fonctionner quand la passerelle est dégradée — intents
- * refusés, client non connecté, exécution en ligne de commande. Le 429 est donc
- * traité ici à la main, en respectant le `retry_after` renvoyé par Discord.
- */
-async function appelDiscord<T>(chemin: string, tentative = 0): Promise<T> {
-  if (!DISCORD_TOKEN) {
-    throw new Error(
-      "DISCORD_BOT_TOKEN absent : la veille des salons est impossible.",
-    );
-  }
-
-  const reponse = await fetch(`${API_DISCORD}${chemin}`, {
-    headers: {
-      Authorization: `Bot ${DISCORD_TOKEN}`,
-      "User-Agent": "RoseGriffonCron (https://rosegriffon.fr, 1.0)",
-    },
-  });
-
-  if (reponse.status === 429) {
-    if (tentative >= 5) {
-      throw new Error(`Limite de débit Discord persistante sur ${chemin}.`);
-    }
-    const corps = (await reponse.json().catch(() => ({}))) as {
-      retry_after?: number;
-    };
-    const attente = Math.ceil((corps.retry_after ?? 1) * 1000) + 250;
-    console.warn(
-      `${PREFIXE} Limite de débit sur ${chemin} : attente de ${attente} ms.`,
-    );
-    await Bun.sleep(attente);
-    return appelDiscord<T>(chemin, tentative + 1);
-  }
-
-  if (reponse.status >= 500 && tentative < 3) {
-    await Bun.sleep(1000 * (tentative + 1));
-    return appelDiscord<T>(chemin, tentative + 1);
-  }
-
-  if (!reponse.ok) {
-    const texte = await reponse.text().catch(() => "");
-    throw new Error(
-      `Discord a répondu ${reponse.status} sur ${chemin} : ${texte.slice(0, 200)}`,
-    );
-  }
-
-  return (await reponse.json()) as T;
-}
 
 // ─── MAPPING MESSAGE DISCORD -> LIGNE ────────────────────────────────────────
 

@@ -56,19 +56,25 @@ export async function getNieWasmInstance(): Promise<WebAssembly.Instance> {
 
 export class NieWasmEngine {
   private vfsPaths: string[] = [];
+  private vfsPathsLower: string[] = [];
 
   constructor(initialPaths: string[] = []) {
-    this.vfsPaths = initialPaths;
+    this.setVfsPaths(initialPaths);
   }
 
   public setVfsPaths(paths: string[]): void {
     this.vfsPaths = paths;
+    this.vfsPathsLower = paths.map((p) => p.toLowerCase());
   }
 
   /**
-   * Fast IEEE 802.3 CRC32 computation.
+   * Fast IEEE 802.3 CRC32 computation (uses native SIMD Bun.hash.crc32 when available).
    */
   public crc32(data: Uint8Array): number {
+    const bunCrc32 = (
+      globalThis as { Bun?: { hash?: { crc32?: (buf: Uint8Array) => number } } }
+    ).Bun?.hash?.crc32;
+    if (bunCrc32) return bunCrc32(data) >>> 0;
     let crc = 0xffffffff;
     for (let i = 0; i < data.length; i++) {
       crc = (crc >>> 8) ^ CRC32_TABLE[(crc ^ data[i]!) & 0xff]!;
@@ -112,9 +118,10 @@ export class NieWasmEngine {
     if (!q) return this.vfsPaths.slice(0, maxResults);
 
     const matches: string[] = [];
-    for (const path of this.vfsPaths) {
-      if (path.toLowerCase().includes(q)) {
-        matches.push(path);
+    const lower = this.vfsPathsLower;
+    for (let i = 0; i < lower.length; i++) {
+      if (lower[i]!.includes(q)) {
+        matches.push(this.vfsPaths[i]!);
         if (matches.length >= maxResults) break;
       }
     }

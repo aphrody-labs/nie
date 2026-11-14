@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import {
   initSync,
   menu_animation_bindings_json,
-} from "../../../../nie-web/src/nie-wasm-web/nie_wasm.js";
+} from "../../../../../apps/rg-website/src/lib/nie-wasm-web/nie_wasm.js";
 
 const args = process.argv.slice(2);
 assert(
@@ -28,7 +28,7 @@ assert(
 const wasmBytes = readFileSync(
   args[3] ??
     new URL(
-      "../../../packages/nie-web/public/static/game/nie_wasm_bg.wasm",
+      "../../../../../apps/rg-website/public/wasm/nie_wasm_bg.wasm",
       import.meta.url,
     ),
 );

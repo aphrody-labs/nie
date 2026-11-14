@@ -20,7 +20,45 @@ import {
   type FilmClip,
   type FilmProject,
 } from "@aphrody/filmcraft";
-import { findAtom, parseAtoms, type AtomHeader } from "@aphrody/hyperframes";
+
+export interface AtomHeader {
+  offset: number;
+  size: number;
+  type: string;
+}
+
+function parseAtoms(buffer: Uint8Array, startOffset = 0): AtomHeader[] {
+  const atoms: AtomHeader[] = [];
+  let i = startOffset;
+  while (i <= buffer.length - 8) {
+    const actualSize =
+      ((buffer[i] << 24) |
+        (buffer[i + 1] << 16) |
+        (buffer[i + 2] << 8) |
+        buffer[i + 3]) >>>
+      0;
+    if (actualSize === 0 || actualSize > buffer.length - i + 100_000_000) {
+      break;
+    }
+    const type = String.fromCharCode(
+      buffer[i + 4],
+      buffer[i + 5],
+      buffer[i + 6],
+      buffer[i + 7],
+    );
+    atoms.push({ offset: i, size: actualSize, type });
+    i += actualSize;
+  }
+  return atoms;
+}
+
+function findAtom(
+  buffer: Uint8Array,
+  atomType: string,
+  startOffset = 0,
+): AtomHeader | null {
+  return parseAtoms(buffer, startOffset).find((a) => a.type === atomType) ?? null;
+}
 
 export interface SavePlayerStats {
   level: number;

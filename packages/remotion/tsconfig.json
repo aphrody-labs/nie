@@ -1,9 +1,0 @@
-{
-  "extends": "../rg-config/tsconfig-bun.json",
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "types": ["bun", "node"],
-    "noUncheckedIndexedAccess": false
-  },
-  "include": ["src/**/*", "test/**/*"]
-}

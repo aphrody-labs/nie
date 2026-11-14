@@ -16,7 +16,6 @@
     "lint": "oxlint src"
   },
   "dependencies": {
-    "@aphrody/next-bun": "catalog:",
     "@rosegriffon/bot": "workspace:*",
     "@rosegriffon/cron": "workspace:*",
     "reflect-metadata": "catalog:"

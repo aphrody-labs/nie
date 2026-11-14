@@ -61,7 +61,8 @@ import {
 } from "@rosegriffon/types/discord";
 
 import { sql } from "../lib/db.js";
-import { DISCORD_TOKEN, GUILD_ID } from "../lib/discord.js";
+import { GUILD_ID } from "../lib/discord.js";
+import { appelDiscordRequete as appelDiscord } from "../lib/discord-rest.js";
 
 /*
  * `borner`, les limites de l'API, la couleur de marque et les émotes viennent
@@ -73,7 +74,6 @@ import { DISCORD_TOKEN, GUILD_ID } from "../lib/discord.js";
  * endroit, et les appelants historiques n'ont pas à bouger.
  */
 
-const API_DISCORD = "https://discord.com/api/v10";
 const PREFIXE = "[Relais campagne]";
 
 /** Origine publique du site — les images relayées doivent être en URL absolue. */
@@ -181,44 +181,6 @@ function dormir(ms: number): Promise<void> {
 
 function message(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
-}
-
-/** Appel REST Discord authentifié par le jeton du bot. */
-async function appelDiscord<T>(
-  chemin: string,
-  init: RequestInit = {},
-): Promise<T> {
-  if (!DISCORD_TOKEN) {
-    throw new Error("DISCORD_BOT_TOKEN absent : impossible de poster.");
-  }
-  const reponse = await fetch(`${API_DISCORD}${chemin}`, {
-    ...init,
-    headers: {
-      Authorization: `Bot ${DISCORD_TOKEN}`,
-      "Content-Type": "application/json",
-      ...init.headers,
-    },
-  });
-
-  // 429 : Discord donne le délai exact à attendre. Le respecter une fois vaut
-  // mieux que réessayer à l'aveugle et se faire fermer la route.
-  if (reponse.status === 429) {
-    const corps = (await reponse.json().catch(() => ({}))) as {
-      retry_after?: number;
-    };
-    const attente = Math.ceil((corps.retry_after ?? 1) * 1000);
-    console.warn(`${PREFIXE} Quota Discord atteint, pause de ${attente} ms.`);
-    await dormir(attente);
-    return appelDiscord<T>(chemin, init);
-  }
-
-  if (!reponse.ok) {
-    throw new Error(
-      `${init.method ?? "GET"} ${chemin} → ${reponse.status} ${await reponse.text()}`,
-    );
-  }
-  // 204 sur les réactions : pas de corps à lire.
-  return (reponse.status === 204 ? undefined : await reponse.json()) as T;
 }
 
 // ─── Mise en forme (PURE, testée seule) ──────────────────────────────────────

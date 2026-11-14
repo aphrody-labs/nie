@@ -5,7 +5,6 @@
  *  - inagle: Universal Game Data CLI (IEVR) & Zukan query
  *  - azalee: Azalee game DB, sync, audit, rules, and contracts
  *  - formats / console: yolo-console-formats ROM/binary inspection & disasm
- *  - homebrew: DS/3DS homebrew toolchain runner
  *  - pipeline / shenron: Shenron ML / OCR / RAG / Ingest pipeline
  *  - contract: Achillea cross-language contract generator
  *  - achillea / server: Rose Griffon self-hosted server & AchilleaClient runner
@@ -42,7 +41,6 @@ Available Commands:
   inagle        Inazuma Eleven Victory Road Data CLI & Zukan query
   azalee        Azalee game DB, sync, audit, rules, and contracts
   formats       Console formats inspection, disasm, and identification
-  homebrew      Homebrew DS / 3DS toolchain runner
   contract      Achillea cross-language contract generator
   achillea      Achilléa headless API client runner (all 19 v1 resources & raw)
   nie           NIE Rust CLI (detect, match, save-edit, capture-menus, memory-dump)
@@ -125,20 +123,6 @@ async function main() {
         "../../../packages/bun-engine-formats/src/cli.ts",
       );
       const proc = Bun.spawn([process.execPath, formatsEntry, ...subArgs], {
-        stdin: "inherit",
-        stdout: "inherit",
-        stderr: "inherit",
-      });
-      process.exit(await proc.exited);
-      break;
-    }
-
-    case "homebrew": {
-      const homebrewEntry = resolve(
-        import.meta.dir,
-        "../../../packages/iecode-homebrew/src/cli.ts",
-      );
-      const proc = Bun.spawn([process.execPath, homebrewEntry, ...subArgs], {
         stdin: "inherit",
         stdout: "inherit",
         stderr: "inherit",

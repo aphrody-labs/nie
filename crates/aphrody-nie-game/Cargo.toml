@@ -29,7 +29,6 @@ aphrody-nie-data.workspace = true
 # Le CŒUR du jeu : machine à états d'écrans (`flow::Screen`), rendu abstrait et police. `--play`
 # se contente de la brancher sur une fenêtre — même FSM que le front web, aucune réimplémentation.
 aphrody-nie-app.workspace = true
-aphrody-nie-core = { workspace = true, features = ["data"] }
 # Atteint jusqu'ici transitivement par `aphrody-nie-app::flow::Screen::Match`, alors que l'hôte utilise
 # désormais sa cadence (`TICK_DT`) et son accumulateur (`FixedStep`) directement : une
 # dépendance qu'on nomme est une dépendance qu'on peut voir.
@@ -64,15 +63,12 @@ bytemuck = { workspace = true, features = ["derive"] }
 # Encodage PNG des captures/exports (le décodage DDS/BCn est passé dans aphrody-nie-formats).
 png = { workspace = true }
 # Export du layout de menu (JSON contrat `menu-render` pour azalee).
-serde = { workspace = true, features = ["std", "derive"] }
 serde_json = { workspace = true }
-# Dump exhaustif des packs (example dump_packs) : parallélisme CPU par-CPK (rayon),
-# accès mmap RAM-borné (memmap2), garde-fou disque via statvfs (libc, Linux/WSL).
-rayon = { workspace = true }
 memmap2.workspace = true
 libc = { workspace = true }
 
 [dev-dependencies]
+rayon = { workspace = true }
 # Example `dump_g4tx` + test `menu_render_gate` réfèrent les variantes `ImageFormat` en direct
 # (le décodage applicatif passe par aphrody_nie_formats::g4tx_decode, mais ces cibles de dev nomment l'enum).
 image_dds.workspace = true

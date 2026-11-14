@@ -62,7 +62,7 @@ export function createFilmProject(
 ): FilmProject {
   return {
     id: options.id ?? `fc-${Date.now()}`,
-    title: options.title ?? "Dragon Ball FilmCraft Sequence",
+    title: options.title ?? "FilmCraft Sequence",
     fps: options.fps ?? 24,
     width: options.width ?? 1920,
     height: options.height ?? 1080,
@@ -159,6 +159,7 @@ export function razorFilmClip(
     if (clipIndex === -1) continue;
 
     const clip = track.clips[clipIndex];
+    if (!clip) continue;
     if (
       cutFrame <= clip.startFrame ||
       cutFrame >= clip.startFrame + clip.durationFrames
@@ -203,9 +204,11 @@ export function cutFilmClip(
     if (clipIndex === -1) continue;
 
     const [removedClip] = track.clips.splice(clipIndex, 1);
+    if (!removedClip) continue;
     if (ripple) {
       for (let i = clipIndex; i < track.clips.length; i++) {
-        track.clips[i].startFrame -= removedClip.durationFrames;
+        const nextClip = track.clips[i];
+        if (nextClip) nextClip.startFrame -= removedClip.durationFrames;
       }
     }
     return removedClip;
@@ -260,4 +263,23 @@ export function serializeFilmProject(project: FilmProject): string {
 
 export function deserializeFilmProject(json: string): FilmProject {
   return JSON.parse(json) as FilmProject;
+}
+
+export function secondsToFrames(seconds: number, fps: number = 24): number {
+  return Math.round(seconds * fps);
+}
+
+export function framesToSeconds(frames: number, fps: number = 24): number {
+  return frames / fps;
+}
+
+export function formatTimecodeSMPTE(frame: number, fps: number = 24): string {
+  const totalSeconds = Math.floor(frame / fps);
+  const remainderFrames = frame % fps;
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}:${pad(remainderFrames)}`;
 }

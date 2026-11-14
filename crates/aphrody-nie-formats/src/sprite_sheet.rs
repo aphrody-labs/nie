@@ -50,6 +50,15 @@ pub fn assainir_nom(nom: &str) -> String {
         .collect()
 }
 
+fn escape_css_url(value: &str) -> String {
+    value
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\a ")
+        .replace('\r', "\\d ")
+        .replace('\0', "")
+}
+
 #[must_use]
 pub fn data_uri(mime: &str, bytes: &[u8]) -> String {
     #[cfg(feature = "std")]
@@ -132,6 +141,12 @@ impl SpriteSheet {
 
     #[must_use]
     pub fn vers_css_mode(&self, image_url: &str, mode: ModeCss) -> String {
+        self.vers_css_mode_prefixed(image_url, mode, PREFIXE)
+    }
+
+    #[must_use]
+    pub fn vers_css_mode_prefixed(&self, image_url: &str, mode: ModeCss, prefix: &str) -> String {
+        let escaped_url = escape_css_url(image_url);
         let mut css = alloc::format!(
             "/* {} — {} régions, atlas {}x{}. */\n",
             self.nom,
@@ -142,13 +157,13 @@ impl SpriteSheet {
         match mode {
             ModeCss::Image => {
                 css.push_str(&alloc::format!(
-                    ".{PREFIXE}-sprite {{ display: inline-block; background-image: url(\"{image_url}\"); background-repeat: no-repeat; background-size: {}px {}px; image-rendering: pixelated; }}\n",
+                    ".{prefix}-sprite {{ display: inline-block; background-image: url(\"{escaped_url}\"); background-repeat: no-repeat; background-size: {}px {}px; image-rendering: pixelated; }}\n",
                     self.largeur, self.hauteur
                 ));
             }
             ModeCss::Masque => {
                 css.push_str(&alloc::format!(
-                    ".{PREFIXE}-sprite {{ display: inline-block; background-color: currentColor; -webkit-mask-image: url(\"{image_url}\"); mask-image: url(\"{image_url}\"); -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-size: {}px {}px; mask-size: {}px {}px; }}\n",
+                    ".{prefix}-sprite {{ display: inline-block; background-color: currentColor; -webkit-mask-image: url(\"{escaped_url}\"); mask-image: url(\"{escaped_url}\"); -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-size: {}px {}px; mask-size: {}px {}px; }}\n",
                     self.largeur, self.hauteur, self.largeur, self.hauteur
                 ));
             }
@@ -157,13 +172,13 @@ impl SpriteSheet {
             match mode {
                 ModeCss::Image => {
                     css.push_str(&alloc::format!(
-                        ".{PREFIXE}-{} {{ width: {}px; height: {}px; background-position: {}px {}px; }}\n",
+                        ".{prefix}-{} {{ width: {}px; height: {}px; background-position: {}px {}px; }}\n",
                         sprite.classe, sprite.largeur, sprite.hauteur, -sprite.x, -sprite.y
                     ));
                 }
                 ModeCss::Masque => {
                     css.push_str(&alloc::format!(
-                        ".{PREFIXE}-{} {{ width: {}px; height: {}px; -webkit-mask-position: {}px {}px; mask-position: {}px {}px; }}\n",
+                        ".{prefix}-{} {{ width: {}px; height: {}px; -webkit-mask-position: {}px {}px; mask-position: {}px {}px; }}\n",
                         sprite.classe, sprite.largeur, sprite.hauteur, -sprite.x, -sprite.y, -sprite.x, -sprite.y
                     ));
                 }

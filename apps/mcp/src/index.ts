@@ -22,13 +22,9 @@ import { resolve, join } from "node:path";
 import {
   createFilmProject,
   addFilmClip,
+  formatTimecodeSMPTE,
   type FilmProject,
 } from "@aphrody/filmcraft/timeline";
-import {
-  formatTimecodeSMPTE,
-  framesToSeconds,
-  secondsToFrames,
-} from "@aphrody/remotion/timeline";
 
 interface JsonRpcRequest {
   jsonrpc: "2.0";

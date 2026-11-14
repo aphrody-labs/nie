@@ -45,12 +45,12 @@ export function achilleaSessionCookieAttributes(
   } as const;
 }
 
+const HEADER_B64 = Buffer.from('{"alg":"HS256","typ":"JWT"}').toString(
+  "base64url",
+);
+
 function base64url(value: Buffer | string): string {
-  return Buffer.from(value)
-    .toString("base64")
-    .replaceAll("+", "-")
-    .replaceAll("/", "_")
-    .replaceAll("=", "");
+  return Buffer.from(value).toString("base64url");
 }
 
 /**
@@ -82,12 +82,12 @@ export function signAchilleaSessionToken(
     exp: now + Math.max(1, Math.floor(ttlSeconds)),
   };
 
-  const header = base64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const body = base64url(JSON.stringify(payload));
+  const signingInput = `${HEADER_B64}.${body}`;
   const signature = base64url(
-    createHmac("sha256", secret).update(`${header}.${body}`).digest(),
+    createHmac("sha256", secret).update(signingInput).digest(),
   );
-  return `${header}.${body}.${signature}`;
+  return `${signingInput}.${signature}`;
 }
 
 /** Signs the short-lived purpose-bound token consumed by realtime/Colyseus. */
@@ -109,10 +109,10 @@ export function signAchilleaRealtimeToken(
     iat: now,
     exp: now + ACHILLEA_REALTIME_TTL_SECONDS,
   };
-  const header = base64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const body = base64url(JSON.stringify(payload));
+  const signingInput = `${HEADER_B64}.${body}`;
   const signature = base64url(
-    createHmac("sha256", secret).update(`${header}.${body}`).digest(),
+    createHmac("sha256", secret).update(signingInput).digest(),
   );
-  return `${header}.${body}.${signature}`;
+  return `${signingInput}.${signature}`;
 }

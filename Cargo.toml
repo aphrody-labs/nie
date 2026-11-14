@@ -2,38 +2,31 @@
 resolver = "2"
 members = [
   "crates/aphrody-nie-app",
-  "crates/aphrody-nie-bench",
   "crates/aphrody-nie-bevy",
   "crates/aphrody-nie-camera",
   "crates/aphrody-nie-cli",
   "crates/aphrody-nie-computer-use",
   "crates/aphrody-nie-core",
   "crates/aphrody-nie-data",
-  "crates/aphrody-nie-editor",
   "crates/aphrody-nie-explore",
   "crates/aphrody-nie-ffi",
   "crates/aphrody-nie-forge",
   "crates/aphrody-nie-formats",
   "crates/aphrody-nie-game",
   "crates/aphrody-nie-headless",
-  "crates/aphrody-nie-identity-source",
   "crates/aphrody-nie-index",
-  "crates/aphrody-nie-inventory",
   "crates/aphrody-nie-launcher",
   "crates/aphrody-nie-lua",
-  "crates/aphrody-nie-lua-web",
   "crates/aphrody-nie-model-serve",
   "crates/aphrody-nie-net",
   "crates/aphrody-nie-ocgen",
   "crates/aphrody-nie-pe",
-  "crates/aphrody-nie-pg",
   "crates/aphrody-nie-queue",
   "crates/aphrody-nie-render3d",
   "crates/aphrody-nie-runtime",
   "crates/aphrody-nie-save",
   "crates/aphrody-nie-seed",
   "crates/aphrody-nie-sql",
-  "crates/aphrody-nie-tasks",
   "crates/aphrody-nie-trace",
   "crates/aphrody-nie-ui",
   "crates/aphrody-nie-viola",
@@ -41,7 +34,6 @@ members = [
   "crates/aphrody-nie-wiki",
   "crates/aphrody-nie-zukan",
   "crates/nie-pkg",
-  "crates/re",
   "crates/yolo-re-core",
 ]
 
@@ -68,7 +60,6 @@ correctness = { level = "warn", priority = -1 }
 perf = { level = "warn", priority = -1 }
 
 [workspace.dependencies]
-serde-wasm-bindgen = "0.6"
 
 anyhow = { version = "1.0.104", default-features = false }
 base64 = { version = "0.22.1", default-features = false, features = ["alloc"] }
@@ -82,7 +73,6 @@ serde = { version = "1.0.228", default-features = false, features = [
 serde_json = { version = "1.0.154", default-features = false, features = [
   "std",
 ] }
-sha2 = { version = "0.11.1", default-features = false }
 tempfile = { version = "3.27.0", default-features = false, features = [
   "getrandom",
 ] }
@@ -104,7 +94,6 @@ bevy_mesh = { version = "0.20.1", default-features = false }
 bevy_reflect = { version = "0.20.1", default-features = false }
 bevy-wgpu-types = { package = "wgpu-types", version = "30.0.1", default-features = false }
 bun-steam = { git = "https://github.com/aphrody-dev/steam-depot", rev = "d098b41687a63767ee5eee3a351b2936a1d902e6", package = "steam-depot", default-features = false }
-parking_lot = "0.12.3"
 bytemuck = { version = "1.0", features = [
   "derive",
   "extern_crate_alloc",
@@ -122,26 +111,21 @@ web-sys = { version = "0.3.104", default-features = false }
 crc32fast = { version = "1.5", default-features = false }
 cridecoder = { version = "0.2.3", default-features = false }
 aphrody-re = { package = "yolo-re-core", path = "crates/yolo-re-core", version = "1.4.8" }
-aphrody-nie-tasks = { default-features = false, path = "crates/aphrody-nie-tasks", version = "1.4.7" }
 image_dds = { version = "0.7", default-features = false }
 memmap2 = { version = "0.9" }
 aphrody-nie-app = { default-features = false, path = "crates/aphrody-nie-app", version = "1.4.7" }
-aphrody-nie-bench = { default-features = false, path = "crates/aphrody-nie-bench", version = "1.4.7" }
 aphrody-nie-camera = { default-features = false, path = "crates/aphrody-nie-camera", version = "1.4.7" }
 aphrody-nie-computer-use = { default-features = false, path = "crates/aphrody-nie-computer-use", version = "1.4.7" }
 aphrody-nie-core = { default-features = false, path = "crates/aphrody-nie-core", version = "1.4.7" }
 aphrody-nie-data = { path = "crates/aphrody-nie-data", version = "1.4.7" }
-aphrody-nie-editor = { default-features = false, path = "crates/aphrody-nie-editor", version = "1.4.7" }
 aphrody-nie-explore = { default-features = false, path = "crates/aphrody-nie-explore", version = "1.4.7" }
 aphrody-nie-forge = { default-features = false, path = "crates/aphrody-nie-forge", version = "1.4.7" }
 aphrody-nie-formats = { default-features = false, path = "crates/aphrody-nie-formats", version = "1.4.7" }
-aphrody-nie-headless = { default-features = false, path = "crates/aphrody-nie-headless", version = "1.4.7" }
 aphrody-nie-index = { default-features = false, path = "crates/aphrody-nie-index", version = "1.4.7" }
 aphrody-nie-lua = { default-features = false, path = "crates/aphrody-nie-lua", version = "1.4.7" }
 aphrody-nie-model-serve = { default-features = false, path = "crates/aphrody-nie-model-serve", version = "1.4.7" }
 aphrody-nie-net = { default-features = false, path = "crates/aphrody-nie-net", version = "1.4.7" }
 aphrody-nie-pe = { default-features = false, path = "crates/aphrody-nie-pe", version = "1.4.7" }
-aphrody-nie-queue = { default-features = false, path = "crates/aphrody-nie-queue", version = "1.4.7" }
 aphrody-nie-render3d = { default-features = false, path = "crates/aphrody-nie-render3d", version = "1.4.7" }
 aphrody-nie-runtime = { default-features = false, path = "crates/aphrody-nie-runtime", version = "1.4.7" }
 aphrody-nie-save = { default-features = false, path = "crates/aphrody-nie-save", version = "1.4.7" }
@@ -155,7 +139,6 @@ taffy = "0.15.1"
 
 [patch.crates-io]
 zip = { git = "https://github.com/zip-rs/zip2", tag = "v8.6.0" }
-bun-re = { path = "crates/re" }
 
 # Workspace development profile: line tables for backtraces without heavy DWARF debuginfo bloat.
 # Accelerates compilation and linking by ~2x and reduces target directory volume by ~60%.

@@ -4,15 +4,37 @@
  * for `native/c` (`rg_contract` shared library + static archive + C23 test binary).
  */
 
-import { existsSync, mkdirSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dir, "../..");
 const C_DIR = join(ROOT, "native/c");
 const BUILD_DIR = join(C_DIR, "build");
 const isWin = process.platform === "win32";
+const forceRebuild = process.argv.includes("--force");
+const runTest = process.argv.includes("--test");
 
 mkdirSync(BUILD_DIR, { recursive: true });
+
+function newestMtime(paths: string[]): number {
+  let max = 0;
+  for (const p of paths) {
+    if (!existsSync(p)) return Infinity;
+    const t = statSync(p).mtimeMs;
+    if (t > max) max = t;
+  }
+  return max;
+}
+
+function oldestMtime(paths: string[]): number {
+  let min = Infinity;
+  for (const p of paths) {
+    if (!existsSync(p)) return 0;
+    const t = statSync(p).mtimeMs;
+    if (t < min) min = t;
+  }
+  return min;
+}
 
 function run(cmd: string[], env?: Record<string, string | undefined>) {
   const proc = Bun.spawnSync(cmd, {
@@ -26,8 +48,42 @@ function run(cmd: string[], env?: Record<string, string | undefined>) {
   }
 }
 
+async function runParallel(cmds: string[][]) {
+  const procs = cmds.map((cmd) => ({
+    cmd,
+    proc: Bun.spawn(cmd, { cwd: ROOT, stdout: "inherit", stderr: "inherit" }),
+  }));
+  const codes = await Promise.all(procs.map((p) => p.proc.exited));
+  for (let i = 0; i < codes.length; i += 1) {
+    if (codes[i] !== 0) {
+      throw new Error(
+        `Command failed (${codes[i]}): ${procs[i]!.cmd.join(" ")}`,
+      );
+    }
+  }
+}
+
 function findWindowsSdkPaths(): { includes: string[]; libs: string[] } {
   if (!isWin) return { includes: [], libs: [] };
+  const cachePath = join(BUILD_DIR, ".win-sdk-cache.json");
+  if (!forceRebuild && existsSync(cachePath)) {
+    try {
+      const cached = JSON.parse(readFileSync(cachePath, "utf8")) as {
+        includes?: string[];
+        libs?: string[];
+      };
+      if (
+        cached.includes?.length &&
+        cached.libs?.length &&
+        cached.includes.every((d) => existsSync(d)) &&
+        cached.libs.every((d) => existsSync(d))
+      ) {
+        return { includes: cached.includes, libs: cached.libs };
+      }
+    } catch {
+      // ignore stale/corrupt cache
+    }
+  }
   const includes: string[] = [];
   const libs: string[] = [];
 
@@ -76,6 +132,11 @@ function findWindowsSdkPaths(): { includes: string[]; libs: string[] } {
       );
     }
   }
+  try {
+    writeFileSync(cachePath, JSON.stringify({ includes, libs }));
+  } catch {
+    // non-fatal
+  }
   return { includes, libs };
 }
 
@@ -106,84 +167,103 @@ const staticLib = join(
   isWin ? "rg_contract_static.lib" : "librg_contract.a",
 );
 
-// 1. Freestanding shared cdylib (zero libc header or runtime dependencies).
-const sharedCmd = isWin
-  ? [
-      "clang",
-      ...cFlags,
-      "-ffreestanding",
-      "-fuse-ld=lld",
-      "-shared",
-      srcFile,
-      "-o",
-      sharedOut,
-      "-Wl,/NOENTRY",
-      `-Wl,/IMPLIB:${join(BUILD_DIR, "rg_contract.lib")}`,
-    ]
-  : [
-      "clang",
-      ...cFlags,
-      "-ffreestanding",
-      "-nostdlib",
-      "-fPIC",
-      "-flto=thin",
-      "-fuse-ld=lld",
-      "-shared",
-      srcFile,
-      "-o",
-      sharedOut,
-    ];
+const headers = [
+  join(C_DIR, "include/rg_contract.h"),
+  join(C_DIR, "include/rg_contract_generated.h"),
+];
+const libInputs = [srcFile, ...headers, import.meta.path];
+const libOutputs = isWin
+  ? [sharedOut, staticLib, join(BUILD_DIR, "rg_contract.lib")]
+  : [sharedOut, staticLib];
+const testInputs = [testFile, ...libInputs, ...libOutputs];
 
-run(sharedCmd);
+const needLibRebuild =
+  forceRebuild || newestMtime(libInputs) > oldestMtime(libOutputs);
 
-// 2. ThinLTO bitcode static archive for cross-language LTO (`llvm-ar`).
-run([
-  "clang",
-  ...cFlags,
-  "-ffreestanding",
-  "-flto=thin",
-  "-c",
-  srcFile,
-  "-o",
-  objFile,
-]);
-if (existsSync(staticLib)) {
-  await Bun.file(staticLib).delete();
+if (needLibRebuild) {
+  // 1. Freestanding shared cdylib + ThinLTO bitcode object in parallel.
+  const sharedCmd = isWin
+    ? [
+        "clang",
+        ...cFlags,
+        "-ffreestanding",
+        "-fuse-ld=lld",
+        "-shared",
+        srcFile,
+        "-o",
+        sharedOut,
+        "-Wl,/NOENTRY",
+        `-Wl,/IMPLIB:${join(BUILD_DIR, "rg_contract.lib")}`,
+      ]
+    : [
+        "clang",
+        ...cFlags,
+        "-ffreestanding",
+        "-nostdlib",
+        "-fPIC",
+        "-flto=thin",
+        "-fuse-ld=lld",
+        "-shared",
+        srcFile,
+        "-o",
+        sharedOut,
+      ];
+
+  const objCmd = [
+    "clang",
+    ...cFlags,
+    "-ffreestanding",
+    "-flto=thin",
+    "-c",
+    srcFile,
+    "-o",
+    objFile,
+  ];
+
+  await runParallel([sharedCmd, objCmd]);
+  if (existsSync(staticLib)) {
+    await Bun.file(staticLib).delete();
+  }
+  run(["llvm-ar", "rcs", staticLib, objFile]);
 }
-run(["llvm-ar", "rcs", staticLib, objFile]);
 
-// 3. Hosted C23 test executable exercising the compiled cdylib ABI.
-const winSdk = findWindowsSdkPaths();
-const sdkIncludeArgs = winSdk.includes.flatMap((dir) => ["-isystem", dir]);
-const sdkLibArgs = winSdk.libs.flatMap((dir) => [`-Wl,/LIBPATH:${dir}`]);
+const needTestRebuild =
+  forceRebuild || newestMtime(testInputs) > oldestMtime([testOut]);
 
-const testCmd = isWin
-  ? [
-      "clang",
-      ...cFlags,
-      ...sdkIncludeArgs,
-      "-fuse-ld=lld",
-      "-DRG_CONTRACT_USE_SHARED=1",
-      testFile,
-      join(BUILD_DIR, "rg_contract.lib"),
-      ...sdkLibArgs,
-      "-o",
-      testOut,
-    ]
-  : [
-      "clang",
-      ...cFlags,
-      "-fuse-ld=lld",
-      `-Wl,-rpath,${BUILD_DIR}`,
-      testFile,
-      sharedOut,
-      "-o",
-      testOut,
-    ];
+if (needTestRebuild) {
+  // 3. Hosted C23 test executable exercising the compiled cdylib ABI.
+  const winSdk = findWindowsSdkPaths();
+  const sdkIncludeArgs = winSdk.includes.flatMap((dir) => ["-isystem", dir]);
+  const sdkLibArgs = winSdk.libs.flatMap((dir) => [`-Wl,/LIBPATH:${dir}`]);
 
-run(testCmd);
+  const testCmd = isWin
+    ? [
+        "clang",
+        ...cFlags,
+        ...sdkIncludeArgs,
+        "-fuse-ld=lld",
+        "-DRG_CONTRACT_USE_SHARED=1",
+        testFile,
+        join(BUILD_DIR, "rg_contract.lib"),
+        ...sdkLibArgs,
+        "-o",
+        testOut,
+      ]
+    : [
+        "clang",
+        ...cFlags,
+        "-fuse-ld=lld",
+        `-Wl,-rpath,${BUILD_DIR}`,
+        testFile,
+        sharedOut,
+        "-o",
+        testOut,
+      ];
 
-if (process.argv.includes("--test")) {
+  run(testCmd);
+}
+
+if (runTest) {
   run([testOut]);
 }
 

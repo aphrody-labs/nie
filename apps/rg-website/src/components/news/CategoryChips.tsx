@@ -1,6 +1,6 @@
 "use client";
 
-import { Twitter } from "@/lib/brand-icons";
+import { XIcon as Twitter } from "@rosegriffon/ui/brand-icons";
 import Link from "@/components/shared/Link";
 import { useSearchParams } from "next/navigation";
 import { CATEGORIES } from "@/components/dashboard/news-editor/constants";

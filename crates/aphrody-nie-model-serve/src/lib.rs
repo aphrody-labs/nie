@@ -4,4 +4,3 @@
 
 pub mod catalog;
 pub mod menu;
-pub mod sprite_sheet;

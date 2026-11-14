@@ -20,7 +20,6 @@ host = [
   "dep:aphrody-nie-explore",
   "dep:aphrody-nie-sql",
   "dep:tokio",
-  "dep:rusqlite",
   "dep:serde_json",
   "dep:sha2",
   "dep:tracing",
@@ -43,7 +42,6 @@ serde = { version = "1.0.228", default-features = false, features = [
   "std",
   "derive",
 ] }
-rusqlite = { workspace = true, optional = true }
 tokio = { version = "1.49", default-features = false, features = ["rt", "net", "time", "sync"], optional = true }
 sha2 = { version = "0.10", optional = true }
 tracing = { workspace = true, optional = true }

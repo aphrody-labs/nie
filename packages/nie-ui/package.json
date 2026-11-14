@@ -16,11 +16,10 @@
     "./design-system": "./src/ui/game-design-system.tsx"
   },
   "dependencies": {
-    "@aphrody/filmcraft": "workspace:*",
-    "@aphrody/hyperframes": "workspace:*"
+    "@aphrody/filmcraft": "workspace:*"
   },
   "scripts": {
-    "lint": "oxlint src packages",
+    "lint": "oxlint src",
     "fmt:check": "bun fmt --check src",
     "typecheck": "bun check -p src/ui/tsconfig.json --noEmit",
     "typecheck:ui": "bun check -p src/ui/tsconfig.json --noEmit",

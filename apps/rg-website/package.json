@@ -86,7 +86,6 @@
     "@rosegriffon/db": "workspace:*",
     "@rosegriffon/i18n": "workspace:*",
     "@rosegriffon/inagle": "workspace:*",
-    "@rosegriffon/lua-plugin": "workspace:*",
     "@rosegriffon/patreon-bun": "catalog:",
     "@rosegriffon/types": "workspace:*",
     "@rosegriffon/ui": "workspace:*",

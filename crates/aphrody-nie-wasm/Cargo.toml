@@ -70,20 +70,10 @@ aphrody-nie-trace = { workspace = true, default-features = false }
 aphrody-nie-zukan = { workspace = true, default-features = false }
 # Validated format-catalog parsing; database/path ingestion remains behind the host feature.
 aphrody-nie-seed = { workspace = true, default-features = false }
-# Portable task lifecycle snapshots; Tokio workers and UUID generation stay host-only.
-aphrody-nie-tasks = { workspace = true, default-features = false }
-# Deterministic in-memory BFS frontier; the shared Redis backend remains host-only.
-aphrody-nie-queue = { workspace = true, default-features = false }
-# Deterministic, bounded cross-language benchmark samples; clocks and filesystem harnesses stay host-only.
-aphrody-nie-bench = { workspace = true, default-features = false }
 # Bounded offline image address/range inspection; process, SQLite and network probes stay host-only.
 aphrody-nie-computer-use = { workspace = true, default-features = false }
 # Deterministic search over caller-owned reverse-engineering knowledge; SQLite and Redis stay host-only.
 aphrody-nie-index = { workspace = true, default-features = false }
-# Canonical detailed format inspection extracted from the headless CLI binding.
-aphrody-nie-headless = { workspace = true, default-features = false }
-# Portable validated scene editing and bounded undo/redo; native GUI/GPU bindings stay host-only.
-aphrody-nie-editor = { workspace = true, default-features = false }
 # Bounded T2B character/model catalogs extracted from the HTTP binding.
 aphrody-nie-model-serve = { workspace = true, default-features = false }
 # Online multiplayer protocol, Inacode validation, and deterministic rollback simulation.
@@ -96,9 +86,7 @@ serde_json = { workspace = true }
 # `wasm-bindgen` doit porter la même, sinon les bindings générés sont rejetés.
 # Gate via cfg(target_arch = "wasm32") dans le code source.
 wasm-bindgen.workspace = true
-wasm-bindgen-futures.workspace = true
-console_error_panic_hook.workspace = true
-parking_lot.workspace = true
+wasm-bindgen-futures = { workspace = true, optional = true }
 # GPU presentation (feature `webgpu`): wgpu through the shared backend, instance bytes.
 aphrody-gpu-backend = { version = "1.4.7", optional = true }
 bytemuck = { workspace = true, optional = true }
@@ -107,6 +95,7 @@ anyhow = { workspace = true, optional = true }
 
 # Browser entropy support for transitive getrandom 0.3 consumers.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook.workspace = true
 getrandom = { version = "0.3.4", default-features = false, features = [
   "wasm_js",
 ] }
@@ -142,6 +131,7 @@ webgpu = [
   "dep:aphrody-gpu-backend",
   "dep:bytemuck",
   "dep:anyhow",
+  "dep:wasm-bindgen-futures",
   "dep:web-sys",
   "dep:js-sys",
 ]
@@ -162,3 +152,6 @@ bevy = [
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false
+
+[package.metadata.cargo-machete]
+ignored = ["getrandom"]

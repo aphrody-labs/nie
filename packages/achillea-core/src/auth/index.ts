@@ -29,14 +29,88 @@ export interface AchilleaSessionClaims extends AchilleaSessionIdentity {
   expiresAt: number;
 }
 
-function decodeBase64Url(value: string): ArrayBuffer {
+const TEXT_ENCODER = new TextEncoder();
+const TEXT_DECODER = new TextDecoder();
+const EXPECTED_HEADER_B64 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9";
+const HMAC_KEY_CACHE = new Map<string, Promise<CryptoKey>>();
+
+interface BunCryptoHasherInstance {
+  update(data: string): { digest(): Uint8Array };
+}
+
+type BunGlobalLike = {
+  CryptoHasher?: new (
+    algorithm: string,
+    key: string,
+  ) => BunCryptoHasherInstance;
+};
+
+function timingSafeEqualBytes(a: Uint8Array, b: Uint8Array): boolean {
+  let diff = a.length ^ b.length;
+  const len = Math.min(a.length, b.length);
+  for (let i = 0; i < len; i += 1) {
+    diff |= a[i]! ^ b[i]!;
+  }
+  return diff === 0;
+}
+
+async function verifyHmacSha256(
+  secret: string,
+  signingInput: string,
+  encodedSignature: string,
+): Promise<boolean> {
+  const providedSig = decodeBase64Url(encodedSignature);
+  const bunHasher = (globalThis as { Bun?: BunGlobalLike }).Bun?.CryptoHasher;
+  if (typeof bunHasher === "function") {
+    const expectedMac = new bunHasher("sha256", secret)
+      .update(signingInput)
+      .digest();
+    return timingSafeEqualBytes(expectedMac, providedSig);
+  }
+  const key = await getHmacVerifyKey(secret);
+  return crypto.subtle.verify(
+    "HMAC",
+    key,
+    providedSig,
+    TEXT_ENCODER.encode(signingInput),
+  );
+}
+
+function getHmacVerifyKey(secret: string): Promise<CryptoKey> {
+  let cached = HMAC_KEY_CACHE.get(secret);
+  if (!cached) {
+    if (HMAC_KEY_CACHE.size >= 32) {
+      const oldest = HMAC_KEY_CACHE.keys().next().value;
+      if (oldest !== undefined) HMAC_KEY_CACHE.delete(oldest);
+    }
+    cached = crypto.subtle.importKey(
+      "raw",
+      TEXT_ENCODER.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"],
+    );
+    HMAC_KEY_CACHE.set(secret, cached);
+  }
+  return cached;
+}
+
+function decodeBase64Url(value: string): Uint8Array<ArrayBuffer> {
+  if (typeof Uint8Array.fromBase64 === "function") {
+    return Uint8Array.fromBase64(value, {
+      alphabet: "base64url",
+    }) as Uint8Array<ArrayBuffer>;
+  }
   const normalized = value
     .replaceAll("-", "+")
     .replaceAll("_", "/")
     .padEnd(Math.ceil(value.length / 4) * 4, "=");
   const binary = atob(normalized);
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0))
-    .buffer as ArrayBuffer;
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
 
 /**
@@ -51,19 +125,26 @@ async function verifyAchilleaToken(
   now: number,
 ): Promise<AchilleaSessionClaims | null> {
   if (!token || !secret) return null;
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  const [encodedHeader, encodedPayload, encodedSignature] = parts;
-  if (!encodedHeader || !encodedPayload || !encodedSignature) return null;
+  const dot1 = token.indexOf(".");
+  if (dot1 <= 0) return null;
+  const dot2 = token.indexOf(".", dot1 + 1);
+  if (dot2 <= dot1 + 1 || token.indexOf(".", dot2 + 1) !== -1) return null;
+  const encodedHeader = token.slice(0, dot1);
+  const encodedPayload = token.slice(dot1 + 1, dot2);
+  const encodedSignature = token.slice(dot2 + 1);
+  if (!encodedSignature) return null;
   try {
-    const header = JSON.parse(
-      new TextDecoder().decode(decodeBase64Url(encodedHeader)),
-    ) as {
-      alg?: string;
-      typ?: string;
-    };
+    if (encodedHeader !== EXPECTED_HEADER_B64) {
+      const header = JSON.parse(
+        TEXT_DECODER.decode(decodeBase64Url(encodedHeader)),
+      ) as {
+        alg?: string;
+        typ?: string;
+      };
+      if (header.alg !== "HS256") return null;
+    }
     const payload = JSON.parse(
-      new TextDecoder().decode(decodeBase64Url(encodedPayload)),
+      TEXT_DECODER.decode(decodeBase64Url(encodedPayload)),
     ) as {
       id?: unknown;
       sub?: unknown;
@@ -74,11 +155,7 @@ async function verifyAchilleaToken(
       aud?: unknown;
       exp?: unknown;
     };
-    if (
-      header.alg !== "HS256" ||
-      payload.tokenUse !== tokenUse ||
-      payload.iss !== ACHILLEA_AUTH_ISSUER
-    )
+    if (payload.tokenUse !== tokenUse || payload.iss !== ACHILLEA_AUTH_ISSUER)
       return null;
     const audience = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
     if (!audience.includes(audienceName)) return null;
@@ -97,18 +174,10 @@ async function verifyAchilleaToken(
     )
       return null;
 
-    const key = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["verify"],
-    );
-    const valid = await crypto.subtle.verify(
-      "HMAC",
-      key,
-      decodeBase64Url(encodedSignature),
-      new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`),
+    const valid = await verifyHmacSha256(
+      secret,
+      `${encodedHeader}.${encodedPayload}`,
+      encodedSignature,
     );
     if (!valid) return null;
     return {

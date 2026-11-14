@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Calendar, ChevronLeft, Clock } from "lucide-react";
-import { Twitter } from "@/lib/brand-icons";
+import { XIcon as Twitter } from "@rosegriffon/ui/brand-icons";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "@/components/shared/Link";

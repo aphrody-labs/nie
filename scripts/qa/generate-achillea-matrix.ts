@@ -3,7 +3,7 @@ import { join, relative } from "node:path";
 
 const root = process.cwd();
 const web = join(root, "apps/rg-website/src/app/achillea");
-const api = join(root, "apps/api/src/modules/achillea");
+const api = join(root, "apps/rg-bot/src/api/modules/achillea");
 const walk = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);

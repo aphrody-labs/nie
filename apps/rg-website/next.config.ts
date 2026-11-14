@@ -1,6 +1,5 @@
 import withBundleAnalyzer from "@next/bundle-analyzer";
 import { withBun } from "@aphrody/next-bun";
-import { withLua } from "@rosegriffon/lua-plugin/next";
 import type { NextConfig } from "next";
 import path from "node:path";
 
@@ -73,7 +72,6 @@ const nextConfig: NextConfig = {
     "@rosegriffon/patreon-bun",
     "@rosegriffon/auth",
     "@rosegriffon/assets",
-    "@rosegriffon/lua-plugin",
     // Achilléa : paquets consommés en source TypeScript, comme les autres
     // workspaces. Les trois sont isomorphes (aucun import node:/bun:), donc
     // utilisables aussi bien en Server Component qu'en îlot client.
@@ -725,14 +723,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-const luaConfig = withLua(nextConfig);
-if (luaConfig.experimental && "turbo" in luaConfig.experimental) {
-  const { turbo: _turbo, ...restExperimental } =
-    luaConfig.experimental as Record<string, unknown>;
-  luaConfig.experimental = restExperimental;
-}
-
-export default withBun(bundleAnalyzer(luaConfig), {
+export default withBun(bundleAnalyzer(nextConfig), {
   projectDir: process.cwd(),
   bundler: "turbopack",
 });

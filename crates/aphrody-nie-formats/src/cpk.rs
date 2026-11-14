@@ -99,9 +99,6 @@ const FLAG_HAS_NAME: u8 = 0x10; // un offset de nom (4 octets BE) suit dans le s
 const FLAG_HAS_DEFAULT: u8 = 0x20; // une valeur constante suit dans le schéma ; n'avance PAS row_cursor
 const FLAG_ROW_STORAGE: u8 = 0x40; // la valeur est stockée par ligne dans la section rows
 
-/// Polynôme CRC32 réfléchi standard (`CriwareCrypt.cs` L20, `NativeCrypto.cs` L35).
-const CRC32_POLY: u32 = 0xEDB8_8320;
-
 /// Clé fixe « Viola » relevée par l'audit iecode (`IEVRGame.CriEncryptionKey`).
 ///
 /// **Ne s'applique PAS** aux `.cpk` de `data/packs/` (qui utilisent une clé dérivée du
@@ -114,32 +111,6 @@ pub const VIOLA_FIXED_KEY: u32 = 0x1717_E18E;
 // Déchiffrement CRI (port fidèle de CriwareCrypt.cs / NativeCrypto.cs)
 // ---------------------------------------------------------------------------
 
-/// Construit la table CRC32 (256 entrées) — port de `InitializeTable` (`CriwareCrypt.cs` L16).
-///
-/// `const fn` pour être évaluée au build (pas d'état mutable global, compatible wasm + no_std).
-const fn crc32_table() -> [u32; 256] {
-    let mut table = [0u32; 256];
-    let mut i = 0u32;
-    while i < 256 {
-        let mut crc = i;
-        let mut j = 0;
-        while j < 8 {
-            crc = if crc & 1 == 1 {
-                (crc >> 1) ^ CRC32_POLY
-            } else {
-                crc >> 1
-            };
-            j += 1;
-        }
-        table[i as usize] = crc;
-        i += 1;
-    }
-    table
-}
-
-/// Table CRC32 figée au build.
-const CRC32_TABLE: [u32; 256] = crc32_table();
-
 /// Calcule le CRC32 du jeu IEVR pour identifier un asset (ModelIdCrc, etc.).
 ///
 /// Algorithme identique à `nie-engine::g4::crc32_of` : CRC32 standard (init `0xFFFFFFFF`,
@@ -149,12 +120,7 @@ const CRC32_TABLE: [u32; 256] = crc32_table();
 /// dans les données d'uniformes (inagle_uniforms.models).
 #[must_use]
 pub fn crc32_nie(data: &[u8]) -> u32 {
-    let mut crc: u32 = 0xFFFF_FFFF;
-    for &b in data {
-        let idx = ((crc & 0xFF) ^ u32::from(b)) as usize;
-        crc = (crc >> 8) ^ CRC32_TABLE[idx];
-    }
-    crc // PAS de ~crc
+    !crate::cfgbin::crc32(data) // PAS de ~crc
 }
 
 /// Dérive la clé de déchiffrement depuis le **nom de fichier** d'un CPK.
@@ -167,12 +133,7 @@ pub fn crc32_nie(data: &[u8]) -> u32 {
 /// (les noms de packs IEVR sont déjà en hexadécimal minuscule).
 #[must_use]
 pub fn key_from_filename(name: &str) -> u32 {
-    let mut crc = 0xFFFF_FFFFu32;
-    for b in name.bytes() {
-        let idx = ((crc ^ u32::from(b)) & 0xFF) as usize;
-        crc = (crc >> 8) ^ CRC32_TABLE[idx];
-    }
-    !crc
+    crate::cfgbin::crc32(name.as_bytes())
 }
 
 /// Recalcule l'état CRC pour le mot de 4 octets démarrant à `seed`
@@ -182,7 +143,7 @@ fn update_crc_state(seed: u32, k: [u8; 4]) -> u32 {
     let mut i = 0;
     while i < 4 {
         let idx = ((crc & 0xFF) as u8 ^ k[i]) as usize;
-        crc = (crc >> 8) ^ CRC32_TABLE[idx];
+        crc = (crc >> 8) ^ crate::cfgbin::CRC32_SLICE[0][idx];
         i += 1;
     }
     !crc
@@ -1718,9 +1679,9 @@ mod tests {
     #[test]
     fn crc32_table_valeurs_canoniques() {
         // Table CRC32 poly 0xEDB88320 : valeurs canoniques connues.
-        assert_eq!(CRC32_TABLE[0], 0x0000_0000);
-        assert_eq!(CRC32_TABLE[1], 0x7707_3096);
-        assert_eq!(CRC32_TABLE[255], 0x2D02_EF8D);
+        assert_eq!(crate::cfgbin::CRC32_SLICE[0][0], 0x0000_0000);
+        assert_eq!(crate::cfgbin::CRC32_SLICE[0][1], 0x7707_3096);
+        assert_eq!(crate::cfgbin::CRC32_SLICE[0][255], 0x2D02_EF8D);
     }
 
     #[test]

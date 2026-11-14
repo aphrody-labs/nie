@@ -26,6 +26,3 @@ bcdec_rs = "0.2.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 aphrody-nie-explore = { path = "../aphrody-nie-explore", version = "1.4.8", default-features = false, features = ["host"] }
-
-[dev-dependencies]
-png = { version = "0.18.1", default-features = false }

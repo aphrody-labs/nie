@@ -60,13 +60,19 @@ function entetes(
  * `jeton` remplace celui du bot Rose Griffon : le bot Achilléa est une autre
  * application, présente sur d'autres serveurs (`tasks/achillea-guildes.ts`).
  */
-export async function appelDiscord<T>(
+export async function appelDiscordRequete<T>(
   chemin: string,
+  init: RequestInit = {},
   tentative = 0,
   jeton: string | undefined = DISCORD_TOKEN,
 ): Promise<T> {
   const reponse = await fetch(`${API_DISCORD}${chemin}`, {
-    headers: entetes(undefined, jeton),
+    ...init,
+    headers: {
+      ...entetes(undefined, jeton),
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...init.headers,
+    },
   });
 
   if (reponse.status === 429) {
@@ -83,12 +89,12 @@ export async function appelDiscord<T>(
       `[Discord REST] Limite de débit sur ${chemin} : attente de ${attente} ms.`,
     );
     await Bun.sleep(attente);
-    return appelDiscord<T>(chemin, tentative + 1, jeton);
+    return appelDiscordRequete<T>(chemin, init, tentative + 1, jeton);
   }
 
   if (reponse.status >= 500 && tentative < TENTATIVES_5XX) {
     await Bun.sleep(1000 * (tentative + 1));
-    return appelDiscord<T>(chemin, tentative + 1, jeton);
+    return appelDiscordRequete<T>(chemin, init, tentative + 1, jeton);
   }
 
   if (!reponse.ok) {
@@ -98,7 +104,15 @@ export async function appelDiscord<T>(
     );
   }
 
-  return (await reponse.json()) as T;
+  return (reponse.status === 204 ? undefined : await reponse.json()) as T;
+}
+
+export async function appelDiscord<T>(
+  chemin: string,
+  tentative = 0,
+  jeton: string | undefined = DISCORD_TOKEN,
+): Promise<T> {
+  return appelDiscordRequete<T>(chemin, {}, tentative, jeton);
 }
 
 /**

@@ -5154,18 +5154,19 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
                 // la route `/tex/<rel>.png` déjà servie, pas d'image dupliquée à générer/cacher.
                 if param(query, "css").as_deref() == Some("1") {
                     let Some(feuille) =
-                        aphrody_nie_model_serve::sprite_sheet::depuis_g4tx(&g4tx, 0)
+                        aphrody_nie_formats::sprite_sheet::depuis_g4tx(&g4tx, 0)
                     else {
                         respond_text(&mut stream, 404, "Not Found", "aucune région d'atlas");
                         return;
                     };
                     let masque = param(query, "mode").as_deref() == Some("masque");
                     let mode = if masque {
-                        aphrody_nie_model_serve::sprite_sheet::ModeCss::Masque
+                        aphrody_nie_formats::sprite_sheet::ModeCss::Masque
                     } else {
-                        aphrody_nie_model_serve::sprite_sheet::ModeCss::Image
+                        aphrody_nie_formats::sprite_sheet::ModeCss::Image
                     };
-                    let css = feuille.vers_css_mode(&format!("/tex/{rel}.png"), mode);
+                    let css =
+                        feuille.vers_css_mode_prefixed(&format!("/tex/{rel}.png"), mode, "nie");
                     respond(
                         &mut stream,
                         200,

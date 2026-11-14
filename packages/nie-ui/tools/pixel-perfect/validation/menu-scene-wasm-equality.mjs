@@ -1,8 +1,8 @@
 /**
  * Compare native runtime scene exports with the actual generated WebAssembly ABI.
  *
- * Build first: bun packages/nie-web/build/scripts/build-wasm.ts
- * Usage: bun scripts/iecode/validation/menu-scene-wasm-equality.mjs <runtime-layout.json> [...]
+ * Build first: just build-wasm
+ * Usage: bun packages/nie-ui/tools/pixel-perfect/validation/menu-scene-wasm-equality.mjs <runtime-layout.json> [...]
  * Inputs must be native --export-layout-runtime outputs containing runtimeScenes.
  * Corpus fixtures stay outside source control. This measures object state, not rendering parity.
  */
@@ -12,13 +12,13 @@ import { readFileSync } from "node:fs";
 import {
   initSync,
   menu_runtime_scene_json,
-} from "../../../../nie-web/src/nie-wasm-web/nie_wasm.js";
+} from "../../../../../apps/rg-website/src/lib/nie-wasm-web/nie_wasm.js";
 
 const paths = process.argv.slice(2);
 assert(paths.length > 0, "Pass at least one native runtime-layout JSON export");
 const wasmBytes = readFileSync(
   new URL(
-    "../../../packages/nie-web/public/static/game/nie_wasm_bg.wasm",
+    "../../../../../apps/rg-website/public/wasm/nie_wasm_bg.wasm",
     import.meta.url,
   ),
 );

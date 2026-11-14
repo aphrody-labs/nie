@@ -25,7 +25,6 @@ import { extname, join, relative } from "node:path";
 const DEFAULT_DIRS = [
   "apps/rg-website/data/images/menu",
   "apps/rg-website/public",
-  "apps/rg-website/public",
 ];
 
 // Extensions raster candidates à la recompression.

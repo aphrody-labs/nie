@@ -760,7 +760,7 @@ const CRC32_POLY: u32 = 0xEDB8_8320;
 
 /// Tables du slicing-by-8, construites à la compilation (aucune initialisation au runtime,
 /// et le crate reste `no_std`).
-const CRC32_SLICE: [[u32; 256]; 8] = build_crc32_slices();
+pub(crate) const CRC32_SLICE: [[u32; 256]; 8] = build_crc32_slices();
 
 /// Construit les huit tables : la première est la table CRC32 classique, chaque suivante
 /// décale d'un octet de plus.
