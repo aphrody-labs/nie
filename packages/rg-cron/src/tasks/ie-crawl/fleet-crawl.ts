@@ -75,8 +75,9 @@ export async function startFleetCoordinator(
   options: FleetCoordinatorOptions = {},
 ): Promise<FleetCoordinatorHandle> {
   const target = resolveDefaultCharacterTarget(options.targetSlug);
-  const maxDepth = options.maxDepth ?? 2;
-  const maxPages = options.maxPages ?? 200;
+  const maxDepth = options.maxDepth ?? Number(Bun.env.RG_FLEET_MAX_DEPTH ?? 2);
+  const maxPages =
+    options.maxPages ?? Number(Bun.env.RG_FLEET_MAX_PAGES ?? 200);
   const maxAssetsPerPage = options.maxAssetsPerPage ?? 6;
   const authToken = resolveCoordinatorToken(options.authToken);
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -174,15 +175,15 @@ export async function startFleetCoordinator(
   function pickAssignedBrowser(
     available: readonly CrawlEngineKind[],
   ): CrawlEngineKind | "auto" {
-    const candidates = available.filter(
-      (b) =>
-        b === "lightpanda" ||
-        b === "obscura" ||
-        b === "agent-browser" ||
-        b === "crawlee-fetch",
+    const browserCandidates = available.filter(
+      (b) => b === "lightpanda" || b === "obscura" || b === "agent-browser",
     );
-    if (candidates.length === 0) return "auto";
-    const picked = candidates[browserRoundRobin % candidates.length]!;
+    const pool =
+      browserCandidates.length > 0
+        ? browserCandidates
+        : available.filter((b) => b === "crawlee-fetch");
+    if (pool.length === 0) return "auto";
+    const picked = pool[browserRoundRobin % pool.length]!;
     browserRoundRobin++;
     return picked;
   }
@@ -260,7 +261,8 @@ export async function startFleetCoordinator(
           return Response.json({ jobs: [] });
         }
 
-        const worker = workers.get(body.workerId);
+        const baseWorkerId = body.workerId.split("#")[0]!;
+        const worker = workers.get(body.workerId) ?? workers.get(baseWorkerId);
         if (worker) worker.lastSeenAt = new Date().toISOString();
 
         const rows = frontier.claimBatch(target.slug, {
@@ -294,7 +296,8 @@ export async function startFleetCoordinator(
           outcome: CrawlFetchOutcome;
         };
 
-        const worker = workers.get(body.workerId);
+        const baseWorkerId = body.workerId.split("#")[0]!;
+        const worker = workers.get(body.workerId) ?? workers.get(baseWorkerId);
         if (worker) {
           worker.lastSeenAt = new Date().toISOString();
           worker.submittedCount++;
@@ -473,6 +476,7 @@ export async function runFleetWorker(
   );
   const authToken = resolveCoordinatorToken(options.authToken);
   const fetchImpl = options.fetchImpl ?? fetch;
+  const allowExternalCli = options.allowExternalCli ?? !options.fetchImpl;
   const maxBatches = options.maxBatches ?? Number.POSITIVE_INFINITY;
   const idleExitMs = options.idleExitMs ?? 8_000;
   const watch = options.watch ?? Bun.env.RG_FLEET_WATCH === "1";
@@ -547,7 +551,7 @@ export async function runFleetWorker(
         const outcome = await crawlUrlWithEngines(job.url, {
           sourceKind: job.sourceKind,
           enginePreference: job.enginePreference ?? "auto",
-          allowExternalCli: options.allowExternalCli,
+          allowExternalCli,
           fetchImpl,
         });
 

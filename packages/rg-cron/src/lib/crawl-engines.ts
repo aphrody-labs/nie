@@ -623,12 +623,14 @@ async function fetchWithLightpandaCli(
       const parsed = JSON.parse(res.stdout) as {
         error?: string | null;
         status?: number;
+        http_status?: number;
         dump?: string;
         html?: string;
         content?: string;
         results?: Array<{
           error?: string | null;
           status?: number;
+          http_status?: number;
           dump?: string;
           html?: string;
           content?: string;
@@ -636,8 +638,12 @@ async function fetchWithLightpandaCli(
       };
       const entry = parsed.results?.[0] ?? parsed;
       if (entry.error) return null;
-      if (typeof entry.status === "number") httpStatus = entry.status;
-      html = entry.dump ?? entry.html ?? entry.content ?? "";
+      const code = entry.http_status ?? entry.status;
+      if (typeof code === "number" && code > 0) httpStatus = code;
+      html =
+        entry.content ??
+        entry.html ??
+        (entry.dump && entry.dump !== "html" ? entry.dump : "");
     } catch {
       if (res.exitCode !== 0) return null;
       html = res.stdout;
@@ -829,8 +835,8 @@ export async function crawlUrlWithEngines(
 ): Promise<CrawlFetchOutcome> {
   const safeUrl = assertPublicCrawlUrl(rawUrl);
   const timeoutMs = options.timeoutMs ?? 18_000;
-  const allowExternalCli = options.allowExternalCli ?? !options.fetchImpl;
   const fetchImpl = options.fetchImpl ?? fetch;
+  const allowExternalCli = options.allowExternalCli ?? fetchImpl === fetch;
   const sourceKind = options.sourceKind ?? "web";
   const pref = options.enginePreference ?? "auto";
 
