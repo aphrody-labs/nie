@@ -8,6 +8,7 @@ import { CharacterCrawlStore } from "../../lib/character-store";
 import {
   crawlUrlWithEngines,
   discoverCharacterSearchUrls,
+  filterRecursiveChildLinks,
   getLightpandaCapabilities,
 } from "../../lib/crawl-engines";
 import {
@@ -22,6 +23,7 @@ export interface CharacterCrawlOptions {
   watch?: boolean;
   intervalMs?: number;
   maxCycles?: number;
+  maxDepth?: number;
   maxPagesPerCycle?: number;
   maxAssetsPerCycle?: number;
   requeueTtlMs?: number;
@@ -150,10 +152,36 @@ export async function runCharacterCrawlCycle(
       });
       enginesUsed.add(outcome.engine);
 
-      const saved = await store.savePage(target.slug, outcome);
+      const saved = await store.savePage(target.slug, outcome, {
+        depth: job.depth,
+        parentUrl: job.parent_url,
+      });
       if (outcome.status === "ok") {
         pagesSucceeded++;
         frontier.markDone(job.id, saved.contentHash);
+        const maxDepth = options.maxDepth ?? 2;
+        if (job.depth < maxDepth && outcome.discoveredLinks.length > 0) {
+          const childLinks = filterRecursiveChildLinks(
+            outcome.discoveredLinks,
+            {
+              parentUrl: outcome.url,
+              depth: job.depth,
+              maxDepth,
+              aliases: target.aliases,
+              maxLinks: 8,
+            },
+          );
+          frontier.enqueueBatch(
+            childLinks.map((childUrl) => ({
+              targetSlug: target.slug,
+              url: childUrl,
+              sourceKind: "recursive",
+              priority: Math.max(20, 75 - (job.depth + 1) * 15),
+              depth: job.depth + 1,
+              parentUrl: outcome.url,
+            })),
+          );
+        }
         for (const assetUrl of outcome.discoveredAssets) {
           discoveredAssets.add(assetUrl);
         }

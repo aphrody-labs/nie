@@ -108,6 +108,14 @@ export const REGISTRE_TACHES: Readonly<Record<string, DefinitionTache>> =
       horsServerless:
         "orchestre Obscura, Lightpanda, Crawlee, agent-browser et Inagle avec cache SQLite/Redis et assets R2",
     },
+    "fleet:crawl": {
+      executer: (options) =>
+        import("./tasks/ie-crawl/fleet-crawl").then((m) =>
+          m.runFleetCrawl({ argument: options.argument }),
+        ),
+      horsServerless:
+        "coordonne un crawl récursif distribué multi-workers et multi-navigateurs sur les 3 VPS",
+    },
     "website:qa": {
       executer: () =>
         import("./tasks/ie-crawl/website-qa").then((m) => m.runWebsiteQa()),

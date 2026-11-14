@@ -66,6 +66,7 @@ export const TACHES_CRON = [
   "achillea:ranked-file",
   "achillea:ranked-promotions",
   "character:crawl",
+  "fleet:crawl",
 ] as const;
 
 export type TacheCron = (typeof TACHES_CRON)[number];
@@ -534,6 +535,16 @@ export const CATALOGUE_TACHES: readonly DescriptionTache[] = Object.freeze([
     titre: "Veille continue fiches personnages",
     role: "crawle en continu Zukan, wikis et Google (Obscura, Lightpanda, Crawlee, agent-browser, Inagle) avec cache SQLite/Redis, Postgres et assets R2",
     planification: "*/15 * * * *",
+    famille: "donnees",
+    niveau: "admin-strict",
+    motifInterdiction: null,
+    dureeIndicative: "quelques minutes",
+  },
+  {
+    nom: "fleet:crawl",
+    titre: "Crawl distribué multi-VPS multi-navigateurs",
+    role: "coordonne un essaim récursif multi-workers (vps, cdn, prd) multi-navigateurs (Lightpanda, Obscura, Chrome, Crawlee) vers Postgres, Redis et R2",
+    planification: "manuel",
     famille: "donnees",
     niveau: "admin-strict",
     motifInterdiction: null,

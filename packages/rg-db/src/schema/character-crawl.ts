@@ -47,6 +47,10 @@ export interface CharacterCrawlPageTable {
   discovered_links: string[];
   r2_snapshot_key: string | null;
   r2_snapshot_url: string | null;
+  depth: Generated<number>;
+  parent_url: string | null;
+  worker_host: string | null;
+  worker_id: string | null;
   fetched_at: Generated<Date | string>;
   updated_at: Generated<Date | string>;
 }

@@ -37,10 +37,19 @@ create table if not exists public.character_crawl_pages (
   discovered_links jsonb not null default '[]'::jsonb,
   r2_snapshot_key text,
   r2_snapshot_url text,
+  depth integer not null default 0,
+  parent_url text,
+  worker_host text,
+  worker_id text,
   fetched_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint character_crawl_pages_target_url_uniq unique (target_slug, normalized_url)
 );
+
+alter table public.character_crawl_pages add column if not exists depth integer not null default 0;
+alter table public.character_crawl_pages add column if not exists parent_url text;
+alter table public.character_crawl_pages add column if not exists worker_host text;
+alter table public.character_crawl_pages add column if not exists worker_id text;
 
 create table if not exists public.character_crawl_assets (
   id bigserial primary key,

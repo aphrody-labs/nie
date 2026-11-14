@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { accessSync, constants, existsSync } from "node:fs";
 import { CString, dlopen, FFIType, ptr, type Pointer } from "bun:ffi";
 import type { CrawlEngineKind, CrawlPageStatus } from "@rosegriffon/db/schema";
 import {
@@ -485,13 +485,342 @@ export function extractHtmlSignals(
 }
 
 // ---------------------------------------------------------------------------
-// Multi-engine orchestrator: MediaWiki API -> Crawlee Fetch -> Obscura -> Lightpanda -> agent-browser
+// Local multi-browser discovery & execution helpers
+// ---------------------------------------------------------------------------
+
+function isExecutableFile(path: string): boolean {
+  if (!existsSync(path)) return false;
+  if (process.platform === "win32") return true;
+  try {
+    accessSync(path, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function resolveExecutable(candidates: readonly string[]): string | null {
+  for (const name of candidates) {
+    if (name.includes("/") || name.includes("\\")) {
+      if (isExecutableFile(name)) return name;
+    } else {
+      const found = Bun.which(name);
+      if (found && isExecutableFile(found)) return found;
+    }
+  }
+  return null;
+}
+
+export function resolveLightpandaBin(): string | null {
+  return resolveExecutable([
+    "lightpanda",
+    "/root/.local/bin/lightpanda",
+    "/home/ubuntu/.local/bin/lightpanda",
+  ]);
+}
+
+export function resolveChromeBin(): string | null {
+  return resolveExecutable([
+    "google-chrome",
+    "/usr/bin/google-chrome",
+    "chromium",
+    "chromium-browser",
+    "/usr/bin/chromium",
+  ]);
+}
+
+export function resolveObscuraBin(): string | null {
+  return resolveExecutable([
+    "obscura",
+    "/home/ubuntu/.local/bin/obscura",
+    "/usr/local/bin/obscura",
+  ]);
+}
+
+export interface LocalBrowserCapabilities {
+  engines: CrawlEngineKind[];
+  lightpandaBin: string | null;
+  lightpandaFfi: boolean;
+  obscuraBin: string | null;
+  chromeBin: string | null;
+}
+
+export function detectLocalBrowserCapabilities(): LocalBrowserCapabilities {
+  const lightpandaBin = resolveLightpandaBin();
+  const lightpandaFfi = Boolean(getLightpandaCapabilities());
+  const obscuraBin = resolveObscuraBin();
+  const chromeBin = resolveChromeBin();
+
+  const engines: CrawlEngineKind[] = ["mediawiki-api", "crawlee-fetch"];
+  if (lightpandaBin || lightpandaFfi) engines.push("lightpanda");
+  if (obscuraBin) engines.push("obscura");
+  if (chromeBin || process.platform === "win32") engines.push("agent-browser");
+
+  return {
+    engines,
+    lightpandaBin,
+    lightpandaFfi,
+    obscuraBin,
+    chromeBin,
+  };
+}
+
+async function runBoundedProcess(
+  args: string[],
+  timeoutMs: number,
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+  const proc = Bun.spawn(args, {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const timer = setTimeout(() => {
+    try {
+      proc.kill();
+    } catch {
+      // ignore already exited
+    }
+  }, timeoutMs);
+  try {
+    const [exitCode, stdout, stderr] = await Promise.all([
+      proc.exited,
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+    ]);
+    return { exitCode, stdout, stderr };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchWithLightpandaCli(
+  safeUrl: URL,
+  lpNormalized: string,
+  sourceKind: string,
+  lpBin: string,
+  timeoutMs: number,
+): Promise<CrawlFetchOutcome | null> {
+  try {
+    const res = await runBoundedProcess(
+      [
+        lpBin,
+        "fetch",
+        "--dump",
+        "html",
+        "--json",
+        "--wait-ms",
+        "2500",
+        "--terminate-ms",
+        String(Math.max(4000, timeoutMs - 1000)),
+        safeUrl.href,
+      ],
+      timeoutMs,
+    );
+    if (!res.stdout.trim()) return null;
+
+    let html = "";
+    let httpStatus: number | null = 200;
+    try {
+      const parsed = JSON.parse(res.stdout) as {
+        error?: string | null;
+        status?: number;
+        dump?: string;
+        html?: string;
+        content?: string;
+        results?: Array<{
+          error?: string | null;
+          status?: number;
+          dump?: string;
+          html?: string;
+          content?: string;
+        }>;
+      };
+      const entry = parsed.results?.[0] ?? parsed;
+      if (entry.error) return null;
+      if (typeof entry.status === "number") httpStatus = entry.status;
+      html = entry.dump ?? entry.html ?? entry.content ?? "";
+    } catch {
+      if (res.exitCode !== 0) return null;
+      html = res.stdout;
+    }
+    if (!html) return null;
+
+    const challenge = detectAntiBotChallenge(httpStatus, html);
+    if (challenge.challenged) {
+      return {
+        url: safeUrl.href,
+        normalizedUrl: lpNormalized,
+        engine: "lightpanda",
+        sourceKind,
+        status: "challenged",
+        httpStatus,
+        title: null,
+        language: null,
+        excerpt: null,
+        bodyText: null,
+        discoveredLinks: [],
+        discoveredAssets: [],
+        metadata: {
+          challengeProvider: challenge.provider,
+          lightpandaCli: true,
+        },
+      };
+    }
+
+    const signals = extractHtmlSignals(html, safeUrl.href);
+    return {
+      url: safeUrl.href,
+      normalizedUrl: lpNormalized,
+      engine: "lightpanda",
+      sourceKind,
+      status: "ok",
+      httpStatus,
+      title: signals.title,
+      language: signals.language,
+      excerpt: signals.text.slice(0, 500) || null,
+      bodyText: signals.text || null,
+      discoveredLinks: signals.links,
+      discoveredAssets: signals.assets,
+      metadata: { lightpandaCli: true },
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchWithChromeHeadless(
+  safeUrl: URL,
+  lpNormalized: string,
+  sourceKind: string,
+  chromeBin: string,
+  timeoutMs: number,
+): Promise<CrawlFetchOutcome | null> {
+  try {
+    const res = await runBoundedProcess(
+      [
+        chromeBin,
+        "--headless=new",
+        "--disable-gpu",
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--virtual-time-budget=3000",
+        "--dump-dom",
+        safeUrl.href,
+      ],
+      timeoutMs,
+    );
+    if (res.exitCode !== 0 || !res.stdout.trim()) return null;
+
+    const challenge = detectAntiBotChallenge(200, res.stdout);
+    if (challenge.challenged) {
+      return {
+        url: safeUrl.href,
+        normalizedUrl: lpNormalized,
+        engine: "agent-browser",
+        sourceKind,
+        status: "challenged",
+        httpStatus: 200,
+        title: null,
+        language: null,
+        excerpt: null,
+        bodyText: null,
+        discoveredLinks: [],
+        discoveredAssets: [],
+        metadata: {
+          challengeProvider: challenge.provider,
+          chromeHeadless: true,
+        },
+      };
+    }
+
+    const signals = extractHtmlSignals(res.stdout, safeUrl.href);
+    return {
+      url: safeUrl.href,
+      normalizedUrl: lpNormalized,
+      engine: "agent-browser",
+      sourceKind,
+      status: "ok",
+      httpStatus: 200,
+      title: signals.title,
+      language: signals.language,
+      excerpt: signals.text.slice(0, 500) || null,
+      bodyText: signals.text || null,
+      discoveredLinks: signals.links,
+      discoveredAssets: signals.assets,
+      metadata: { chromeHeadless: true },
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchWithObscuraCli(
+  safeUrl: URL,
+  lpNormalized: string,
+  sourceKind: string,
+  timeoutMs: number,
+): Promise<CrawlFetchOutcome | null> {
+  try {
+    const obscuraHtml = await obscuraFetch(safeUrl.href, {
+      dump: "html",
+      timeoutMs,
+    });
+    if (!obscuraHtml.ok || !obscuraHtml.content) return null;
+
+    const challenge = detectAntiBotChallenge(
+      obscuraHtml.status,
+      obscuraHtml.content,
+    );
+    if (challenge.challenged) {
+      return {
+        url: safeUrl.href,
+        normalizedUrl: lpNormalized,
+        engine: "obscura",
+        sourceKind,
+        status: "challenged",
+        httpStatus: obscuraHtml.status,
+        title: null,
+        language: null,
+        excerpt: null,
+        bodyText: null,
+        discoveredLinks: [],
+        discoveredAssets: [],
+        metadata: { challengeProvider: challenge.provider, obscuraCli: true },
+      };
+    }
+
+    const signals = extractHtmlSignals(obscuraHtml.content, safeUrl.href);
+    return {
+      url: safeUrl.href,
+      normalizedUrl: lpNormalized,
+      engine: "obscura",
+      sourceKind,
+      status: "ok",
+      httpStatus: obscuraHtml.status,
+      title: signals.title,
+      language: signals.language,
+      excerpt: signals.text.slice(0, 500) || null,
+      bodyText: signals.text || null,
+      discoveredLinks: signals.links,
+      discoveredAssets: signals.assets,
+      metadata: {
+        obscuraCdpReady: await isObscuraCdpAvailable(),
+        lightpandaFfi: Boolean(getLightpandaCapabilities()),
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Multi-engine orchestrator: MediaWiki API -> Browser Preference -> Crawlee Fetch -> Fallback
 // ---------------------------------------------------------------------------
 
 export async function crawlUrlWithEngines(
   rawUrl: string,
   options: {
     sourceKind?: string;
+    enginePreference?: "auto" | CrawlEngineKind;
     preferBrowser?: boolean;
     allowExternalCli?: boolean;
     fetchImpl?: typeof fetch;
@@ -503,6 +832,7 @@ export async function crawlUrlWithEngines(
   const allowExternalCli = options.allowExternalCli ?? !options.fetchImpl;
   const fetchImpl = options.fetchImpl ?? fetch;
   const sourceKind = options.sourceKind ?? "web";
+  const pref = options.enginePreference ?? "auto";
 
   // 1. MediaWiki API fast path for Fandom / Wikipedia URLs (avoids Cloudflare HTML challenges cleanly).
   if (resolveMediaWikiTarget(safeUrl.href)) {
@@ -516,81 +846,101 @@ export async function crawlUrlWithEngines(
   }
 
   const lpNormalized = normalizeUrlWithLightpanda(safeUrl.href) ?? safeUrl.href;
+  const obscuraPath = allowExternalCli ? resolveObscuraBin() : null;
+  const lightpandaBin = allowExternalCli ? resolveLightpandaBin() : null;
+  const chromeBin = allowExternalCli ? resolveChromeBin() : null;
 
-  // 2. Obscura CLI/daemon fetch when available.
-  const obscuraPath = allowExternalCli ? Bun.which("obscura") : null;
-  if (obscuraPath && !options.preferBrowser) {
-    try {
-      const obscuraHtml = await obscuraFetch(safeUrl.href, {
-        dump: "html",
-        timeoutMs,
-      });
-      if (obscuraHtml.ok && obscuraHtml.content) {
-        const challenge = detectAntiBotChallenge(
-          obscuraHtml.status,
-          obscuraHtml.content,
-        );
-        if (!challenge.challenged) {
-          const signals = extractHtmlSignals(obscuraHtml.content, safeUrl.href);
-          return {
-            url: safeUrl.href,
-            normalizedUrl: lpNormalized,
-            engine: "obscura",
-            sourceKind,
-            status: "ok",
-            httpStatus: obscuraHtml.status,
-            title: signals.title,
-            language: signals.language,
-            excerpt: signals.text.slice(0, 500) || null,
-            bodyText: signals.text || null,
-            discoveredLinks: signals.links,
-            discoveredAssets: signals.assets,
-            metadata: {
-              obscuraCdpReady: await isObscuraCdpAvailable(),
-              lightpandaFfi: Boolean(getLightpandaCapabilities()),
-            },
-          };
-        }
-      }
-    } catch {
-      // Fall through to HTTP fetch / Lightpanda / agent-browser.
+  const tryBrowserOrder: Array<() => Promise<CrawlFetchOutcome | null>> = [];
+  if (pref === "lightpanda") {
+    if (lightpandaBin) {
+      tryBrowserOrder.push(() =>
+        fetchWithLightpandaCli(
+          safeUrl,
+          lpNormalized,
+          sourceKind,
+          lightpandaBin,
+          timeoutMs,
+        ),
+      );
+    }
+    if (obscuraPath) {
+      tryBrowserOrder.push(() =>
+        fetchWithObscuraCli(safeUrl, lpNormalized, sourceKind, timeoutMs),
+      );
+    }
+  } else if (pref === "agent-browser") {
+    if (chromeBin) {
+      tryBrowserOrder.push(() =>
+        fetchWithChromeHeadless(
+          safeUrl,
+          lpNormalized,
+          sourceKind,
+          chromeBin,
+          timeoutMs,
+        ),
+      );
+    }
+    if (lightpandaBin) {
+      tryBrowserOrder.push(() =>
+        fetchWithLightpandaCli(
+          safeUrl,
+          lpNormalized,
+          sourceKind,
+          lightpandaBin,
+          timeoutMs,
+        ),
+      );
+    }
+  } else if (pref === "obscura") {
+    if (obscuraPath) {
+      tryBrowserOrder.push(() =>
+        fetchWithObscuraCli(safeUrl, lpNormalized, sourceKind, timeoutMs),
+      );
+    }
+    if (lightpandaBin) {
+      tryBrowserOrder.push(() =>
+        fetchWithLightpandaCli(
+          safeUrl,
+          lpNormalized,
+          sourceKind,
+          lightpandaBin,
+          timeoutMs,
+        ),
+      );
+    }
+  } else {
+    if (obscuraPath && !options.preferBrowser) {
+      tryBrowserOrder.push(() =>
+        fetchWithObscuraCli(safeUrl, lpNormalized, sourceKind, timeoutMs),
+      );
+    }
+    if (lightpandaBin) {
+      tryBrowserOrder.push(() =>
+        fetchWithLightpandaCli(
+          safeUrl,
+          lpNormalized,
+          sourceKind,
+          lightpandaBin,
+          timeoutMs,
+        ),
+      );
+    }
+    if (chromeBin && options.preferBrowser) {
+      tryBrowserOrder.push(() =>
+        fetchWithChromeHeadless(
+          safeUrl,
+          lpNormalized,
+          sourceKind,
+          chromeBin,
+          timeoutMs,
+        ),
+      );
     }
   }
 
-  // 3. Lightpanda CLI / FFI assisted HTTP fetch.
-  const lightpandaBin = allowExternalCli ? Bun.which("lightpanda") : null;
-  if (lightpandaBin && options.preferBrowser) {
-    try {
-      const proc = Bun.spawn([lightpandaBin, "fetch", safeUrl.href], {
-        stdout: "pipe",
-        stderr: "pipe",
-      });
-      const exitCode = await proc.exited;
-      const html = await new Response(proc.stdout).text();
-      if (exitCode === 0 && html) {
-        const challenge = detectAntiBotChallenge(200, html);
-        if (!challenge.challenged) {
-          const signals = extractHtmlSignals(html, safeUrl.href);
-          return {
-            url: safeUrl.href,
-            normalizedUrl: lpNormalized,
-            engine: "lightpanda",
-            sourceKind,
-            status: "ok",
-            httpStatus: 200,
-            title: signals.title,
-            language: signals.language,
-            excerpt: signals.text.slice(0, 500) || null,
-            bodyText: signals.text || null,
-            discoveredLinks: signals.links,
-            discoveredAssets: signals.assets,
-            metadata: { lightpandaCli: true },
-          };
-        }
-      }
-    } catch {
-      // Fall through cleanly.
-    }
+  for (const runner of tryBrowserOrder) {
+    const res = await runner();
+    if (res) return res;
   }
 
   // 4. Direct Crawlee HTTP fetch + Lightpanda FFI signal extraction.
@@ -890,4 +1240,69 @@ export async function discoverCharacterSearchUrls(
   }
 
   return discovered;
+}
+
+const SKIP_EXTENSION_RE =
+  /\.(css|js|mjs|map|woff2?|ttf|otf|eot|ico|svg|png|jpe?g|webp|gif|mp4|webm|mp3|wav|pdf|zip)$/i;
+const SKIP_PATH_FRAGMENT_RE =
+  /(\/Special:|\/Sp%C3%A9cial:|action=edit|oldid=|diff=|login|signup|register|wp-json|feed\/?$)/i;
+
+export function filterRecursiveChildLinks(
+  links: readonly string[],
+  options: {
+    parentUrl: string;
+    depth: number;
+    maxDepth: number;
+    aliases: readonly string[];
+    seedHosts?: ReadonlySet<string>;
+    maxLinks?: number;
+  },
+): string[] {
+  if (options.depth >= options.maxDepth) return [];
+  const maxLinks = options.maxLinks ?? 12;
+  const parentHost = new URL(options.parentUrl).hostname.toLowerCase();
+
+  const tokens = options.aliases
+    .flatMap((a) => a.toLowerCase().split(/[\s_-]+/))
+    .filter((t) => t.length >= 4);
+  tokens.push("inazuma", "aphrodi", "byron", "afuro", "terumi", "zeus");
+
+  const filtered: string[] = [];
+  const seen = new Set<string>();
+
+  for (const raw of links) {
+    if (filtered.length >= maxLinks) break;
+    try {
+      const safe = assertPublicCrawlUrl(raw);
+      if (SKIP_EXTENSION_RE.test(safe.pathname)) continue;
+      if (SKIP_PATH_FRAGMENT_RE.test(safe.pathname + safe.search)) continue;
+
+      const host = safe.hostname.toLowerCase();
+      const lowerHref = safe.href.toLowerCase();
+      const sameOrigin = host === parentHost || options.seedHosts?.has(host);
+      const tokenMatch = tokens.some((tok) => lowerHref.includes(tok));
+
+      // Keep same-origin Zukan chara_param / wiki / Baidu pages matching character tokens or high-signal character domains.
+      const highSignalDomain =
+        host.endsWith("fandom.com") ||
+        host === "zukan.inazuma.jp" ||
+        host === "baike.baidu.com" ||
+        host.endsWith("wikipedia.org");
+
+      if (!(
+        tokenMatch ||
+        (sameOrigin && highSignalDomain && options.depth === 0)
+      )) {
+        continue;
+      }
+
+      if (seen.has(safe.href)) continue;
+      seen.add(safe.href);
+      filtered.push(safe.href);
+    } catch {
+      // Ignore private/non-HTTP URLs.
+    }
+  }
+
+  return filtered;
 }

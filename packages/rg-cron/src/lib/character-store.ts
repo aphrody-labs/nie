@@ -94,6 +94,10 @@ export class CharacterCrawlStore {
         body_text TEXT,
         metadata_json TEXT NOT NULL,
         discovered_links_json TEXT NOT NULL,
+        depth INTEGER NOT NULL DEFAULT 0,
+        parent_url TEXT,
+        worker_host TEXT,
+        worker_id TEXT,
         fetched_at INTEGER NOT NULL,
         PRIMARY KEY (target_slug, normalized_url)
       );
@@ -112,6 +116,26 @@ export class CharacterCrawlStore {
         PRIMARY KEY (target_slug, sha256)
       );
     `);
+    const cols = this.sqlite
+      .query(`PRAGMA table_info(character_pages)`)
+      .all() as Array<{ name: string }>;
+    const colNames = new Set(cols.map((c) => c.name));
+    if (!colNames.has("depth")) {
+      this.sqlite.run(
+        `ALTER TABLE character_pages ADD COLUMN depth INTEGER NOT NULL DEFAULT 0`,
+      );
+    }
+    if (!colNames.has("parent_url")) {
+      this.sqlite.run(`ALTER TABLE character_pages ADD COLUMN parent_url TEXT`);
+    }
+    if (!colNames.has("worker_host")) {
+      this.sqlite.run(
+        `ALTER TABLE character_pages ADD COLUMN worker_host TEXT`,
+      );
+    }
+    if (!colNames.has("worker_id")) {
+      this.sqlite.run(`ALTER TABLE character_pages ADD COLUMN worker_id TEXT`);
+    }
   }
 
   async upsertTarget(
@@ -177,7 +201,17 @@ export class CharacterCrawlStore {
   async savePage(
     targetSlug: string,
     outcome: CrawlFetchOutcome,
+    context: {
+      depth?: number;
+      parentUrl?: string | null;
+      workerHost?: string | null;
+      workerId?: string | null;
+    } = {},
   ): Promise<{ contentHash: string; changed: boolean }> {
+    const depth = context.depth ?? 0;
+    const parentUrl = context.parentUrl ?? null;
+    const workerHost = context.workerHost ?? null;
+    const workerId = context.workerId ?? null;
     const contentHash = computeContentHash(
       `${outcome.title ?? ""}\n${outcome.bodyText ?? outcome.status}`,
     );
@@ -204,8 +238,8 @@ export class CharacterCrawlStore {
       `INSERT INTO character_pages (
          target_slug, normalized_url, url, engine, source_kind, status, http_status,
          title, language, content_hash, excerpt, body_text, metadata_json,
-         discovered_links_json, fetched_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         discovered_links_json, depth, parent_url, worker_host, worker_id, fetched_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(target_slug, normalized_url) DO UPDATE SET
          url = excluded.url,
          engine = excluded.engine,
@@ -219,6 +253,10 @@ export class CharacterCrawlStore {
          body_text = excluded.body_text,
          metadata_json = excluded.metadata_json,
          discovered_links_json = excluded.discovered_links_json,
+         depth = excluded.depth,
+         parent_url = excluded.parent_url,
+         worker_host = excluded.worker_host,
+         worker_id = excluded.worker_id,
          fetched_at = excluded.fetched_at`,
       [
         targetSlug,
@@ -235,6 +273,10 @@ export class CharacterCrawlStore {
         outcome.bodyText,
         JSON.stringify(outcome.metadata),
         JSON.stringify(outcome.discoveredLinks),
+        depth,
+        parentUrl,
+        workerHost,
+        workerId,
         now,
       ],
     );
@@ -253,6 +295,9 @@ export class CharacterCrawlStore {
             status: outcome.status,
             title: outcome.title,
             excerpt: outcome.excerpt,
+            depth,
+            workerHost,
+            workerId,
             fetchedAt: now,
           },
           3600 * 6,
@@ -265,6 +310,9 @@ export class CharacterCrawlStore {
         url: outcome.normalizedUrl,
         engine: outcome.engine,
         status: outcome.status,
+        depth,
+        workerHost,
+        workerId,
         changed,
         timestamp: now,
       });
@@ -276,7 +324,8 @@ export class CharacterCrawlStore {
           insert into public.character_crawl_pages (
             target_slug, url, normalized_url, engine, source_kind, status,
             http_status, title, language, content_hash, excerpt, body_text,
-            metadata, discovered_links, fetched_at, updated_at
+            metadata, discovered_links, depth, parent_url, worker_host, worker_id,
+            fetched_at, updated_at
           ) values (
             ${targetSlug},
             ${outcome.url},
@@ -292,6 +341,10 @@ export class CharacterCrawlStore {
             ${outcome.bodyText},
             ${JSON.stringify(outcome.metadata)}::jsonb,
             ${JSON.stringify(outcome.discoveredLinks)}::jsonb,
+            ${depth},
+            ${parentUrl},
+            ${workerHost},
+            ${workerId},
             ${new Date(now).toISOString()},
             now()
           )
@@ -308,6 +361,10 @@ export class CharacterCrawlStore {
             body_text = excluded.body_text,
             metadata = excluded.metadata,
             discovered_links = excluded.discovered_links,
+            depth = excluded.depth,
+            parent_url = excluded.parent_url,
+            worker_host = excluded.worker_host,
+            worker_id = excluded.worker_id,
             fetched_at = excluded.fetched_at,
             updated_at = now()
         `;
