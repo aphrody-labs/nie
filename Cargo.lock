@@ -499,13 +499,16 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "sha1 0.11.0",
  "sha2 0.11.1",
  "steam-depot",
+ "steamroom",
  "tokio",
  "tokio-tungstenite",
  "tracing",
  "tracing-subscriber",
  "yolo-re-core",
+ "zip",
 ]
 
 [[package]]

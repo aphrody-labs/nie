@@ -12,8 +12,9 @@ description = "Level-5 and Criware binary format parsers for reverse engineering
 workspace = true
 
 [features]
-default = ["std", "serde", "lua"]
+default = ["std", "serde", "lua", "remote-vfs"]
 std = ["dep:crc32fast", "crc32fast/std", "dep:tempfile", "dep:base64"]
+remote-vfs = ["std"]
 serde = ["dep:serde"]
 lua = ["dep:aphrody-nie-lua"]
 textures = ["std", "dep:image_dds", "dep:png"]

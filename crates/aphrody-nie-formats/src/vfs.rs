@@ -13,9 +13,7 @@
 //! chiffré est absent mais que l'arborescence est là, et [`resolve_game_dir`] reconnaît les
 //! deux racines. Le moteur tourne donc à l'identique sur une install Steam ou sur un dump.
 
-// The remote HTTP/SFTP implementation is parked until its separate SSH owner
-// can be integrated; keep the gated call sites warning-free in local builds.
-#![allow(unexpected_cfgs)]
+//! Remote HTTP, SFTP, Rclone, R2, S3, and Google Drive streaming is powered by [`crate::vfs_remote`].
 #![cfg(not(target_arch = "wasm32"))]
 
 use crate::FormatError;

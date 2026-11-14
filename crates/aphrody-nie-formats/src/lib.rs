@@ -182,6 +182,8 @@ pub mod vfs_manifest;
 
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
 pub mod game_source;
+#[cfg(all(feature = "remote-vfs", not(target_arch = "wasm32")))]
+pub mod vfs_remote;
 /// Muxeur WebM/Matroska pur Rust (VP9) — contrepartie de [`mp4`] pour les deux plus longs films.
 pub mod webm;
 

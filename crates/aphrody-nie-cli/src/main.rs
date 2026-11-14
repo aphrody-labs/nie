@@ -43,6 +43,7 @@ mod play_cmd;
 mod render_cmd;
 mod search_cmd;
 mod seed_ui;
+mod steam_turbo;
 mod strings_cmd;
 pub mod vfs_bundle;
 mod video_cmd;
@@ -1187,6 +1188,45 @@ enum VfsOp {
         db: Option<PathBuf>,
         #[arg(long)]
         game_dir: Option<PathBuf>,
+    },
+    /// Liste les remotes rclone configurés (R2, S3, Google Drive, SSH, etc.).
+    Remotes {
+        /// Sortie JSON brute issue de `rg_rclone_go`.
+        #[arg(long, short = 'j')]
+        json: bool,
+    },
+    /// Convertit/exporte un dossier `data` (ou `data/packs`) vers R2 / S3 / Google Drive / rclone.
+    Cloud {
+        /// Dossier `data` ou installation du jeu (auto-détecté si omis).
+        #[arg(long)]
+        source: Option<PathBuf>,
+        /// Destination (`r2://bucket/prefix`, `s3://...`, `gdrive://...`, `rclone://remote/path`, `ievr-vfs:`).
+        #[arg(long)]
+        dest: String,
+        /// Mode d'export : `packs`, `decrypted-packs` (recommandé pour `ievr-vfs:` compressé), `seekable-zstd`, ou `loose`.
+        #[arg(long, default_value = "decrypted-packs")]
+        mode: String,
+        /// Transferts parallèles simultanés.
+        #[arg(long, default_value_t = 32)]
+        transfers: usize,
+        /// Checkers distants parallèles simultanés.
+        #[arg(long, default_value_t = 64)]
+        checkers: usize,
+        /// Niveau Zstd (mode `seekable-zstd`, 1-22).
+        #[arg(long, default_value_t = 4)]
+        zstd_level: i32,
+        /// Limite optionnelle du nombre de packs par cycle (0 = tous).
+        #[arg(long, default_value_t = 0)]
+        max_packs: usize,
+        /// Surveillance continue (intervalle en secondes) avec synchronisation incrémentale.
+        #[arg(long)]
+        watch_secs: Option<u64>,
+        /// Planifie et calcule le manifeste sans copier les octets.
+        #[arg(long)]
+        dry_run: bool,
+        /// Sortie JSON brute issue de `rg_rclone_go`.
+        #[arg(long, short = 'j')]
+        json: bool,
     },
 }
 
@@ -2339,8 +2379,29 @@ struct SteamCommun {
     #[arg(long = "depot", value_name = "ID")]
     depot_ids: Vec<u32>,
     /// Chunks concurrents.
-    #[arg(long, default_value_t = 16)]
+    #[arg(long, env = "STEAM_MAX_DOWNLOADS", default_value_t = 64)]
     max_downloads: usize,
+    /// Depots téléchargés en parallèle.
+    #[arg(long, env = "STEAM_MAX_DEPOT_PARALLEL", default_value_t = 6)]
+    max_depot_parallel: usize,
+    /// Taille du pool de connexions HTTP/2 par hôte CDN.
+    #[arg(long, env = "STEAM_CDN_POOL_SIZE", default_value_t = 128)]
+    cdn_pool_size: usize,
+    /// Désactive le pipeline multi-fichiers/HTTP2 turbo et revient au client séquentiel `steam-depot`.
+    #[arg(long)]
+    no_turbo: bool,
+    /// Remote rclone de destination (ex. `ievr-vfs:`) pour compresser/uploader les packs en continu.
+    #[arg(long, env = "NIE_VFS_CLOUD_REMOTE")]
+    sync_remote: Option<String>,
+    /// Mode d'export cloud continu (`decrypted-packs`, `seekable-zstd`, `packs`, `loose`).
+    #[arg(long, default_value = "decrypted-packs")]
+    sync_mode: String,
+    /// Transferts rclone parallèles simultanés lors du `--sync-remote`.
+    #[arg(long, default_value_t = 32)]
+    sync_transfers: usize,
+    /// Checkers rclone parallèles simultanés lors du `--sync-remote`.
+    #[arg(long, default_value_t = 64)]
+    sync_checkers: usize,
     /// Retélécharge tout au lieu de sauter les fichiers déjà à jour.
     #[arg(long)]
     no_verify: bool,
@@ -2391,12 +2452,18 @@ fn steam_cmd(op: SteamOp) -> anyhow::Result<()> {
                 .unwrap_or_else(bun_steam::depot::token_store::default_path),
         ),
         // Même sélection `STEAM_TOKEN_STORE` que `bun-steam-depot` (file par défaut).
-        token_backend: Some(bun_steam::depot::token_backend::from_env(c.token_store.clone())?),
+        token_backend: Some(bun_steam::depot::token_backend::from_env(
+            c.token_store.clone(),
+        )?),
         guard_provider: None,
         // Garde anti-blocage : un depot muet est interrompu au lieu de dormir
         // indéfiniment (cf. bun_steam::depot::options::SteamDownloadOptions::stall_timeout).
         stall_timeout: Some(std::time::Duration::from_secs(300)),
-        transfer: Default::default(),
+        transfer: bun_steam::depot::options::TransferOptions {
+            max_depot_parallel: c.max_depot_parallel,
+            cdn_pool_size: c.cdn_pool_size,
+            ..Default::default()
+        },
     };
 
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -2421,6 +2488,28 @@ fn steam_cmd(op: SteamOp) -> anyhow::Result<()> {
                     info.file_count
                 );
             }
+            return Ok(());
+        }
+
+        if !c.no_turbo {
+            let cfg = steam_turbo::TurboConfig {
+                cdn_pool_size: c.cdn_pool_size,
+                sync_remote: c.sync_remote.clone(),
+                sync_mode: c.sync_mode.clone(),
+                sync_transfers: c.sync_transfers,
+                sync_checkers: c.sync_checkers,
+            };
+            let r = steam_turbo::download_app_turbo(&opts, &cfg).await?;
+            println!(
+                "ok app_id={} depots={} files={} skipped={} bytes={} sync_batches={} duration={:.1}s",
+                r.app_id,
+                r.depots.len(),
+                r.file_count,
+                r.skipped_files,
+                r.downloaded_bytes,
+                r.synced_batches,
+                r.duration.as_secs_f64()
+            );
             return Ok(());
         }
 
@@ -6207,6 +6296,22 @@ fn vfs_cmd(op: VfsOp) -> anyhow::Result<()> {
             };
             vfs_search_waza(&query, category.as_deref(), element.as_deref(), opts)
         }
+        VfsOp::Remotes { json } => vfs_remotes(json),
+        VfsOp::Cloud {
+            source,
+            dest,
+            mode,
+            transfers,
+            checkers,
+            zstd_level,
+            max_packs,
+            watch_secs,
+            dry_run,
+            json,
+        } => vfs_cloud(
+            source, &dest, &mode, transfers, checkers, zstd_level, max_packs, watch_secs, dry_run,
+            json,
+        ),
     }
 }
 
@@ -6556,6 +6661,98 @@ fn vfs_stats(top: usize, game_dir: Option<PathBuf>) -> anyhow::Result<()> {
     for (ext, c) in v.iter().take(top) {
         println!("  {c:>8}  .{ext}");
     }
+    Ok(())
+}
+
+fn vfs_remotes(json: bool) -> anyhow::Result<()> {
+    let raw = aphrody_nie_formats::vfs_remote::rclone_list_remotes()
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    if json {
+        println!("{raw}");
+        return Ok(());
+    }
+    let remotes: Vec<serde_json::Value> = serde_json::from_str(&raw)?;
+    if remotes.is_empty() {
+        println!("  aucun remote rclone configuré");
+        return Ok(());
+    }
+    for r in remotes {
+        let name = r["name"].as_str().unwrap_or("?");
+        let kind = r["type"].as_str().unwrap_or("?");
+        println!("  {name}: ({kind})");
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn vfs_cloud(
+    source: Option<PathBuf>,
+    dest: &str,
+    mode: &str,
+    transfers: usize,
+    checkers: usize,
+    zstd_level: i32,
+    max_packs: usize,
+    watch_secs: Option<u64>,
+    dry_run: bool,
+    json: bool,
+) -> anyhow::Result<()> {
+    let resolved = match source {
+        Some(p) => {
+            if p.file_name().is_some_and(|n| n == "packs") {
+                p.parent()
+                    .map_or_else(|| p.clone(), std::path::Path::to_path_buf)
+            } else if p.join("data").join("cpk_list.cfg.bin").is_file() {
+                p.join("data")
+            } else {
+                p
+            }
+        }
+        None => {
+            let src_ref = aphrody_nie_formats::game_source::resolve(None)
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            let p = PathBuf::from(&src_ref);
+            if p.join("data").join("cpk_list.cfg.bin").is_file() {
+                p.join("data")
+            } else {
+                p
+            }
+        }
+    };
+    let src_str = resolved.to_string_lossy();
+    let raw = aphrody_nie_formats::vfs_remote::rclone_export_packs_with_opts(
+        &aphrody_nie_formats::vfs_remote::RcloneExportOptions {
+            local_data_dir: &src_str,
+            dst_uri: dest,
+            mode,
+            dry_run,
+            transfers,
+            checkers,
+            zstd_level,
+            max_packs,
+            filter: None,
+            watch_secs,
+        },
+    )
+    .map_err(|e| anyhow::anyhow!("{e}"))?;
+    if json {
+        println!("{raw}");
+        return Ok(());
+    }
+    let report: serde_json::Value = serde_json::from_str(&raw)?;
+    println!(
+        "  mode={} dry_run={} dest={} packs={} logical={} copied_objects={} skipped={} transfers={} duration_ms={} sha256={}",
+        report["mode"].as_str().unwrap_or(mode),
+        dry_run,
+        report["destination"].as_str().unwrap_or(dest),
+        report["pack_count"].as_u64().unwrap_or(0),
+        report["logical_count"].as_u64().unwrap_or(0),
+        report["copied_objects"].as_u64().unwrap_or(0),
+        report["skipped_objects"].as_u64().unwrap_or(0),
+        report["transfers"].as_u64().unwrap_or(transfers as u64),
+        report["duration_ms"].as_u64().unwrap_or(0),
+        report["manifest_sha256"].as_str().unwrap_or(""),
+    );
     Ok(())
 }
 

@@ -19,3 +19,13 @@ c-build *args:
 [doc("Build and run Pure C23 LLVM rg_contract unit tests.")]
 c-test:
     bun run c:test
+
+[group('native')]
+[doc("Build Go rclone-core C-shared DLL (rg_rclone_go.dll) and nie-rclone binary.")]
+go-build *args:
+    bun native/go/rclone-core/build.ts {{args}}
+
+[group('native')]
+[doc("Build and test Go rclone-core + backend/nievfs bridge.")]
+go-test:
+    bun native/go/rclone-core/build.ts --test

@@ -9,9 +9,21 @@ pub const SOURCE_ENV: [&str; 4] = [
     "NIE_GAME_PATH",
 ];
 
+const REMOTE_SCHEMES: &[&str] = &[
+    "http://",
+    "https://",
+    "ssh://",
+    "sftp://",
+    "rclone://",
+    "r2://",
+    "s3://",
+    "gdrive://",
+    "nievfs://",
+];
+
 #[must_use]
 pub fn is_remote(source: &str) -> bool {
-    ["http://", "https://", "ssh://", "sftp://"]
+    REMOTE_SCHEMES
         .iter()
         .any(|scheme| source.starts_with(scheme))
 }
@@ -70,6 +82,7 @@ fn normalize(source: &str) -> Result<String, FormatError> {
             .split_once("://")
             .ok_or(FormatError::Corrupt("invalid game source URI"))?;
         let authority = rest.split('/').next().unwrap_or_default();
+        let is_ssh = source.starts_with("ssh://") || source.starts_with("sftp://");
         if authority.is_empty()
             || authority.contains(['%', '\\'])
             || source.chars().any(char::is_control)
@@ -77,7 +90,7 @@ fn normalize(source: &str) -> Result<String, FormatError> {
             || authority
                 .split_once('@')
                 .is_some_and(|(user, _)| user.contains(':'))
-            || (source.starts_with("http") && authority.contains('@'))
+            || (!is_ssh && authority.contains('@'))
         {
             return Err(FormatError::Corrupt(
                 "source URI cannot contain credentials, query or fragment",
@@ -241,10 +254,16 @@ mod tests {
         ] {
             assert!(resolve(Some(source)).is_err());
         }
-        assert_eq!(
-            resolve(Some("ssh://host/arbitrary/data")).unwrap(),
-            "ssh://host/arbitrary/data"
-        );
+        for scheme in [
+            "ssh://host/arbitrary/data",
+            "rclone://vps/srv/ievr/data",
+            "r2://rosegriffon/ievr/data",
+            "s3://rosegriffon/ievr/data",
+            "gdrive://gdrive-ai/ievr/data",
+            "nievfs://gdrive-ai/ievr/data",
+        ] {
+            assert_eq!(resolve(Some(scheme)).unwrap(), scheme);
+        }
         std::fs::remove_dir_all(base).unwrap();
     }
 }
