@@ -5,8 +5,8 @@
  * `game-text/index.ts` (sous-chemin serveur de la lib).
  */
 
-/** Locales réellement décodées dans le dump (les autres n'ont pas de `.json`). */
-export type GameTextLocale = "fr" | "en" | "ja";
+/** Locales réellement décodées dans le dump (`ja`, `en`, `fr`, `es`). */
+export type GameTextLocale = "fr" | "en" | "ja" | "es";
 
 /** Ligne de l'index : un texte localisé pour un hashId + sa catégorie. */
 export interface GameText {
@@ -16,13 +16,14 @@ export interface GameText {
   value: string;
 }
 
-/** Texte résolu dans les 3 langues pour un hashId. */
+/** Texte résolu dans les 4 langues principales pour un hashId. */
 export interface GameTextLocalized {
   hashId: string;
   category?: string;
   fr?: string;
   en?: string;
   ja?: string;
+  es?: string;
 }
 
 /** Normalise un hashId entrant (`0xXXXX` MAJUSCULE 8 chiffres) pour le lookup. */
@@ -39,7 +40,11 @@ export function normalizeHashId(raw: string | number): string {
   return `0x${hex}`;
 }
 
-/** Choisit la meilleure langue disponible (fr → en → ja). */
-export function pickLocale(t: GameTextLocalized): string | undefined {
-  return t.fr ?? t.en ?? t.ja;
+/** Choisit la meilleure langue disponible (`preferred` puis `fr -> en -> es -> ja`). */
+export function pickLocale(
+  t: GameTextLocalized,
+  preferred?: GameTextLocale,
+): string | undefined {
+  if (preferred && t[preferred]) return t[preferred];
+  return t.fr ?? t.en ?? t.es ?? t.ja;
 }

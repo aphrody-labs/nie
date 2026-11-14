@@ -19,6 +19,7 @@
  * AUCUNE donnée inventée : tout dérive des colonnes réelles ci-dessus.
  */
 
+import { sql as kyselySql } from "kysely";
 import { createInagleSql } from "@rosegriffon/db/inagle-sql";
 import { createClient, hasDatabaseProvider } from "../db/provider";
 import { TEAM_EMBLEM_MAP } from "../game/team-emblem-map";
@@ -142,34 +143,40 @@ function resolveTeamEmblem(row: RawTeamRow): string | null {
  */
 export async function getTeamsList(): Promise<TeamListItem[]> {
   await verifyInjectedProvider();
-  const rows = await sql
-    .selectFrom("inagle_teams")
-    .select([
-      "id",
-      "name_fr",
-      "name_en",
-      "name_ja",
-      "emblem_url",
-      "emblems",
-      "kits",
-      "data",
-    ])
-    .execute();
+  // Charge les équipes et l'agrégation roster COUNT(DISTINCT chara_id) en parallèle
+  // plutôt que de rapatrier les ~6 000 lignes de `inagle_characters` sur chaque appel.
+  const [rows, rosterCounts] = await Promise.all([
+    sql
+      .selectFrom("inagle_teams")
+      .select([
+        "id",
+        "name_fr",
+        "name_en",
+        "name_ja",
+        "emblem_url",
+        "emblems",
+        "kits",
+        "data",
+      ])
+      .execute(),
+    sql
+      .selectFrom("inagle_characters")
+      .select([
+        "team_id",
+        kyselySql<number | string>`count(distinct chara_id)`.as("roster_count"),
+      ])
+      .where("team_id", "is not", null)
+      .groupBy("team_id")
+      .execute(),
+  ]);
 
-  // Compte roster (personnages distincts) par team_id en une passe.
-  const charaRaw = await sql
-    .selectFrom("inagle_characters")
-    .select(["chara_id", "team_id"])
-    .execute();
-  const rosterByTeam = new Map<string, Set<string>>();
-  for (const c of charaRaw) {
-    if (!c.team_id) continue;
-    let set = rosterByTeam.get(c.team_id);
-    if (!set) {
-      set = new Set();
-      rosterByTeam.set(c.team_id, set);
-    }
-    if (c.chara_id) set.add(c.chara_id);
+  const rosterCountByTeam = new Map<string, number>();
+  for (const row of rosterCounts as Array<{
+    team_id: string | null;
+    roster_count: number | string;
+  }>) {
+    if (!row.team_id) continue;
+    rosterCountByTeam.set(row.team_id, Number(row.roster_count ?? 0));
   }
 
   const list: TeamListItem[] = rows.map((row) => {
@@ -182,7 +189,7 @@ export async function getTeamsList(): Promise<TeamListItem[]> {
       emblemUrl: resolveTeamEmblem(row),
       seasons: teamSeasons(row.data),
       seriesKeys: Object.keys(kits),
-      rosterCount: rosterByTeam.get(row.id)?.size ?? 0,
+      rosterCount: rosterCountByTeam.get(row.id) ?? 0,
       order: teamOrder(row.data),
     };
   });

@@ -33,10 +33,10 @@ const UNIVERSE_CONFIGS: Record<Domaine, UniverseMetaConfig> = {
     appleIcon: "/RG_Azalee-logo.webp",
     themeColor: "#240112",
     siteName: "Azalée Wiki",
-    rootTitle: "Azalée — Le Wiki Inazuma Eleven: Victory Road | Rose Griffon",
+    rootTitle: "Azalée — Encyclopédie Inazuma Eleven | Rose Griffon",
     defaultTitleSuffix: " | Wiki Azalée | Rose Griffon",
     description:
-      "Base de données complète Inazuma Eleven: Victory Road. Personnages, techniques, objets, quêtes et wiki communautaire.",
+      "Encyclopédie complète de la saga Inazuma Eleven, du premier épisode aux titres actuels et en développement. Personnages, techniques, équipes et actualités.",
   },
   esport: {
     favicon: "/achillea/achillea_ico.png",

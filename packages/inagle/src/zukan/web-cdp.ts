@@ -39,17 +39,75 @@ export function setWebCdpPageFactory(factory: CdpPageFactory | null): void {
   pageFactory = factory;
 }
 
+const runtimeImport = new Function("specifier", "return import(specifier)") as <
+  T,
+>(
+  specifier: string,
+) => Promise<T>;
+
+async function createPatchrightPage(endpoint?: string): Promise<CdpPageLike> {
+  const { chromium } =
+    await runtimeImport<typeof import("patchright")>("patchright");
+  const { existsSync } = await import("node:fs");
+  const candidates =
+    process.platform === "win32"
+      ? [
+          "C:/Program Files/Google/Chrome/Application/chrome.exe",
+          "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+        ]
+      : [
+          "/usr/bin/google-chrome",
+          "/usr/bin/chromium",
+          "/usr/bin/chromium-browser",
+        ];
+  const executablePath = candidates.find((p) => existsSync(p));
+  const browser = endpoint
+    ? await chromium.connectOverCDP(endpoint)
+    : await chromium.launch({
+        headless: true,
+        ...(executablePath ? { executablePath } : {}),
+        args: ["--no-sandbox", "--disable-dev-shm-usage"],
+      });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  return {
+    async goto(url, waitUntil) {
+      const response = await page.goto(url, {
+        waitUntil: waitUntil ?? "domcontentloaded",
+        timeout: 35_000,
+      });
+      const status = response?.status() ?? 200;
+      return { status, ok: status >= 200 && status < 400 };
+    },
+    async evaluate<T>(script: string) {
+      return (await page.evaluate((code) => {
+        // biome-ignore lint/security/noGlobalEval: matches CDP Runtime.evaluate contract
+        return (0, eval)(code);
+      }, script)) as T;
+    },
+    content: () => page.content(),
+    async close() {
+      await context.close().catch(() => undefined);
+      await browser.close().catch(() => undefined);
+    },
+  };
+}
+
 async function defaultFactory(): Promise<CdpPageFactory> {
+  try {
+    return (endpoint) => createPatchrightPage(endpoint);
+  } catch {
+    // Fallback to optional workspace CDP peer if patchright is unavailable.
+  }
   let module: {
     WebCdpPage?: { connect(endpoint?: string): Promise<CdpPageLike> };
   };
   try {
-    // Variable specifier: resolved at run time from the optional peer dependency.
     const specifier = APHRODY_CDP_MODULE;
     module = await import(specifier);
   } catch (error) {
     throw new Error(
-      `No CDP transport: install @aphrody/inagle inside the Aphrody workspace (optional peer ${APHRODY_CDP_MODULE}) or call setWebCdpPageFactory().`,
+      `No CDP transport: install patchright or ${APHRODY_CDP_MODULE}, or call setWebCdpPageFactory().`,
       { cause: error },
     );
   }

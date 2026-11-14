@@ -73,6 +73,8 @@ const EXPECTED_COMMANDS = [
   "team",
   "random-team",
   "team-builder",
+  "games",
+  "mods",
   "test",
   "shell",
   "data",
@@ -155,7 +157,7 @@ describe("createAzaleeProgram", () => {
     expect(CLI_VERSION).toBe(require("../package.json").version);
   });
 
-  test("enregistre exactement les 22 commandes attendues, dans l'ordre", () => {
+  test("enregistre exactement les 24 commandes attendues, dans l'ordre", () => {
     const program = createAzaleeProgram();
     expect(program.commands.map((c) => c.name())).toEqual([
       ...EXPECTED_COMMANDS,
@@ -200,7 +202,7 @@ describe("createAzaleeProgram", () => {
 describe("options déclarées", () => {
   /** Drapeaux attendus, par commande. */
   const EXPECTED_FLAGS: Record<string, string[]> = {
-    translate: ["-j, --json"],
+    translate: ["-t, --to <lang>", "-j, --json"],
     search: ["-j, --json"],
     db: ["-s, --sqlite", "-j, --json"],
     redis: ["-j, --json"],
@@ -223,6 +225,13 @@ describe("options déclarées", () => {
       "-j, --json",
     ],
     "team-builder": ["-j, --json", "-f, --formation <formation>"],
+    games: [
+      "-l, --locale <locale>",
+      "-e, --era <era>",
+      "-s, --status <status>",
+      "-j, --json",
+    ],
+    mods: ["-g, --game <slug>", "-l, --lang <lang>", "-j, --json"],
     test: ["-p, --playwright"],
     shell: [],
     data: [],
@@ -254,6 +263,7 @@ describe("options déclarées", () => {
         ?.options.find((o) => o.long === long);
 
     expect(optionOf("compare", "--level")?.defaultValue).toBe("99");
+    expect(optionOf("translate", "--to")?.defaultValue).toBe("fr");
     expect(optionOf("dialogue", "--limit")?.defaultValue).toBe("10");
     expect(optionOf("random-team", "--formation")?.defaultValue).toBe("4-4-2");
     expect(optionOf("serve", "--host")?.defaultValue).toBe(
@@ -286,7 +296,7 @@ describe("options déclarées", () => {
 });
 
 describe("--help", () => {
-  test("l'aide racine liste les 22 commandes", () => {
+  test("l'aide racine liste les 24 commandes", () => {
     const help = captureHelp(["--help"]);
     expect(help).toContain("Usage: azalee [options] [command]");
     for (const name of EXPECTED_COMMANDS) {

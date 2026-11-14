@@ -2,6 +2,7 @@ import Link from "@/components/shared/Link";
 import { AnimatedCounter } from "./AnimatedCounter";
 import { Icon } from "@/components/ui/Icon";
 import { CommonSpriteIcon } from "@/components/ui/CommonSpriteIcon";
+import { SAGA_HUB_COPY } from "@/lib/wiki/games-copy";
 import type { SpriteCommonKey } from "@/config/sprites-common";
 
 export interface WikiSectionStats {
@@ -70,6 +71,13 @@ const WIKI_SECTIONS: Array<{
     title: "Atelier Avatar",
   },
   {
+    description: SAGA_HUB_COPY.gamesCardDescription,
+    gradientColors: "bg-linear-to-r from-primary to-secondary",
+    href: "/wiki/jeux",
+    icon: "sports_esports",
+    title: SAGA_HUB_COPY.gamesCardTitle,
+  },
+  {
     description: "Comparez deux joueurs côte à côte",
     gradientColors: "bg-linear-to-r from-indigo-600 to-blue-500",
     href: "/wiki/tools/compare",
@@ -96,9 +104,9 @@ export function WikiCarousel({ stats }: WikiCarouselProps) {
         <h2 className="text-xl md:text-3xl font-black text-on-surface font-expressive-title flex items-center gap-3">
           <span className="w-2 h-8 rounded-full bg-secondary" />
           <span className="hidden sm:inline">
-            Wiki — Base de données Inazuma Eleven: Victory Road
+            {SAGA_HUB_COPY.carouselDesktopTitle}
           </span>
-          <span className="sm:hidden">Wiki Victory Road</span>
+          <span className="sm:hidden">{SAGA_HUB_COPY.carouselMobileTitle}</span>
         </h2>
       </div>
 

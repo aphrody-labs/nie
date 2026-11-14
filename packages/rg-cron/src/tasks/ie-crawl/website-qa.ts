@@ -5,12 +5,11 @@
  */
 
 /**
- * Tâche `website:qa` — QA navigateur read-only de rosegriffon.fr. MANUELLE.
+ * Tache `website:qa` - QA navigateur read-only de rosegriffon.fr.
  *
- * Portage en TypeScript du workflow shell `agent-browser-rg.sh` (schéma 1) sur
- * les API natives : `fetch` pour les statuts HTTP, robots.txt et sitemaps,
- * `Bun.WebView` pour le rendu (titre, canonical, liens, débordement mobile,
- * erreurs console et exceptions, capture). Aucun binaire externe.
+ * Pilotage `patchright` (`chrome`/`chromium` furtif) + `impit` (TLS Chrome BoringSSL)
+ * pour le rendu, titre, canonical, liens, debordement mobile, erreurs console/runtime
+ * et captures JPEG. Aucun script shell externe.
  *
  * Rapport : `<RG_BROWSER_CRON_OUT_DIR | RG_CRON_SHARED_ROOT/website-qa>/<run>/`
  * (`report.json`, `report.md`, `pages.jsonl`, `api.jsonl`, `urls.txt`, captures
@@ -19,8 +18,14 @@
 
 import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { impitFetch, impitFetchText } from "../../lib/impit-client";
 import { cronSharedPath } from "../../lib/shared-path";
-import { fermerVue, naviguer, ouvrirVue } from "../../lib/webview";
+import {
+  closeSharedStealthBrowser,
+  fermerVue,
+  naviguer,
+  ouvrirVue,
+} from "../../lib/webview";
 
 const VERSION_WORKFLOW = "2.0.0";
 const VERSION_SCHEMA = 1;
@@ -65,11 +70,11 @@ function entier(nom: string, defaut: number): number {
 async function sonder(url: string): Promise<Sonde> {
   const debut = performance.now();
   try {
-    const reponse = await fetch(url, {
+    const reponse = await impitFetch(url, {
       redirect: "follow",
-      signal: AbortSignal.timeout(25_000),
+      timeoutMs: 25_000,
     });
-    await reponse.arrayBuffer();
+    await reponse.response.arrayBuffer();
     return {
       url,
       effectiveUrl: reponse.url,
@@ -88,8 +93,8 @@ async function sonder(url: string): Promise<Sonde> {
 
 async function texte(url: string): Promise<string> {
   try {
-    const reponse = await fetch(url, { signal: AbortSignal.timeout(30_000) });
-    return reponse.ok ? await reponse.text() : "";
+    const reponse = await impitFetchText(url, { timeoutMs: 30_000 });
+    return reponse.ok ? reponse.text : "";
   } catch {
     return "";
   }
@@ -294,6 +299,7 @@ export async function runWebsiteQa(): Promise<WebsiteQaResult> {
     }
   } finally {
     fermerVue(vue);
+    await closeSharedStealthBrowser().catch(() => undefined);
   }
 
   // 3. Points d'API.
@@ -370,7 +376,7 @@ export async function runWebsiteQa(): Promise<WebsiteQaResult> {
       `# RG browser QA ${runId}`,
       "",
       `- Status: **${statut}**`,
-      `- Workflow: \`${VERSION_WORKFLOW}\` / schema \`${VERSION_SCHEMA}\` (Bun.WebView)`,
+      `- Workflow: \`${VERSION_WORKFLOW}\` / schema \`${VERSION_SCHEMA}\` (Patchright + Impit)`,
       `- Base URL: ${base}`,
       `- Pages: ${resume.pagesTotal}, HTTP/open failures: ${resume.pagesBad}`,
       `- Horizontal overflows: ${resume.horizontalOverflow}`,

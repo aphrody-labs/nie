@@ -86,7 +86,7 @@
   background: #fcfcfa;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 .atelier-bibliotheque {
   border-bottom: 1px solid #d9dfe7;
@@ -104,7 +104,7 @@
 .atelier-champ {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
   min-width: 0;
   font-size: 0.8rem;
   font-weight: 500;
@@ -130,8 +130,8 @@
   flex-direction: column;
   height: auto;
   min-width: 0;
-  padding: 8px 5px;
-  gap: 7px;
+  padding: 8px 4px;
+  gap: 8px;
   white-space: normal;
   background: #fff;
   border: 1px solid #d9dfe7;
@@ -216,7 +216,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 14px 20px;
+  padding: 12px 20px;
   background: #fcfcfa;
   border-top: 1px solid #d9dfe7;
 }
@@ -231,9 +231,9 @@
 .atelier-groupe {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   border-top: 1px solid #e2e6ec;
-  padding-top: 18px;
+  padding-top: 16px;
 }
 .atelier-note {
   font-size: 0.75rem;

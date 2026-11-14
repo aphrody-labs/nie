@@ -4,17 +4,18 @@ version = "1.4.8"
 edition = "2024"
 rust-version = "1.97"
 license = "Apache-2.0"
-publish = false
-description = "Byte-exact PE64 model, complete image partitioning, rebuild and COFF object inspection for Inazuma Eleven RE"
+repository = "https://github.com/aphrody-labs/rosegriffon"
+homepage = "https://aphrody.com"
+description = "Byte-exact PE64 model, complete image partitioning, rebuild and COFF object inspection for Inazuma Eleven RE (backed by aphrody-re)"
+keywords = ["pe", "reverse-engineering", "coff", "assembler", "x86-64"]
+categories = ["development-tools::debugging", "parser-implementations"]
 
 [lints]
 workspace = true
 
 [features]
 default = ["serde"]
-serde = ["dep:serde"]
+serde = []
 
 [dependencies]
-thiserror = { workspace = true }
-sha2 = { workspace = true }
-serde = { workspace = true, features = ["std", "derive"], optional = true }
+aphrody-re-core = { package = "aphrody-re", version = "0.4.0", path = "../../../../crates/re", default-features = false }

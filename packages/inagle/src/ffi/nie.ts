@@ -341,6 +341,10 @@ const NIE_FFI_SYMBOL_DEFINITIONS = {
     args: [FFIType.ptr, FFIType.cstring, FFIType.ptr],
     returns: FFIType.void,
   },
+  nie_vfs_query_json_out: {
+    args: [FFIType.ptr, FFIType.ptr, FFIType.u64, FFIType.ptr],
+    returns: FFIType.void,
+  },
   nie_vfs_file_info_json_out: {
     args: [FFIType.ptr, FFIType.cstring, FFIType.ptr],
     returns: FFIType.void,
@@ -1228,37 +1232,25 @@ export class NieVfsHandle {
     items: T[];
   } {
     if (!this.#handle) throw new Error("Vfs handle has been disposed.");
-    const path = resolveNativeLibPath();
-    if (!path)
-      throw new Error("Native libiecode is required for VFS domain queries.");
-    const library = dlopen(path, {
-      nie_vfs_query_json_out: {
-        args: [FFIType.ptr, FFIType.ptr, FFIType.u64, FFIType.ptr],
-        returns: FFIType.void,
-      },
-      nie_bytes_free_fields: {
-        args: [FFIType.u64, FFIType.u64, FFIType.u64],
-        returns: FFIType.void,
-      },
-    });
-    try {
-      const input = new TextEncoder().encode(JSON.stringify(request));
-      const slot = new Uint8Array(24);
-      library.symbols.nie_vfs_query_json_out(
-        this.#handle,
-        ptr(input),
-        input.length,
-        ptr(slot),
+    if (typeof this.#lib.nie_vfs_query_json_out !== "function") {
+      throw new Error(
+        "Native libiecode does not export nie_vfs_query_json_out.",
       );
-      const result = readAndFreeNieBytesJson<any>(library.symbols, slot);
-      if (!result || result.error)
-        throw new Error(
-          result?.error ?? `Native VFS ${request.domain} query failed.`,
-        );
-      return result;
-    } finally {
-      library.close();
     }
+    const input = textEncoder.encode(JSON.stringify(request));
+    const slot = new Uint8Array(24);
+    this.#lib.nie_vfs_query_json_out(
+      this.#handle,
+      ptr(input),
+      input.length,
+      ptr(slot),
+    );
+    const result = readAndFreeNieBytesJson<any>(this.#lib, slot);
+    if (!result || result.error)
+      throw new Error(
+        result?.error ?? `Native VFS ${request.domain} query failed.`,
+      );
+    return result;
   }
 
   read(internalPath: string): Uint8Array | null {

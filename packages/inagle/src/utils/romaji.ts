@@ -9,11 +9,30 @@
 /// <reference path="../types/kuroshiro.d.ts" />
 import Kuroshiro from "kuroshiro";
 import KuromojiAnalyzer from "kuroshiro-analyzer-kuromoji";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { existsSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 
 let instance: Kuroshiro | null = null;
 let initPromise: Promise<Kuroshiro> | null = null;
+
+function resolveKuromojiDictPath(): string {
+  let dir = resolve(process.cwd());
+  for (let depth = 0; depth < 8; depth++) {
+    const candidate = join(dir, "node_modules", "kuromoji", "dict");
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  if (typeof import.meta.dir === "string") {
+    const fallback = resolve(
+      import.meta.dir,
+      "../../../../node_modules/kuromoji/dict",
+    );
+    if (existsSync(fallback)) return fallback;
+  }
+  return join(process.cwd(), "node_modules", "kuromoji", "dict");
+}
 
 /**
  * Initializes the Kuroshiro singleton with Kuromoji analyzer.
@@ -25,15 +44,7 @@ export async function initRomaji(): Promise<Kuroshiro> {
 
   initPromise = (async () => {
     const kuro = new Kuroshiro();
-    const resolvedUrl = import.meta.resolve("kuromoji");
-    const resolvedPath = fileURLToPath(resolvedUrl);
-
-    let kuromojiDir = dirname(resolvedPath);
-    if (kuromojiDir.endsWith("src") || kuromojiDir.endsWith("lib")) {
-      kuromojiDir = dirname(kuromojiDir);
-    }
-
-    const dictPath = join(kuromojiDir, "dict");
+    const dictPath = resolveKuromojiDictPath();
 
     await kuro.init(
       new KuromojiAnalyzer({

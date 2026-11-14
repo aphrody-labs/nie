@@ -6,6 +6,7 @@ export { normalizeHashId, pickLocale } from "../game-text/shared";
 
 export const LOCALE_LABELS: Record<GameTextLocale, string> = {
   en: "English",
+  es: "Español",
   fr: "Français",
   ja: "日本語",
 };

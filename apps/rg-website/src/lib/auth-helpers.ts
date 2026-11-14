@@ -9,6 +9,13 @@ import { isPatreonAdmin } from "@/lib/patreon/admin-access";
 import { isAdmin, resolveProfile } from "@rosegriffon/auth";
 import { createPostgresClient } from "@rosegriffon/db/service";
 
+let postgresAdminClient: ReturnType<typeof createPostgresClient> | undefined;
+
+function getPostgresAdmin() {
+  postgresAdminClient ??= createPostgresClient();
+  return postgresAdminClient;
+}
+
 /**
  * Récupère la session Better Auth côté serveur (avec cache React par requête).
  */
@@ -40,8 +47,7 @@ export async function requireAuth() {
  */
 export async function requireAdmin() {
   const user = await requireAuth();
-  const supabase = createPostgresClient();
-  const profile = await resolveProfile(supabase, user);
+  const profile = await resolveProfile(getPostgresAdmin(), user);
 
   if (!profile || !isAdmin(profile.role)) {
     console.warn("[requireAdmin] denied", {
@@ -90,8 +96,7 @@ export async function requireAdminOrFail() {
     throw new Error("Non autorisé");
   }
 
-  const supabase = createPostgresClient();
-  const profile = await resolveProfile(supabase, user);
+  const profile = await resolveProfile(getPostgresAdmin(), user);
 
   if (!profile || !isAdmin(profile.role)) {
     throw new Error("Accès réservé aux administrateurs");

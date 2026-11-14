@@ -51,6 +51,7 @@ cloud = [
   "dep:aphrody-nie-app",
   "dep:aphrody-nie-core",
   "dep:aphrody-nie-render3d",
+  "dep:nie-pkg",
   "dep:clap",
   "dep:anyhow",
   "dep:tracing",
@@ -99,6 +100,7 @@ textures-encode = ["host", "aphrody-nie-formats/textures-encode"]
 
 [dependencies]
 aphrody-nie-data = { path = "../aphrody-nie-data", version = "1.4.8", features = ["serde", "std"], optional = true }
+aho-corasick = { workspace = true }
 aphrody-nie-formats = { path = "../aphrody-nie-formats", version = "1.4.8", default-features = false, features = ["std", "serde", "textures", "audio-decode", "images", "remote-vfs"], optional = true }
 aphrody-nie-explore = { path = "../aphrody-nie-explore", version = "1.4.8", features = ["host"], optional = true }
 aphrody-nie-net = { path = "../aphrody-nie-net", version = "1.4.8", features = ["transport"], optional = true }
@@ -106,6 +108,7 @@ futures-util = { version = "0.3", optional = true }
 aphrody-nie-save = { path = "../aphrody-nie-save", version = "1.4.8", optional = true }
 aphrody-nie-app = { path = "../aphrody-nie-app", version = "1.4.8", optional = true }
 aphrody-nie-core = { path = "../aphrody-nie-core", version = "1.4.8", optional = true }
+nie-pkg = { path = "../nie-pkg", version = "0.1.0", optional = true }
 aphrody-nie-runtime = { path = "../aphrody-nie-runtime", version = "1.4.8", default-features = false, optional = true }
 aphrody-nie-render3d = { path = "../aphrody-nie-render3d", version = "1.4.8", default-features = false, optional = true }
 clap = { workspace = true, features = ["color"], optional = true }

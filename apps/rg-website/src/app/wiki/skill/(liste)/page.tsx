@@ -161,7 +161,7 @@ export default async function SkillsPage({
       })),
       numberOfItems: total,
     },
-    name: "Techniques Spéciales - Inazuma Eleven: Victory Road",
+    name: "Techniques Spéciales - Inazuma Eleven",
     numberOfItems: total,
     url: absoluteUrl(wiki("/skill")),
   };
@@ -176,7 +176,7 @@ export default async function SkillsPage({
         icon="bolt"
         title="Techniques spéciales"
         count={`${total.toLocaleString("fr-FR")} techniques`}
-        description="Base de données complète des techniques (Hissatsu) d'Inazuma Eleven: Victory Road."
+        description="Base de données complète des techniques spéciales (Hissatsu) de la saga Inazuma Eleven."
       />
       <div className="space-y-4">
         <WikiSearchToolbar

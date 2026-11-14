@@ -30,7 +30,8 @@ export interface ObscuraFetchResult {
   ms: number;
 }
 
-const DEFAULT_CLOUD_FETCH_URL = "https://rosegriffon-edge.aphrody-labs.workers.dev/fetch";
+const DEFAULT_CLOUD_FETCH_URL =
+  "https://rosegriffon-edge.aphrody-labs.workers.dev/fetch";
 const DEFAULT_CDP_URL = "http://127.0.0.1:9222";
 const PRIVATE_HOST_RE =
   /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|0\.0\.0\.0|\[?::1\]?|.*\.local$)/i;
@@ -48,7 +49,10 @@ export function assertPublicCrawlUrl(rawUrl: string): URL {
 
 export function resolveObscuraCdpUrl(override?: string): string {
   return (
-    override ?? process.env.OBSCURA_CDP_URL ?? process.env.AGENT_BROWSER_CDP_URL ?? DEFAULT_CDP_URL
+    override ??
+    process.env.OBSCURA_CDP_URL ??
+    process.env.AGENT_BROWSER_CDP_URL ??
+    DEFAULT_CDP_URL
   );
 }
 
@@ -78,12 +82,18 @@ export async function obscuraFetch(
   const obscuraBin = Bun.which("obscura");
   if (obscuraBin) {
     try {
-      const proc = Bun.spawn([obscuraBin, "fetch", "--stealth", "--quiet", "--dump", dump, url], {
-        stdout: "pipe",
-        stderr: "pipe",
-      });
+      const proc = Bun.spawn(
+        [obscuraBin, "fetch", "--stealth", "--quiet", "--dump", dump, url],
+        {
+          stdout: "pipe",
+          stderr: "pipe",
+        },
+      );
       const timer = setTimeout(() => proc.kill(), timeoutMs);
-      const [stdout, exitCode] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+      const [stdout, exitCode] = await Promise.all([
+        new Response(proc.stdout).text(),
+        proc.exited,
+      ]);
       clearTimeout(timer);
       if (exitCode === 0 && stdout.trim().length > 0) {
         return {
@@ -100,7 +110,9 @@ export async function obscuraFetch(
   }
 
   const cloudEndpoint =
-    options.cloudUrl ?? process.env.OBSCURA_CLOUD_URL ?? DEFAULT_CLOUD_FETCH_URL;
+    options.cloudUrl ??
+    process.env.OBSCURA_CLOUD_URL ??
+    DEFAULT_CLOUD_FETCH_URL;
   try {
     const res = await fetch(`${cloudEndpoint}?url=${encodeURIComponent(url)}`, {
       signal: AbortSignal.timeout(timeoutMs),
@@ -122,7 +134,8 @@ export async function obscuraFetch(
     headers: {
       "user-agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-      accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+      accept:
+        "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
     },
     signal: AbortSignal.timeout(timeoutMs),
   });

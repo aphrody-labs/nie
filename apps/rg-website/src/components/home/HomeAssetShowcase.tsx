@@ -213,13 +213,23 @@ export function HomeAssetShowcase() {
             )}
 
             <div className="flex flex-wrap gap-2.5 pt-1">
-              <Button asChild size="sm" variant="outline" className="rounded-lg">
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="rounded-lg"
+              >
                 <Link href={ASSET_SHOWCASE_COPY.texturesCta.href}>
                   <span>{ASSET_SHOWCASE_COPY.texturesCta.label}</span>
                   <ArrowRight className="ml-1.5 size-3.5" />
                 </Link>
               </Button>
-              <Button asChild size="sm" variant="outline" className="rounded-lg">
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="rounded-lg"
+              >
                 <Link href={ASSET_SHOWCASE_COPY.viewer3d.modelsHref}>
                   <span>{ASSET_SHOWCASE_COPY.viewer3d.modelsLabel}</span>
                   <ArrowRight className="ml-1.5 size-3.5" />
@@ -273,7 +283,9 @@ export function HomeAssetShowcase() {
                       className="rounded-lg font-semibold"
                     >
                       <RgVectorIcon name="cube-3d" className="mr-1.5 size-4" />
-                      <span>{ASSET_SHOWCASE_COPY.viewer3d.loadButtonLabel}</span>
+                      <span>
+                        {ASSET_SHOWCASE_COPY.viewer3d.loadButtonLabel}
+                      </span>
                     </Button>
                   </div>
                 </div>
@@ -284,7 +296,12 @@ export function HomeAssetShowcase() {
               <p className="text-xs text-muted-foreground">
                 {ASSET_SHOWCASE_COPY.viewer3d.subtitle}
               </p>
-              <Button asChild size="sm" variant="secondary" className="rounded-lg">
+              <Button
+                asChild
+                size="sm"
+                variant="secondary"
+                className="rounded-lg"
+              >
                 <Link href={ASSET_SHOWCASE_COPY.viewer3d.demoHref}>
                   <span>{ASSET_SHOWCASE_COPY.viewer3d.demoLabel}</span>
                   <ArrowRight className="ml-1.5 size-3.5" />

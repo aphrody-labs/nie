@@ -355,7 +355,8 @@ mod tests {
 
     #[test]
     fn test_wasm_parse_emb_direct() {
-        let bytes = crate::game::formats::emb_archive::tests::fixture(&[("texture.dds", b"DDS!")]);
+        let bytes =
+            crate::game::formats::emb_archive::mock_emb_fixture(&[("texture.dds", b"DDS!")]);
         let parsed = EmbArchive::parse(&bytes).unwrap();
         assert_eq!(parsed.entries.len(), 1);
         assert_eq!(parsed.entries[0].name, "texture.dds");

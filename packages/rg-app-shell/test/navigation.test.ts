@@ -185,13 +185,15 @@ describe("dictionnaire de navigation", () => {
  * dans `styles.css`. Ce test empêche la liste de redivergir.
  */
 describe("sélecteur de thème", () => {
-  test("propose les cinq thèmes officiels dans l'ordre du catalogue", () => {
+  test("propose les sept thèmes officiels dans l'ordre du catalogue", () => {
     expect(DEFAULT_THEMES.map((t) => t.id)).toEqual([
       "roy",
       "gaelle",
       "azalee-light",
       "azalee-dark",
       "achillea",
+      "inazuma",
+      "nie",
     ]);
     expect(
       DEFAULT_THEMES.map((t) => t.id)

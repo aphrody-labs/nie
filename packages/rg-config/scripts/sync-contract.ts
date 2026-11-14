@@ -24,6 +24,7 @@ interface StackContract {
     domain: string;
     cookieDomain: string;
     repoUrl: string;
+    locales?: string[];
   };
   http: {
     healthPath: string;
@@ -140,13 +141,14 @@ interface StackContract {
 }
 
 function repoRoot(): string {
-  const candidates = [
-    resolve(import.meta.dir, "../../.."),
-    process.cwd(),
-  ];
-  const found = candidates.find((c) => existsSync(join(c, "contract/stack.yml")));
+  const candidates = [resolve(import.meta.dir, "../../.."), process.cwd()];
+  const found = candidates.find((c) =>
+    existsSync(join(c, "contract/stack.yml")),
+  );
   if (!found) {
-    throw new Error("contract/stack.yml not found from package or workspace root");
+    throw new Error(
+      "contract/stack.yml not found from package or workspace root",
+    );
   }
   return found;
 }
@@ -163,16 +165,25 @@ function validateContract(data: unknown): asserts data is StackContract {
     throw new Error("project.domain and project.cookieDomain are required");
   }
   if (!c.http?.origins?.site || !c.http.trustedOrigins?.prod?.length) {
-    throw new Error("http.origins.site and http.trustedOrigins.prod are required");
+    throw new Error(
+      "http.origins.site and http.trustedOrigins.prod are required",
+    );
   }
   if (!c.auth?.issuer || !c.auth.roles?.admin?.length) {
     throw new Error("auth.issuer and auth.roles.admin are required");
   }
   if (!c.database?.primary?.pool?.ceiling || !c.database.cache?.defaultUrl) {
-    throw new Error("database.primary.pool.ceiling and database.cache.defaultUrl are required");
+    throw new Error(
+      "database.primary.pool.ceiling and database.cache.defaultUrl are required",
+    );
   }
-  if (!c.database.mirror?.envVars?.length || !c.database.mirror.snapshotDirs?.length) {
-    throw new Error("database.mirror.envVars and database.mirror.snapshotDirs are required");
+  if (
+    !c.database.mirror?.envVars?.length ||
+    !c.database.mirror.snapshotDirs?.length
+  ) {
+    throw new Error(
+      "database.mirror.envVars and database.mirror.snapshotDirs are required",
+    );
   }
   if (!c.openapi?.version || !c.openapi.dialect) {
     throw new Error("openapi.version and openapi.dialect are required");
@@ -182,8 +193,7 @@ function validateContract(data: unknown): asserts data is StackContract {
   }
 }
 
-const cEscape = (value: string): string =>
-  JSON.stringify(value);
+const cEscape = (value: string): string => JSON.stringify(value);
 
 function cByteArrayLiteral(text: string): string {
   const bytes = [...new TextEncoder().encode(text), 0];
@@ -338,7 +348,6 @@ const rustStrArray = (items: readonly string[]): string =>
   items.map((item) => `    ${JSON.stringify(item)},`).join("\n");
 
 function renderRust(contract: StackContract): string {
-
   return `// Auto-generated from contract/stack.yml — DO NOT EDIT.
 // Regenerate via: just contract
 
@@ -437,7 +446,9 @@ async function buildMergedOpenApi(
   root: string,
   contract: StackContract,
 ): Promise<OpenApiLike> {
-  const baseYaml = await Bun.file(join(root, contract.openapi.yamlRelPath)).text();
+  const baseYaml = await Bun.file(
+    join(root, contract.openapi.yamlRelPath),
+  ).text();
   const base = Bun.YAML.parse(baseYaml) as OpenApiLike;
   if (base.openapi !== contract.openapi.version) {
     throw new Error(
@@ -498,6 +509,238 @@ export type MonorepoOpenApi = typeof MONOREPO_OPENAPI;
 `;
 }
 
+type LocaleCode = "fr" | "en" | "ja" | "es";
+
+interface RawLocalizedMap {
+  fr?: string;
+  en?: string;
+  ja?: string;
+  es?: string;
+}
+
+interface RawLocalizedListMap {
+  fr?: string[];
+  en?: string[];
+  ja?: string[];
+  es?: string[];
+}
+
+interface RawTomlRegistry {
+  era?: Array<{
+    id: string;
+    label?: RawLocalizedMap;
+    description?: RawLocalizedMap;
+  }>;
+  game?: Array<{
+    id: string;
+    slug: string;
+    order: number;
+    title: string;
+    series: string;
+    era: string;
+    status: string;
+    release_year: string;
+    release_date_ja?: string;
+    release_date_eu?: string;
+    platforms_display?: string[];
+    developer: string;
+    protagonist: string;
+    thumbnail: string;
+    cover?: string;
+    official_url: string;
+    store_url?: string;
+    series_filter_key?: string | null;
+    related_series_keys?: string[];
+    aliases?: string[];
+    titles?: RawLocalizedMap;
+    status_detail?: RawLocalizedMap;
+    summaries?: RawLocalizedMap;
+    highlights?: RawLocalizedListMap;
+    features?: Record<string, string>;
+    releases?: Array<{
+      platform: string;
+      year?: number;
+      regions?: string[];
+      format: string;
+      verified?: boolean;
+    }>;
+    ecosystem?: Array<{
+      kind: string;
+      name: string;
+      url: string;
+    }>;
+    internal_links?: Array<{
+      href: string;
+      label?: RawLocalizedMap | string;
+    }>;
+    community_wikis?: Array<{
+      lang: string;
+      name: string;
+      url: string;
+      api_url?: string;
+      kind?: string;
+    }>;
+    mod_hubs?: Array<{
+      platform: string;
+      name: string;
+      url: string;
+      gamebanana_id?: number;
+      api_url?: string;
+    }>;
+  }>;
+}
+
+function normalizeLocalizedText(
+  input: RawLocalizedMap | undefined,
+  fallback = "",
+): Record<LocaleCode, string> {
+  const en = input?.en ?? input?.fr ?? fallback;
+  const fr = input?.fr ?? en;
+  const ja = input?.ja ?? en;
+  const es = input?.es ?? en;
+  return { fr, en, ja, es };
+}
+
+function normalizeLocalizedList(
+  input: RawLocalizedListMap | undefined,
+): Record<LocaleCode, string[]> {
+  const en = input?.en ?? input?.fr ?? [];
+  const fr = input?.fr ?? en;
+  const ja = input?.ja ?? en;
+  const es = input?.es ?? en;
+  return { fr: [...fr], en: [...en], ja: [...ja], es: [...es] };
+}
+
+async function renderInagleGamesCatalog(root: string): Promise<string> {
+  const tomlPath = join(root, "crates/nie-pkg/registry/games.toml");
+  const raw = Bun.TOML.parse(
+    await Bun.file(tomlPath).text(),
+  ) as RawTomlRegistry;
+
+  const eras = (raw.era ?? []).map((era) => {
+    const labels = normalizeLocalizedText(era.label, era.id);
+    const descriptions = normalizeLocalizedText(era.description);
+    return {
+      id: era.id,
+      labelFr: labels.fr,
+      labelEn: labels.en,
+      labelJa: labels.ja,
+      labelEs: labels.es,
+      labels,
+      descriptionFr: descriptions.fr,
+      descriptionEn: descriptions.en,
+      descriptionJa: descriptions.ja,
+      descriptionEs: descriptions.es,
+      descriptions,
+    };
+  });
+
+  const games = [...(raw.game ?? [])]
+    .sort((a, b) => a.order - b.order)
+    .map((g) => {
+      const titles = normalizeLocalizedText(g.titles, g.title);
+      const statusDetail = normalizeLocalizedText(g.status_detail, g.status);
+      const summaries = normalizeLocalizedText(g.summaries);
+      const highlights = normalizeLocalizedList(g.highlights);
+      const internalLinks = (g.internal_links ?? []).map((link) => {
+        if (typeof link.label === "string") {
+          return {
+            href: link.href,
+            label: link.label,
+            labels: {
+              fr: link.label,
+              en: link.label,
+              ja: link.label,
+              es: link.label,
+            },
+          };
+        }
+        const labels = normalizeLocalizedText(link.label, link.href);
+        return { href: link.href, label: labels.fr, labels };
+      });
+      const communityWikis = (g.community_wikis ?? []).map((w) => ({
+        lang: (["fr", "en", "ja", "es"].includes(w.lang)
+          ? w.lang
+          : "en") as LocaleCode,
+        name: w.name,
+        url: w.url,
+        ...(w.api_url ? { apiUrl: w.api_url } : {}),
+        kind: w.kind ?? "wiki",
+      }));
+      const modHubs = (g.mod_hubs ?? []).map((m) => ({
+        platform: m.platform,
+        name: m.name,
+        url: m.url,
+        ...(m.gamebanana_id !== undefined
+          ? { gamebananaId: m.gamebanana_id }
+          : {}),
+        ...(m.api_url ? { apiUrl: m.api_url } : {}),
+      }));
+      const releases = (g.releases ?? []).map((r) => ({
+        platform: r.platform,
+        ...(r.year !== undefined ? { year: r.year } : {}),
+        regions: [...(r.regions ?? [])],
+        format: r.format,
+        verified: Boolean(r.verified),
+      }));
+      const ecosystem = (g.ecosystem ?? []).map((e) => ({
+        kind: e.kind,
+        name: e.name,
+        url: e.url,
+      }));
+      return {
+        id: g.id,
+        slug: g.slug,
+        order: g.order,
+        series: g.series,
+        titleFr: titles.fr,
+        titleEn: titles.en,
+        titleJa: titles.ja,
+        titleEs: titles.es,
+        titles,
+        era: g.era,
+        status: g.status,
+        statusDetailFr: statusDetail.fr,
+        statusDetail,
+        releaseYear: g.release_year,
+        ...(g.release_date_ja ? { releaseDateJa: g.release_date_ja } : {}),
+        ...(g.release_date_eu ? { releaseDateEu: g.release_date_eu } : {}),
+        platforms: [...(g.platforms_display ?? [])],
+        developer: g.developer,
+        protagonist: g.protagonist,
+        thumbnail: g.thumbnail,
+        ...(g.cover ? { cover: g.cover } : {}),
+        officialUrl: g.official_url,
+        ...(g.store_url ? { storeUrl: g.store_url } : {}),
+        seriesFilterKey: g.series_filter_key ?? null,
+        ...(g.related_series_keys?.length
+          ? { relatedSeriesKeys: [...g.related_series_keys] }
+          : {}),
+        ...(g.aliases?.length ? { aliases: [...g.aliases] } : {}),
+        summaryFr: summaries.fr,
+        summaries,
+        highlightsFr: highlights.fr,
+        highlights,
+        features: g.features ?? {},
+        releases,
+        ecosystem,
+        internalLinks,
+        communityWikis,
+        modHubs,
+      };
+    });
+
+  return `// Auto-generated from crates/nie-pkg/registry/games.toml — DO NOT EDIT.
+// Regenerate via: bun run contract:sync
+
+import type { InazumaEraInfo, InazumaGame } from "./types";
+
+export const INAZUMA_ERAS_GENERATED: readonly InazumaEraInfo[] = ${JSON.stringify(eras, null, 2)} as const;
+
+export const INAZUMA_GAMES_GENERATED: readonly InazumaGame[] = ${JSON.stringify(games, null, 2)} as const;
+`;
+}
+
 async function main(): Promise<number> {
   const root = repoRoot();
   const check = process.argv.includes("--check");
@@ -506,7 +749,10 @@ async function main(): Promise<number> {
   const parsed = Bun.YAML.parse(yamlText);
   validateContract(parsed);
 
-  const mergedOpenApi = await buildMergedOpenApi(root, parsed);
+  const [mergedOpenApi, generatedGamesTs] = await Promise.all([
+    buildMergedOpenApi(root, parsed),
+    renderInagleGamesCatalog(root),
+  ]);
   const prettyJson = `${JSON.stringify(parsed, null, 2)}\n`;
   const compactJson = JSON.stringify(parsed);
   const prettyOpenApiJson = `${JSON.stringify(mergedOpenApi, null, 2)}\n`;
@@ -530,6 +776,10 @@ async function main(): Promise<number> {
       rel: "crates/aphrody-nie-core/src/contract_generated.rs",
       content: renderRust(parsed),
     },
+    {
+      rel: "packages/inagle/src/games/catalog.generated.ts",
+      content: generatedGamesTs,
+    },
   ];
 
   if (check) {
@@ -543,10 +793,14 @@ async function main(): Promise<number> {
     const stale = checks.filter((item): item is string => item !== null);
     if (stale.length > 0) {
       console.error(`Contract drift detected: ${stale.join(", ")}`);
-      console.error("Regenerate with: bun packages/rg-config/scripts/sync-contract.ts");
+      console.error(
+        "Regenerate with: bun packages/rg-config/scripts/sync-contract.ts",
+      );
       return 1;
     }
-    console.info(`Contract up to date (${parsed.project.name}@${parsed.project.version})`);
+    console.info(
+      `Contract up to date (${parsed.project.name}@${parsed.project.version})`,
+    );
     return 0;
   }
 
@@ -562,7 +816,9 @@ async function main(): Promise<number> {
     }),
   );
 
-  console.info(`Synced polyglot contract (${parsed.project.name}@${parsed.project.version})`);
+  console.info(
+    `Synced polyglot contract (${parsed.project.name}@${parsed.project.version})`,
+  );
   return 0;
 }
 

@@ -194,7 +194,7 @@ describe("résolution des var()", () => {
 });
 
 describe("tokens exposés", () => {
-  test("les sept thèmes officiels sont projetés depuis le CSS", () => {
+  test("les thèmes officiels sont projetés depuis le CSS", () => {
     expect(NOMS_THEMES).toEqual([
       "theme-roy",
       "theme-gaelle",
@@ -203,6 +203,8 @@ describe("tokens exposés", () => {
       "theme-azalee-light",
       "theme-azalee-dark",
       "theme-achillea",
+      "theme-inazuma",
+      "theme-nie",
     ]);
     expect(Object.keys(THEMES)).toEqual([...NOMS_THEMES]);
     // Les cinq thèmes du sélecteur portent les rôles calculés depuis leur graine.
@@ -232,19 +234,23 @@ describe("tokens exposés", () => {
     expect(valeurs.filter((v) => v.includes("var("))).toEqual([]);
   });
 
-  test("les sept thèmes conservent les 36 rôles MD3 core et les extensions natives importées", () => {
+  test("les thèmes conservent les 36 rôles MD3 core et les extensions natives importées", () => {
     const reference = Object.keys(THEMES["theme-roy"].md3).sort();
     expect(reference.length).toBe(36);
+    const coreOnly = new Set([
+      "theme-roy",
+      "theme-gaelle",
+      "theme-inazuma",
+      "theme-nie",
+    ]);
     for (const nom of NOMS_THEMES) {
       const roles = Object.keys(THEMES[nom].md3).sort();
       expect(roles).toEqual(expect.arrayContaining(reference));
-      expect(roles.length).toBe(
-        nom === "theme-roy" || nom === "theme-gaelle" ? 36 : 49,
-      );
+      expect(roles.length).toBe(coreOnly.has(nom) ? 36 : 49);
     }
   });
 
-  test("les sept thèmes déclarent les 68 variables core et conservent les extensions de la cascade complète", () => {
+  test("les thèmes déclarent les 68 variables core et conservent les extensions de la cascade complète", () => {
     // Pas seulement après cascade : un rôle qu'un seul thème omet n'est PAS
     // surchargeable dans ce thème et reste figé sur la valeur du `:root`.
     // C'est ce qui rendait `bg-scrim` inerte en Roy/Gaëlle et privait les
@@ -261,12 +267,16 @@ describe("tokens exposés", () => {
 
     const reference = varsDuTheme(NOMS_THEMES[0]!);
     expect(reference.length).toBe(68);
+    const coreOnly = new Set([
+      "theme-roy",
+      "theme-gaelle",
+      "theme-inazuma",
+      "theme-nie",
+    ]);
     for (const nom of NOMS_THEMES) {
       const variables = varsDuTheme(nom);
       expect(variables).toEqual(expect.arrayContaining(reference));
-      expect(variables.length).toBe(
-        nom === "theme-roy" || nom === "theme-gaelle" ? 68 : 89,
-      );
+      expect(variables.length).toBe(coreOnly.has(nom) ? 68 : 89);
     }
   });
 

@@ -15,6 +15,15 @@
 
 import type { categoryStats, searchText } from "../game-text/index";
 import type { fileMeta, listDirPaged, searchFiles } from "../cpk/index";
+import type { STACK_CONTRACT } from "@rosegriffon/config/contract";
+import type { queryGameDetail, queryGamesCatalog } from "@rosegriffon/inagle/games";
+import type {
+  getDesignThemesManifest,
+  loadWebsiteLocaleDictionary,
+  queryCommunityModsEndpoint,
+  queryCommunityWikisEndpoint,
+  translateIevrQuery,
+} from "../server/ecosystem";
 import type { getCapsuleList, getCostumeList } from "../wiki/gacha";
 import type { getCoach, getCoachesList } from "../wiki/coaches";
 import type { getCrossCatalogStats, getCrossTables } from "../cross/data";
@@ -101,6 +110,48 @@ export interface AzaleeCrossSearchParams {
   limit?: number;
 }
 
+/** Paramètres de `/api/games`. */
+export interface AzaleeGamesParams {
+  locale?: string;
+  era?: string;
+  status?: string;
+  q?: string;
+}
+
+/** Paramètres de `/api/games/:slug`. */
+export interface AzaleeGameDetailParams {
+  locale?: string;
+}
+
+/** Paramètres de `/api/mods`. */
+export interface AzaleeModsParams {
+  q?: string;
+  game?: string;
+  locale?: string;
+  limit?: number;
+}
+
+/** Paramètres de `/api/community/wikis`. */
+export interface AzaleeCommunityWikisParams {
+  q?: string;
+  lang?: string;
+  game?: string;
+  locale?: string;
+  limit?: number;
+}
+
+/** Paramètres de `/api/locales/:lang`. */
+export interface AzaleeLocaleDictParams {
+  scope?: "all" | "interface";
+}
+
+/** Paramètres de `/api/translate`. */
+export interface AzaleeTranslateParams {
+  q: string;
+  to?: string;
+  skipRemote?: boolean;
+}
+
 // --- Réponses --------------------------------------------------------------
 
 /** `GET /api/characters` et `GET /api/coordinators`. */
@@ -177,6 +228,29 @@ export type AzaleeTextStats = Out<typeof categoryStats>;
 export type AzaleeCrossTables = Out<typeof getCrossTables>;
 /** `GET /api/cross/stats`. */
 export type AzaleeCrossStats = Out<typeof getCrossCatalogStats>;
+/** `GET /api/games`. */
+export type AzaleeGamesCatalog = Out<typeof queryGamesCatalog>;
+/** `GET /api/games/:slug`. */
+export type AzaleeGameDetail = Detail<typeof queryGameDetail>;
+/** `GET /api/mods`. */
+export type AzaleeCommunityMods = Out<typeof queryCommunityModsEndpoint>;
+/** `GET /api/community/wikis`. */
+export type AzaleeCommunityWikis = Out<typeof queryCommunityWikisEndpoint>;
+/** `GET /api/design/themes`. */
+export type AzaleeDesignThemes = Out<typeof getDesignThemesManifest>;
+/** `GET /api/design/tokens`. */
+export interface AzaleeDesignTokens {
+  schemaVersion: number;
+  manifest: AzaleeDesignThemes;
+  contract: {
+    locales: typeof STACK_CONTRACT.project.locales;
+    ui: typeof STACK_CONTRACT.ui;
+  };
+}
+/** `GET /api/locales/:lang`. */
+export type AzaleeLocaleDictionary = Detail<typeof loadWebsiteLocaleDictionary>;
+/** `GET /api/translate`. */
+export type AzaleeTranslateResult = Out<typeof translateIevrQuery>;
 
 /**
  * `GET /api/search` — agrégat construit par `serve.ts` à partir des trois
@@ -349,4 +423,33 @@ export interface AzaleeDataSource {
     params: AzaleeCrossSearchParams,
     options?: AzaleeRequestOptions,
   ): Promise<AzaleeSearchResult>;
+
+  games(
+    params?: AzaleeGamesParams,
+    options?: AzaleeRequestOptions,
+  ): Promise<AzaleeGamesCatalog>;
+  game(
+    slug: string,
+    params?: AzaleeGameDetailParams,
+    options?: AzaleeRequestOptions,
+  ): Promise<AzaleeGameDetail>;
+  mods(
+    params?: AzaleeModsParams,
+    options?: AzaleeRequestOptions,
+  ): Promise<AzaleeCommunityMods>;
+  communityWikis(
+    params?: AzaleeCommunityWikisParams,
+    options?: AzaleeRequestOptions,
+  ): Promise<AzaleeCommunityWikis>;
+  designThemes(options?: AzaleeRequestOptions): Promise<AzaleeDesignThemes>;
+  designTokens(options?: AzaleeRequestOptions): Promise<AzaleeDesignTokens>;
+  localeDictionary(
+    lang: string,
+    params?: AzaleeLocaleDictParams,
+    options?: AzaleeRequestOptions,
+  ): Promise<AzaleeLocaleDictionary>;
+  translate(
+    params: AzaleeTranslateParams,
+    options?: AzaleeRequestOptions,
+  ): Promise<AzaleeTranslateResult>;
 }

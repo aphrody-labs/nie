@@ -7,7 +7,7 @@
     "https://www.inazuma-cross.jp/cbt-report/",
     "https://x.com/inazuma_cross"
   ],
-  "crawledAt": "2026-06-06",
+  "crawledAt": "2026-11-14T15:32:02.877Z",
   "crawler": "bxc (recon + scrape_markdown + x_client) — DOM rendu réel",
   "note": "Traduction FR strictement factuelle du site officiel + tweets réels @inazuma_cross. Aucun contenu inventé : chaque champ *Fr est la traduction d'un texte réel (JP) du site ou d'un tweet, sourcé.",
   "site": {
@@ -20,14 +20,16 @@
     "ogImage": "/inazuma-cross/ogp.jpg"
   },
   "status": {
-    "phase": "pre-registration",
+    "phase": "released",
     "phaseLabelJa": "事前登録受付中",
     "phaseLabelFr": "Pré-enregistrement ouvert",
     "serviceStart": "2026-06-09",
     "serviceStartLabelJa": "6/9(火)サービス開始！",
     "serviceStartLabelFr": "Lancement le mardi 9 juin 2026",
     "note": "ストアで表示されている配信予定日は実際の日程と異なる場合がございます。",
-    "noteFr": "La date de sortie affichée sur les stores peut différer du calendrier réel."
+    "noteFr": "La date de sortie affichée sur les stores peut différer du calendrier réel.",
+    "phaseJa": "好評配信中！",
+    "phaseFr": "Disponible maintenant (iOS / Android)"
   },
   "spec": {
     "title": "イナズマイレブン クロス",
@@ -78,11 +80,27 @@
   },
   "news": [
     {
+      "date": "2026-11-12",
+      "titleJa": "「イナズマイレブン 英雄たちのヴィクトリーロードコラボ」特設ページ 公開",
+      "titleFr": "「イナズマイレブン 英雄たちのヴィクトリーロードコラボ」特設ページ 公開",
+      "url": "https://www.inazuma-cross.jp/victory-road-2026/",
+      "tagJa": "COLLABORATION",
+      "tagFr": "Collaboration"
+    },
+    {
+      "date": "2026-07-31",
+      "titleJa": "「初心者ガイド」ページ 公開",
+      "titleFr": "「初心者ガイド」ページ 公開",
+      "url": "https://www.inazuma-cross.jp/guide/",
+      "tagJa": "GUIDE",
+      "tagFr": "Guide"
+    },
+    {
       "date": "2026-05-29",
       "titleJa": "「日本代表２０２６プロジェクト」特設ページ 公開",
       "titleFr": "Ouverture de la page spéciale « Projet Équipe Nationale 2026 »",
       "url": "https://www.inazuma-cross.jp/samuraiblue2026/",
-      "tagJa": "公開",
+      "tagJa": "INFO",
       "tagFr": "Publication"
     },
     {
@@ -90,7 +108,7 @@
       "titleJa": "今日の格言キャンペーン 開催",
       "titleFr": "Lancement de la campagne « La maxime du jour »",
       "url": "https://x.com/inazuma_cross",
-      "tagJa": "開催",
+      "tagJa": "CAMPAIGN",
       "tagFr": "Événement"
     },
     {
@@ -98,8 +116,16 @@
       "titleJa": "新必殺技予想キャンペーン 開催",
       "titleFr": "Lancement de la campagne de pronostics sur les nouvelles techniques spéciales",
       "url": "https://x.com/inazuma_cross/status/2042578864480891044",
-      "tagJa": "開催",
+      "tagJa": "CAMPAIGN",
       "tagFr": "Événement"
+    },
+    {
+      "date": "2026-04-10",
+      "titleJa": "公式サイト 公開",
+      "titleFr": "Ouverture du site officiel",
+      "url": "https://www.inazuma-cross.jp",
+      "tagJa": "INFO",
+      "tagFr": "Publication"
     },
     {
       "date": "2026-04-10",
@@ -251,60 +277,100 @@
   },
   "tweets": [
     {
-      "id": "2062822310529339692",
-      "date": "2026-06-05",
-      "textJa": "“禁断のイナズマイレブン” コンセプトアート公開！ この姿は一体……？？",
-      "textFr": "Révélation de l'artwork conceptuel de « l'Inazuma Eleven interdit » (禁断のイナズマイレブン). Quelle est donc cette apparence… ?",
-      "url": "https://x.com/inazuma_cross/status/2062822310529339692",
-      "hasMedia": true
+      "id": "2101582301805400544",
+      "date": "2026-09-20",
+      "text": "◤6章追加直前ログボ！◢\n⠀\n明日9/21(月)11:00から、6章追加直前ログボ！を開催します🎁\nダイヤボール最大1,500個などをゲットできます✨️\n毎日欠かさずログインしましょう！\n⠀\n#イナイレクロス #イナズマイレブン https://t.co/0ny6fs1S6n",
+      "url": "https://x.com/inazuma_cross/status/2101582301805400544"
     },
     {
-      "id": "2062807834497290554",
-      "date": "2026-06-05",
-      "textJa": "「イナズマイレブン 世界への挑戦!!編」が無料公開中！本日より85話〜106話の公開がスタート。イナイレクロスはこの「世界への挑戦!!編」の後の物語となります。",
-      "textFr": "L'anime « Inazuma Eleven — Le Défi du Monde !! » (世界への挑戦!!編) est diffusé gratuitement : les épisodes 85 à 106 sont disponibles depuis aujourd'hui. L'histoire d'Inazuma Eleven Cross se situe après cet arc « Le Défi du Monde !! ».",
-      "url": "https://x.com/inazuma_cross/status/2062807834497290554",
-      "hasMedia": true
+      "id": "2101552039121895573",
+      "date": "2026-09-20",
+      "text": "#TGS2026 わしゃがなTV特別放送のご視聴ありがとうございました！\n💎ダイヤボール×1,000個💎がもらえるシリアルコードも番組内でご紹介しておりますので、見逃した方はぜひアーカイブをご覧ください📺️⠀\n⠀\n▼アーカイブはこちらから\nhttps://t.co/qbSuLhoBmQ\n⠀\n#イナイレクロス #イナズマイレブン",
+      "url": "https://x.com/inazuma_cross/status/2101552039121895573"
     },
     {
-      "id": "2062731317998125067",
-      "date": "2026-06-05",
-      "textJa": "サービス開始まであと4日！6/9(火)に正式サービス開始。事前登録受付中！",
-      "textFr": "Plus que 4 jours avant le lancement ! Service officiel ouvert le mardi 9 juin 2026. Pré-enregistrement en cours.",
-      "url": "https://x.com/inazuma_cross/status/2062731317998125067",
-      "hasMedia": true
+      "id": "2101521797116301822",
+      "date": "2026-09-20",
+      "text": "📢 まもなくスタート！\n#TGS2026 わしゃがなTV特別放送📺\n⠀\n#イナイレクロス の魅力を「わしゃがなTV」が紹介⚡️\n東京ゲームショウ会場から生配信でお届けします！\nぜひご覧ください！\n⠀\n▼日時\n9/20(日)13:40～14:25\n⠀\n▼配信URL\nhttps://t.co/qbSuLhoBmQ\n⠀\n#イナズマイレブン https://t.co/1nfnRiLgnx",
+      "url": "https://x.com/inazuma_cross/status/2101521797116301822"
     },
     {
-      "id": "2062459788798423063",
-      "date": "2026-06-04",
-      "textJa": "設定資料を特別公開㊙️第2弾。謎の資料を入手いたしました。気になる詳細は、続報をお待ちください。",
-      "textFr": "Révélation spéciale de documents de conception (2ᵉ volet). Des documents mystérieux ont été obtenus ; les détails seront communiqués prochainement.",
-      "url": "https://x.com/inazuma_cross/status/2062459788798423063",
-      "hasMedia": true
+      "id": "2101249950126399851",
+      "date": "2026-09-19",
+      "text": "クラブ試練の開催に合わせ、クラブトークン交換所に新たに登場した★３［天才ゲームメーカー（雷門）］鬼道 有人のパッシブスキルと必殺技をご紹介します✍\n⠀\n「クラブの記録」で交換することができますので、参考にしてみてください！\n\n※パラメータは「Lv.340装備」を装備した状態の数値です。\n⠀\n#イナイレクロス #イナズマイレブン",
+      "url": "https://x.com/inazuma_cross/status/2101249950126399851"
     },
     {
-      "id": "2062446758207082765",
-      "date": "2026-06-04",
-      "textJa": "新必殺技紹介。予想キャンペーンも実施していた、帝国学園ユニフォームの豪炎寺が放つ必殺技の名前は「インフェルノペンギン」でした！本日は改めて必殺技の動画を公開いたします。",
-      "textFr": "Présentation d'une nouvelle technique spéciale. La technique du Gouenji (Axel Blaze) en uniforme de Teikoku, objet de la campagne de pronostics, s'appelle « Inferno Penguin » (インフェルノペンギン). La vidéo de la technique est dévoilée.",
-      "url": "https://x.com/inazuma_cross/status/2062446758207082765",
-      "hasMedia": true
+      "id": "2101235162919182462",
+      "date": "2026-09-19",
+      "text": "📢 明日配信！\n#TGS2026 わしゃがなTV特別放送📺\n⠀\n#イナイレクロス の魅力を「わしゃがなTV」が紹介⚡️\n東京ゲームショウ会場から生配信でお届けします！\nぜひご覧ください！\n⠀\n▼日時\n9/20(日)13:40～14:25\n⠀\n▼配信URL\nhttps://t.co/qbSuLhoBmQ\n⠀\n#イナズマイレブン https://t.co/ir94AzqSwO",
+      "url": "https://x.com/inazuma_cross/status/2101235162919182462"
     },
     {
-      "id": "2062097346352284151",
-      "date": "2026-06-03",
-      "textJa": "設定資料を特別公開㊙️。イナイレクロスで新登場する主人公の幼馴染「野乃見リン」のキャラクターデザイン設定資料を特別に公開。やぶのてんや先生による読み切り漫画にも登場しています。",
-      "textFr": "Révélation spéciale de documents de conception : la fiche de design du personnage « Rin Nonomi » (野乃見リン), amie d'enfance du héros qui fait son apparition dans Inazuma Eleven Cross. Elle apparaît aussi dans le one-shot manga du sensei Tenya Yabuno.",
-      "url": "https://x.com/inazuma_cross/status/2062097346352284151",
-      "hasMedia": true
+      "id": "2100890307743350948",
+      "date": "2026-09-18",
+      "text": "◤記念セット販売中！◢\n⠀\nストアにて「クラブ試練実装記念セット」が販売中🔥\n「ファイアトルネードの秘伝書」など秘伝書3種が獲得できるセットとなっております✨️\nぜひストアをチェックしてみてください！\n⠀\n#イナイレクロス #イナズマイレブン https://t.co/In8svV3MJG",
+      "url": "https://x.com/inazuma_cross/status/2100890307743350948"
     },
     {
-      "id": "2060337674117087539",
-      "date": "2026-05-29",
-      "textJa": "サービス開始日決定！イナイレクロスのサービス開始日が【2026/6/9(火)】に決定いたしました。サービス開始まで今しばらくお待ちください！",
-      "textFr": "Date de lancement fixée ! La date de sortie d'Inazuma Eleven Cross est arrêtée au mardi 9 juin 2026. Encore un peu de patience jusqu'au lancement.",
-      "url": "https://x.com/inazuma_cross/status/2060337674117087539",
-      "hasMedia": true
+      "id": "2100887703286079520",
+      "date": "2026-09-18",
+      "text": "メインストーリー5章までで、皆さんのお気に入りのシーンはありますか？\nぜひリプライで教えてください💬\n⠀\n9/29(火)の6章追加に向けて、この機会にストーリーを振り返りましょう！\n⠀\n#イナイレクロス #イナズマイレブン https://t.co/vM3sUZXDO4",
+      "url": "https://x.com/inazuma_cross/status/2100887703286079520"
+    },
+    {
+      "id": "2100877025024311399",
+      "date": "2026-09-18",
+      "text": "【お知らせ】「iOS 27」および「iPadOS 27」のアップデートに関するご案内\n⠀\n9/15(火)に配信されましたiOSの新バージョン「iOS 27」および「iPadOS 27」につきまして、『イナズマイレブン クロス』での動作確認が完了し、正常に動作することを確認いたしました。\n⠀\nそのため、「iOS 27」および「iPadOS 27」へアップデートいただいた後も、引き続きプレイをお楽しみいただけます。\n※ご利用状況や機種特有の要因により、アプリが正常に動作しない場合があります。\n⠀\n#イナイレクロス #イナズマイレブン",
+      "url": "https://x.com/inazuma_cross/status/2100877025024311399"
+    },
+    {
+      "id": "2100782612327567656",
+      "date": "2026-09-18",
+      "text": "🎊150万ダウンロード突破🎊\n⠀\n#イナイレクロス が150万ダウンロードを突破いたしました⚡️\n⠀\n感謝の気持ちを込めて、皆さまにダイヤボール×1,500をプレゼントいたします！\n⠀\nMENU＞メールからお受け取りください🎁\n⠀\n#イナズマイレブン https://t.co/tUs5abqjSM",
+      "url": "https://x.com/inazuma_cross/status/2100782612327567656"
+    },
+    {
+      "id": "2100510327012196567",
+      "date": "2026-09-17",
+      "text": "◤覚醒応援セット登場！◢ \n⠀\nストアにて \n［知略のブルームーン］ウルビダ 覚醒応援セット\n［トップ・オブ・ザ・タワー］財前 塔子 覚醒応援セット\nが販売中です🔥 \n⠀\n対象キャラの覚醒魂×1のほか、属性のかけらなどがセットになったお得なパックとなっています✨️ \nお見逃しなく！ \n⠀\n#イナイレクロス #イナズマイレブン",
+      "url": "https://x.com/inazuma_cross/status/2100510327012196567"
+    },
+    {
+      "id": "2100425791666540996",
+      "date": "2026-09-17",
+      "text": "◤メインストーリー6章予告◢\n⠀\n「ようこそ　宇宙級エンターテインメントの世界へ！」\n「百花繚乱！　我ら　エイリア雑技団！」\n⠀\nメインストーリー第6章、9/29(火)開幕⚡️\n⠀\n#イナイレクロス #イナズマイレブン https://t.co/4PlzHPSR7Q",
+      "url": "https://x.com/inazuma_cross/status/2100425791666540996"
+    },
+    {
+      "id": "2100420770371666036",
+      "date": "2026-09-17",
+      "text": "📢キャスト決定！\n⠀\n#イナイレクロス の主人公・汐沢 陽役が鷄冠井 美智子さんに決定いたしました🎤\n⠀\n陽のボイスは先ほど公開されたストーリーPVにてたっぷりと聞くことができますので、ぜひ合わせてご覧ください！\n⠀\n#イナズマイレブン https://t.co/JPHELTIAal",
+      "url": "https://x.com/inazuma_cross/status/2100420770371666036"
+    },
+    {
+      "id": "2100419711532200034",
+      "date": "2026-09-17",
+      "text": "◤◢◤◢◤◢◤◢◤◢◤◢◤◢\n⠀\n　 ⚡ストーリーPV公開⚡　　\n⠀\n◤◢◤◢◤◢◤◢◤◢◤◢◤◢\n⠀\n#イナイレクロス のストーリーPVを公開いたしました。\n本PVでは主人公・陽のボイスが解禁！\n東京ゲームショウのレベルファイブブースでも放映されます🎞️\n「LEVEL5 VISION 2026 Ⅱ 夢」での放映から、最新情報を追加した「TGS特別版」となっておりますので、ぜひ最後までご覧ください！\n⠀\n#イナズマイレブン",
+      "url": "https://x.com/inazuma_cross/status/2100419711532200034"
+    },
+    {
+      "id": "2100148089025900882",
+      "date": "2026-09-16",
+      "text": "◤クラブ試練実装記念ログボ！◢\n⠀\n鍛錬のホイッスル各種など、パッシブ鍛錬に使用できるアイテムをゲットできます✨️\n毎日欠かさずログインしましょう！\n⠀\n#イナイレクロス #イナズマイレブン https://t.co/bwC1xI3gtV",
+      "url": "https://x.com/inazuma_cross/status/2100148089025900882"
+    },
+    {
+      "id": "2100057645990445290",
+      "date": "2026-09-16",
+      "text": "📢リリース100日記念特別プレゼント！\n⠀\n本日9/16(水)、#イナイレクロス はリリース100日を迎えました！\n感謝の気持ちを込めて、皆さまにダイヤボール×3,000をプレゼントいたします💎\nぜひログインしてお受け取りください✨️\n⠀\n#イナズマイレブン https://t.co/6dqvU6GwAV",
+      "url": "https://x.com/inazuma_cross/status/2100057645990445290"
+    },
+    {
+      "id": "2099785306975162439",
+      "date": "2026-09-15",
+      "text": "本日より開催の「宇宙人が来た！」イベント人脈ボードでは最初から「ハイライト」が使用可能です🎥\n⠀\n初めて挑戦するマスでもハイライトで試合結果を確認することができます！\n⠀\n#イナイレクロス #イナズマイレブン",
+      "url": "https://x.com/inazuma_cross/status/2099785306975162439"
     }
   ],
   "tweetsNote": "Tweets réels du compte officiel @inazuma_cross (récupérés via bxc x_client le 2026-06-06), du plus récent au plus ancien. Texte JP réel traduit factuellement en FR. Les replies de campagnes répétitives (« 格言 ») et les simples retweets ont été écartés.",
@@ -326,7 +392,11 @@
     "privacyPolicy": "https://www.level5.co.jp/about/privacy.html",
     "terms": "https://www.inazuma-cross.jp/terms/",
     "guidelines": "https://www.inazuma-cross.jp/guidelines/",
-    "parents": "https://www.inazuma-cross.jp/parents/"
+    "parents": "https://www.inazuma-cross.jp/parents/",
+    "official": "https://www.inazuma-cross.jp/",
+    "guide": "https://www.inazuma-cross.jp/guide/",
+    "victoryRoad2026": "https://www.inazuma-cross.jp/victory-road-2026/",
+    "store": "https://store.inazuma-cross.jp/"
   },
   "localImages": {
     "keyVisual": "/inazuma-cross/home-keyvisual.webp",
@@ -422,5 +492,198 @@
     "preregistrationText": "/inazuma-cross/preregistration-text.webp",
     "badgeAppStore": "/inazuma-cross/badge-appstore.svg",
     "badgeGooglePlay": "/inazuma-cross/badge-googleplay.png"
-  }
+  },
+  "victoryRoad2026": {
+    "url": "https://www.inazuma-cross.jp/victory-road-2026/",
+    "period": "2026.11.17 - 2027.03.31",
+    "storyJa": "コラボオリジナルストーリー STORY あらすじ 改変された世界をサッカーの力で正すべく、円堂たちは『イナズマビッグフェリー』で特訓を続けていた。そこへ突如、未来の雷門中サッカー部員だと名乗る２人の少年、円堂ハルと月影蓮が現れる。２人とのアツい勝負の末、時空を超えた雷門魂で繋がる円堂たち。しかし、その直後に現れたのは、おかしな様子の南雲原中サッカー部で──！？",
+    "storyFr": "Collaboration spéciale entre Inazuma Eleven Cross et Inazuma Eleven: Victory Road réunissant Unmei Sasanami (Destin Billows) et son équipe.",
+    "kvImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/kv.webp",
+    "localKvImage": "/inazuma-cross/vr2026/kv.webp",
+    "characters": [
+      {
+        "nameJa": "笹波 雲明",
+        "roleOrPosition": "監督",
+        "elementJa": null,
+        "cv": null,
+        "descJa": "",
+        "thumbUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/chara-thumb-01.webp",
+        "fullImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/quality100/chara-01.webp",
+        "hissatsuNameJa": null,
+        "hissatsuImageUrl": null,
+        "nameFr": "Destin Billows (Unmei Sasanami)",
+        "localThumb": "/inazuma-cross/vr2026/chara-thumb-01.webp",
+        "localFullImage": "/inazuma-cross/vr2026/chara-01.webp",
+        "localHissatsuImage": null
+      },
+      {
+        "nameJa": "桜咲 丈二",
+        "roleOrPosition": "FW",
+        "elementJa": null,
+        "cv": null,
+        "descJa": "",
+        "thumbUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/chara-thumb-02.webp",
+        "fullImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/quality100/chara-02.webp",
+        "hissatsuNameJa": "剛の一閃",
+        "hissatsuImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/hissatsu-02.webp",
+        "nameFr": "Briar Bloomhurst (Sakurazaki Jouji)",
+        "localThumb": "/inazuma-cross/vr2026/chara-thumb-02.webp",
+        "localFullImage": "/inazuma-cross/vr2026/chara-02.webp",
+        "localHissatsuImage": "/inazuma-cross/vr2026/hissatsu-02.webp"
+      },
+      {
+        "nameJa": "木曽路 兵太",
+        "roleOrPosition": "MF",
+        "elementJa": null,
+        "cv": null,
+        "descJa": "",
+        "thumbUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/chara-thumb-03.webp",
+        "fullImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/quality100/chara-03.webp",
+        "hissatsuNameJa": "ブロックサーカス",
+        "hissatsuImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/hissatsu-03.webp",
+        "nameFr": "Cedric Freud (Kisoji Heita)",
+        "localThumb": "/inazuma-cross/vr2026/chara-thumb-03.webp",
+        "localFullImage": "/inazuma-cross/vr2026/chara-03.webp",
+        "localHissatsuImage": "/inazuma-cross/vr2026/hissatsu-03.webp"
+      },
+      {
+        "nameJa": "忍原 来夏",
+        "roleOrPosition": "FW",
+        "elementJa": null,
+        "cv": null,
+        "descJa": "",
+        "thumbUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/chara-thumb-04.webp",
+        "fullImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/quality100/chara-04.webp",
+        "hissatsuNameJa": "ぐるぐるシュート",
+        "hissatsuImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/hissatsu-04.webp",
+        "nameFr": "忍原 来夏",
+        "localThumb": "/inazuma-cross/vr2026/chara-thumb-04.webp",
+        "localFullImage": "/inazuma-cross/vr2026/chara-04.webp",
+        "localHissatsuImage": "/inazuma-cross/vr2026/hissatsu-04.webp"
+      },
+      {
+        "nameJa": "古道飼 亀雄",
+        "roleOrPosition": "DF",
+        "elementJa": null,
+        "cv": null,
+        "descJa": "",
+        "thumbUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/chara-thumb-05.webp",
+        "fullImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/quality100/chara-05.webp",
+        "hissatsuNameJa": "ダンシングタートル",
+        "hissatsuImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/hissatsu-05.webp",
+        "nameFr": "Cade Shelby (Kameo Kodoukai)",
+        "localThumb": "/inazuma-cross/vr2026/chara-thumb-05.webp",
+        "localFullImage": "/inazuma-cross/vr2026/chara-05.webp",
+        "localHissatsuImage": "/inazuma-cross/vr2026/hissatsu-05.webp"
+      },
+      {
+        "nameJa": "四川堂 我流",
+        "roleOrPosition": "GK",
+        "elementJa": null,
+        "cv": null,
+        "descJa": "",
+        "thumbUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/chara-thumb-06.webp",
+        "fullImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/quality100/chara-06.webp",
+        "hissatsuNameJa": "氷結の舞",
+        "hissatsuImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/hissatsu-06.webp",
+        "nameFr": "Garyuu Shisendou",
+        "localThumb": "/inazuma-cross/vr2026/chara-thumb-06.webp",
+        "localFullImage": "/inazuma-cross/vr2026/chara-06.webp",
+        "localHissatsuImage": "/inazuma-cross/vr2026/hissatsu-06.webp"
+      },
+      {
+        "nameJa": "柳生 駿河",
+        "roleOrPosition": "MF",
+        "elementJa": null,
+        "cv": null,
+        "descJa": "",
+        "thumbUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/chara-thumb-07.webp",
+        "fullImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/quality100/chara-07.webp",
+        "hissatsuNameJa": "天空サンダー",
+        "hissatsuImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/hissatsu-07.webp",
+        "nameFr": "Thierry Bison (Suruga Yagyuu)",
+        "localThumb": "/inazuma-cross/vr2026/chara-thumb-07.webp",
+        "localFullImage": "/inazuma-cross/vr2026/chara-07.webp",
+        "localHissatsuImage": "/inazuma-cross/vr2026/hissatsu-07.webp"
+      },
+      {
+        "nameJa": "空宮 征",
+        "roleOrPosition": "FW",
+        "elementJa": null,
+        "cv": null,
+        "descJa": "",
+        "thumbUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/chara-thumb-08.webp",
+        "fullImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/quality100/chara-08.webp",
+        "hissatsuNameJa": "サンシャインブレード",
+        "hissatsuImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/hissatsu-08.webp",
+        "nameFr": "Tadashi Soramiya",
+        "localThumb": "/inazuma-cross/vr2026/chara-thumb-08.webp",
+        "localFullImage": "/inazuma-cross/vr2026/chara-08.webp",
+        "localHissatsuImage": "/inazuma-cross/vr2026/hissatsu-08.webp"
+      },
+      {
+        "nameJa": "品乃 雅士",
+        "roleOrPosition": "MF",
+        "elementJa": null,
+        "cv": null,
+        "descJa": "",
+        "thumbUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/chara-thumb-09.webp",
+        "fullImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/quality100/chara-09.webp",
+        "hissatsuNameJa": null,
+        "hissatsuImageUrl": null,
+        "nameFr": "品乃 雅士",
+        "localThumb": "/inazuma-cross/vr2026/chara-thumb-09.webp",
+        "localFullImage": "/inazuma-cross/vr2026/chara-09.webp",
+        "localHissatsuImage": null
+      },
+      {
+        "nameJa": "円堂 ハル",
+        "roleOrPosition": "FW",
+        "elementJa": null,
+        "cv": null,
+        "descJa": "",
+        "thumbUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/chara-thumb-10.webp",
+        "fullImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/quality100/chara-10.webp",
+        "hissatsuNameJa": "メテオッド・ファイアトルネード",
+        "hissatsuImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/hissatsu-10.webp",
+        "nameFr": "Harper Evans (Haru Endou)",
+        "localThumb": "/inazuma-cross/vr2026/chara-thumb-10.webp",
+        "localFullImage": "/inazuma-cross/vr2026/chara-10.webp",
+        "localHissatsuImage": "/inazuma-cross/vr2026/hissatsu-10.webp"
+      },
+      {
+        "nameJa": "月影 蓮",
+        "roleOrPosition": "MF",
+        "elementJa": null,
+        "cv": null,
+        "descJa": "",
+        "thumbUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/chara-thumb-11.webp",
+        "fullImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/quality100/chara-11.webp",
+        "hissatsuNameJa": "バハムートクラッシュ",
+        "hissatsuImageUrl": "https://www.inazuma-cross.jp/wp-content/themes/officialsite/dist/webp/victory-road-2026/hissatsu-11.webp",
+        "nameFr": "Ren Tsukikage",
+        "localThumb": "/inazuma-cross/vr2026/chara-thumb-11.webp",
+        "localFullImage": "/inazuma-cross/vr2026/chara-11.webp",
+        "localHissatsuImage": "/inazuma-cross/vr2026/hissatsu-11.webp"
+      }
+    ]
+  },
+  "guidePoints": [
+    {
+      "titleJa": "基本のゲームサイクル",
+      "bodyJa": "POINT1 基本のゲームサイクル 壁にぶつかったとき ＝ 育成タイム！焦らず報酬を貯めてチームを強化しよう。"
+    },
+    {
+      "titleJa": "壁にぶつかったらやること",
+      "bodyJa": "POINT2 壁にぶつかったらやること STEP1 報酬を受け取ろう チェックポイントは2か所。ログインしたらまず確認！ 1 時間経過で育成素材が貯まる！ クロスシミュレーター 経過時間の上限は24時間。報酬が溢れないように、1日1回受け取ろう！ゲームで遊んでいる間は、おまかせモードで「挑戦」を忘れずに！ 2 ダイヤボールがもらえるかも！？ プレゼントアイコンをチェック！ 育成素材からダイヤボールまで様々なアイテムがもらえるチャンス！ STEP2 選手のレベルを上げよう！ 🔗STEP1でGETした育成素材を使って選手のレベルを上げよう！ STEP1で貯めた育成素材でレベルアップ！コアメンバー5人のレベルを上げれば、他選手も自動で同"
+    },
+    {
+      "titleJa": "育成でできること",
+      "bodyJa": "POINT3 育成でできること レベル上げ以外にも様々な育成要素があるぞ！最強のチームを作ろう！ レベルアップ クロスシミュレーターで大量GET! MAIN 必殺技強化 主に交換所でGET！必殺技レベルを上げて勝利を目指そう！ パッシブ鍛錬 選手毎にパッシブスキルをランダムで付与！ポジションに合ったスキルを引き当てて、自分好みの選手を育成！ 装備 クロスシミュレーターや試練でGET！不要な装備は分解しよう！分解した素材は足りない装備の合成に使用可能！ イナズマシール 選手に貼って、任意のパッシブ効果を付与！ キャラクターの特性や自分の編成に合ったシールを見つけよう。 一部のシールは、専用素材の「強化シール」を使うと効果を強化できるぞ"
+    },
+    {
+      "titleJa": "知っておくと便利！",
+      "bodyJa": "POINT4 知っておくと便利！ 見落としがちなお役立ち情報 持ち物アイコンを確認してみよう 加速アイテムは、MENU>持ち物から使用できます！ 加速アイテムを持っているかも？ 「加速アイテム」で数時間分の報酬をすぐ受け取れます。素材が足りないときはチェック。"
+    }
+  ]
 }

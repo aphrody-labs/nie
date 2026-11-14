@@ -12,6 +12,7 @@ use tokio::net::{TcpListener, TcpStream};
 const MAX_HEADER_BYTES: usize = 16 * 1024;
 const MAX_BODY_BYTES: usize = 32 * 1024 * 1024;
 const MAX_FIND_LIMIT: usize = 500;
+const RG_M3_TOKENS_JSON: &str = include_str!("../../../packages/rg-config/rg-m3.json");
 
 #[derive(Debug, Args)]
 pub struct ServeArgs {
@@ -382,6 +383,205 @@ async fn route_request(
         };
     }
 
+    if method == "GET" && raw_path == "/v1/wiki/games" {
+        let reg = nie_pkg::Registry::embedded();
+        let locale = query
+            .get("locale")
+            .or_else(|| query.get("lang"))
+            .map(String::as_str)
+            .unwrap_or("fr");
+        if let Some(slug) = query.get("slug").or_else(|| query.get("id")) {
+            return match reg.by_slug(slug) {
+                Some(game) => HttpResponse::json(
+                    200,
+                    "OK",
+                    &json!({
+                        "schemaVersion": 1,
+                        "locale": locale,
+                        "localized": {
+                            "title": game.titles.pick(locale),
+                            "summary": game.summaries.pick(locale),
+                            "statusDetail": game.status_detail.pick(locale),
+                            "highlights": game.highlights.pick(locale),
+                        },
+                        "game": game,
+                    }),
+                ),
+                None => HttpResponse::json(
+                    404,
+                    "Not Found",
+                    &json!({ "error": "game not found", "slug": slug }),
+                ),
+            };
+        }
+
+        let era_filter = query.get("era").map(|s| s.trim()).filter(|s| !s.is_empty());
+        let status_filter = query
+            .get("status")
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty());
+        let q_filter = query
+            .get("q")
+            .map(|s| s.trim().to_ascii_lowercase())
+            .filter(|s| !s.is_empty());
+
+        let games: Vec<Value> = reg
+            .games
+            .iter()
+            .filter(|g| era_filter.is_none_or(|e| g.era == e))
+            .filter(|g| status_filter.is_none_or(|st| g.status == st))
+            .filter(|g| {
+                q_filter.as_ref().is_none_or(|q| {
+                    g.id.to_ascii_lowercase().contains(q)
+                        || g.slug.to_ascii_lowercase().contains(q)
+                        || g.title.to_ascii_lowercase().contains(q)
+                        || g.titles.pick(locale).to_ascii_lowercase().contains(q)
+                        || g.protagonist.to_ascii_lowercase().contains(q)
+                })
+            })
+            .map(|g| {
+                json!({
+                    "id": g.id,
+                    "slug": g.slug,
+                    "order": g.order,
+                    "series": g.series,
+                    "era": g.era,
+                    "status": g.status,
+                    "title": g.titles.pick(locale),
+                    "summary": g.summaries.pick(locale),
+                    "releaseYear": g.release_year,
+                    "protagonist": g.protagonist,
+                    "officialUrl": g.official_url,
+                    "communityWikis": g.community_wikis,
+                    "modHubs": g.mod_hubs,
+                })
+            })
+            .collect();
+
+        return HttpResponse::json(
+            200,
+            "OK",
+            &json!({
+                "schemaVersion": 1,
+                "locale": locale,
+                "total": games.len(),
+                "eras": reg.eras,
+                "games": games,
+            }),
+        );
+    }
+
+    if method == "GET" && raw_path == "/v1/wiki/mods" {
+        let reg = nie_pkg::Registry::embedded();
+        let game_filter = query
+            .get("game")
+            .map(|s| s.trim().to_ascii_lowercase())
+            .filter(|s| !s.is_empty());
+        let lang_filter = query
+            .get("lang")
+            .map(|s| s.trim().to_ascii_lowercase())
+            .filter(|s| !s.is_empty());
+        let q_filter = query
+            .get("q")
+            .map(|s| s.trim().to_ascii_lowercase())
+            .filter(|s| !s.is_empty());
+        let limit = query
+            .get("limit")
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(50)
+            .clamp(1, MAX_FIND_LIMIT);
+
+        let mut hubs = Vec::new();
+        let mut wikis = Vec::new();
+        for g in &reg.games {
+            let game_match = game_filter.as_ref().is_none_or(|gf| {
+                g.slug.eq_ignore_ascii_case(gf) || g.id.eq_ignore_ascii_case(gf)
+            });
+            if !game_match {
+                continue;
+            }
+            for hub in &g.mod_hubs {
+                if q_filter.as_ref().is_some_and(|q| {
+                    !hub.name.to_ascii_lowercase().contains(q)
+                        && !g.slug.to_ascii_lowercase().contains(q)
+                        && !hub.platform.to_ascii_lowercase().contains(q)
+                }) {
+                    continue;
+                }
+                if hubs.len() < limit {
+                    hubs.push(json!({
+                        "gameId": g.id,
+                        "gameSlug": g.slug,
+                        "platform": hub.platform,
+                        "name": hub.name,
+                        "url": hub.url,
+                        "gamebananaId": hub.gamebanana_id,
+                        "apiUrl": hub.api_url,
+                    }));
+                }
+            }
+            for wiki in &g.community_wikis {
+                if lang_filter
+                    .as_ref()
+                    .is_some_and(|lf| !wiki.lang.eq_ignore_ascii_case(lf))
+                {
+                    continue;
+                }
+                if q_filter.as_ref().is_some_and(|q| {
+                    !wiki.name.to_ascii_lowercase().contains(q)
+                        && !g.slug.to_ascii_lowercase().contains(q)
+                        && !wiki.url.to_ascii_lowercase().contains(q)
+                }) {
+                    continue;
+                }
+                if wikis.len() < limit {
+                    wikis.push(json!({
+                        "gameId": g.id,
+                        "gameSlug": g.slug,
+                        "lang": wiki.lang,
+                        "name": wiki.name,
+                        "url": wiki.url,
+                        "apiUrl": wiki.api_url,
+                        "kind": wiki.kind,
+                    }));
+                }
+            }
+        }
+
+        let live_snapshot = load_mods_snapshot_value();
+        return HttpResponse::json(
+            200,
+            "OK",
+            &json!({
+                "schemaVersion": 1,
+                "totalHubs": hubs.len(),
+                "totalWikiSources": wikis.len(),
+                "hubs": hubs,
+                "wikiSources": wikis,
+                "snapshot": live_snapshot,
+            }),
+        );
+    }
+
+    if method == "GET" && raw_path == "/v1/design/tokens" {
+        let manifest: Value = serde_json::from_str(RG_M3_TOKENS_JSON).unwrap_or_else(|_| json!({}));
+        return HttpResponse::json(
+            200,
+            "OK",
+            &json!({
+                "schemaVersion": aphrody_nie_core::contract_generated::CONTRACT_SCHEMA_VERSION,
+                "contractVersion": aphrody_nie_core::contract_generated::CONTRACT_VERSION,
+                "defaultDomain": aphrody_nie_core::contract_generated::DEFAULT_DOMAIN,
+                "ports": {
+                    "website": aphrody_nie_core::contract_generated::PORT_WEBSITE,
+                    "api": aphrody_nie_core::contract_generated::PORT_API,
+                    "azalee": aphrody_nie_core::contract_generated::PORT_AZALEE,
+                },
+                "manifest": manifest,
+            }),
+        );
+    }
+
     let Some(vfs) = state.vfs.clone() else {
         return HttpResponse::json(
             503,
@@ -640,6 +840,46 @@ pub(crate) fn sanitize_vfs_path(path: &str) -> Result<String, &'static str> {
     Ok(trimmed.to_owned())
 }
 
+fn load_mods_snapshot_value() -> Value {
+    let mut candidates = Vec::new();
+    if let Ok(root) = std::env::var("RG_CRAWL_DATA_ROOT") {
+        candidates.push(std::path::PathBuf::from(root).join("community-mods-index.json"));
+    }
+    if let Ok(shared) = std::env::var("RG_CRON_SHARED_ROOT") {
+        candidates.push(
+            std::path::PathBuf::from(shared)
+                .join("ie-crawl")
+                .join("community-mods-index.json"),
+        );
+    }
+    candidates.push(std::path::PathBuf::from(
+        "/srv/rg/shared/cron/ie-crawl/community-mods-index.json",
+    ));
+    candidates.push(std::path::PathBuf::from(
+        "C:/srv/rg/shared/cron/ie-crawl/community-mods-index.json",
+    ));
+
+    for path in candidates {
+        if let Ok(raw) = std::fs::read_to_string(&path)
+            && let Ok(parsed) = serde_json::from_str::<Value>(&raw)
+        {
+            return json!({
+                "available": true,
+                "path": path.display().to_string(),
+                "updatedAt": parsed.get("updatedAt").cloned().unwrap_or(Value::Null),
+                "modsCount": parsed.get("mods").and_then(Value::as_array).map(|a| a.len()).unwrap_or(0),
+                "wikisCount": parsed.get("wikis").and_then(Value::as_array).map(|a| a.len()).unwrap_or(0),
+            });
+        }
+    }
+    json!({
+        "available": false,
+        "updatedAt": Value::Null,
+        "modsCount": 0,
+        "wikisCount": 0,
+    })
+}
+
 fn authorize_bearer(expected: Option<&str>, headers: &HashMap<String, String>) -> bool {
     let Some(expected) = expected else {
         return true;
@@ -722,5 +962,38 @@ mod tests {
         assert!(!authorize_bearer(Some("abc123"), &headers));
         headers.insert("authorization".to_owned(), "Bearer abc123".to_owned());
         assert!(authorize_bearer(Some("abc123"), &headers));
+    }
+
+    #[tokio::test]
+    async fn wiki_games_mods_and_design_tokens_routes_respond() {
+        let headers = HashMap::new();
+        let games =
+            route_request("GET", "/v1/wiki/games?locale=ja&status=in-development", &headers, Vec::new(), state(true, None)).await;
+        assert_eq!(games.status, 200);
+        let games_json: Value = serde_json::from_slice(&games.body).expect("games json");
+        assert_eq!(games_json["total"], 2);
+        assert_eq!(games_json["locale"], "ja");
+
+        let detail =
+            route_request("GET", "/v1/wiki/games?slug=inazuma-eleven-re&locale=en", &headers, Vec::new(), state(true, None)).await;
+        assert_eq!(detail.status, 200);
+        let detail_json: Value = serde_json::from_slice(&detail.body).expect("detail json");
+        assert_eq!(detail_json["game"]["slug"], "inazuma-eleven-re");
+
+        let mods =
+            route_request("GET", "/v1/wiki/mods?lang=es&limit=5", &headers, Vec::new(), state(true, None)).await;
+        assert_eq!(mods.status, 200);
+        let mods_json: Value = serde_json::from_slice(&mods.body).expect("mods json");
+        assert!(mods_json["wikiSources"].as_array().is_some_and(|a| !a.is_empty()));
+
+        let tokens =
+            route_request("GET", "/v1/design/tokens", &headers, Vec::new(), state(true, None)).await;
+        assert_eq!(tokens.status, 200);
+        let tokens_json: Value = serde_json::from_slice(&tokens.body).expect("tokens json");
+        assert_eq!(tokens_json["manifest"]["defaultTheme"], "roy");
+        assert_eq!(
+            tokens_json["manifest"]["themes"].as_array().map(|a| a.len()),
+            Some(9)
+        );
     }
 }

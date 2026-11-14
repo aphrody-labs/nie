@@ -1,7 +1,7 @@
 /**
  * Client HTTP typé de l'API Azalée.
  *
- * Une méthode par route de `src/server/serve.ts` (42), typée par les fonctions
+ * Une méthode par route de `src/server/serve.ts` (50), typée par les fonctions
  * serveur elles-mêmes (voir `./types`). Le client est **client-safe** : il ne
  * dépend que de `fetch`, `Request`, `URL` et `AbortSignal`, et se bundle donc
  * dans une webview Tauri, un navigateur ou un worker.
@@ -35,6 +35,9 @@ import type {
   AzaleeCharacterList,
   AzaleeCoach,
   AzaleeCoachList,
+  AzaleeCommunityMods,
+  AzaleeCommunityWikis,
+  AzaleeCommunityWikisParams,
   AzaleeCostumeList,
   AzaleeCpkFileMeta,
   AzaleeCpkListParams,
@@ -45,15 +48,24 @@ import type {
   AzaleeCrossStats,
   AzaleeCrossTables,
   AzaleeDataSource,
+  AzaleeDesignThemes,
+  AzaleeDesignTokens,
   AzaleeDrops,
   AzaleeGalleryList,
   AzaleeGalleryParams,
+  AzaleeGameDetail,
+  AzaleeGameDetailParams,
+  AzaleeGamesCatalog,
+  AzaleeGamesParams,
   AzaleeHealth,
   AzaleeIndex,
   AzaleeInvocation,
   AzaleeItem,
   AzaleeItemList,
   AzaleeListParams,
+  AzaleeLocaleDictParams,
+  AzaleeLocaleDictionary,
+  AzaleeModsParams,
   AzaleePassive,
   AzaleePassiveList,
   AzaleePassiveParams,
@@ -76,6 +88,8 @@ import type {
   AzaleeTextParams,
   AzaleeTextResult,
   AzaleeTextStats,
+  AzaleeTranslateParams,
+  AzaleeTranslateResult,
   AzaleeTrophy,
   AzaleeTrophyList,
   AzaleeTrophyParams,
@@ -219,6 +233,23 @@ export function createAzaleeClient(
 
     search: (p: AzaleeCrossSearchParams, o) =>
       get<AzaleeSearchResult>("/api/search", { ...p }, o),
+
+    games: (p: AzaleeGamesParams = {}, o) =>
+      get<AzaleeGamesCatalog>("/api/games", { ...p }, o),
+    game: (slug, p: AzaleeGameDetailParams = {}, o) =>
+      get<AzaleeGameDetail>(`/api/games/${seg(slug)}`, { ...p }, o),
+    mods: (p: AzaleeModsParams = {}, o) =>
+      get<AzaleeCommunityMods>("/api/mods", { ...p }, o),
+    communityWikis: (p: AzaleeCommunityWikisParams = {}, o) =>
+      get<AzaleeCommunityWikis>("/api/community/wikis", { ...p }, o),
+    designThemes: (o) =>
+      get<AzaleeDesignThemes>("/api/design/themes", undefined, o),
+    designTokens: (o) =>
+      get<AzaleeDesignTokens>("/api/design/tokens", undefined, o),
+    localeDictionary: (lang, p: AzaleeLocaleDictParams = {}, o) =>
+      get<AzaleeLocaleDictionary>(`/api/locales/${seg(lang)}`, { ...p }, o),
+    translate: (p: AzaleeTranslateParams, o) =>
+      get<AzaleeTranslateResult>("/api/translate", { ...p }, o),
   };
 }
 

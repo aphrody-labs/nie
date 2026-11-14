@@ -1,17 +1,67 @@
-# NIE game registry: every Inazuma Eleven game NIE knows about.
-# One [[game]] per title; releases list every platform it shipped on.
-# Feature support: full | partial | planned | none.
-# Release years and regions are best-effort community data; fields marked
-# `verified = false` still need a primary source check (docs/rust-migration/FEATURE-MATRIX.md).
+# NIE unified game registry: single source of truth for all Inazuma Eleven titles.
+# Consumed natively by Rust (nie-pkg, aphrody-nie-cli), C23 ABI (rg_contract),
+# OpenAPI 3.2.1 (contract/openapi.yml), and TypeScript (@rosegriffon/inagle/games).
 # NIE never ships game content: `install` registers and hashes a dump the user owns.
 
 schema = 1
 
+[[era]]
+id = "upcoming"
+label = { fr = "En développement & Annoncés", en = "In Development & Announced", ja = "開発中・新作発表", es = "En desarrollo y anunciados" }
+description = { fr = "Remake et prochains épisodes officiellement dévoilés par LEVEL-5.", en = "Upcoming remake and next mainline chapters officially unveiled by LEVEL-5.", ja = "LEVEL-5より正式発表されたリメイクおよび完全新作タイトル。", es = "Próximo remake y nuevas entregas principales reveladas oficialmente por LEVEL-5." }
+
+[[era]]
+id = "modern"
+label = { fr = "Ère Moderne (Victory Road & Cross)", en = "Modern Era (Victory Road & Cross)", ja = "最新作・現代シリーズ（VR・クロス）", es = "Era Moderna (Victory Road y Cross)" }
+description = { fr = "Les titres actuels en service continu et leur écosystème cross-media.", en = "Active live-service flagship titles and cross-media ecosystem.", ja = "現在サービス中の主力タイトルとクロスメディア展開。", es = "Títulos insignia en servicio activo y su ecosistema transmedia." }
+
+[[era]]
+id = "original"
+label = { fr = "Trilogie originale (Raimon)", en = "Original Trilogy (Raimon)", ja = "オリジナル三部作（雷門中）", es = "Trilogía original (Raimon)" }
+description = { fr = "L'arc fondateur autour de Mark Evans (Nintendo DS et compilation 3DS).", en = "The foundational arc following Mark Evans across Nintendo DS and the 3DS collection.", ja = "円堂守を中心とした原点となるニンテンドーDS三部作および3DS移植。", es = "El arco fundacional en torno a Mark Evans en Nintendo DS y la recopilación de 3DS." }
+
+[[era]]
+id = "go"
+label = { fr = "Trilogie GO (Arion Sherwind)", en = "GO Trilogy (Arion Sherwind)", ja = "イナズマイレブンGO三部作（松風天馬）", es = "Trilogía GO (Arion Sherwind)" }
+description = { fr = "La nouvelle génération de Raimon : Esprits Guerriers, Mixi Max et Totems.", en = "Raimon's next generation introducing Fighting Spirits, Mixi Max and Totems.", ja = "松風天馬ら新世代雷門による化身・ミキシマックス・ソウルの物語。", es = "La nueva generación del Raimon con Espíritus Guerreros, Miximax y Tótems." }
+
+[[era]]
+id = "spinoff"
+label = { fr = "Wii & Spin-offs", en = "Wii & Spin-offs", ja = "Wii・スピンオフ作品", es = "Wii y Spin-offs" }
+description = { fr = "La série arcade Strikers sur Wii et le compagnon Everyday!!.", en = "The Wii arcade Strikers series and the Everyday!! companion title.", ja = "Wii向け対戦アクション『ストライカーズ』シリーズおよび『エブリデイ!!』。", es = "La serie arcade Strikers de Wii y el título complementario Everyday!!." }
+
+[[era]]
+id = "mobile"
+label = { fr = "Mobile & Services historiques", en = "Mobile & Legacy Services", ja = "モバイル・旧サービス作品", es = "Móvil y servicios históricos" }
+description = { fr = "Titres iOS et Android antérieurs à Cross (en service ou clos).", en = "Legacy iOS and Android releases predating Cross.", ja = "『クロス』以前に配信されたスマートフォン向けタイトル。", es = "Entregas históricas para iOS y Android anteriores a Cross." }
+
+[[era]]
+id = "ares-orion"
+label = { fr = "Ares / Orion & Projets transformés", en = "Ares / Orion & Evolved Projects", ja = "アレス・オリオン／開発統合プロジェクト", es = "Ares / Orión y proyectos evolucionados" }
+description = { fr = "L'arc alternatif Ares/Orion et l'évolution du projet Great Road.", en = "The alternate Ares and Orion arc and the evolution of Heroes' Great Road.", ja = "アレスの天秤・オリオンの刻印および『グレートロード』の統合経緯。", es = "El arco alternativo Ares y Orión junto a la evolución de Heroes' Great Road." }
+
 [[game]]
 id = "ie1"
+slug = "inazuma-eleven"
+order = 1
 title = "Inazuma Eleven"
 series = "original"
-revision = 1
+era = "original"
+status = "released"
+revision = 2
+release_year = "2008"
+release_date_ja = "2008-08-22"
+protagonist = "Mark Evans (Mamoru Endou)"
+developer = "LEVEL-5"
+thumbnail = "/games/img_inazuma.jpg"
+cover = "/IE1_EN.webp"
+official_url = "https://www.inazuma.jp/inazuma/"
+series_filter_key = "Inazuma Eleven"
+platforms_display = ["Nintendo DS"]
+titles = { fr = "Inazuma Eleven", en = "Inazuma Eleven", ja = "イナズマイレブン", es = "Inazuma Eleven" }
+status_detail = { fr = "Sorti (Nintendo DS)", en = "Released (Nintendo DS)", ja = "発売中（ニンテンドーDS）", es = "Disponible (Nintendo DS)" }
+summaries = { fr = "Le tout premier épisode fondateur sur Nintendo DS. Mark Evans relance le club de football du collège Raimon jusqu'à la victoire au tournoi Football Frontier.", en = "The founding football RPG on Nintendo DS. Mark Evans rebuilds the Raimon Junior High soccer club all the way to the Football Frontier finals.", ja = "円堂守が弱小雷門中サッカー部を立て直し、フットボールフロンティア制覇を目指すシリーズ原点作。", es = "El RPG futbolístico fundacional de Nintendo DS. Mark Evans reconstruye el club de fútbol del Instituto Raimon hasta conquistar el torneo Football Frontier." }
+highlights = { fr = ["Premier RPG de football tactile sur Nintendo DS", "Révélation du collège Raimon et de la Royal Academy", "Plus de 1 000 personnages recrutables indexés dans Azalée"], en = ["First touch-controlled football RPG on Nintendo DS", "Introduces Raimon Junior High and Royal Academy", "Over 1,000 recruitable characters indexed in Azalee"], ja = ["タッチペン操作の収集・育成サッカーRPG第1作", "雷門中と帝国学園のライバル関係を描写", "1,000人以上のスカウト選手を収録"], es = ["Primer RPG de fútbol táctil en Nintendo DS", "Presenta al Instituto Raimon y la Royal Academy", "Más de 1.000 personajes fichables indexados en Azalee"] }
 features = { dump_verify = "full", asset_extract = "planned", text_extract = "planned", translation_patch = "planned", save_edit = "planned", team_builder = "planned", wiki_data = "partial", nie_runtime = "none", netplay = "none", mod_loader = "none" }
 releases = [
   { platform = "ds", year = 2008, regions = ["jp", "eu"], format = "nds-rom", verified = true },
@@ -21,12 +71,42 @@ ecosystem = [
   { kind = "emulator", name = "melonDS", url = "https://melonds.kuribo64.net" },
   { kind = "tool", name = "Kuriimu2", url = "https://github.com/FanTranslatorsInternational/Kuriimu2" },
 ]
+internal_links = [
+  { href = "/wiki/chara?series=Inazuma%20Eleven", label = { fr = "Joueurs Inazuma Eleven", en = "Inazuma Eleven Players", ja = "イナズマイレブン選手一覧", es = "Jugadores Inazuma Eleven" } },
+  { href = "/wiki/skill", label = { fr = "Techniques spéciales", en = "Special Moves", ja = "必殺技", es = "Supertécnicas" } },
+]
+community_wikis = [
+  { lang = "en", name = "Inazuma Eleven Wiki (EN)", url = "https://inazuma-eleven.fandom.com/wiki/Inazuma_Eleven_Wiki", api_url = "https://inazuma-eleven.fandom.com/api.php", kind = "mediawiki" },
+  { lang = "fr", name = "Wiki Inazuma Eleven (FR)", url = "https://inazuma-eleven.fandom.com/fr/wiki/Wiki_Inazuma_Eleven", api_url = "https://inazuma-eleven.fandom.com/fr/api.php", kind = "mediawiki" },
+  { lang = "es", name = "Inazuma Eleven Wiki (ES)", url = "https://inazuma.fandom.com/es/wiki/Inazuma_Eleven_Wiki", api_url = "https://inazuma.fandom.com/es/api.php", kind = "mediawiki" },
+  { lang = "es", name = "Guías Nintendo (ES)", url = "https://www.guiasnintendo.com/0_NINTENDO_DS/inazuma_eleven/inazuma_eleven_sp/welcome.html", kind = "guide" },
+  { lang = "ja", name = "Wikiwiki イナズマイレブン (JA)", url = "https://wikiwiki.jp/inazuma/", kind = "wiki" },
+]
+mod_hubs = [
+  { platform = "gamebanana", name = "GameBanana - Inazuma Eleven", url = "https://gamebanana.com/games/19155", gamebanana_id = 19155, api_url = "https://gamebanana.com/apiv11/Game/19155/Subfeed" },
+]
 
 [[game]]
 id = "ie2"
+slug = "inazuma-eleven-2"
+order = 2
 title = "Inazuma Eleven 2: Firestorm / Blizzard"
 series = "original"
-revision = 1
+era = "original"
+status = "released"
+revision = 2
+release_year = "2009"
+protagonist = "Mark Evans & Shawn Froste"
+developer = "LEVEL-5"
+thumbnail = "/games/img_inazuma2.jpg"
+cover = "/IE2_EN.webp"
+official_url = "https://www.inazuma.jp/inazuma2/"
+series_filter_key = "Inazuma Eleven 2"
+platforms_display = ["Nintendo DS"]
+titles = { fr = "Inazuma Eleven 2 : Tempête de Feu / Tempête de Glace", en = "Inazuma Eleven 2: Firestorm / Blizzard", ja = "イナズマイレブン2 脅威の侵略者 ファイア／ブリザード", es = "Inazuma Eleven 2: Tormenta de Fuego / Ventisca Eterna" }
+status_detail = { fr = "Sorti en deux versions (DS)", en = "Released in two versions (DS)", ja = "発売中（2バージョン・DS）", es = "Disponible en dos ediciones (DS)" }
+summaries = { fr = "Raimon sillonne le Japon à bord de la caravane Inazuma pour affronter les équipes de l'Académie Alius et recruter des joueurs dans tout le pays.", en = "Raimon travels across Japan aboard the Inazuma Caravan to stop Alius Academy and scout top players nationwide.", ja = "イナズマキャラバンで日本各地を巡り、エイリア学園の脅威に立ち向かう第2作。", es = "El Raimon recorre Japón a bordo de la Caravana Inazuma para enfrentarse a la Academia Alius y fichar jugadores por todo el país." }
+highlights = { fr = ["Deux éditions complémentaires : Tempête de Feu et Tempête de Glace", "Arrivée de Shawn Froste et des collèges Alius", "771 joueurs de l'épisode recensés dans le Zukan"], en = ["Two companion editions: Firestorm and Blizzard", "Introduces Shawn Froste and Alius Academy teams", "771 characters from this chapter indexed in Zukan"], ja = ["ファイア／ブリザードの2バージョン展開", "吹雪士郎とエイリア学園が登場", "771名の選手データを収録"], es = ["Dos ediciones complementarias: Tormenta de Fuego y Ventisca Eterna", "Presenta a Shawn Froste y a los equipos de la Academia Alius", "771 jugadores de esta entrega indexados en Zukan"] }
 features = { dump_verify = "full", asset_extract = "planned", text_extract = "planned", translation_patch = "planned", save_edit = "planned", team_builder = "planned", wiki_data = "partial", nie_runtime = "none", netplay = "none", mod_loader = "none" }
 releases = [
   { platform = "ds", year = 2009, regions = ["jp", "eu"], format = "nds-rom", verified = true },
@@ -35,12 +115,41 @@ ecosystem = [
   { kind = "emulator", name = "melonDS", url = "https://melonds.kuribo64.net" },
   { kind = "tool", name = "Kuriimu2", url = "https://github.com/FanTranslatorsInternational/Kuriimu2" },
 ]
+internal_links = [
+  { href = "/wiki/chara?series=Inazuma%20Eleven%202", label = { fr = "Joueurs IE2", en = "IE2 Players", ja = "イナズマイレブン2選手", es = "Jugadores IE2" } },
+]
+community_wikis = [
+  { lang = "en", name = "Inazuma Eleven Wiki (EN)", url = "https://inazuma-eleven.fandom.com/wiki/Inazuma_Eleven_Wiki", api_url = "https://inazuma-eleven.fandom.com/api.php", kind = "mediawiki" },
+  { lang = "fr", name = "Wiki Inazuma Eleven (FR)", url = "https://inazuma-eleven.fandom.com/fr/wiki/Wiki_Inazuma_Eleven", api_url = "https://inazuma-eleven.fandom.com/fr/api.php", kind = "mediawiki" },
+  { lang = "es", name = "Inazuma Eleven Wiki (ES)", url = "https://inazuma.fandom.com/es/wiki/Inazuma_Eleven_Wiki", api_url = "https://inazuma.fandom.com/es/api.php", kind = "mediawiki" },
+  { lang = "ja", name = "Wikiwiki イナズマイレブン (JA)", url = "https://wikiwiki.jp/inazuma/", kind = "wiki" },
+]
+mod_hubs = [
+  { platform = "gamebanana", name = "GameBanana - IE2 Firestorm", url = "https://gamebanana.com/games/19156", gamebanana_id = 19156, api_url = "https://gamebanana.com/apiv11/Game/19156/Subfeed" },
+  { platform = "gamebanana", name = "GameBanana - IE2 Blizzard", url = "https://gamebanana.com/games/19157", gamebanana_id = 19157, api_url = "https://gamebanana.com/apiv11/Game/19157/Subfeed" },
+]
 
 [[game]]
 id = "ie3"
+slug = "inazuma-eleven-3"
+order = 3
 title = "Inazuma Eleven 3: Lightning Bolt / Bomb Blast / Team Ogre Attacks"
 series = "original"
-revision = 1
+era = "original"
+status = "released"
+revision = 2
+release_year = "2010"
+protagonist = "Mark Evans (Inazuma Japon)"
+developer = "LEVEL-5"
+thumbnail = "/games/img_inazuma3.jpg"
+cover = "/IE3_EN.webp"
+official_url = "https://www.inazuma.jp/inazuma3/"
+series_filter_key = "Inazuma Eleven 3"
+platforms_display = ["Nintendo DS", "Nintendo 3DS"]
+titles = { fr = "Inazuma Eleven 3 : Foudre Céleste / Feu Explosif / Les Ogres attaquent !", en = "Inazuma Eleven 3: Lightning Bolt / Bomb Blast / Team Ogre Attacks!", ja = "イナズマイレブン3 世界への挑戦!! スパーク／ボンバー／ジ・オーガ", es = "Inazuma Eleven 3: Rayo Celeste / Fuego Explosivo / ¡La Amenaza del Ogro!" }
+status_detail = { fr = "Sorti en trois versions (DS / 3DS)", en = "Released in three versions (DS / 3DS)", ja = "発売中（3バージョン・DS／3DS）", es = "Disponible en tres ediciones (DS / 3DS)" }
+summaries = { fr = "Inazuma Japon représente l'archipel sur l'île Liocott durant le Football Frontier International, concluant la trilogie originale de Mark Evans.", en = "Inazuma National competes on Liocott Island in the Football Frontier International tournament, concluding Mark Evans' original trilogy.", ja = "日本代表イナズマジャパンが世界大会FFIに挑む、円堂守三部作の完結編。", es = "Inazuma Japón compite en la Isla Liocott durante el Torneo Frontier Internacional, cerrando la trilogía original de Mark Evans." }
+highlights = { fr = ["Trois versions : Spark / Bomber / The Ogre", "Tournoi mondial FFI et mécaniques de tactiques spéciales", "657 personnages IE3 répertoriés dans la base"], en = ["Three editions: Lightning Bolt / Bomb Blast / Team Ogre Attacks", "World FFI tournament and Hissatsu Tactics system", "657 IE3 characters catalogued in the database"], ja = ["スパーク／ボンバー／ジ・オーガの3バージョン", "世界大会FFIと必殺タクティクスを実装", "657名の選手をデータベース登録"], es = ["Tres ediciones: Rayo Celeste, Fuego Explosivo y La Amenaza del Ogro", "Torneo mundial FFI y sistema de supertácticas", "657 personajes de IE3 catalogados en la base de datos"] }
 features = { dump_verify = "full", asset_extract = "planned", text_extract = "planned", translation_patch = "planned", save_edit = "planned", team_builder = "planned", wiki_data = "partial", nie_runtime = "none", netplay = "none", mod_loader = "none" }
 releases = [
   { platform = "ds", year = 2010, regions = ["jp"], format = "nds-rom", verified = true },
@@ -51,12 +160,41 @@ ecosystem = [
   { kind = "emulator", name = "Azahar", url = "https://azahar-emu.org" },
   { kind = "tool", name = "Kuriimu2", url = "https://github.com/FanTranslatorsInternational/Kuriimu2" },
 ]
+internal_links = [
+  { href = "/wiki/chara?series=Inazuma%20Eleven%203", label = { fr = "Joueurs IE3", en = "IE3 Players", ja = "イナズマイレブン3選手", es = "Jugadores IE3" } },
+]
+community_wikis = [
+  { lang = "ja", name = "@wiki イナズマイレブン3 (JA)", url = "https://w.atwiki.jp/inazuma3/", kind = "wiki" },
+  { lang = "en", name = "Inazuma Eleven Wiki (EN)", url = "https://inazuma-eleven.fandom.com/wiki/Inazuma_Eleven_Wiki", api_url = "https://inazuma-eleven.fandom.com/api.php", kind = "mediawiki" },
+  { lang = "fr", name = "Wiki Inazuma Eleven (FR)", url = "https://inazuma-eleven.fandom.com/fr/wiki/Wiki_Inazuma_Eleven", api_url = "https://inazuma-eleven.fandom.com/fr/api.php", kind = "mediawiki" },
+  { lang = "es", name = "Inazuma Eleven Wiki (ES)", url = "https://inazuma.fandom.com/es/wiki/Inazuma_Eleven_Wiki", api_url = "https://inazuma.fandom.com/es/api.php", kind = "mediawiki" },
+]
+mod_hubs = [
+  { platform = "gamebanana", name = "GameBanana - IE3 Lightning Bolt", url = "https://gamebanana.com/games/19158", gamebanana_id = 19158, api_url = "https://gamebanana.com/apiv11/Game/19158/Subfeed" },
+  { platform = "gamebanana", name = "GameBanana - IE3 Bomb Blast", url = "https://gamebanana.com/games/19159", gamebanana_id = 19159, api_url = "https://gamebanana.com/apiv11/Game/19159/Subfeed" },
+  { platform = "gamebanana", name = "GameBanana - IE3 Team Ogre Attacks!", url = "https://gamebanana.com/games/19160", gamebanana_id = 19160, api_url = "https://gamebanana.com/apiv11/Game/19160/Subfeed" },
+]
 
 [[game]]
 id = "strikers"
+slug = "inazuma-eleven-strikers"
+order = 4
 title = "Inazuma Eleven Strikers"
 series = "strikers"
-revision = 1
+era = "spinoff"
+status = "released"
+revision = 2
+release_year = "2011"
+protagonist = "Mark Evans & Raimon"
+developer = "LEVEL-5 / Shade"
+thumbnail = "/games/img_strikers.jpg"
+official_url = "https://www.inazuma.jp/strikers/"
+related_series_keys = ["Inazuma Eleven", "Inazuma Eleven 2", "Inazuma Eleven 3"]
+platforms_display = ["Wii"]
+titles = { fr = "Inazuma Eleven Strikers", en = "Inazuma Eleven Strikers", ja = "イナズマイレブン ストライカーズ", es = "Inazuma Eleven Strikers" }
+status_detail = { fr = "Sorti (Wii)", en = "Released (Wii)", ja = "発売中（Wii）", es = "Disponible (Wii)" }
+summaries = { fr = "Premier épisode sur console de salon axé sur les matchs multijoueurs arcade jusqu'à quatre joueurs avec les techniques emblématiques de la trilogie DS.", en = "First home-console entry focused on arcade multiplayer matches for up to four players with signature DS trilogy moves.", ja = "DS三部作のキャラクターで最大4人対戦を楽しめるシリーズ初の据置機タイトル。", es = "Primera entrega de sobremesa centrada en partidos arcade multijugador para hasta cuatro jugadores con las técnicas clásicas de DS." }
+highlights = { fr = ["Matchs multijoueurs jusqu'à 4 sur Wii", "Rassemble Raimon, Alius et les sélections du FFI"], en = ["Up to 4-player arcade multiplayer on Wii", "Brings together Raimon, Alius Academy and FFI squads"], ja = ["Wiiでの最大4人リアルタイム対戦", "雷門・エイリア・FFI各国代表が集結"], es = ["Partidos multijugador para hasta 4 jugadores en Wii", "Reúne al Raimon, la Academia Alius y selecciones del FFI"] }
 features = { dump_verify = "full", asset_extract = "planned", text_extract = "planned", translation_patch = "planned", save_edit = "none", team_builder = "planned", wiki_data = "partial", nie_runtime = "none", netplay = "planned", mod_loader = "none" }
 releases = [
   { platform = "wii", year = 2011, regions = ["jp", "eu"], format = "wii-disc", verified = true },
@@ -64,38 +202,37 @@ releases = [
 ecosystem = [
   { kind = "emulator", name = "Dolphin", url = "https://dolphin-emu.org" },
 ]
-
-[[game]]
-id = "strikers-2012"
-title = "Inazuma Eleven Strikers 2012 Xtreme"
-series = "strikers"
-revision = 1
-features = { dump_verify = "full", asset_extract = "planned", text_extract = "planned", translation_patch = "planned", save_edit = "none", team_builder = "planned", wiki_data = "partial", nie_runtime = "none", netplay = "planned", mod_loader = "none" }
-releases = [
-  { platform = "wii", year = 2011, regions = ["jp"], format = "wii-disc", verified = true },
+internal_links = [
+  { href = "/wiki/chara?series=Inazuma%20Eleven", label = { fr = "Explorer les joueurs de la trilogie", en = "Browse Original Trilogy Players", ja = "初期三部作の選手を見る", es = "Explorar jugadores de la trilogía" } },
 ]
-ecosystem = [
-  { kind = "emulator", name = "Dolphin", url = "https://dolphin-emu.org" },
-]
-
-[[game]]
-id = "go-strikers-2013"
-title = "Inazuma Eleven GO Strikers 2013"
-series = "strikers"
-revision = 1
-features = { dump_verify = "full", asset_extract = "planned", text_extract = "planned", translation_patch = "planned", save_edit = "none", team_builder = "planned", wiki_data = "partial", nie_runtime = "none", netplay = "planned", mod_loader = "none" }
-releases = [
-  { platform = "wii", year = 2012, regions = ["jp"], format = "wii-disc", verified = true },
-]
-ecosystem = [
-  { kind = "emulator", name = "Dolphin", url = "https://dolphin-emu.org" },
+community_wikis = [
+  { lang = "en", name = "Inazuma Eleven Wiki (EN)", url = "https://inazuma-eleven.fandom.com/wiki/Inazuma_Eleven_Wiki", api_url = "https://inazuma-eleven.fandom.com/api.php", kind = "mediawiki" },
+  { lang = "fr", name = "Wiki Inazuma Eleven (FR)", url = "https://inazuma-eleven.fandom.com/fr/wiki/Wiki_Inazuma_Eleven", api_url = "https://inazuma-eleven.fandom.com/fr/api.php", kind = "mediawiki" },
+  { lang = "es", name = "Inazuma Eleven Wiki (ES)", url = "https://inazuma.fandom.com/es/wiki/Inazuma_Eleven_Wiki", api_url = "https://inazuma.fandom.com/es/api.php", kind = "mediawiki" },
+  { lang = "ja", name = "Wikiwiki イナズマイレブン (JA)", url = "https://wikiwiki.jp/inazuma/", kind = "wiki" },
 ]
 
 [[game]]
 id = "go1"
+slug = "inazuma-eleven-go"
+order = 5
 title = "Inazuma Eleven GO: Light / Shadow"
 series = "go"
-revision = 1
+era = "go"
+status = "released"
+revision = 2
+release_year = "2011"
+protagonist = "Arion Sherwind (Tenma Matsukaze)"
+developer = "LEVEL-5"
+thumbnail = "/games/img_go.jpg"
+cover = "/GO_EN.webp"
+official_url = "https://www.inazuma.jp/go/"
+series_filter_key = "Inazuma Eleven GO"
+platforms_display = ["Nintendo 3DS"]
+titles = { fr = "Inazuma Eleven GO : Lumière / Ombre", en = "Inazuma Eleven GO: Light / Shadow", ja = "イナズマイレブンGO シャイン／ダーク", es = "Inazuma Eleven GO: Luz / Sombra" }
+status_detail = { fr = "Sorti en deux versions (3DS)", en = "Released in two versions (3DS)", ja = "発売中（2バージョン・3DS）", es = "Disponible en dos ediciones (3DS)" }
+summaries = { fr = "Dix ans après le sacre mondial de Mark Evans, Arion Sherwind entre à Raimon et s'oppose au contrôle du football par le Cinquième Secteur.", en = "Ten years after Mark Evans' world victory, Arion Sherwind joins Raimon to resist Fifth Sector's control of soccer.", ja = "円堂守の世界制覇から10年後、松風天馬がフィフスセクターの支配に挑む新章第1弾。", es = "Diez años tras la victoria mundial de Mark Evans, Arion Sherwind entra al Raimon para enfrentarse al control del fútbol del Sector Quinto." }
+highlights = { fr = ["Premier volet développé en 3D pour Nintendo 3DS", "Apparition des Esprits Guerriers (Keshin)", "Plus de 1 000 personnages GO disponibles dans Azalée"], en = ["First full-3D entry built for Nintendo 3DS", "Introduces Fighting Spirits (Keshin)", "Over 1,000 GO characters indexed in Azalee"], ja = ["ニンテンドー3DS向け初のフル3D作品", "化身（けしん）システムを初導入", "1,000名以上のGO世代選手を収録"], es = ["Primera entrega totalmente en 3D para Nintendo 3DS", "Introduce los Espíritus Guerreros (Keshin)", "Más de 1.000 personajes de GO disponibles en Azalee"] }
 features = { dump_verify = "full", asset_extract = "partial", text_extract = "planned", translation_patch = "planned", save_edit = "planned", team_builder = "planned", wiki_data = "partial", nie_runtime = "none", netplay = "none", mod_loader = "none" }
 releases = [
   { platform = "3ds", year = 2011, regions = ["jp", "eu"], format = "3ds-cart", verified = true },
@@ -104,12 +241,108 @@ ecosystem = [
   { kind = "emulator", name = "Azahar", url = "https://azahar-emu.org" },
   { kind = "tool", name = "Kuriimu2", url = "https://github.com/FanTranslatorsInternational/Kuriimu2" },
 ]
+internal_links = [
+  { href = "/wiki/chara?series=Inazuma%20Eleven%20GO", label = { fr = "Joueurs Inazuma Eleven GO", en = "Inazuma Eleven GO Players", ja = "イナズマイレブンGO選手", es = "Jugadores Inazuma Eleven GO" } },
+  { href = "/wiki/aura", label = { fr = "Esprits Guerriers & Auras", en = "Fighting Spirits & Auras", ja = "化身・オーラ", es = "Espíritus Guerreros y Auras" } },
+]
+community_wikis = [
+  { lang = "ja", name = "@wiki イナズマイレブンGO (JA)", url = "https://w.atwiki.jp/inazumago/", kind = "wiki" },
+  { lang = "en", name = "Inazuma Eleven Wiki (EN)", url = "https://inazuma-eleven.fandom.com/wiki/Inazuma_Eleven_Wiki", api_url = "https://inazuma-eleven.fandom.com/api.php", kind = "mediawiki" },
+  { lang = "fr", name = "Wiki Inazuma Eleven (FR)", url = "https://inazuma-eleven.fandom.com/fr/wiki/Wiki_Inazuma_Eleven", api_url = "https://inazuma-eleven.fandom.com/fr/api.php", kind = "mediawiki" },
+  { lang = "es", name = "Inazuma Eleven Wiki (ES)", url = "https://inazuma.fandom.com/es/wiki/Inazuma_Eleven_Wiki", api_url = "https://inazuma.fandom.com/es/api.php", kind = "mediawiki" },
+]
+mod_hubs = [
+  { platform = "gamebanana", name = "GameBanana - IE GO Light", url = "https://gamebanana.com/games/19162", gamebanana_id = 19162, api_url = "https://gamebanana.com/apiv11/Game/19162/Subfeed" },
+  { platform = "gamebanana", name = "GameBanana - IE GO Shadow", url = "https://gamebanana.com/games/19163", gamebanana_id = 19163, api_url = "https://gamebanana.com/apiv11/Game/19163/Subfeed" },
+]
+
+[[game]]
+id = "strikers-2012"
+slug = "inazuma-eleven-strikers-2012-xtreme"
+order = 6
+title = "Inazuma Eleven Strikers 2012 Xtreme"
+series = "strikers"
+era = "spinoff"
+status = "released"
+revision = 2
+release_year = "2011"
+release_date_ja = "2011-12-22"
+protagonist = "Mark Evans & Arion Sherwind"
+developer = "LEVEL-5 / Shade"
+thumbnail = "/games/img_strikers_extreme.jpg"
+official_url = "https://www.inazuma.jp/strikers/"
+related_series_keys = ["Inazuma Eleven", "Inazuma Eleven GO"]
+platforms_display = ["Wii"]
+titles = { fr = "Inazuma Eleven Strikers 2012 Xtreme", en = "Inazuma Eleven Strikers 2012 Xtreme", ja = "イナズマイレブン ストライカーズ 2012エクストリーム", es = "Inazuma Eleven Strikers 2012 Xtreme" }
+status_detail = { fr = "Sorti au Japon (Wii)", en = "Released in Japan (Wii)", ja = "発売中（日本国内・Wii）", es = "Disponible en Japón (Wii)" }
+summaries = { fr = "Version Xtreme sortie fin 2011 sur Wii au Japon, ajoutant les équipes d'Inazuma Eleven GO et les Esprits Guerriers aux matchs arcade.", en = "Japanese Wii expansion released in late 2011 adding Inazuma Eleven GO squads and Fighting Spirits to arcade matches.", ja = "『GO』のチームや化身技を追加収録したWiiアクション対戦のパワーアップ版。", es = "Expansión de Wii lanzada en Japón a finales de 2011 que añade equipos de Inazuma Eleven GO y Espíritus Guerreros." }
+highlights = { fr = ["Intégration des joueurs GO et des Esprits Guerriers", "Équipes et arènes supplémentaires par rapport à Strikers"], en = ["Adds Inazuma Eleven GO players and Fighting Spirits", "Expands playable squads and arenas over Strikers"], ja = ["GO世代の選手と化身をプレイアブル化", "多数のチーム・スタジアムを追加"], es = ["Incorpora jugadores de GO y Espíritus Guerreros", "Amplía equipos y estadios respecto a Strikers"] }
+features = { dump_verify = "full", asset_extract = "planned", text_extract = "planned", translation_patch = "planned", save_edit = "none", team_builder = "planned", wiki_data = "partial", nie_runtime = "none", netplay = "planned", mod_loader = "none" }
+releases = [
+  { platform = "wii", year = 2011, regions = ["jp"], format = "wii-disc", verified = true },
+]
+ecosystem = [
+  { kind = "emulator", name = "Dolphin", url = "https://dolphin-emu.org" },
+]
+internal_links = [
+  { href = "/wiki/chara?series=Inazuma%20Eleven%20GO", label = { fr = "Joueurs GO", en = "GO Players", ja = "GO選手一覧", es = "Jugadores GO" } },
+]
+mod_hubs = [
+  { platform = "gamebanana", name = "GameBanana - Strikers 2012 Xtreme", url = "https://gamebanana.com/games/24334", gamebanana_id = 24334, api_url = "https://gamebanana.com/apiv11/Game/24334/Subfeed" },
+]
+
+[[game]]
+id = "everyday"
+slug = "inazuma-eleven-everyday"
+order = 7
+title = "Inazuma Eleven Everyday!!"
+series = "spinoff"
+era = "spinoff"
+status = "released"
+revision = 1
+release_year = "2012"
+protagonist = "Mark, Axel & Jude"
+developer = "LEVEL-5"
+thumbnail = "/games/img_everyday-plus.jpg"
+official_url = "https://www.inazuma.jp/everyday-plus/"
+related_series_keys = ["Inazuma Eleven"]
+platforms_display = ["Nintendo 3DS"]
+titles = { fr = "Inazuma Eleven Everyday!!", en = "Inazuma Eleven Everyday!!", ja = "イナズマイレブン エブリデイ!!", es = "Inazuma Eleven Everyday!!" }
+status_detail = { fr = "Sorti au Japon (3DS Club Nintendo)", en = "Released in Japan (3DS Club Nintendo)", ja = "配信終了（3DS クラブニンテンドー特典）", es = "Lanzado en Japón (Club Nintendo 3DS)" }
+summaries = { fr = "Titre compagnon dédié au quotidien de Mark Evans, Axel Blaze et Jude Sharp dans les jours précédant la finale du Football Frontier.", en = "Companion slice-of-life title following Mark Evans, Axel Blaze and Jude Sharp ahead of the Football Frontier finals.", ja = "円堂・豪炎寺・鬼道たちの24時間を見守るクラブニンテンドー限定3DSソフト。", es = "Título complementario sobre la vida cotidiana de Mark Evans, Axel Blaze y Jude Sharp antes de la final del Football Frontier." }
+highlights = { fr = ["Format tranche de vie synchronisé avec l'horloge interne", "Précède la version mobile enrichie Everyday!!+"], en = ["Real-time clock slice-of-life interactions", "Predecessor to the expanded Everyday!!+ mobile app"], ja = ["本体時計と連動したリアルタイム日常描写", "後にスマホ版『エブリデイ!!+』へ発展"], es = ["Interacciones cotidianas sincronizadas en tiempo real", "Predecesor de la edición móvil ampliada Everyday!!+"] }
+features = { dump_verify = "partial", asset_extract = "planned", text_extract = "planned", translation_patch = "planned", save_edit = "none", team_builder = "none", wiki_data = "partial", nie_runtime = "none", netplay = "none", mod_loader = "none" }
+releases = [
+  { platform = "3ds", year = 2012, regions = ["jp"], format = "3ds-eshop", verified = true },
+]
+ecosystem = [
+  { kind = "emulator", name = "Azahar", url = "https://azahar-emu.org" },
+]
+internal_links = [
+  { href = "/wiki/chara?series=Inazuma%20Eleven", label = { fr = "Joueurs du premier Raimon", en = "Original Raimon Players", ja = "初期雷門の選手", es = "Jugadores del primer Raimon" } },
+]
 
 [[game]]
 id = "go2"
+slug = "inazuma-eleven-go-chrono-stones"
+order = 8
 title = "Inazuma Eleven GO Chrono Stones: Wildfire / Thunderflash"
 series = "go"
-revision = 1
+era = "go"
+status = "released"
+revision = 2
+release_year = "2012"
+protagonist = "Arion Sherwind & Fei Rune"
+developer = "LEVEL-5"
+thumbnail = "/games/img_go2.jpg"
+cover = "/ChronoStones_EN.webp"
+official_url = "https://www.inazuma.jp/go2/"
+series_filter_key = "Chrono Stone"
+platforms_display = ["Nintendo 3DS"]
+titles = { fr = "Inazuma Eleven GO Chrono Stones : Brasier / Tonnerre", en = "Inazuma Eleven GO Chrono Stones: Wildfire / Thunderflash", ja = "イナズマイレブンGO2 クロノ・ストーン ネップウ／ライメイ", es = "Inazuma Eleven GO Chrono Stones: Llamarada / Trueno" }
+status_detail = { fr = "Sorti en deux versions (3DS)", en = "Released in two versions (3DS)", ja = "発売中（2バージョン・3DS）", es = "Disponible en dos ediciones (3DS)" }
+summaries = { fr = "Face à la menace d'El Dorado qui efface le football de la ligne temporelle, Arion et Fei Rune voyagent à travers l'Histoire pour réunir les Onze Ultime.", en = "As El Dorado threatens to erase soccer from history, Arion and Fei Rune travel across eras to assemble the Ultimate Eleven.", ja = "サッカーが消された歴史を取り戻すため、天馬とフェイが時空を超えるGO第2作。", es = "Ante la amenaza de El Dorado de borrar el fútbol de la historia, Arion y Fei Rune viajan por distintas épocas para reunir al Once Definitivo." }
+highlights = { fr = ["Nouvelles mécaniques : Mixi Max et Armures d'Esprits Guerriers", "Deux éditions : Brasier (Neppuu) et Tonnerre (Raimei)", "552 personnages Chrono Stone indexés dans Azalée"], en = ["Adds Mixi Max and Fighting Spirit Armed mechanics", "Two versions: Wildfire and Thunderflash", "552 Chrono Stone characters indexed in Azalee"], ja = ["ミキシマックスと化身アームドを新実装", "ネップウ／ライメイの2バージョン", "552名のクロノ・ストーン選手を収録"], es = ["Introduce Miximax y Armadura de Espíritu Guerrero", "Dos versiones: Llamarada y Trueno", "552 personajes de Chrono Stones catalogados en Azalee"] }
 features = { dump_verify = "full", asset_extract = "partial", text_extract = "planned", translation_patch = "planned", save_edit = "planned", team_builder = "planned", wiki_data = "partial", nie_runtime = "none", netplay = "none", mod_loader = "none" }
 releases = [
   { platform = "3ds", year = 2012, regions = ["jp", "eu"], format = "3ds-cart", verified = true },
@@ -118,12 +351,108 @@ ecosystem = [
   { kind = "emulator", name = "Azahar", url = "https://azahar-emu.org" },
   { kind = "tool", name = "Kuriimu2", url = "https://github.com/FanTranslatorsInternational/Kuriimu2" },
 ]
+internal_links = [
+  { href = "/wiki/chara?series=Chrono%20Stone", label = { fr = "Joueurs Chrono Stone", en = "Chrono Stone Players", ja = "クロノ・ストーン選手", es = "Jugadores Chrono Stone" } },
+  { href = "/wiki/aura", label = { fr = "Auras & Mixi Max", en = "Auras & Mixi Max", ja = "オーラ・ミキシマックス", es = "Auras y Miximax" } },
+]
+community_wikis = [
+  { lang = "ja", name = "@wiki クロノ・ストーン (JA)", url = "https://w.atwiki.jp/inazumago2cs/", kind = "wiki" },
+  { lang = "en", name = "Inazuma Eleven Wiki (EN)", url = "https://inazuma-eleven.fandom.com/wiki/Inazuma_Eleven_Wiki", api_url = "https://inazuma-eleven.fandom.com/api.php", kind = "mediawiki" },
+  { lang = "fr", name = "Wiki Inazuma Eleven (FR)", url = "https://inazuma-eleven.fandom.com/fr/wiki/Wiki_Inazuma_Eleven", api_url = "https://inazuma-eleven.fandom.com/fr/api.php", kind = "mediawiki" },
+  { lang = "es", name = "Inazuma Eleven Wiki (ES)", url = "https://inazuma.fandom.com/es/wiki/Inazuma_Eleven_Wiki", api_url = "https://inazuma.fandom.com/es/api.php", kind = "mediawiki" },
+]
+mod_hubs = [
+  { platform = "gamebanana", name = "GameBanana - IE GO2 Chrono Stone", url = "https://gamebanana.com/games/19164", gamebanana_id = 19164, api_url = "https://gamebanana.com/apiv11/Game/19164/Subfeed" },
+]
+
+[[game]]
+id = "ie123"
+slug = "inazuma-eleven-123"
+order = 9
+title = "Inazuma Eleven 1-2-3!! Legend of Mamoru Endou"
+series = "original"
+era = "original"
+status = "released"
+revision = 1
+release_year = "2012"
+protagonist = "Mark Evans"
+developer = "LEVEL-5"
+thumbnail = "/games/img_inazuma123.jpg"
+official_url = "https://www.inazuma.jp/inazuma123/"
+series_filter_key = "Inazuma Eleven"
+related_series_keys = ["Inazuma Eleven", "Inazuma Eleven 2", "Inazuma Eleven 3"]
+platforms_display = ["Nintendo 3DS"]
+titles = { fr = "Inazuma Eleven 1·2·3!! Endou Mamoru Densetsu", en = "Inazuma Eleven 1-2-3!! Legend of Mamoru Endou", ja = "イナズマイレブン1・2・3!! 円堂守伝説", es = "Inazuma Eleven 1·2·3!! La Leyenda de Mamoru Endou" }
+status_detail = { fr = "Compilation sortie au Japon (3DS)", en = "Collection released in Japan (3DS)", ja = "発売中（日本国内・3DS）", es = "Recopilación lanzada en Japón (3DS)" }
+summaries = { fr = "Compilation regroupant les six éditions de la trilogie Nintendo DS originale dans une seule cartouche Nintendo 3DS avec affichage adapté et relief.", en = "Complete Nintendo 3DS collection bundling all six editions of the original Nintendo DS trilogy with updated display and stereoscopic 3D.", ja = "DS三部作の全6タイトルを1本にまとめ立体視対応させたニンテンドー3DS用コレクション。", es = "Recopilación completa para Nintendo 3DS que reúne las seis ediciones de la trilogía original de Nintendo DS con pantalla adaptada y 3D estereoscópico." }
+highlights = { fr = ["Réunit les six versions d'Inazuma Eleven 1, 2 et 3", "Bonus de liaison avec Chrono Stones"], en = ["Bundles all six editions of Inazuma Eleven 1, 2 and 3", "Includes cross-save link bonuses with Chrono Stones"], ja = ["初期三部作全6バージョンを完全収録", "『クロノ・ストーン』との連動特典に対応"], es = ["Reúne las seis versiones de Inazuma Eleven 1, 2 y 3", "Incluye bonificaciones de enlace con Chrono Stones"] }
+features = { dump_verify = "partial", asset_extract = "planned", text_extract = "planned", translation_patch = "planned", save_edit = "planned", team_builder = "none", wiki_data = "partial", nie_runtime = "none", netplay = "none", mod_loader = "none" }
+releases = [
+  { platform = "3ds", year = 2012, regions = ["jp"], format = "3ds-cart", verified = true },
+]
+ecosystem = [
+  { kind = "emulator", name = "Azahar", url = "https://azahar-emu.org" },
+]
+internal_links = [
+  { href = "/wiki/chara?series=Inazuma%20Eleven", label = { fr = "Joueurs de la trilogie DS", en = "DS Trilogy Players", ja = "DS三部作の選手", es = "Jugadores de la trilogía DS" } },
+]
+
+[[game]]
+id = "go-strikers-2013"
+slug = "inazuma-eleven-go-strikers-2013"
+order = 10
+title = "Inazuma Eleven GO Strikers 2013"
+series = "strikers"
+era = "spinoff"
+status = "released"
+revision = 2
+release_year = "2012"
+release_date_ja = "2012-12-20"
+protagonist = "Mark Evans & Arion Sherwind"
+developer = "LEVEL-5 / Shade"
+thumbnail = "/games/img_gostrikers.jpg"
+official_url = "https://www.inazuma.jp/gostrikers/"
+related_series_keys = ["Inazuma Eleven", "Inazuma Eleven GO", "Chrono Stone"]
+platforms_display = ["Wii"]
+titles = { fr = "Inazuma Eleven GO Strikers 2013", en = "Inazuma Eleven GO Strikers 2013", ja = "イナズマイレブンGO ストライカーズ 2013", es = "Inazuma Eleven GO Strikers 2013" }
+status_detail = { fr = "Sorti au Japon (Wii)", en = "Released in Japan (Wii)", ja = "発売中（日本国内・Wii）", es = "Disponible en Japón (Wii)" }
+summaries = { fr = "Troisième et ultime volet Wii de la branche Strikers, ajoutant les équipes de Chrono Stones, les Armures d'Esprits et le Mixi Max en temps réel.", en = "Third and final Wii Strikers title adding Chrono Stones teams, Armed Fighting Spirits and Mixi Max in real-time matches.", ja = "『クロノ・ストーン』のキャラクターや化身アームド・ミキシマックスを追加した決定版。", es = "Tercera y última entrega de Strikers en Wii, añadiendo equipos de Chrono Stones, Armaduras y Miximax en tiempo real." }
+highlights = { fr = ["Édition Strikers la plus complète sur Wii", "Armures d'Esprits Guerriers et Mixi Max jouables"], en = ["Most comprehensive Strikers roster on Wii", "Playable Armed Fighting Spirits and Mixi Max transformations"], ja = ["ストライカーズシリーズ最多の参戦数", "化身アームド・ミキシマックスを発動可能"], es = ["El plantel más completo de Strikers en Wii", "Armaduras de Espíritus Guerreros y Miximax jugables"] }
+features = { dump_verify = "full", asset_extract = "planned", text_extract = "planned", translation_patch = "planned", save_edit = "none", team_builder = "planned", wiki_data = "partial", nie_runtime = "none", netplay = "planned", mod_loader = "none" }
+releases = [
+  { platform = "wii", year = 2012, regions = ["jp"], format = "wii-disc", verified = true },
+]
+ecosystem = [
+  { kind = "emulator", name = "Dolphin", url = "https://dolphin-emu.org" },
+]
+internal_links = [
+  { href = "/wiki/chara?series=Chrono%20Stone", label = { fr = "Joueurs Chrono Stone", en = "Chrono Stone Players", ja = "クロノ・ストーン選手", es = "Jugadores Chrono Stone" } },
+]
+mod_hubs = [
+  { platform = "gamebanana", name = "GameBanana - IE GO Strikers 2013", url = "https://gamebanana.com/games/15421", gamebanana_id = 15421, api_url = "https://gamebanana.com/apiv11/Game/15421/Subfeed" },
+]
 
 [[game]]
 id = "go3"
+slug = "inazuma-eleven-go-galaxy"
+order = 11
 title = "Inazuma Eleven GO Galaxy: Big Bang / Supernova"
 series = "go"
-revision = 1
+era = "go"
+status = "released"
+revision = 2
+release_year = "2013"
+protagonist = "Arion Sherwind (Earth Eleven)"
+developer = "LEVEL-5"
+thumbnail = "/games/img_gogalaxy.jpg"
+cover = "/Galaxy_EN.webp"
+official_url = "https://www.inazuma.jp/gogalaxy/"
+series_filter_key = "Galaxy"
+platforms_display = ["Nintendo 3DS"]
+titles = { fr = "Inazuma Eleven GO Galaxy : Big Bang / Supernova", en = "Inazuma Eleven GO Galaxy: Big Bang / Supernova", ja = "イナズマイレブンGO ギャラクシー ビッグバン／スーパーノヴァ", es = "Inazuma Eleven GO Galaxy: Big Bang / Supernova" }
+status_detail = { fr = "Sorti au Japon (3DS)", en = "Released in Japan (3DS)", ja = "発売中（日本国内・3DS）", es = "Disponible en Japón (3DS)" }
+summaries = { fr = "Earth Eleven quitte la Terre pour participer au Grand Célesta Galaxy face à des sélections extraterrestres grâce au pouvoir des Totems.", en = "Earth Eleven leaves Earth for the Grand Celesta Galaxy tournament against alien teams, awakening the power of Soul Totems.", ja = "アースイレブンが宇宙大会グランドセレスタ・ギャラクシーに挑むGO三部作完結編。", es = "Earth Eleven parte de la Tierra para competir en el Gran Celeste Galáctico frente a selecciones extraterrestres con el poder de los Tótems." }
+highlights = { fr = ["Introduction des Esprits Animaux / Totems", "Matchs à travers les planètes du Grand Célesta Galaxy", "422 personnages Galaxy recensés dans Azalée"], en = ["Introduces Soul / Beast Totem transformations", "Campaign spanning the worlds of Grand Celesta Galaxy", "422 Galaxy characters catalogued in Azalee"], ja = ["新必殺要素「ソウル（獣魂）」を導入", "宇宙各地の惑星を巡るストーリー", "422名のギャラクシー選手を収録"], es = ["Presenta las transformaciones Tótem (Soul)", "Campaña a través de los planetas del Gran Celeste Galáctico", "422 personajes de Galaxy catalogados en Azalee"] }
 features = { dump_verify = "full", asset_extract = "partial", text_extract = "planned", translation_patch = "planned", save_edit = "planned", team_builder = "planned", wiki_data = "partial", nie_runtime = "none", netplay = "none", mod_loader = "none" }
 releases = [
   { platform = "3ds", year = 2013, regions = ["jp"], format = "3ds-cart", verified = true },
@@ -132,37 +461,308 @@ ecosystem = [
   { kind = "emulator", name = "Azahar", url = "https://azahar-emu.org" },
   { kind = "tool", name = "Kuriimu2", url = "https://github.com/FanTranslatorsInternational/Kuriimu2" },
 ]
+internal_links = [
+  { href = "/wiki/chara?series=Galaxy", label = { fr = "Joueurs Galaxy", en = "Galaxy Players", ja = "ギャラクシー選手一覧", es = "Jugadores Galaxy" } },
+  { href = "/wiki/aura", label = { fr = "Auras & Totems", en = "Auras & Totems", ja = "オーラ・ソウル", es = "Auras y Tótems" } },
+]
+community_wikis = [
+  { lang = "ja", name = "@wiki イナズマイレブンGO3 (JA)", url = "https://w.atwiki.jp/inazumago3/", kind = "wiki" },
+  { lang = "en", name = "Inazuma Eleven Wiki (EN)", url = "https://inazuma-eleven.fandom.com/wiki/Inazuma_Eleven_Wiki", api_url = "https://inazuma-eleven.fandom.com/api.php", kind = "mediawiki" },
+  { lang = "fr", name = "Wiki Inazuma Eleven (FR)", url = "https://inazuma-eleven.fandom.com/fr/wiki/Wiki_Inazuma_Eleven", api_url = "https://inazuma-eleven.fandom.com/fr/api.php", kind = "mediawiki" },
+  { lang = "es", name = "Inazuma Eleven Wiki (ES)", url = "https://inazuma.fandom.com/es/wiki/Inazuma_Eleven_Wiki", api_url = "https://inazuma.fandom.com/es/api.php", kind = "mediawiki" },
+]
+mod_hubs = [
+  { platform = "gamebanana", name = "GameBanana - IE GO Galaxy", url = "https://gamebanana.com/games/19165", gamebanana_id = 19165, api_url = "https://gamebanana.com/apiv11/Game/19165/Subfeed" },
+  { platform = "translation", name = "TraduSquare - Inazuma Eleven GO Galaxy (ES)", url = "https://tradusquare.es/proyectos/inazuma-eleven-go-galaxy/", kind = "translation" },
+]
 
 [[game]]
-id = "cross"
-title = "Inazuma Eleven Cross"
+id = "everyday-plus"
+slug = "inazuma-eleven-everyday-plus"
+order = 12
+title = "Inazuma Eleven Everyday!!+"
 series = "mobile"
+era = "mobile"
+status = "released"
 revision = 1
-features = { dump_verify = "partial", asset_extract = "partial", text_extract = "partial", translation_patch = "none", save_edit = "none", team_builder = "planned", wiki_data = "partial", nie_runtime = "none", netplay = "none", mod_loader = "none" }
+release_year = "2017"
+release_date_ja = "2017-06-30"
+protagonist = "Mark, Axel, Jude & Shawn"
+developer = "LEVEL-5"
+thumbnail = "/games/img_everyday-plus.jpg"
+official_url = "https://www.inazuma.jp/everyday-plus/"
+related_series_keys = ["Inazuma Eleven", "Inazuma Eleven 2"]
+platforms_display = ["iOS", "Android"]
+titles = { fr = "Inazuma Eleven Everyday!!+", en = "Inazuma Eleven Everyday!!+", ja = "イナズマイレブン エブリデイ!!＋（プラス）", es = "Inazuma Eleven Everyday!!+" }
+status_detail = { fr = "Sorti sur mobile au Japon (iOS / Android)", en = "Released on mobile in Japan (iOS / Android)", ja = "配信中（日本国内・iOS／Android）", es = "Disponible en móviles en Japón (iOS / Android)" }
+summaries = { fr = "Adaptation mobile enrichie d'Everyday!! sortie le 30 juin 2017 sur iOS et Android avec l'ajout de Shawn Froste et de nouvelles interactions doublées.", en = "Expanded iOS and Android edition of Everyday!! launched June 30, 2017 featuring Shawn Froste and new voiced scenes.", ja = "2017年6月30日配信のiOS/Android版。吹雪士郎を追加しボイスやイベントを大幅に拡充。", es = "Edición móvil ampliada de Everyday!! lanzada el 30 de junio de 2017 para iOS y Android con Shawn Froste y nuevas escenas con voz." }
+highlights = { fr = ["Version enrichie avec Shawn Froste jouable au quotidien", "Portage HD des événements de la version 3DS"], en = ["Expanded cast with Shawn Froste daily events", "HD port of the original Nintendo 3DS scenarios"], ja = ["吹雪士郎を新たな対象キャラクターとして追加", "3DS版の日常イベントをHD画質で収録"], es = ["Reparto ampliado con eventos diarios de Shawn Froste", "Adaptación HD de los escenarios de Nintendo 3DS"] }
+features = { dump_verify = "partial", asset_extract = "planned", text_extract = "planned", translation_patch = "none", save_edit = "none", team_builder = "none", wiki_data = "partial", nie_runtime = "none", netplay = "none", mod_loader = "none" }
 releases = [
-  { platform = "mobile", year = 2026, regions = ["jp"], format = "mobile-app", verified = false },
+  { platform = "mobile", year = 2017, regions = ["jp"], format = "mobile-app", verified = true },
 ]
 ecosystem = [
-  { kind = "data", name = "inagle-cross (in-repo masterdata schemas)", url = "packages/inagle-cross" },
+  { kind = "official", name = "Official Portal", url = "https://www.inazuma.jp/everyday-plus/" },
+]
+internal_links = [
+  { href = "/wiki/chara?series=Inazuma%20Eleven%202", label = { fr = "Joueurs IE2", en = "IE2 Players", ja = "イナズマイレブン2選手", es = "Jugadores IE2" } },
+]
+
+[[game]]
+id = "great-road"
+slug = "inazuma-eleven-ares-great-road"
+order = 13
+title = "Inazuma Eleven Ares / Heroes' Great Road"
+series = "ares-orion"
+era = "ares-orion"
+status = "cancelled-evolved"
+revision = 1
+release_year = "2018-2023"
+protagonist = "Sonny Wright (Asuto Inamori)"
+developer = "LEVEL-5"
+thumbnail = "/games/img_victory-road.jpg"
+official_url = "https://www.inazuma.jp/victory-road/fr/"
+series_filter_key = "Ares"
+related_series_keys = ["Ares", "Orion"]
+platforms_display = ["Switch / PS4 / Mobile (projet initial)"]
+titles = { fr = "Inazuma Eleven Ares / Great Road (Projet transformé)", en = "Inazuma Eleven Ares / Heroes' Great Road", ja = "イナズマイレブン アレスの天秤 / 英雄たちのグレートロード", es = "Inazuma Eleven Ares / Great Road (Proyecto transformado)" }
+status_detail = { fr = "Refondu vers Victory Road", en = "Reforged into Victory Road", ja = "『ヴィクトリーロード』へ企画刷新", es = "Reformulado en Victory Road" }
+summaries = { fr = "Le jeu Ares no Tenbin, puis sa refonte Heroes' Great Road, a évolué en Inazuma Eleven: Victory Road. Les équipes et joueurs des arcs Ares et Orion sont directement jouables et documentés dans Azalée.", en = "Originally announced as Ares no Tenbin and redesigned as Heroes' Great Road, the project evolved into Inazuma Eleven: Victory Road, integrating the Ares and Orion rosters.", ja = "『アレスの天秤』および『英雄たちのグレートロード』の構想を発展・統合し、『ヴィクトリーロード』として完成。", es = "Anunciado inicialmente como Ares no Tenbin y rediseñado como Heroes' Great Road, el proyecto evolucionó hasta Inazuma Eleven: Victory Road integrando Ares y Orión." }
+highlights = { fr = ["Genèse du moteur et du casting réunis dans Victory Road", "253 joueurs Ares et 214 joueurs Orion disponibles dans la base"], en = ["Origin of the modern engine and roster unified in Victory Road", "253 Ares and 214 Orion characters playable and indexed"], ja = ["最新作VRのシステムと参戦選手の基盤となったプロジェクト", "アレス253名・オリオン214名の選手データを収録"], es = ["Origen del motor y plantel actual reunidos en Victory Road", "253 jugadores de Ares y 214 de Orión disponibles en la base"] }
+features = { dump_verify = "partial", asset_extract = "none", text_extract = "none", translation_patch = "none", save_edit = "none", team_builder = "none", wiki_data = "partial", nie_runtime = "none", netplay = "none", mod_loader = "none" }
+releases = [
+  { platform = "switch", year = 2018, regions = ["jp"], format = "cancelled", verified = true },
+]
+ecosystem = [
+  { kind = "official", name = "Victory Road Portal", url = "https://www.inazuma.jp/victory-road/fr/" },
+]
+internal_links = [
+  { href = "/wiki/chara?series=Ares", label = { fr = "Joueurs Ares", en = "Ares Players", ja = "アレスの天秤 選手", es = "Jugadores Ares" } },
+  { href = "/wiki/chara?series=Orion", label = { fr = "Joueurs Orion", en = "Orion Players", ja = "オリオンの刻印 選手", es = "Jugadores Orión" } },
+]
+
+[[game]]
+id = "sd"
+slug = "inazuma-eleven-sd"
+order = 14
+title = "Inazuma Eleven SD"
+series = "mobile"
+era = "mobile"
+status = "discontinued"
+revision = 1
+release_year = "2020"
+protagonist = "All-Saga Figurine Roster"
+developer = "LEVEL-5"
+thumbnail = "/games/img_sd.jpg"
+official_url = "https://www.inazuma.jp/sd/"
+related_series_keys = ["Inazuma Eleven", "Inazuma Eleven GO", "Ares", "Orion"]
+platforms_display = ["iOS", "Android"]
+titles = { fr = "Inazuma Eleven SD", en = "Inazuma Eleven SD", ja = "イナズマイレブン SD", es = "Inazuma Eleven SD" }
+status_detail = { fr = "Service mobile clos", en = "Mobile service discontinued", ja = "サービス終了（モバイル）", es = "Servicio móvil finalizado" }
+summaries = { fr = "Jeu mobile tactique façon billard de figurines réunissant les personnages d'Inazuma Eleven, GO, Ares et Orion avant la fermeture de son service en ligne.", en = "Tactical figurine slingshot soccer game on iOS and Android uniting characters from Original, GO, Ares and Orion prior to service closure.", ja = "全シリーズの選手がフィギュアとなって激突するおはじきバトルゲーム（現在はサービス終了）。", es = "Juego táctico móvil de chapas con figuras que reunía personajes de Inazuma Eleven, GO, Ares y Orión antes del cierre de servidores." }
+highlights = { fr = ["Système de catapulte de figurines et diorama de club", "Contenait des scènes inédites réunissant toutes les ères"], en = ["Figurine slingshot gameplay and customizable club dioramas", "Featured crossover story episodes spanning every era"], ja = ["フィギュアを弾いて戦うおはじきサッカーバトル", "シリーズの垣根を超えたオリジナルストーリーを収録"], es = ["Sistema de lanzamiento de figuras y dioramas del club", "Incluía episodios originales reuniendo todas las eras"] }
+features = { dump_verify = "partial", asset_extract = "partial", text_extract = "partial", translation_patch = "none", save_edit = "none", team_builder = "none", wiki_data = "partial", nie_runtime = "none", netplay = "none", mod_loader = "none" }
+releases = [
+  { platform = "mobile", year = 2020, regions = ["jp"], format = "mobile-app", verified = true },
+]
+ecosystem = [
+  { kind = "official", name = "Inazuma Eleven SD Archive", url = "https://www.inazuma.jp/sd/" },
+]
+internal_links = [
+  { href = "/wiki/chara", label = { fr = "Tous les joueurs de la saga", en = "All Saga Players", ja = "全シリーズ選手一覧", es = "Todos los jugadores de la saga" } },
 ]
 
 [[game]]
 id = "ievr"
+slug = "inazuma-eleven-victory-road"
+order = 15
 title = "Inazuma Eleven: Victory Road"
 series = "victory-road"
+era = "modern"
+status = "released"
 aliases = ["ares", "ares-no-tenbin"]
 revision = 1
+release_year = "2025"
+release_date_ja = "2025-11-14"
+protagonist = "Destin Billows (Unmei Sasanami)"
+developer = "LEVEL-5"
+thumbnail = "/games/img_victory-road.jpg"
+cover = "/ogVR.webp"
+official_url = "https://www.inazuma.jp/victory-road/fr/"
+series_filter_key = "Victory Road"
+related_series_keys = [
+  "Victory Road",
+  "Inazuma Eleven",
+  "Inazuma Eleven 2",
+  "Inazuma Eleven 3",
+  "Inazuma Eleven GO",
+  "Chrono Stone",
+  "Galaxy",
+  "Ares",
+  "Orion",
+]
+platforms_display = [
+  "Nintendo Switch 2",
+  "Nintendo Switch",
+  "PlayStation 5",
+  "PlayStation 4",
+  "Xbox Series X|S",
+  "Steam",
+]
+titles = { fr = "Inazuma Eleven: Victory Road", en = "Inazuma Eleven: Victory Road", ja = "イナズマイレブン 英雄たちのヴィクトリーロード", es = "Inazuma Eleven: Victory Road" }
+status_detail = { fr = "En service (Patch Ver. 7.2.2, 12 nov. 2026)", en = "Live service (Patch Ver. 7.2.2, Nov 12, 2026)", ja = "好評発売中（Ver. 7.2.2 配信中・2026年11月12日）", es = "En servicio (Parche Ver. 7.2.2, 12 nov 2026)" }
+summaries = { fr = "Situé 25 ans après le premier épisode, le mode Histoire suit Destin Billows à Nagumohara tandis que le mode Chronique réunit plus de 5 402 personnages de toute la saga (record Guinness homologué le 18 août 2026).", en = "Set 25 years after the original game, Story Mode follows Destin Billows at Nagumohara while Chronicle Mode unites over 5,402 series characters (Guinness World Record certified Aug 18, 2026).", ja = "初代から25年後を舞台に笹波雲明の物語を描く最新作。クロニクルモードでは歴代5,402名以上の選手が登場（2026年8月18日ギネス世界記録認定）。", es = "Ambientado 25 años tras la primera entrega, el modo Historia sigue a Destin Billows en Nagumohara mientras el modo Crónica reúne más de 5.402 personajes (récord Guinness certificado el 18 ago 2026)." }
+highlights = { fr = ["Lauréat d'un Prix d'Excellence aux Japan Game Awards 2026", "Record Guinness du plus grand nombre de personnages jouables (5 402)", "Mises à jour continues jusqu'à la Ver. 7.2.2 (12 nov. 2026)"], en = ["Recipient of an Excellence Award at Japan Game Awards 2026", "Guinness World Record for most playable characters in a sports RPG (5,402)", "Ongoing updates through Patch Ver. 7.2.2 (Nov 12, 2026)"], ja = ["日本ゲーム大賞2026 優秀賞受賞", "プレイアブルキャラクター数ギネス世界記録（5,402名）", "Ver. 7.2.2まで継続アップデート中（2026年11月12日）"], es = ["Premio a la Excelencia en los Japan Game Awards 2026", "Récord Guinness al mayor número de personajes jugables en un RPG deportivo (5.402)", "Actualizaciones continuas hasta el parche Ver. 7.2.2 (12 nov 2026)"] }
 features = { dump_verify = "full", asset_extract = "full", text_extract = "full", translation_patch = "planned", save_edit = "full", team_builder = "partial", wiki_data = "full", nie_runtime = "partial", netplay = "none", mod_loader = "planned" }
 releases = [
   { platform = "pc", year = 2025, regions = ["ww"], format = "steam-depot", steam_app_id = 2799860, verified = true },
   { platform = "switch", year = 2025, regions = ["ww"], format = "switch-nsp", verified = true },
-  { platform = "switch2", year = 2025, regions = ["ww"], format = "switch-nsp", verified = false },
+  { platform = "switch2", year = 2025, regions = ["ww"], format = "switch-nsp", verified = true },
   { platform = "ps4", year = 2025, regions = ["ww"], format = "ps-pkg", verified = true },
   { platform = "ps5", year = 2025, regions = ["ww"], format = "ps-pkg", verified = true },
+  { platform = "xbox", year = 2025, regions = ["ww"], format = "xbox-store", verified = true },
 ]
 ecosystem = [
   { kind = "data", name = "inagle (in-repo IEVR data API)", url = "packages/inagle" },
   { kind = "wiki", name = "Azalee (in-repo wiki library)", url = "packages/azalee" },
   { kind = "tool", name = "aphrody-nie-save", url = "crates/aphrody-nie-save" },
   { kind = "store", name = "Steam", url = "https://store.steampowered.com/app/2799860" },
+]
+internal_links = [
+  { href = "/wiki/chara?series=Victory%20Road", label = { fr = "Joueurs Victory Road", en = "Victory Road Players", ja = "ヴィクトリーロード選手", es = "Jugadores Victory Road" } },
+  { href = "/wiki/patch-notes", label = { fr = "Notes de mise à jour (v7.2.2)", en = "Patch Notes (v7.2.2)", ja = "アップデート情報（v7.2.2）", es = "Notas del parche (v7.2.2)" } },
+  { href = "/wiki/equipe", label = { fr = "Équipes", en = "Teams", ja = "チーム一覧", es = "Equipos" } },
+  { href = "/wiki/invocation", label = { fr = "Taux d'invocation", en = "Gacha Rates", ja = "プレイヤーズユニバース確率", es = "Tasas de invocación" } },
+  { href = "/wiki/mods", label = { fr = "Hub Mods & Wikis", en = "Mods & Community Wikis", ja = "MOD・攻略Wikiハブ", es = "Hub de Mods y Wikis" } },
+]
+community_wikis = [
+  { lang = "ja", name = "Game8 イナズマイレブン ヴィクトリーロード (JA)", url = "https://game8.jp/inazuma-victory-road", kind = "guide" },
+  { lang = "ja", name = "Wikiwiki イナズマイレブン (JA)", url = "https://wikiwiki.jp/inazuma/", kind = "wiki" },
+  { lang = "en", name = "Inazuma Eleven Wiki (EN)", url = "https://inazuma-eleven.fandom.com/wiki/Inazuma_Eleven_Wiki", api_url = "https://inazuma-eleven.fandom.com/api.php", kind = "mediawiki" },
+  { lang = "fr", name = "Wiki Inazuma Eleven (FR)", url = "https://inazuma-eleven.fandom.com/fr/wiki/Wiki_Inazuma_Eleven", api_url = "https://inazuma-eleven.fandom.com/fr/api.php", kind = "mediawiki" },
+  { lang = "es", name = "Inazuma Eleven Wiki (ES)", url = "https://inazuma.fandom.com/es/wiki/Inazuma_Eleven_Wiki", api_url = "https://inazuma.fandom.com/es/api.php", kind = "mediawiki" },
+]
+mod_hubs = [
+  { platform = "inazuma-mods", name = "Inazuma Eleven Mods (FR/WW)", url = "https://inazuma-eleven.fr/mods", api_url = "https://inazuma-eleven.fr/mods/api/mods" },
+  { platform = "gamebanana", name = "GameBanana - Victory Road (PC)", url = "https://gamebanana.com/games/20069", gamebanana_id = 20069, api_url = "https://gamebanana.com/apiv11/Game/20069/Subfeed" },
+  { platform = "gamebanana", name = "GameBanana - Victory Road (Switch)", url = "https://gamebanana.com/games/20068", gamebanana_id = 20068, api_url = "https://gamebanana.com/apiv11/Game/20068/Subfeed" },
+  { platform = "gamebanana-tool", name = "IEVR Mod Manager (GameBanana Tool 21354)", url = "https://gamebanana.com/tools/21354" },
+]
+
+[[game]]
+id = "cross"
+slug = "inazuma-eleven-cross"
+order = 16
+title = "Inazuma Eleven Cross"
+series = "mobile"
+era = "modern"
+status = "released"
+revision = 2
+release_year = "2026"
+release_date_ja = "2026-06-09"
+protagonist = "Protagoniste original Cross"
+developer = "LEVEL-5 / Aiming"
+thumbnail = "/games/img_inazuma-cross_260604.jpg"
+cover = "/inazuma-cross/ogp.jpg"
+official_url = "https://www.inazuma-cross.jp/"
+store_url = "https://store.inazuma-cross.jp/"
+platforms_display = ["iOS", "Android"]
+titles = { fr = "Inazuma Eleven Cross", en = "Inazuma Eleven Cross", ja = "イナズマイレブン クロス", es = "Inazuma Eleven Cross" }
+status_detail = { fr = "Disponible maintenant (Collaboration VR active)", en = "Available now (VR collaboration active)", ja = "好評配信中（VRコラボ開催中）", es = "Disponible ahora (Colaboración VR activa)" }
+summaries = { fr = "Jeu mobile free-to-play de commande de football lancé le 9 juin 2026 au Japon en partenariat avec Aiming, incluant la collaboration officielle avec Victory Road du 17 novembre 2026 au 31 mars 2027.", en = "Free-to-play command football RPG launched June 9, 2026 in Japan with Aiming, featuring the official Victory Road collaboration from Nov 17, 2026 to Mar 31, 2027.", ja = "LEVEL-5とAimingによる完全新作アプリ（2026年6月9日配信）。2026年11月17日〜2027年3月31日のVRコラボイベントを実施。", es = "RPG táctico móvil free-to-play lanzado el 9 de junio de 2026 en Japón junto a Aiming, con colaboración oficial con Victory Road del 17 nov 2026 al 31 mar 2027." }
+highlights = { fr = ["Disponible sur iOS, Android et Web Store officiel", "Collaboration Cross x Victory Road avec 11 personnages VR annoncés", "Schéma masterdata Unity IL2CPP documenté dans Azalée"], en = ["Live on iOS, Android and official Web Store", "Cross x Victory Road collaboration featuring 11 announced VR players", "Unity IL2CPP masterdata schemas indexed in Azalee"], ja = ["iOS・Androidおよび公式Webストアにて配信中", "『ヴィクトリーロード』より11名の選手がコラボ参戦", "Unity IL2CPPマスターデータ構造をアザレアで解析"], es = ["Disponible en iOS, Android y tienda web oficial", "Colaboración Cross x Victory Road con 11 jugadores de VR anunciados", "Esquemas masterdata Unity IL2CPP documentados en Azalee"] }
+features = { dump_verify = "partial", asset_extract = "partial", text_extract = "partial", translation_patch = "none", save_edit = "none", team_builder = "planned", wiki_data = "partial", nie_runtime = "none", netplay = "none", mod_loader = "none" }
+releases = [
+  { platform = "mobile", year = 2026, regions = ["jp"], format = "mobile-app", verified = true },
+]
+ecosystem = [
+  { kind = "data", name = "inagle-cross (in-repo masterdata schemas)", url = "packages/inagle-cross" },
+]
+internal_links = [
+  { href = "/wiki/cross", label = { fr = "Hub Inazuma Eleven Cross", en = "Inazuma Eleven Cross Hub", es = "Centro Inazuma Eleven Cross", ja = "イナズマイレブン クロス ハブ" } },
+  { href = "/cross", label = { fr = "Schéma technique Cross", en = "Cross Technical Schema", es = "Esquema técnico Cross", ja = "クロス解析スキーマ" } },
+]
+
+[[game]]
+id = "re"
+slug = "inazuma-eleven-re"
+order = 17
+title = "INAZUMA ELEVEN RE"
+series = "original"
+era = "upcoming"
+status = "in-development"
+revision = 1
+release_year = "2026 (prévu)"
+protagonist = "Mark Evans (Mamoru Endou)"
+developer = "LEVEL-5"
+thumbnail = "/games/img_inazuma-re.jpg"
+cover = "/games/inazuma-re-pv.jpg"
+official_url = "https://www.inazuma.jp/re/en/"
+series_filter_key = "Inazuma Eleven"
+platforms_display = [
+  "Nintendo Switch 2",
+  "Nintendo Switch",
+  "PlayStation 5",
+  "Steam",
+]
+titles = { fr = "INAZUMA ELEVEN RE", en = "INAZUMA ELEVEN RE", es = "INAZUMA ELEVEN RE", ja = "イナズマイレブン RE" }
+status_detail = { fr = "En développement (Sortie prévue 2026)", en = "In development (Planned 2026)", es = "En desarrollo (Lanzamiento previsto en 2026)", ja = "開発中（2026年発売予定）" }
+summaries = { fr = "Remake complet du premier Inazuma Eleven sur consoles actuelles et PC, modernisant l'histoire originale de Raimon avec support confirmé de 9 langues dont le français.", en = "Full modern remake of the original Inazuma Eleven for current consoles and PC, rebuilding Raimon's first chapter with 9 supported languages.", es = "Remake completo del primer Inazuma Eleven para consolas actuales y PC, que moderniza la historia original del Raimon con 9 idiomas confirmados.", ja = "2008年のシリーズ第1作を最新機種向けにフルリメイク。9言語対応・2026年発売予定。" }
+highlights = { fr = ["Plateformes officielles : Switch 2, Switch, PS5 et Steam", "9 langues confirmées dès l'annonce dont le français", "Revisite le scénario et les équipes du premier épisode de 2008"], en = ["Confirmed platforms: Switch 2, Switch, PS5 and Steam", "Supports 9 languages at launch including French, English and Japanese", "Reimagines the original 2008 story and classic teams"], es = ["Plataformas confirmadas: Switch 2, Switch, PS5 y Steam", "9 idiomas confirmados desde el anuncio, incluidos español, francés e inglés", "Reinterpreta la historia original de 2008 y los equipos clásicos"], ja = ["対応機種：Switch 2／Switch／PS5／Steam", "日本語・英語・フランス語など全9言語に対応予定", "2008年初代雷門中の物語とチームを刷新"] }
+features = { dump_verify = "partial", asset_extract = "planned", text_extract = "planned", translation_patch = "planned", save_edit = "planned", team_builder = "planned", wiki_data = "partial", nie_runtime = "planned", netplay = "planned", mod_loader = "planned" }
+releases = [
+  { platform = "switch2", year = 2026, regions = ["ww"], format = "announced", verified = false },
+  { platform = "switch", year = 2026, regions = ["ww"], format = "announced", verified = false },
+  { platform = "ps5", year = 2026, regions = ["ww"], format = "announced", verified = false },
+  { platform = "pc", year = 2026, regions = ["ww"], format = "announced", verified = false },
+]
+ecosystem = [
+  { kind = "official", name = "INAZUMA ELEVEN RE Official Site", url = "https://www.inazuma.jp/re/en/" },
+]
+internal_links = [
+  { href = "/wiki/chara?series=Inazuma%20Eleven", label = { fr = "Casting d'origine (IE1)", en = "Original IE1 Roster", es = "Plantilla original (IE1)", ja = "初代登場キャラクター" } },
+  { href = "/wiki/jeux/inazuma-eleven-re", label = { fr = "Fiche officielle RE", en = "Official RE Page", es = "Ficha oficial de RE", ja = "RE作品詳細" } },
+]
+community_wikis = [
+  { lang = "en", name = "Inazuma Eleven Wiki (RE)", url = "https://inazuma-eleven.fandom.com/wiki/Inazuma_Eleven_RE", api_url = "https://inazuma-eleven.fandom.com/api.php", kind = "mediawiki" },
+  { lang = "fr", name = "Wiki Inazuma Eleven FR (RE)", url = "https://inazuma-eleven.fandom.com/fr/wiki/Inazuma_Eleven_RE", api_url = "https://inazuma-eleven.fandom.com/fr/api.php", kind = "mediawiki" },
+  { lang = "es", name = "Inazuma Eleven Wiki ES (RE)", url = "https://inazuma.fandom.com/es/wiki/Inazuma_Eleven_RE", api_url = "https://inazuma.fandom.com/es/api.php", kind = "mediawiki" },
+]
+
+[[game]]
+id = "bold-revolution"
+slug = "inazuma-eleven-bold-revolution"
+order = 18
+title = "Inazuma Eleven: Bold Revolution"
+series = "victory-road"
+era = "upcoming"
+status = "in-development"
+revision = 1
+release_year = "Annoncé (2026)"
+protagonist = "Shane Starfall (Nagi Furuhoshi) & Destin Billows"
+developer = "LEVEL-5"
+thumbnail = "/games/img_bold-revolution.jpg"
+cover = "/games/img_bold-revolution.jpg"
+official_url = "https://www.inazuma.jp/victory-road/fr/topics/260910_02/"
+series_filter_key = "Victory Road"
+platforms_display = ["Plateformes à confirmer"]
+titles = { fr = "Inazuma Eleven: Bold Revolution", en = "Inazuma Eleven: Bold Revolution", es = "Inazuma Eleven: Bold Revolution", ja = "イナズマイレブン 烈火の革命" }
+status_detail = { fr = "En développement (Annoncé le 10 sept. 2026)", en = "In development (Announced Sept 10, 2026)", es = "En desarrollo (Anunciado el 10 de sept. de 2026)", ja = "開発決定（2026年9月10日発表）" }
+summaries = { fr = "Suite directe d'Inazuma Eleven: Victory Road dévoilée officiellement par LEVEL-5 le 10 septembre 2026. Aux côtés de Destin Billows et des personnages précédents, un nouveau protagoniste, Shane Starfall (Nagi Furuhoshi), occupe le cœur du récit.", en = "Direct sequel to Inazuma Eleven: Victory Road officially revealed by LEVEL-5 on September 10, 2026, starring new lead Shane Starfall (Nagi Furuhoshi) alongside Destin Billows.", es = "Secuela directa de Inazuma Eleven: Victory Road revelada oficialmente por LEVEL-5 el 10 de septiembre de 2026, protagonizada por Shane Starfall (Nagi Furuhoshi) junto a Destin Billows.", ja = "2026年9月10日にLEVEL-5が発表した『ヴィクトリーロード』の直接的続編。新たな主人公・古星凪（ナギ）と笹波雲明が物語を紡ぐ。" }
+highlights = { fr = ["Suite directe de Victory Road annoncée le 10 septembre 2026", "Nouveau héros principal : Shane Starfall (Nagi Furuhoshi)", "Poursuite de l'arc narratif entamé par Destin Billows (Unmei Sasanami)"], en = ["Direct sequel to Victory Road unveiled September 10, 2026", "New main protagonist: Shane Starfall (Nagi Furuhoshi)", "Continues the narrative arc begun by Destin Billows (Unmei Sasanami)"], es = ["Secuela directa de Victory Road anunciada el 10 de septiembre de 2026", "Nuevo protagonista principal: Shane Starfall (Nagi Furuhoshi)", "Continúa el arco narrativo iniciado por Destin Billows (Unmei Sasanami)"], ja = ["2026年9月10日発表の『ヴィクトリーロード』正統続編", "新主人公・古星凪（Shane Starfall）が登場", "笹波雲明らの物語を継承する完全新作"] }
+features = { dump_verify = "partial", asset_extract = "planned", text_extract = "planned", translation_patch = "planned", save_edit = "planned", team_builder = "planned", wiki_data = "partial", nie_runtime = "planned", netplay = "planned", mod_loader = "planned" }
+releases = [
+  { platform = "pc", year = 2027, regions = ["ww"], format = "announced", verified = false },
+]
+ecosystem = [
+  { kind = "official", name = "LEVEL-5 Announcement", url = "https://www.inazuma.jp/victory-road/fr/topics/260910_02/" },
+]
+internal_links = [
+  { href = "/wiki/chara?series=Victory%20Road", label = { fr = "Héros de Victory Road", en = "Victory Road Heroes", es = "Héroes de Victory Road", ja = "ヴィクトリーロード登場選手" } },
+  { href = "/wiki/patch-notes", label = { fr = "Actualités & Patchs VR", en = "VR News & Patch Notes", es = "Noticias y parches de VR", ja = "VRニュース・更新履歴" } },
+]
+community_wikis = [
+  { lang = "en", name = "Inazuma Eleven Wiki (Bold Revolution)", url = "https://inazuma-eleven.fandom.com/wiki/Inazuma_Eleven:_Bold_Revolution", api_url = "https://inazuma-eleven.fandom.com/api.php", kind = "mediawiki" },
+  { lang = "fr", name = "Wiki Inazuma Eleven FR (Bold Revolution)", url = "https://inazuma-eleven.fandom.com/fr/wiki/Inazuma_Eleven:_Bold_Revolution", api_url = "https://inazuma-eleven.fandom.com/fr/api.php", kind = "mediawiki" },
+  { lang = "es", name = "Inazuma Eleven Wiki ES (Bold Revolution)", url = "https://inazuma.fandom.com/es/wiki/Inazuma_Eleven:_Bold_Revolution", api_url = "https://inazuma.fandom.com/es/api.php", kind = "mediawiki" },
 ]

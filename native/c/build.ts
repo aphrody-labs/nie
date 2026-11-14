@@ -4,7 +4,14 @@
  * for `native/c` (`rg_contract` shared library + static archive + C23 test binary).
  */
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dir, "../..");
@@ -87,7 +94,8 @@ function findWindowsSdkPaths(): { includes: string[]; libs: string[] } {
   const includes: string[] = [];
   const libs: string[] = [];
 
-  const vswhere = "C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe";
+  const vswhere =
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\vswhere.exe";
   if (existsSync(vswhere)) {
     const out = Bun.spawnSync([
       vswhere,
@@ -96,8 +104,8 @@ function findWindowsSdkPaths(): { includes: string[]; libs: string[] } {
       "*",
       "-property",
       "installationPath",
-    ]).stdout
-      .toString()
+    ])
+      .stdout.toString()
       .trim();
     if (out && existsSync(join(out, "VC/Tools/MSVC"))) {
       const msvcVers = readdirSync(join(out, "VC/Tools/MSVC")).sort().reverse();

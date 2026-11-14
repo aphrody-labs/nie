@@ -48,7 +48,7 @@ proud = "packages/rg-assets/public/emote/RG_roy_fine.webp"
 [typography]
 display = "Poppins"
 body = "Roboto"
-mono = "Liberation Mono"
+mono = "Geist Mono"
 
 [shell]
 layout = "sidebar"

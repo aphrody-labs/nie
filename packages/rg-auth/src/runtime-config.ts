@@ -72,9 +72,6 @@ export function resolveTrustedOrigins(
       "Production Better Auth baseURL cannot use a loopback host",
     );
   }
-  const origins = [
-    ...contractTrustedOrigins(production),
-    base.origin,
-  ];
+  const origins = [...contractTrustedOrigins(production), base.origin];
   return [...new Set(origins)];
 }

@@ -23,15 +23,53 @@ export function setZukanWebServiceFactory(
   serviceFactory = factory;
 }
 
+const runtimeImport = new Function("specifier", "return import(specifier)") as <
+  T,
+>(
+  specifier: string,
+) => Promise<T>;
+
+async function createImpitZukanWebService(): Promise<ZukanWebService | null> {
+  try {
+    const { Impit } = await runtimeImport<typeof import("impit")>("impit");
+    const client = new Impit({
+      browser: "chrome",
+      vanillaFallback: true,
+      timeout: 45_000,
+    });
+    return {
+      async response(url, options = {}) {
+        const res = await client.fetch(url, { timeout: 45_000 });
+        const body = await res.text();
+        const bytes = Buffer.byteLength(body);
+        return {
+          status: res.status,
+          truncated: options.maxBytes !== undefined && bytes > options.maxBytes,
+          body,
+        };
+      },
+      async bytes(url) {
+        const res = await client.fetch(url, { timeout: 60_000 });
+        if (!res.ok) throw new Error(`HTTP ${res.status} : ${url}`);
+        return res.bytes();
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function createZukanWebService(): Promise<ZukanWebService> {
   if (serviceFactory) return serviceFactory();
+  const impitService = await createImpitZukanWebService();
+  if (impitService) return impitService;
   let module: { WebService?: new () => ZukanWebService };
   try {
     const specifier = APHRODY_WEB_MODULE;
     module = await import(specifier);
   } catch (error) {
     throw new Error(
-      `No Web service: install @aphrody/inagle inside the Aphrody workspace (optional peer ${APHRODY_WEB_MODULE}) or call setZukanWebServiceFactory().`,
+      `No Web service: install impit or ${APHRODY_WEB_MODULE}, or call setZukanWebServiceFactory().`,
       { cause: error },
     );
   }

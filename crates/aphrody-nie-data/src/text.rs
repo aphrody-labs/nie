@@ -20,9 +20,181 @@
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use serde_json::Value;
+use winnow::ModalResult;
+use winnow::Parser;
+use winnow::combinator::{alt, delimited, preceded};
+use winnow::error::ContextError;
+use winnow::token::{any, take_until, take_while};
 
 use crate::cfgbin::{Node, walk_named};
 use crate::hash::HashId;
+
+/// Jeton de texte enrichi IEVR produit par le parseur [`winnow`] sans copie.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RichTextToken<'a> {
+    /// Segment de texte brut.
+    Plain(&'a str),
+    /// Notation furigana `[Kanji/Lecture]` utilisée en japonais dans les `.cfg.bin`.
+    Furigana {
+        kanji: &'a str,
+        reading: &'a str,
+    },
+    /// Glyphe icône de police `[$nom]`.
+    Gaiji(&'a str),
+    /// Marqueur de couleur ou de style `[CR]`, `[C]`, `[CDN]`, etc.
+    StyleMarker(&'a str),
+    /// Ouverture de balise couleur `<COL:valeur>`.
+    ColorOpen(&'a str),
+    /// Fermeture de balise couleur `<CLO>`.
+    ColorClose,
+    /// Balise paramétrée `<CLE:valeur>` (hors `COL`).
+    ValueTag {
+        key: &'a str,
+        value: &'a str,
+    },
+    /// Autre balise angle `<...>`.
+    Tag(&'a str),
+    /// Retour à la ligne explicite (`\n` échappé ou saut de ligne LF).
+    Newline,
+    /// Tabulation explicite (`\t` échappé).
+    Tab,
+}
+
+fn bracket_token<'a>(input: &mut &'a str) -> ModalResult<Option<RichTextToken<'a>>, ContextError> {
+    let inner = delimited('[', take_until(1.., "]"), ']').parse_next(input)?;
+    if let Some((kanji, reading)) = inner.split_once('/')
+        && !kanji.is_empty()
+        && !reading.is_empty()
+    {
+        return Ok(Some(RichTextToken::Furigana { kanji, reading }));
+    }
+    if let Some(name) = inner.strip_prefix('$')
+        && !name.is_empty()
+    {
+        return Ok(Some(RichTextToken::Gaiji(name)));
+    }
+    if inner.starts_with('C')
+        && inner.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+    {
+        return Ok(Some(RichTextToken::StyleMarker(inner)));
+    }
+    Ok(None)
+}
+
+fn angle_token<'a>(input: &mut &'a str) -> ModalResult<RichTextToken<'a>, ContextError> {
+    let inner = delimited('<', take_until(1.., ">"), '>').parse_next(input)?;
+    if inner == "CLO" {
+        return Ok(RichTextToken::ColorClose);
+    }
+    if let Some((key, value)) = inner.split_once(':') {
+        if key == "COL" {
+            return Ok(RichTextToken::ColorOpen(value));
+        }
+        if !key.is_empty() {
+            return Ok(RichTextToken::ValueTag { key, value });
+        }
+    }
+    Ok(RichTextToken::Tag(inner))
+}
+
+fn escape_token<'a>(input: &mut &'a str) -> ModalResult<Option<RichTextToken<'a>>, ContextError> {
+    let escaped = preceded('\\', any).parse_next(input)?;
+    let tok = match escaped {
+        'n' => Some(RichTextToken::Newline),
+        't' => Some(RichTextToken::Tab),
+        'r' => None,
+        '"' => Some(RichTextToken::Plain("\"")),
+        '\'' => Some(RichTextToken::Plain("'")),
+        '\\' => Some(RichTextToken::Plain("\\")),
+        _ => return Ok(None),
+    };
+    Ok(tok)
+}
+
+/// Parse une chaîne IEVR enrichie en séquence de [`RichTextToken`] avec [`winnow`].
+///
+/// Préserve les lectures furigana `[Kanji/Lecture]`, les balises `<COL:...>` / `<VAL:...>`,
+/// les marqueurs `[C...]` et les glyphes `[$gaiji]`.
+#[must_use]
+pub fn parse_ievr_rich_text<'a>(mut input: &'a str) -> Vec<RichTextToken<'a>> {
+    let mut tokens = Vec::new();
+    while !input.is_empty() {
+        let before = input;
+        if input.starts_with('[') {
+            let mut probe = input;
+            if let Ok(parsed) = bracket_token.parse_next(&mut probe) {
+                if let Some(tok) = parsed {
+                    tokens.push(tok);
+                    input = probe;
+                    continue;
+                }
+            }
+        }
+        if input.starts_with('<') {
+            let mut probe = input;
+            if let Ok(tok) = angle_token.parse_next(&mut probe) {
+                tokens.push(tok);
+                input = probe;
+                continue;
+            }
+        }
+        if input.starts_with('\\') {
+            let mut probe = input;
+            match preceded::<_, _, _, ContextError, _, _>('\\', any).parse_next(&mut probe) {
+                Ok('r') => {
+                    input = probe;
+                    continue;
+                }
+                Ok('n' | 't' | '"' | '\'' | '\\') => {
+                    let mut p2 = input;
+                    if let Ok(Some(tok)) = escape_token.parse_next(&mut p2) {
+                        tokens.push(tok);
+                    }
+                    input = p2;
+                    continue;
+                }
+                _ => {}
+            }
+        }
+        if input.starts_with('\n') {
+            tokens.push(RichTextToken::Newline);
+            input = &input[1..];
+            continue;
+        }
+        let plain: ModalResult<&'a str, ContextError> = alt((
+            take_while(1.., |c: char| !matches!(c, '[' | '<' | '\\' | '\n')),
+            take_while(1..=1, |_c: char| true),
+        ))
+        .parse_next(&mut input);
+        match plain {
+            Ok(seg) if !seg.is_empty() => tokens.push(RichTextToken::Plain(seg)),
+            _ if !input.is_empty() => {
+                let first_len = input.chars().next().map_or(1, char::len_utf8);
+                tokens.push(RichTextToken::Plain(&input[..first_len]));
+                input = &input[first_len..];
+            }
+            _ => break,
+        }
+        if input.len() == before.len() {
+            break;
+        }
+    }
+    tokens
+}
+
+/// Extrait toutes les paires `(kanji, reading)` depuis une chaîne contenant des annotations furigana IEVR.
+#[must_use]
+pub fn extract_furigana_pairs(input: &str) -> Vec<(String, String)> {
+    parse_ievr_rich_text(input)
+        .into_iter()
+        .filter_map(|tok| match tok {
+            RichTextToken::Furigana { kanji, reading } => {
+                Some((kanji.to_string(), reading.to_string()))
+            }
+            _ => None,
+        })
+        .collect()
+}
 
 /// Passe 1 — furigana `[Kanji/Reading]` → `Kanji`.
 ///
@@ -430,10 +602,153 @@ pub fn find_text(entries: &[(HashId, String)], hash_id: HashId) -> Option<&str> 
         .map(|(_, t)| t.as_str())
 }
 
+fn unescape_raw_text(text: &str) -> String {
+    let tokens = parse_ievr_rich_text(text);
+    let mut out = String::with_capacity(text.len());
+    for tok in tokens {
+        match tok {
+            RichTextToken::Plain(s) => out.push_str(s),
+            RichTextToken::Furigana { kanji, reading } => {
+                out.push('[');
+                out.push_str(kanji);
+                out.push('/');
+                out.push_str(reading);
+                out.push(']');
+            }
+            RichTextToken::Gaiji(name) => {
+                out.push_str("[$");
+                out.push_str(name);
+                out.push(']');
+            }
+            RichTextToken::StyleMarker(m) => {
+                out.push('[');
+                out.push_str(m);
+                out.push(']');
+            }
+            RichTextToken::ColorOpen(v) => {
+                out.push_str("<COL:");
+                out.push_str(v);
+                out.push('>');
+            }
+            RichTextToken::ColorClose => out.push_str("<CLO>"),
+            RichTextToken::ValueTag { key, value } => {
+                out.push('<');
+                out.push_str(key);
+                out.push(':');
+                out.push_str(value);
+                out.push('>');
+            }
+            RichTextToken::Tag(t) => {
+                out.push('<');
+                out.push_str(t);
+                out.push('>');
+            }
+            RichTextToken::Newline => out.push('\n'),
+            RichTextToken::Tab => out.push('\t'),
+        }
+    }
+    out.trim().into()
+}
+
+/// Comme [`parse_text_info_node`], mais conserve la notation furigana brute `[Kanji/Lecture]`.
+#[must_use]
+pub fn parse_text_info_raw(node: &Node<'_>) -> Option<(HashId, String)> {
+    if node.var_count() < 3 {
+        return None;
+    }
+    let hash_var = node.var(0)?;
+    if hash_var.ty != "Int" {
+        return None;
+    }
+    let text_idx = if node.name().starts_with("NOUN_INFO") {
+        5
+    } else {
+        2
+    };
+    let text_var = node.var(text_idx)?;
+    if text_var.ty != "String" {
+        return None;
+    }
+    let raw = unescape_raw_text(text_var.value);
+    if raw.is_empty() {
+        return None;
+    }
+    Some((hash_var.as_hash(), raw))
+}
+
+/// Parse un `.cfg.bin` texte complet en conservant les annotations furigana brutes.
+#[must_use]
+pub fn parse_text_file_raw(root: &Value) -> Vec<(HashId, String)> {
+    let mut out = Vec::new();
+    for prefix in ["TEXT_INFO", "NOUN_INFO"] {
+        walk_named(root, prefix, |node| {
+            if !node.name().contains("BEGIN")
+                && let Some(e) = parse_text_info_raw(&node)
+            {
+                out.push(e);
+            }
+        });
+    }
+    out
+}
+
+/// Utilitaires japonais basés sur `wana_kana` (disponibles avec la feature `std`).
+#[cfg(feature = "std")]
+pub mod jp {
+    use alloc::string::String;
+    use super::extract_furigana_pairs;
+    use wana_kana::{ConvertJapanese, IsJapaneseStr};
+
+    #[must_use]
+    pub fn is_japanese(s: &str) -> bool {
+        s.is_japanese()
+    }
+
+    #[must_use]
+    pub fn has_kanji(s: &str) -> bool {
+        s.contains_kanji()
+    }
+
+    #[must_use]
+    pub fn to_hiragana(s: &str) -> String {
+        s.to_hiragana()
+    }
+
+    #[must_use]
+    pub fn to_katakana(s: &str) -> String {
+        s.to_katakana()
+    }
+
+    #[must_use]
+    pub fn to_romaji(s: &str) -> String {
+        s.to_romaji()
+    }
+
+    #[must_use]
+    pub fn to_kana(s: &str) -> String {
+        s.to_kana()
+    }
+
+    /// Extrait la lecture romaji depuis les paires furigana `[Kanji/Lecture]` d'une chaîne brute.
+    #[must_use]
+    pub fn furigana_readings_to_romaji(raw: &str) -> Option<String> {
+        let pairs = extract_furigana_pairs(raw);
+        if pairs.is_empty() {
+            return None;
+        }
+        let readings: alloc::vec::Vec<String> = pairs
+            .into_iter()
+            .map(|(_, reading)| reading.to_romaji())
+            .collect();
+        Some(readings.join(" "))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        TEXT_FILES, find_text, parse_text_file, parse_text_info_node, sanitize_text, text_file_name,
+        RichTextToken, TEXT_FILES, extract_furigana_pairs, find_text, parse_ievr_rich_text,
+        parse_text_file, parse_text_file_raw, parse_text_info_node, sanitize_text, text_file_name,
     };
     use crate::cfgbin::Node;
     use crate::hash::HashId;
@@ -586,5 +901,65 @@ mod tests {
         // Mélange réaliste : balise valeur + couleur + furigana + espaces.
         let s = "<COL:FF0000>[必殺/ひっさつ] <VAL:5> coups<CLO>";
         assert_eq!(sanitize_text(s), "必殺 5 coups");
+    }
+
+    #[test]
+    fn winnow_rich_text_parses_all_tokens() {
+        let s = "<COL:FF0000>[必殺/ひっさつ] [$gaiji_icon] [CR]<VAL:5>\\ncoups<CLO>";
+        let tokens = parse_ievr_rich_text(s);
+        assert_eq!(
+            tokens,
+            alloc::vec![
+                RichTextToken::ColorOpen("FF0000"),
+                RichTextToken::Furigana {
+                    kanji: "必殺",
+                    reading: "ひっさつ",
+                },
+                RichTextToken::Plain(" "),
+                RichTextToken::Gaiji("gaiji_icon"),
+                RichTextToken::Plain(" "),
+                RichTextToken::StyleMarker("CR"),
+                RichTextToken::ValueTag {
+                    key: "VAL",
+                    value: "5",
+                },
+                RichTextToken::Newline,
+                RichTextToken::Plain("coups"),
+                RichTextToken::ColorClose,
+            ]
+        );
+        assert_eq!(
+            extract_furigana_pairs(s),
+            alloc::vec![("必殺".to_string(), "ひっさつ".to_string())]
+        );
+    }
+
+    #[test]
+    fn parse_text_file_raw_preserves_furigana() {
+        let root = json!({
+            "entries": [{
+                "name": "TEXT_INFO_0",
+                "variables": [
+                    json!({"type": "Int", "value": "42"}),
+                    json!({"type": "Int", "value": "0"}),
+                    json!({"type": "String", "value": "[亜風炉/あふろ] 照美"})
+                ],
+                "children": []
+            }]
+        });
+        let raw = parse_text_file_raw(&root);
+        assert_eq!(raw, alloc::vec![(HashId(42), "[亜風炉/あふろ] 照美".to_string())]);
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn jp_wana_kana_roundtrip() {
+        assert!(super::jp::is_japanese("アフロディ"));
+        assert!(super::jp::has_kanji("亜風炉照美"));
+        assert_eq!(super::jp::to_romaji("ひっさつわざ"), "hissatsuwaza");
+        assert_eq!(
+            super::jp::furigana_readings_to_romaji("[亜風炉/あふろ] [照美/てるみ]").as_deref(),
+            Some("afuro terumi")
+        );
     }
 }

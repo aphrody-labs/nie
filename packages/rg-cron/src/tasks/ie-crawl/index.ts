@@ -24,6 +24,7 @@
  * consignées une par une sans faire échouer la veille.
  */
 
+import { crawlCommunityMods } from "./community-mods";
 import { crawlCross } from "./cross";
 import { crawlDiscord } from "./discord";
 import { crawlExternalDocs } from "./external-docs";
@@ -31,6 +32,7 @@ import { crawlLevel5 } from "./level5";
 import { crawlLevel5Blog } from "./level5-blog";
 import { crawlNews } from "./news";
 import { crawlRe } from "./re";
+import { crawlSeries } from "./series";
 import { crawlReddit } from "./reddit";
 import { crawlZukanOrder } from "./zukan";
 
@@ -55,12 +57,14 @@ const ETAPES: readonly {
   { nom: "zukan", critique: true, lancer: crawlZukanOrder },
   { nom: "news", critique: true, lancer: crawlNews },
   { nom: "re", critique: false, lancer: crawlRe },
+  { nom: "series", critique: false, lancer: crawlSeries },
   { nom: "cross", critique: false, lancer: crawlCross },
   { nom: "level5", critique: false, lancer: crawlLevel5 },
   { nom: "level5-blog", critique: false, lancer: crawlLevel5Blog },
   { nom: "external-docs", critique: false, lancer: crawlExternalDocs },
   { nom: "reddit", critique: false, lancer: crawlReddit },
   { nom: "discord", critique: false, lancer: crawlDiscord },
+  { nom: "community:mods", critique: false, lancer: crawlCommunityMods },
 ];
 
 export async function runIeCrawl(): Promise<ResultatCrawl> {

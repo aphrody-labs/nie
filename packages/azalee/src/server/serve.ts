@@ -13,6 +13,14 @@
 
 import { STACK_CONTRACT } from "@rosegriffon/config/contract";
 import { MONOREPO_OPENAPI } from "@rosegriffon/config/openapi";
+import { queryGameDetail, queryGamesCatalog } from "../games";
+import {
+  getDesignThemesManifest,
+  loadWebsiteLocaleDictionary,
+  queryCommunityModsEndpoint,
+  queryCommunityWikisEndpoint,
+  translateIevrQuery,
+} from "./ecosystem";
 import { fileMeta, listDirPaged, searchFiles, totalFiles } from "../cpk/index";
 import { getCrossCatalogStats, getCrossTables } from "../cross/data";
 import { categoryStats, searchText } from "../game-text/index";
@@ -58,6 +66,8 @@ interface RouteContext {
   params: Record<string, string>;
   query: URLSearchParams;
   url: URL;
+  method: string;
+  request: Request;
 }
 
 // --- Utilitaires de requête ------------------------------------------------
@@ -153,7 +163,10 @@ route("health", async () => ({
   cpkFiles: await safeAsync(() => totalFiles(), 0),
 }));
 
-route(STACK_CONTRACT.http.openapiPath.replace(/^\//, ""), () => MONOREPO_OPENAPI);
+route(
+  STACK_CONTRACT.http.openapiPath.replace(/^\//, ""),
+  () => MONOREPO_OPENAPI,
+);
 
 route("api/characters", ({ query }) =>
   wikiService.getCharactersList(listParams(query) as never),
@@ -331,6 +344,118 @@ export function listRoutes(): string[] {
   return ROUTES.map((r) => `/${r.segments.join("/")}`).sort();
 }
 
+route("api/games", ({ query }) =>
+  queryGamesCatalog({
+    locale: query.get("locale") ?? query.get("lang"),
+    era: query.get("era"),
+    status: query.get("status"),
+    q: query.get("q"),
+  }),
+);
+
+route("api/games/:slug", ({ params, query }) => {
+  const detail = queryGameDetail(
+    params.slug ?? "",
+    query.get("locale") ?? query.get("lang"),
+  );
+  if (!detail) throw new HttpError(404, "jeu introuvable");
+  return detail;
+});
+
+route("api/mods", ({ query }) => {
+  const rawLimit = Number.parseInt(query.get("limit") ?? "50", 10);
+  return queryCommunityModsEndpoint({
+    q: query.get("q"),
+    gameSlug: query.get("game"),
+    locale: query.get("locale") ?? query.get("lang"),
+    limit: Number.isFinite(rawLimit) ? rawLimit : 50,
+  });
+});
+
+route("api/community/wikis", ({ query }) => {
+  const rawLimit = Number.parseInt(query.get("limit") ?? "50", 10);
+  return queryCommunityWikisEndpoint({
+    q: query.get("q"),
+    lang: query.get("lang"),
+    gameSlug: query.get("game"),
+    locale: query.get("locale"),
+    limit: Number.isFinite(rawLimit) ? rawLimit : 50,
+  });
+});
+
+route("api/design/themes", () => getDesignThemesManifest());
+
+route("api/design/tokens", () => ({
+  schemaVersion: 1,
+  manifest: getDesignThemesManifest(),
+  contract: {
+    locales: STACK_CONTRACT.project.locales,
+    ui: STACK_CONTRACT.ui,
+  },
+}));
+
+route("api/locales/:lang", ({ params, query }) => {
+  const dict = loadWebsiteLocaleDictionary(
+    params.lang ?? "",
+    query.get("scope"),
+  );
+  if (!dict) throw new HttpError(404, "langue non supportée");
+  return dict;
+});
+
+route("api/translate", async ({ method, query, request }) => {
+  if (method === "POST") {
+    let body: {
+      text?: unknown;
+      q?: unknown;
+      texts?: unknown;
+      to?: unknown;
+      lang?: unknown;
+      skipRemote?: unknown;
+    };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      throw new HttpError(400, "corps JSON invalide");
+    }
+    const targetLang =
+      typeof body.to === "string"
+        ? body.to
+        : typeof body.lang === "string"
+          ? body.lang
+          : "fr";
+    const skipRemote = body.skipRemote === true;
+    if (Array.isArray(body.texts)) {
+      const items = body.texts
+        .filter((item): item is string => typeof item === "string")
+        .slice(0, 50);
+      if (items.length === 0) throw new HttpError(400, "champ `texts` vide");
+      const results = await Promise.all(
+        items.map((text) =>
+          translateIevrQuery({ text, targetLang, skipRemote }),
+        ),
+      );
+      return { targetLang, count: results.length, results };
+    }
+    const text =
+      typeof body.text === "string"
+        ? body.text
+        : typeof body.q === "string"
+          ? body.q
+          : "";
+    if (!text.trim()) throw new HttpError(400, "champ `text` requis");
+    return translateIevrQuery({ text, targetLang, skipRemote });
+  }
+
+  const q = query.get("q") ?? query.get("text") ?? "";
+  if (!q.trim()) throw new HttpError(400, "paramètre `q` requis");
+  return translateIevrQuery({
+    text: q,
+    targetLang: query.get("to") ?? query.get("lang") ?? "fr",
+    skipRemote: query.get("skipRemote") === "true",
+  });
+});
+
 route("", () => ({ name: "@rosegriffon/azalee", routes: listRoutes() }));
 
 // --- Résolution ------------------------------------------------------------
@@ -397,16 +522,18 @@ export async function handleAzaleeRequest(
     ...corsHeaders(options.cors ?? true),
   };
 
+  const url = new URL(request.url);
+  const isTranslatePost =
+    request.method === "POST" && url.pathname === "/api/translate";
   if (request.method === "OPTIONS")
     return new Response(null, { status: 204, headers });
-  if (request.method !== "GET") {
+  if (request.method !== "GET" && !isTranslatePost) {
     return Response.json(
       { error: "méthode non supportée" },
       { status: 405, headers },
     );
   }
 
-  const url = new URL(request.url);
   const segments = url.pathname.split("/").filter(Boolean);
   const found = match(segments);
   if (!found)
@@ -420,6 +547,8 @@ export async function handleAzaleeRequest(
       params: found.params,
       query: url.searchParams,
       url,
+      method: request.method,
+      request,
     });
     return Response.json(body, { headers });
   } catch (error) {

@@ -22,7 +22,9 @@ import { registerCompareCommand } from "./commands/compare";
 import { registerDataCommand } from "./commands/data";
 import { registerDbCommand } from "./commands/db";
 import { registerDialogueCommand } from "./commands/dialogue";
+import { registerGamesCommand } from "./commands/games";
 import { registerItemCommand } from "./commands/item";
+import { registerModsCommand } from "./commands/mods";
 import { registerRandomTeamCommand } from "./commands/random-team";
 import { registerRedisCommand } from "./commands/redis";
 import { registerRepairCommand } from "./commands/repair";
@@ -79,6 +81,8 @@ export function createAzaleeProgram(): Command {
   registerTeamCommand(program);
   registerRandomTeamCommand(program);
   registerTeamBuilderCommand(program);
+  registerGamesCommand(program);
+  registerModsCommand(program);
 
   // Vérification, shell, pipeline, API
   registerTestCommand(program);

@@ -51,11 +51,12 @@ export async function generateMetadata({
     alternates: {
       canonical: buildCanonical(wiki("/chara"), rawParams, LIST_CANONICAL_KEYS),
     },
-    description: `Base de données des joueurs Inazuma Eleven: Victory Road. ${filters.length > 0 ? `Filtres : ${filters.join(", ")}. ` : ""}Retrouvez les stats, techniques et méthodes de recrutement de tous les personnages.`,
+    description: `Base de données complète des joueurs de la saga Inazuma Eleven. ${filters.length > 0 ? `Filtres : ${filters.join(", ")}. ` : ""}Retrouvez les stats, techniques et méthodes de recrutement de tous les personnages.`,
     openGraph: withDefaultOgImage({
-      description: "Wiki complet Inazuma Eleven Victory Road",
+      description:
+        "Encyclopédie complète des joueurs de la saga Inazuma Eleven",
       locale: "fr_FR",
-      siteName: "Azalée - Inazuma Eleven Victory Road Wiki",
+      siteName: "Azalée - Wiki Inazuma Eleven",
       title: `${title} | Azalée`,
       type: "website",
       url: "/wiki/chara",
@@ -97,31 +98,31 @@ export default async function PlayersPage({
       ? Number(perPage)
       : DEFAULT_PER_PAGE;
 
-  // Data First: Fetch paginated data from DB
-  const { data: characters, total } = await wikiService.getCharactersList({
-    ageGroup: ageGroup?.toString(),
-    schoolYear: schoolYear?.toString(),
-    element: element?.toString(),
-    gender: gender?.toString(),
-    limit: itemsPerPage,
-    page: pageNumber,
-    playstyle: playstyle?.toString(),
-    position: position?.toString(),
-    q: q?.toString(),
-    rarity: rarity?.toString(),
-    role: role?.toString(),
-    series: series?.toString(),
-    status: status?.toString(),
-    team: team?.toString(),
-  });
-
-  // Fetch filter options
-  const teams = await wikiService.getAllTeams();
+  // Data First: Fetch paginated data and cached filter options in parallel
+  const [{ data: characters, total }, teams] = await Promise.all([
+    wikiService.getCharactersList({
+      ageGroup: ageGroup?.toString(),
+      schoolYear: schoolYear?.toString(),
+      element: element?.toString(),
+      gender: gender?.toString(),
+      limit: itemsPerPage,
+      page: pageNumber,
+      playstyle: playstyle?.toString(),
+      position: position?.toString(),
+      q: q?.toString(),
+      rarity: rarity?.toString(),
+      role: role?.toString(),
+      series: series?.toString(),
+      status: status?.toString(),
+      team: team?.toString(),
+    }),
+    wikiService.getAllTeams(),
+  ]);
 
   const collectionJsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    description: `Base de données de ${total.toLocaleString("fr-FR")} joueurs Inazuma Eleven: Victory Road.`,
+    description: `Base de données de ${total.toLocaleString("fr-FR")} joueurs de toute la saga Inazuma Eleven.`,
     isPartOf: {
       "@type": "WebSite",
       name: "Azalée",
@@ -137,7 +138,7 @@ export default async function PlayersPage({
       })),
       numberOfItems: total,
     },
-    name: "Personnages - Inazuma Eleven: Victory Road",
+    name: "Personnages - Inazuma Eleven",
     numberOfItems: total,
     url: absoluteUrl(wiki("/chara")),
   };
@@ -152,7 +153,7 @@ export default async function PlayersPage({
         icon="group"
         title="Personnages"
         count={`${total.toLocaleString("fr-FR")} joueurs`}
-        description="Base de données complète des joueurs d'Inazuma Eleven: Victory Road."
+        description="Base de données complète des joueurs de toute la saga Inazuma Eleven (du 1er épisode à Victory Road)."
       />
       <PlayersClient
         paginatedCharacters={characters}

@@ -29,7 +29,10 @@ export interface NativeContract {
   defaultPort(serviceKey: string): number;
   isMirrorEnvVar(name: string): boolean;
   contractJson(): string;
-  resolveOriginUrl(originKey: string, domainOverride?: string | null): string | null;
+  resolveOriginUrl(
+    originKey: string,
+    domainOverride?: string | null,
+  ): string | null;
   isTrustedOrigin(origin: string, production: boolean): boolean;
   isAdminRole(role: string): boolean;
   isStaffRole(role: string): boolean;

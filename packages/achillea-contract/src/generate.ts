@@ -30,8 +30,7 @@ export const CONTRACT_TARGETS: readonly ContractTarget[] = [
   {
     file: "achillea.openapi.json",
     language: "OpenAPI 3.2.1",
-    render: (contract) =>
-      `${JSON.stringify(emitOpenApi(contract), null, 2)}\n`,
+    render: (contract) => `${JSON.stringify(emitOpenApi(contract), null, 2)}\n`,
   },
   { file: "achillea.rs", language: "Rust (serde)", render: emitRust },
   { file: "achillea.h", language: "Pure C23 (LLVM ABI)", render: emitC23 },

@@ -3,10 +3,7 @@ import { Badge, Button, Card } from "@rosegriffon/ui";
 
 import Link from "@/components/shared/Link";
 import { CommonSpriteIcon } from "@/components/ui/CommonSpriteIcon";
-import {
-  BENTO_COPY,
-  ELEMENT_ICON_BY_NAME,
-} from "@/lib/home-showcase";
+import { BENTO_COPY, ELEMENT_ICON_BY_NAME } from "@/lib/home-showcase";
 import type { HomeShowcaseData } from "@/lib/home-showcase-server";
 import { ArrowRight } from "@/lib/icons-config";
 
@@ -204,7 +201,9 @@ export function HomeUniversesBento({
                       height={18}
                       className="size-4 shrink-0 rounded-full object-cover"
                     />
-                    <span className="truncate">{clan.shortenedName || clan.name}</span>
+                    <span className="truncate">
+                      {clan.shortenedName || clan.name}
+                    </span>
                   </Link>
                 ))}
               </div>

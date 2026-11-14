@@ -46,6 +46,37 @@ export interface CrossCbtMode {
   descFr: string;
 }
 
+export interface CrossVrCollabCharacter {
+  nameJa: string;
+  roleOrPosition: string;
+  elementJa: string | null;
+  cv: string | null;
+  descJa: string;
+  thumbUrl: string;
+  fullImageUrl: string;
+  hissatsuNameJa: string | null;
+  hissatsuImageUrl: string | null;
+  nameFr: string;
+  localThumb: string | null;
+  localFullImage: string | null;
+  localHissatsuImage: string | null;
+}
+
+export interface CrossVrCollab {
+  url: string;
+  period: string;
+  storyJa: string;
+  storyFr: string;
+  kvImageUrl: string;
+  localKvImage: string;
+  characters: CrossVrCollabCharacter[];
+}
+
+export interface CrossGuidePoint {
+  titleJa: string;
+  bodyJa: string;
+}
+
 export interface CrossData {
   site: {
     title: string;
@@ -60,6 +91,8 @@ export interface CrossData {
     phase: string;
     phaseLabelJa: string;
     phaseLabelFr: string;
+    phaseJa?: string;
+    phaseFr?: string;
     serviceStart: string;
     serviceStartLabelJa: string;
     serviceStartLabelFr: string;
@@ -140,6 +173,8 @@ export interface CrossData {
   };
   tweets: CrossTweet[];
   tweetsNote: string;
+  victoryRoad2026?: CrossVrCollab;
+  guidePoints?: CrossGuidePoint[];
   links: Record<string, string | string[]>;
   localImages: {
     keyVisual: string;

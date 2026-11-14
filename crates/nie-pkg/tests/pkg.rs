@@ -89,7 +89,7 @@ fn matrix_has_one_row_per_game() {
     let md = reg.feature_matrix_markdown();
     assert_eq!(md.lines().count(), reg.games.len() + 2);
     assert!(
-        md.contains("| Inazuma Eleven: Victory Road (`ievr`) | pc, switch, switch2, ps4, ps5 |")
+        md.contains("| Inazuma Eleven: Victory Road (`ievr`) | pc, switch, switch2, ps4, ps5, xbox |")
     );
 }
 

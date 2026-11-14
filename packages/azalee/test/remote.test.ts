@@ -194,7 +194,7 @@ function matchRoute(pathname: string): string | null {
 }
 
 describe("couverture — une méthode par route de serve.ts", () => {
-  test("les 42 routes déclarées sont toutes atteignables depuis le client", async () => {
+  test("les 50 routes déclarées sont toutes atteignables depuis le client", async () => {
     const seen: string[] = [];
     const recorder = createAzaleeClient({
       baseUrl: "http://recorder.test",
@@ -247,6 +247,14 @@ describe("couverture — une méthode par route de serve.ts", () => {
       recorder.crossTables(),
       recorder.crossStats(),
       recorder.search({ q: "ma" }),
+      recorder.games({ locale: "fr" }),
+      recorder.game("inazuma-eleven-victory-road", { locale: "fr" }),
+      recorder.mods({ locale: "fr" }),
+      recorder.communityWikis({ lang: "ja" }),
+      recorder.designThemes(),
+      recorder.designTokens(),
+      recorder.localeDictionary("fr", { scope: "interface" }),
+      recorder.translate({ q: "円堂守", to: "fr", skipRemote: true }),
     ]);
 
     const matched = new Set<string>();
@@ -279,7 +287,7 @@ describe("couverture — une méthode par route de serve.ts", () => {
 // --- Bout en bout contre le vrai routeur ----------------------------------
 
 describe("bout en bout — Bun.serve + handleAzaleeRequest", () => {
-  test("l'index publie le nom du package et ses 42 routes", async () => {
+  test("l'index publie le nom du package et ses 50 routes", async () => {
     const index = await client.index();
     expect(index.name).toBe("@rosegriffon/azalee");
     expect(index.routes).toEqual(listRoutes());

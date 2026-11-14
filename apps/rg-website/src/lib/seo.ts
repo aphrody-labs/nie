@@ -131,16 +131,18 @@ export function titleWithSuffix(
 }
 
 /**
- * Titre d'une fiche du wiki : « <sujet> | Inazuma Eleven Victory Road - Azalée »
+ * Titre d'une fiche du wiki : « <sujet> | Inazuma Eleven - Azalée »
  * quand il tient en {@link TITLE_MAX} caractères, sinon « <sujet> | Azalée ».
  * `context` précise le type de fiche (« Équipes », « Passifs ») si la place le
  * permet.
  */
-export function wikiTitle(subject: string, context?: string): string {
-  const game = context
-    ? `${context} - Inazuma Eleven Victory Road`
-    : "Inazuma Eleven Victory Road";
-  const full = `${subject} | ${game} - Azalée`;
+export function wikiTitle(
+  subject: string,
+  context?: string,
+  game = "Inazuma Eleven",
+): string {
+  const scope = context ? `${context} - ${game}` : game;
+  const full = `${subject} | ${scope} - Azalée`;
   return full.length <= TITLE_MAX
     ? full
     : titleWithSuffix(subject, " | Azalée");

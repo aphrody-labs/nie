@@ -25,12 +25,21 @@
     "@aphrody/agent-browser": "catalog:",
     "@aphrody/paths": "catalog:",
     "@aphrody/x": "catalog:",
+    "@crawlee/cheerio": "catalog:",
+    "@crawlee/core": "catalog:",
+    "@crawlee/impit-client": "catalog:",
+    "@crawlee/playwright": "catalog:",
+    "@orama/orama": "catalog:",
     "@rosegriffon/assets": "workspace:*",
     "@rosegriffon/db": "workspace:*",
     "@rosegriffon/inagle": "workspace:*",
     "@rosegriffon/types": "workspace:*",
     "@vercel/functions": "catalog:",
-    "discord.js": "catalog:"
+    "cheerio": "catalog:",
+    "crawlee": "catalog:",
+    "discord.js": "catalog:",
+    "impit": "catalog:",
+    "patchright": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "catalog:"

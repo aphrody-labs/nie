@@ -31,11 +31,20 @@ function run(cmd: string[]) {
   }
 }
 
-run(["go", "build", "-buildmode=c-shared", "-o", join(BUILD_DIR, dllName), "."]);
+run([
+  "go",
+  "build",
+  "-buildmode=c-shared",
+  "-o",
+  join(BUILD_DIR, dllName),
+  ".",
+]);
 run(["go", "build", "-o", join(BUILD_DIR, cliName), "./cmd/nie-rclone"]);
 
 if (runTest) {
   run(["go", "test", "-v", "./vfsbridge/..."]);
 }
 
-console.log(`Built ${resolve(BUILD_DIR, dllName)} and ${resolve(BUILD_DIR, cliName)}`);
+console.log(
+  `Built ${resolve(BUILD_DIR, dllName)} and ${resolve(BUILD_DIR, cliName)}`,
+);

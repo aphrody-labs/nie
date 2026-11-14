@@ -1186,9 +1186,13 @@ main[data-slot="sidebar-inset"] {
       transparent 72%
     ),
     url("/grid-pattern.svg");
-  background-size: auto, auto, 28px 28px;
+  background-size:
+    auto,
+    auto,
+    28px 28px;
   background-repeat: no-repeat, no-repeat, repeat;
-  border-inline-end: 1px solid color-mix(in oklch, var(--sidebar-foreground) 12%, transparent);
+  border-inline-end: 1px solid
+    color-mix(in oklch, var(--sidebar-foreground) 12%, transparent);
 }
 
 [data-slot="sidebar-inner"]::before {
@@ -1197,8 +1201,12 @@ main[data-slot="sidebar-inset"] {
   inset: 0;
   pointer-events: none;
   background-image: var(--theme-wallpaper, none), url("/noise.svg");
-  background-position: center bottom, center center;
-  background-size: cover, 220px 220px;
+  background-position:
+    center bottom,
+    center center;
+  background-size:
+    cover,
+    220px 220px;
   background-repeat: no-repeat, repeat;
   opacity: 0.08;
   mask-image: linear-gradient(to bottom, transparent 22%, black 92%);
@@ -1251,7 +1259,10 @@ main[data-slot="sidebar-inset"] {
       transparent 70%
     ),
     url("/grid-pattern.svg");
-  background-size: auto, auto, 32px 32px;
+  background-size:
+    auto,
+    auto,
+    32px 32px;
   background-repeat: no-repeat, no-repeat, repeat;
 }
 
@@ -1274,7 +1285,9 @@ main[data-slot="sidebar-inset"] {
     ),
     url("/azalee-bg.webp");
   background-size: auto, cover;
-  background-position: center, center top;
+  background-position:
+    center,
+    center top;
 }
 
 .rg-bento-achillea {
@@ -1286,7 +1299,9 @@ main[data-slot="sidebar-inset"] {
     ),
     url("/fond_achilea.webp");
   background-size: auto, cover;
-  background-position: center, center top;
+  background-position:
+    center,
+    center top;
 }
 
 .rg-bento-rgtv {
@@ -1298,7 +1313,9 @@ main[data-slot="sidebar-inset"] {
     ),
     url("/rgtv/fond.webp");
   background-size: auto, cover;
-  background-position: center, center top;
+  background-position:
+    center,
+    center top;
 }
 
 .rg-asset-stage {
@@ -1312,7 +1329,9 @@ main[data-slot="sidebar-inset"] {
       transparent 68%
     ),
     url("/patterns/grid.svg");
-  background-size: auto, 28px 28px;
+  background-size:
+    auto,
+    28px 28px;
 }
 
 .rg-3d-poster {
@@ -1326,4 +1345,60 @@ main[data-slot="sidebar-inset"] {
     url("/inazuma-cross/common-bg.webp");
   background-size: auto, cover;
   background-position: center, center;
+}
+
+.cross-hero {
+  --cross-cyan: #00aeef;
+  --cross-navy: #0c1730;
+  --cross-on-navy: #ffffff;
+  --cross-on-navy-muted: rgb(255 255 255 / 0.8);
+  border-color: color-mix(in srgb, var(--cross-cyan) 50%, transparent);
+  background-color: var(--cross-navy);
+}
+
+.cross-hero-scrim {
+  background: linear-gradient(
+    to top,
+    var(--cross-navy) 18%,
+    color-mix(in srgb, var(--cross-navy) 90%, transparent) 34%,
+    color-mix(in srgb, var(--cross-navy) 40%, transparent) 58%,
+    transparent 82%
+  );
+}
+
+.cross-hero-rail {
+  background-color: var(--cross-cyan);
+}
+
+.cross-hero-logo {
+  filter: drop-shadow(0 4px 0 rgb(0 0 0 / 0.55));
+}
+
+.cross-hero-title {
+  color: var(--cross-on-navy);
+  text-shadow: 0 2px 0 rgb(0 0 0 / 0.5);
+}
+
+.cross-hero-subtitle {
+  color: var(--cross-on-navy-muted);
+}
+
+.cross-hero-cta {
+  background-color: var(--cross-cyan);
+  color: var(--cross-on-navy);
+  box-shadow: 0 4px 0 0 rgb(0 0 0 / 0.4);
+}
+
+.cross-hero-pill {
+  background-color: rgb(255 255 255 / 0.15);
+  color: var(--cross-on-navy);
+}
+
+.cross-hero-outline {
+  border-color: rgb(255 255 255 / 0.4);
+  color: var(--cross-on-navy);
+}
+
+.cross-hero-outline:hover {
+  background-color: rgb(255 255 255 / 0.1);
 }

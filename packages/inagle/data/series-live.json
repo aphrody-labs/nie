@@ -1,0 +1,131 @@
+{
+  "crawledAt": "2026-11-14T15:32:00.513Z",
+  "source": "https://www.inazuma.jp/",
+  "gamesCount": 14,
+  "games": [
+    {
+      "href": "https://www.inazuma-cross.jp/",
+      "platforms": "iOS／Android",
+      "titleJa": "イナズマイレブン クロス",
+      "thumbnailUrl": "https://www.inazuma.jp/assets/img/top/img_inazuma-cross_260604.jpg",
+      "localThumbnail": "/games/img_inazuma-cross_260604.jpg"
+    },
+    {
+      "href": "https://www.inazuma.jp/re/",
+      "platforms": "Nintendo Switch 2 Nintendo Switch PlayStation®5 Steam",
+      "titleJa": "イナズマイレブン RE",
+      "thumbnailUrl": "https://www.inazuma.jp/assets/img/top/img_inazuma-re.jpg",
+      "localThumbnail": "/games/img_inazuma-re.jpg"
+    },
+    {
+      "href": "https://www.inazuma.jp/victory-road/",
+      "platforms": "Nintendo Switch 2 Nintendo Switch PlayStation®5 PlayStation®4 XBOX Series X｜S Steam",
+      "titleJa": "イナズマイレブン 英雄たちのヴィクトリーロード",
+      "thumbnailUrl": "https://www.inazuma.jp/assets/img/top/img_victory-road.jpg",
+      "localThumbnail": "/games/img_victory-road.jpg"
+    },
+    {
+      "href": "https://www.inazuma.jp/everyday-plus/",
+      "platforms": "iOS／Android",
+      "titleJa": "イナズマイレブン エブリデイ!!＋（プラス）",
+      "thumbnailUrl": "https://www.inazuma.jp/assets/img/top/img_everyday-plus.jpg",
+      "localThumbnail": "/games/img_everyday-plus.jpg"
+    },
+    {
+      "href": "https://www.inazuma.jp/gogalaxy/",
+      "platforms": "ニンテンドー3DS",
+      "titleJa": "イナズマイレブンGO ギャラクシー ビッグバン／スーパーノヴァ",
+      "thumbnailUrl": "https://www.inazuma.jp/assets/img/top/img_gogalaxy.jpg",
+      "localThumbnail": "/games/img_gogalaxy.jpg"
+    },
+    {
+      "href": "https://www.inazuma.jp/inazuma123/",
+      "platforms": "ニンテンドー3DS",
+      "titleJa": "イナズマイレブン1・2・3!! 円堂守伝説",
+      "thumbnailUrl": "https://www.inazuma.jp/assets/img/top/img_inazuma123.jpg",
+      "localThumbnail": "/games/img_inazuma123.jpg"
+    },
+    {
+      "href": "https://www.inazuma.jp/go2/",
+      "platforms": "ニンテンドー3DS",
+      "titleJa": "イナズマイレブンGO2 クロノ・ストーン ネップウ／ライメイ",
+      "thumbnailUrl": "https://www.inazuma.jp/assets/img/top/img_go2.jpg",
+      "localThumbnail": "/games/img_go2.jpg"
+    },
+    {
+      "href": "https://www.inazuma.jp/gostrikers/",
+      "platforms": "Wii",
+      "titleJa": "イナズマイレブンGO ストライカーズ 2013",
+      "thumbnailUrl": "https://www.inazuma.jp/assets/img/top/img_gostrikers.jpg",
+      "localThumbnail": "/games/img_gostrikers.jpg"
+    },
+    {
+      "href": "https://www.inazuma.jp/go/",
+      "platforms": "ニンテンドー3DS",
+      "titleJa": "イナズマイレブンGO シャイン／ダーク",
+      "thumbnailUrl": "https://www.inazuma.jp/assets/img/top/img_go.jpg",
+      "localThumbnail": "/games/img_go.jpg"
+    },
+    {
+      "href": "https://www.inazuma.jp/strikers/",
+      "platforms": "Wii",
+      "titleJa": "イナズマイレブン ストライカーズ 2012エクストリーム",
+      "thumbnailUrl": "https://www.inazuma.jp/assets/img/top/img_strikers_extreme.jpg",
+      "localThumbnail": "/games/img_strikers_extreme.jpg"
+    },
+    {
+      "href": "https://www.inazuma.jp/strikers/",
+      "platforms": "Wii",
+      "titleJa": "イナズマイレブン ストライカーズ",
+      "thumbnailUrl": "https://www.inazuma.jp/assets/img/top/img_strikers.jpg",
+      "localThumbnail": "/games/img_strikers.jpg"
+    },
+    {
+      "href": "https://www.inazuma.jp/inazuma3/",
+      "platforms": "ニンテンドーDS",
+      "titleJa": "イナズマイレブン3 世界への挑戦!!スパーク／ボンバー／ジ・オーガ",
+      "thumbnailUrl": "https://www.inazuma.jp/assets/img/top/img_inazuma3.jpg",
+      "localThumbnail": "/games/img_inazuma3.jpg"
+    },
+    {
+      "href": "https://www.inazuma.jp/inazuma2/",
+      "platforms": "ニンテンドーDS",
+      "titleJa": "イナズマイレブン2 脅威の侵略者 ファイア／ブリザード",
+      "thumbnailUrl": "https://www.inazuma.jp/assets/img/top/img_inazuma2.jpg",
+      "localThumbnail": "/games/img_inazuma2.jpg"
+    },
+    {
+      "href": "https://www.inazuma.jp/inazuma/",
+      "platforms": "ニンテンドーDS",
+      "titleJa": "イナズマイレブン",
+      "thumbnailUrl": "https://www.inazuma.jp/assets/img/top/img_inazuma.jpg",
+      "localThumbnail": "/games/img_inazuma.jpg"
+    }
+  ],
+  "portalStatus": {
+    "series-home": {
+      "ok": true,
+      "status": 200
+    },
+    "18th": {
+      "ok": true,
+      "status": 200
+    },
+    "bold-revolution-fr": {
+      "ok": true,
+      "status": 200
+    },
+    "bold-revolution-en": {
+      "ok": true,
+      "status": 200
+    },
+    "sd": {
+      "ok": true,
+      "status": 200
+    },
+    "everyday-plus": {
+      "ok": true,
+      "status": 200
+    }
+  }
+}

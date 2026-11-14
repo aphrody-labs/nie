@@ -4,6 +4,7 @@
  */
 
 import { basename, dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /** Sync existence check sans node:fs — Bun.Glob.scanSync sert de stat shim. */
 function existsSync(p: string): boolean {
@@ -18,7 +19,13 @@ function existsSync(p: string): boolean {
   }
 }
 
-const __dirname = import.meta.dir;
+const __dirname =
+  typeof import.meta.dir === "string"
+    ? import.meta.dir
+    : typeof import.meta.url === "string" &&
+        import.meta.url.startsWith("file://")
+      ? dirname(fileURLToPath(import.meta.url))
+      : process.cwd();
 const PACKAGE_ROOT = resolve(__dirname, "../..");
 
 /**

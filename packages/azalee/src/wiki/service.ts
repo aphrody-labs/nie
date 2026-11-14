@@ -786,14 +786,25 @@ export const wikiService = {
     const db = createInagleSql<WikiSqlDatabase>();
     const supabaseHexIds = new Set<string>();
 
-    // 1. Get from database: inagle_characters (data->'auras')
-    const charData = await db
-      .selectFrom("inagle_characters")
-      .select("data")
-      .where((eb) =>
-        eb.or([eb("chara_id", "=", charaId), eb("id", "=", charaParamId)]),
-      )
-      .executeTakeFirst();
+    const ownedTables = [
+      "inagle_keshins",
+      "inagle_souls",
+      "inagle_miximax",
+    ] as const;
+
+    // 1 + 2. Lecture parallèle du personnage et des 3 tables de propriété.
+    const [charData, ...ownedBatches] = await Promise.all([
+      db
+        .selectFrom("inagle_characters")
+        .select("data")
+        .where((eb) =>
+          eb.or([eb("chara_id", "=", charaId), eb("id", "=", charaParamId)]),
+        )
+        .executeTakeFirst(),
+      ...ownedTables.map((table) =>
+        db.selectFrom(table).select(["id", "data"]).execute(),
+      ),
+    ]);
 
     if (charData) {
       const dbAuras = (charData.data as any)?.auras || [];
@@ -802,18 +813,7 @@ export const wikiService = {
       }
     }
 
-    // 2. SQL projection: imported aura rows carry their owner and skill ids in data.
-    // inagle_auras is a normalized catalog without a `data` column or an
-    // owner ID. Only the three owned aura tables carry this projection.
-    for (const table of [
-      "inagle_keshins",
-      "inagle_souls",
-      "inagle_miximax",
-    ] as const) {
-      const auraRows = await db
-        .selectFrom(table)
-        .select(["id", "data"])
-        .execute();
+    for (const auraRows of ownedBatches) {
       for (const row of auraRows) {
         const payload: any =
           row.data && typeof row.data === "object" ? row.data : {};
@@ -831,24 +831,35 @@ export const wikiService = {
       }
     }
 
-    const results: any[] = [];
+    if (supabaseHexIds.size === 0) return [];
+
     const tables = [
       { table: "inagle_keshins", slug: "esprits-guerriers", prefix: "keshin_" },
       { table: "inagle_souls", slug: "totems", prefix: "soul_" },
       { table: "inagle_miximax", slug: "miximax", prefix: "miximax_" },
     ] as const;
 
-    for (const hexId of supabaseHexIds) {
+    // 3. Requête groupée IN(...) en parallèle sur les 3 tables (1 round-trip par table).
+    const allPossibleIds = new Set<string>();
+    const hexCandidates = [...supabaseHexIds].map((hexId) => {
       const cleanHexPart = hexId.replace(/^0x/i, "").toUpperCase();
       const formattedId = "0x" + cleanHexPart;
+      const byTable = tables.map((t) => [
+        t.prefix + formattedId,
+        formattedId,
+        hexId,
+      ]);
+      for (const ids of byTable) {
+        for (const id of ids) allPossibleIds.add(id);
+      }
+      return { hexId, formattedId };
+    });
 
-      for (const t of tables) {
-        const prefixedId = t.prefix + formattedId;
-        const possibleIds = [prefixedId, formattedId, hexId];
-
-        // `icon_code` n'existe que sur inagle_miximax (pas keshins/souls) — sélection
-        // conditionnelle pour éviter l'erreur PostgREST « column does not exist ».
-        const auraRows = await db
+    const idPool = [...allPossibleIds];
+    const tableBatches = await Promise.all(
+      tables.map(async (t) => ({
+        meta: t,
+        rows: await db
           .selectFrom(t.table)
           .select([
             "id",
@@ -861,54 +872,61 @@ export const wikiService = {
             "sheet_data",
             "description_fr",
           ])
-          .where("id", "in", possibleIds)
-          .execute();
+          .where("id", "in", idPool)
+          .execute(),
+      })),
+    );
 
-        if (auraRows.length > 0) {
-          const a = auraRows[0];
-          const sd = normalizeAuraSheetData(a.sheet_data) || {};
-          // Miximax : icône manifeste (cn/ca), jamais le telop périmé `aura_mixi_c05028*`
-          // du DB (= bannière d'un autre perso, cf. bug Arthur). Autres types : icône
-          // résolue via asset_code, fallback image_url DB.
-          const resolvedImageUrl =
-            t.slug === "miximax"
-              ? getMiximaxImageUrl(
-                  (a as any).icon_code,
-                  a.asset_code,
-                  a.image_url,
-                )
-              : getAuraImageUrl(a.asset_code, sd.subType) ||
-                resolveAssetUrl(a.image_url);
-          results.push({
-            id: a.id,
-            name:
-              a.name_fr ||
-              a.name_en ||
-              a.name_ja ||
-              sd.displayName ||
-              sd.name_FR ||
-              sd.name_EN ||
-              "Inconnu",
-            type: t.table.replace("inagle_", "").replace("s", ""),
-            categorySlug: t.slug,
-            imageUrl: resolvedImageUrl,
-            assetCode: a.asset_code,
-            subType: t.table.replace("inagle_", "").replace("s", ""),
-            element:
-              ElementNames[a.element_id as keyof typeof ElementNames] ||
-              undefined,
-            sheetData: sd,
-            passiveEffect:
-              sd.passiveEffect ||
-              sd.passive ||
-              a.description_fr ||
-              sd.desc_FR ||
-              undefined,
-            hissatsuName:
-              sd.hissatsu?.name || sd.sheetData?.hissatsu?.name || undefined,
-          });
-          break; // Found it in this table, move to the next hexId
-        }
+    const results: any[] = [];
+    for (const { hexId, formattedId } of hexCandidates) {
+      for (const { meta: t, rows } of tableBatches) {
+        const possibleIds = new Set([
+          t.prefix + formattedId,
+          formattedId,
+          hexId,
+        ]);
+        const a = rows.find((r) => possibleIds.has(r.id));
+        if (!a) continue;
+
+        const sd = normalizeAuraSheetData(a.sheet_data) || {};
+        const resolvedImageUrl =
+          t.slug === "miximax"
+            ? getMiximaxImageUrl(
+                (a as any).icon_code,
+                a.asset_code,
+                a.image_url,
+              )
+            : getAuraImageUrl(a.asset_code, sd.subType) ||
+              resolveAssetUrl(a.image_url);
+        results.push({
+          id: a.id,
+          name:
+            a.name_fr ||
+            a.name_en ||
+            a.name_ja ||
+            sd.displayName ||
+            sd.name_FR ||
+            sd.name_EN ||
+            "Inconnu",
+          type: t.table.replace("inagle_", "").replace("s", ""),
+          categorySlug: t.slug,
+          imageUrl: resolvedImageUrl,
+          assetCode: a.asset_code,
+          subType: t.table.replace("inagle_", "").replace("s", ""),
+          element:
+            ElementNames[a.element_id as keyof typeof ElementNames] ||
+            undefined,
+          sheetData: sd,
+          passiveEffect:
+            sd.passiveEffect ||
+            sd.passive ||
+            a.description_fr ||
+            sd.desc_FR ||
+            undefined,
+          hissatsuName:
+            sd.hissatsu?.name || sd.sheetData?.hissatsu?.name || undefined,
+        });
+        break;
       }
     }
 

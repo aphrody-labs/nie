@@ -2,14 +2,22 @@ import type { Generated } from "kysely";
 
 export type CrawlEngineKind =
   | "mediawiki-api"
+  | "impit"
+  | "patchright"
+  | "crawlee-cheerio"
+  | "crawlee-playwright"
+  | "crawlee-fetch"
   | "obscura"
   | "lightpanda"
   | "agent-browser"
-  | "crawlee-fetch"
   | "zukan-inagle"
   | "google-news-rss"
   | "google-cse"
-  | "duckduckgo";
+  | "duckduckgo"
+  | "gamebanana-api"
+  | "inazuma-mods-api"
+  | "atwiki"
+  | "game8";
 
 export type CrawlPageStatus = "ok" | "challenged" | "error" | "redirect";
 

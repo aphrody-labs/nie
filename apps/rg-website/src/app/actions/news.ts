@@ -15,8 +15,28 @@ export interface PatchNoteDetail extends PatchNoteSummary {
   content_html: string;
 }
 
+function parsePatchDateScore(dateStr: string): number {
+  const m = dateStr.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+  if (!m) return 0;
+  return (
+    Number.parseInt(m[1]!, 10) * 10_000 +
+    Number.parseInt(m[2]!, 10) * 100 +
+    Number.parseInt(m[3]!, 10)
+  );
+}
+
+function parsePatchVersionScore(id: string): number {
+  const m = id.match(/ver_(\d+)_(\d+)_(\d+)/i);
+  if (!m) return 0;
+  return (
+    Number.parseInt(m[1]!, 10) * 10_000 +
+    Number.parseInt(m[2]!, 10) * 100 +
+    Number.parseInt(m[3]!, 10)
+  );
+}
+
 /**
- * Récupère la liste des patch notes
+ * Récupère la liste des patch notes triés chronologiquement
  */
 export async function getPatchNotes(
   platform?: string,
@@ -24,16 +44,10 @@ export async function getPatchNotes(
 ): Promise<PatchNoteSummary[]> {
   const supabase = createPostgresClient();
 
-  let query = supabase
+  const { data, error } = await supabase
     .from("patch_notes")
     .select("id, url, title, title_fr, date, featured_image, platform")
     .order("date", { ascending: false });
-
-  if (limit) {
-    query = query.limit(limit);
-  }
-
-  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching patch notes:", error);
@@ -45,11 +59,16 @@ export async function getPatchNotes(
     featured_image: item.featured_image,
     id: item.id,
     platform: Array.isArray(item.platform) ? item.platform : [],
-    slug: item.id, // Use ID as slug
+    slug: item.id,
     title: item.title_fr || item.title,
   }));
 
-  // Filtrer par plateforme si spécifié
+  notes.sort((a, b) => {
+    const dateDiff = parsePatchDateScore(b.date) - parsePatchDateScore(a.date);
+    if (dateDiff !== 0) return dateDiff;
+    return parsePatchVersionScore(b.id) - parsePatchVersionScore(a.id);
+  });
+
   if (platform) {
     const platformKey =
       platform === "ps-steam" ? ["ps4", "ps5", "steam"] : [platform];
@@ -58,7 +77,7 @@ export async function getPatchNotes(
     );
   }
 
-  return notes;
+  return limit ? notes.slice(0, limit) : notes;
 }
 
 /**

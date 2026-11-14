@@ -13,8 +13,7 @@ import { STACK_CONTRACT } from "@rosegriffon/config/contract";
 import { rgDefaultUrl } from "@rosegriffon/config/rg-urls";
 import { getDatabaseURL } from "./pg";
 
-export const ACHILLEA_SCHEMA =
-  STACK_CONTRACT.database.primary.achilleaSchema;
+export const ACHILLEA_SCHEMA = STACK_CONTRACT.database.primary.achilleaSchema;
 
 export function getAchilleaDatabaseUrl(): string {
   return getDatabaseURL();

@@ -108,6 +108,14 @@ export const REGISTRE_TACHES: Readonly<Record<string, DefinitionTache>> =
       horsServerless:
         "orchestre Obscura, Lightpanda, Crawlee, agent-browser et Inagle avec cache SQLite/Redis et assets R2",
     },
+    "community:mods": {
+      executer: () =>
+        import("./tasks/ie-crawl/community-mods").then((m) =>
+          m.runCommunityModsCrawl({ mirrorAssets: true }),
+        ),
+      horsServerless:
+        "crawle GameBanana (14 jeux), inazuma-eleven.fr/mods, wikis EN/FR/ES/JA et TraduSquare avec index Orama, SQLite et R2",
+    },
     "fleet:crawl": {
       executer: (options) =>
         import("./tasks/ie-crawl/fleet-crawl").then((m) =>

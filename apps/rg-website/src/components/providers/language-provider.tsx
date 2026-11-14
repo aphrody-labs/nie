@@ -132,11 +132,15 @@ export function LanguageProvider({
       return "";
     }
 
-    const langSuffix = language.toUpperCase(); // FR, EN, JA
+    const langSuffix = language.toUpperCase(); // FR, EN, JA, ES
     const targetKey = `${fieldPrefix}_${langSuffix}`;
 
     if (obj[targetKey]) {
       return obj[targetKey];
+    }
+
+    if (language === "es" && obj[`${fieldPrefix}_EN`]) {
+      return obj[`${fieldPrefix}_EN`];
     }
 
     // Fallback to FR

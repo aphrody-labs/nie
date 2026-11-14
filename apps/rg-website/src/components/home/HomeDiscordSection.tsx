@@ -86,10 +86,7 @@ function DiscordServerCard({ serveur }: { serveur: ServeurDiscord }) {
 
       <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-3">
         {onlineCount != null ? (
-          <Badge
-            variant="secondary"
-            className="font-mono text-xs tabular-nums"
-          >
+          <Badge variant="secondary" className="font-mono text-xs tabular-nums">
             {onlineCount.toLocaleString("fr-FR")}{" "}
             {DISCORD_HOME_COPY.memberCountSuffix}
           </Badge>

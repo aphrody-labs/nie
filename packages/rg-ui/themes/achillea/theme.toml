@@ -43,7 +43,7 @@ sha256 = "ed87732c232e009fe870f542f9a231ccf4a7dca77517f2c050b29416eee0e1b7"
 [typography]
 display = "Humane"
 body = "Inter"
-mono = "Liberation Mono"
+mono = "Geist Mono"
 
 [shell]
 layout = "sidebar"

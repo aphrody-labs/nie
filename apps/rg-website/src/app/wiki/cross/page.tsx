@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "@/components/shared/Link";
 import { Play, ExternalLink } from "lucide-react";
 import {
   Badge,
@@ -20,44 +21,56 @@ import {
 } from "./motion";
 import { CrossGallery } from "./CrossGallery";
 import { wiki } from "@rosegriffon/app-shell";
+import { getServerLocale } from "@/lib/i18n/server-locale";
+import { CROSS_PAGE_COPY, getCrossPageCopy } from "@/lib/wiki/games-copy";
 
 const GOOGLE_PLAY =
   "https://play.google.com/store/apps/details?id=jp.co.level5.inazumacross";
 const APP_STORE = "https://apps.apple.com/jp/app/id6756994116";
 const OFFICIAL_SITE = "https://www.inazuma-cross.jp/";
+const STORE_URL =
+  typeof crossData.links.store === "string"
+    ? crossData.links.store
+    : "https://store.inazuma-cross.jp/";
+const GUIDE_URL =
+  typeof crossData.links.guide === "string"
+    ? crossData.links.guide
+    : "https://www.inazuma-cross.jp/guide/";
 const X_ACCOUNT = "https://x.com/inazuma_cross";
 const YT_PLAYLIST =
   "https://www.youtube.com/playlist?list=PLlapDTT9GR4TwdLT5pbq88rfeuKXe3XLv";
 
 export const metadata: Metadata = {
   alternates: { canonical: wiki("/cross") },
-  title: "Inazuma Eleven Cross — le nouveau jeu mobile | Azalée",
+  title: "Inazuma Eleven Cross : le nouveau jeu mobile | Azalée",
   description:
     "Inazuma Eleven Cross (イナズマイレブン クロス), le jeu mobile Level-5 × Aiming sorti le 9 juin 2026 : traduction du site officiel et tweets récents @inazuma_cross.",
   // Favicon de la page = la VRAIE icône du jeu Cross (protagoniste Yo Shiosawa), pas
-  // celle d'azalée — la page reproduit le site officiel d'un jeu distinct.
+  // celle d'azalée : la page reproduit le site officiel d'un jeu distinct.
   icons: {
     icon: [{ url: "/inazuma-cross/appicon.webp", type: "image/webp" }],
     shortcut: "/inazuma-cross/appicon.webp",
     apple: "/inazuma-cross/appicon.webp",
   },
   openGraph: {
-    title: "Inazuma Eleven Cross — le nouveau jeu mobile",
+    title: "Inazuma Eleven Cross : le nouveau jeu mobile",
     description:
       "Traduction factuelle du site officiel + tweets récents. Lancement le 9 juin 2026, nouveau protagoniste Yo Shiosawa, histoire originale après le FFI.",
     images: ["/inazuma-cross/ogp.jpg"],
   },
 };
 
-// Bleu « Inazuma » (cyan électrique du site officiel inazuma-cross.jp) — utilisé en
-// surcouche du hero pour rapprocher la DA du vrai site, tout en gardant les tokens
-// azalée pour le reste de la page. #00aeef (cyan) + #0c1730 (marine RG).
-const INAZUMA_CYAN = "#00aeef";
-const INAZUMA_NAVY = "#0c1730";
-
-function formatFrDate(iso: string): string {
+function formatCrossDate(iso: string, locale: string): string {
+  const intlLocale =
+    locale === "ja"
+      ? "ja-JP"
+      : locale === "en"
+        ? "en-US"
+        : locale === "es"
+          ? "es-ES"
+          : "fr-FR";
   const d = new Date(`${iso}T00:00:00Z`);
-  return d.toLocaleDateString("fr-FR", {
+  return d.toLocaleDateString(intlLocale, {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -65,7 +78,25 @@ function formatFrDate(iso: string): string {
   });
 }
 
-export default function CrossPage() {
+function formatFrDate(iso: string, locale = "fr"): string {
+  const parsed = Date.parse(iso);
+  if (Number.isNaN(parsed)) return iso;
+  const intlLocale =
+    locale === "ja"
+      ? "ja-JP"
+      : locale === "en"
+        ? "en-US"
+        : locale === "es"
+          ? "es-ES"
+          : "fr-FR";
+  return new Intl.DateTimeFormat(intlLocale, { dateStyle: "long" }).format(
+    new Date(parsed),
+  );
+}
+
+export default async function CrossPage() {
+  const locale = await getServerLocale();
+  const copy = getCrossPageCopy(locale);
   const {
     status,
     spec,
@@ -75,6 +106,8 @@ export default function CrossPage() {
     news,
     rewards,
     samuraiBlue2026,
+    victoryRoad2026,
+    guidePoints,
     cbtReport,
     movies,
     tweets,
@@ -85,17 +118,19 @@ export default function CrossPage() {
 
   return (
     <div className="w-full pb-12">
-      {/* Bandeau d'avertissement — jeu distinct d'IEVR */}
+      {/* Bandeau d'avertissement : jeu distinct d'IEVR */}
       <div className="mb-6 rounded-xl border border-tertiary/30 bg-tertiary-container/40 px-4 py-3">
         <p className="type-body-medium text-on-tertiary-container">
-          <span className="font-bold">À noter :</span> Inazuma Eleven Cross est
-          un jeu mobile
-          <span className="font-bold"> distinct</span> d&apos;Inazuma Eleven:
-          Victory Road (le jeu console/PC couvert par le reste du wiki). Il est
-          actuellement <span className="font-bold">en pré-enregistrement</span>.
-          Cette page est une{" "}
-          <span className="font-bold">traduction factuelle</span> du site
-          officiel{" "}
+          <span className="font-bold">{copy.noteLabel}</span>{" "}
+          {copy.bannerPrefix}
+          <span className="font-bold">{copy.bannerDistinctLabel}</span>
+          {copy.bannerSuffix}{" "}
+          <span className="font-bold">
+            {status.phase === "released"
+              ? `${copy.bannerReleasedSuffix} ${formatCrossDate(status.serviceStart, locale)}`
+              : status.phaseLabelFr}
+          </span>{" "}
+          ({copy.factualTranslationNote}:{" "}
           <a
             href={OFFICIAL_SITE}
             target="_blank"
@@ -104,7 +139,7 @@ export default function CrossPage() {
           >
             inazuma-cross.jp
           </a>{" "}
-          et des tweets de{" "}
+          &{" "}
           <a
             href={X_ACCOUNT}
             target="_blank"
@@ -113,86 +148,61 @@ export default function CrossPage() {
           >
             @inazuma_cross
           </a>
-          .
+          ).
         </p>
       </div>
 
       {/* ===================== HERO ===================== */}
-      {/* Reproduit le firstview du site officiel : key visual vertical plein-hauteur,
-			    identité cyan/marine « Inazuma », logo + CTA « 6/9 サービス開始 » + badges store. */}
-      <section
-        className="relative mb-12 flex min-h-[68vh] flex-col items-center justify-end overflow-hidden rounded-3xl border-2 shadow-level-2 sm:min-h-[78vh]"
-        style={{
-          borderColor: `${INAZUMA_CYAN}80`,
-          backgroundColor: INAZUMA_NAVY,
-        }}
-      >
-        {/* Key visual vertical animé (Ken Burns / bgLoop) — VISIBLE (pas d'opacity faible). */}
+      <section className="cross-hero relative mb-12 flex min-h-[68vh] flex-col items-center justify-end overflow-hidden rounded-3xl border-2 shadow-level-2 sm:min-h-[78vh]">
         <div className="absolute inset-0">
           <KenBurns className="absolute inset-0">
             <Image
               src={localImages.keyVisual}
-              alt="Inazuma Eleven Cross — visuel principal"
+              alt={copy.heroKeyVisualAlt}
               fill
               priority
               sizes="100vw"
               className="object-cover object-top"
             />
           </KenBurns>
-          {/* dégradé marine pour la lisibilité du logo + CTA en bas (comme le site). */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background: `linear-gradient(to top, ${INAZUMA_NAVY} 18%, ${INAZUMA_NAVY}e6 34%, ${INAZUMA_NAVY}66 58%, transparent 82%)`,
-            }}
-          />
-          {/* liseré cyan latéral, signature Inazuma. */}
-          <div
-            className="pointer-events-none absolute inset-y-0 left-0 w-1.5"
-            style={{ backgroundColor: INAZUMA_CYAN }}
-          />
-          <div
-            className="pointer-events-none absolute inset-y-0 right-0 w-1.5"
-            style={{ backgroundColor: INAZUMA_CYAN }}
-          />
+          <div className="cross-hero-scrim absolute inset-0" />
+          <div className="cross-hero-rail pointer-events-none absolute inset-y-0 left-0 w-1.5" />
+          <div className="cross-hero-rail pointer-events-none absolute inset-y-0 right-0 w-1.5" />
         </div>
 
         <div className="relative z-10 flex w-full flex-col items-center px-6 pb-24 pt-10 text-center sm:pb-16">
           <Reveal blur>
             <Image
               src={localImages.logo}
-              alt="Logo Inazuma Eleven Cross"
+              alt={copy.heroLogoAlt}
               width={460}
               height={176}
               priority
-              className="mb-5 h-auto w-[min(440px,82vw)] drop-shadow-[0_4px_0_rgba(0,0,0,0.55)]"
+              className="cross-hero-logo mb-5 h-auto w-[min(440px,82vw)]"
             />
           </Reveal>
           <Reveal delay={0.08}>
-            <h1 className="type-display-small mb-1 font-bold text-white drop-shadow-[0_2px_0_rgba(0,0,0,0.5)] sm:type-display-medium">
-              Inazuma Eleven Cross
+            <h1 className="cross-hero-title type-display-small mb-1 font-bold sm:type-display-medium">
+              {copy.heroHeading}
             </h1>
-            <p className="type-title-small mb-6 text-white/80 sm:type-title-medium">
-              {crossData.site.title} — {crossData.site.subtitleFr}
+            <p className="cross-hero-subtitle type-title-small mb-6 sm:type-title-medium">
+              {crossData.site.title} ({crossData.site.subtitleFr})
             </p>
           </Reveal>
 
-          {/* CTA proéminent « 6/9 サービス開始 / pré-enregistrement » */}
+          {/* CTA statut officiel (service lancé 09/06/2026) + Web Store */}
           <Reveal delay={0.16} className="flex flex-col items-center gap-3">
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <span
-                className="rounded-full px-5 py-2 type-title-medium font-extrabold text-white shadow-[0_4px_0_0_rgba(0,0,0,0.4)]"
-                style={{ backgroundColor: INAZUMA_CYAN }}
-              >
-                6/9 サービス開始
+              <span className="cross-hero-cta rounded-full px-5 py-2 type-title-medium font-extrabold">
+                {status.phaseJa ?? status.serviceStartLabelJa}
               </span>
-              <span className="rounded-full bg-white/15 px-4 py-2 type-label-large font-bold text-white backdrop-blur">
-                {status.phaseLabelFr}
+              <span className="cross-hero-pill rounded-full px-4 py-2 type-label-large font-bold backdrop-blur">
+                {copy.releasedStatusBadge}
               </span>
             </div>
-            <p className="type-body-medium text-white/90">
-              Lancement le {formatFrDate(status.serviceStart)} —
-              pré-enregistrement ouvert
+            <p className="cross-hero-subtitle type-body-medium">
+              {copy.heroServiceLabel}{" "}
+              {formatCrossDate(status.serviceStart, locale)}
             </p>
           </Reveal>
 
@@ -205,14 +215,13 @@ export default function CrossPage() {
               href={APP_STORE}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Télécharger dans l'App Store"
+              aria-label={copy.appStoreCta}
               className="transition-transform hover:scale-105"
             >
-              {/* badge Apple = SVG officiel, rendu en <img> (Next/Image n'optimise pas le SVG). */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={localImages.badgeAppStore}
-                alt="Télécharger dans l'App Store"
+                alt={copy.appStoreCta}
                 className="h-[52px] w-auto"
               />
             </a>
@@ -220,12 +229,12 @@ export default function CrossPage() {
               href={GOOGLE_PLAY}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Disponible sur Google Play"
+              aria-label={copy.googlePlayCta}
               className="transition-transform hover:scale-105"
             >
               <Image
                 src={localImages.badgeGooglePlay}
-                alt="Disponible sur Google Play"
+                alt={copy.googlePlayCta}
                 width={172}
                 height={52}
                 unoptimized
@@ -234,15 +243,38 @@ export default function CrossPage() {
             </a>
           </Reveal>
 
-          <Reveal delay={0.3} className="mt-4">
+          <Reveal
+            delay={0.3}
+            className="mt-4 flex flex-wrap justify-center gap-3"
+          >
             <a
               href={OFFICIAL_SITE}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-full border border-white/40 px-5 py-2 type-label-large font-medium text-white transition-colors hover:bg-white/10"
+              className="cross-hero-outline rounded-full border px-5 py-2 type-label-large font-medium transition-colors"
             >
-              Site officiel inazuma-cross.jp
+              {copy.guideCtaLabel}
             </a>
+            <a
+              href={STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cross-hero-pill cross-hero-outline rounded-full border px-5 py-2 type-label-large font-medium transition-colors"
+            >
+              {copy.storeCtaLabel}
+            </a>
+            <Link
+              href="/wiki/jeux/inazuma-eleven-cross"
+              className="cross-hero-outline rounded-full border px-5 py-2 type-label-large font-medium transition-colors"
+            >
+              {copy.gameSheetCta}
+            </Link>
+            <Link
+              href="/wiki/mods"
+              className="cross-hero-outline rounded-full border px-5 py-2 type-label-large font-medium transition-colors"
+            >
+              {copy.modsCta}
+            </Link>
           </Reveal>
         </div>
       </section>
@@ -258,7 +290,7 @@ export default function CrossPage() {
           <div className="relative aspect-[1200/360]">
             <Image
               src={localImages.samuraiBlueBanner}
-              alt="Projet Équipe Nationale du Japon 2026 — collaboration"
+              alt="Projet Équipe Nationale du Japon 2026 (collaboration)"
               fill
               sizes="100vw"
               className="object-cover transition-transform duration-500 group-hover:scale-105"
@@ -306,7 +338,7 @@ export default function CrossPage() {
                   <div className="relative aspect-[3/4] bg-surface-container-high">
                     <Image
                       src={protagonist.image ?? localImages.protagonist}
-                      alt={`${protagonist.nameRomaji} — protagoniste`}
+                      alt={`${protagonist.nameRomaji} (protagoniste)`}
                       fill
                       sizes="320px"
                       className="object-contain"
@@ -342,7 +374,7 @@ export default function CrossPage() {
             {movies.headingFr}
           </h2>
           <p className="mb-6 type-body-small text-on-surface-variant/60">
-            D&apos;après la section « MOVIE » d&apos;inazuma-cross.jp — slider
+            D&apos;après la section « MOVIE » d&apos;inazuma-cross.jp : slider
             de vidéos officielles
           </p>
         </Reveal>
@@ -461,7 +493,7 @@ export default function CrossPage() {
                     Sortie
                   </dt>
                   <dd className="type-body-large text-on-surface">
-                    {formatFrDate(status.serviceStart)}
+                    {formatFrDate(status.serviceStart, locale)}
                   </dd>
                   <dt className="type-label-large text-on-surface-variant">
                     Studios
@@ -537,7 +569,7 @@ export default function CrossPage() {
                   sizes="(max-width: 768px) 45vw, 22vw"
                   className="object-cover"
                 />
-                {/* tampon « 達成 » (objectif atteint) — animé en stamp-pop, staggered */}
+                {/* tampon « 達成 » (objectif atteint) : animé en stamp-pop, staggered */}
                 <StampPop
                   src={localImages.rewardBadge}
                   alt="Objectif atteint"
@@ -555,7 +587,7 @@ export default function CrossPage() {
             rel="noopener noreferrer"
             className="inline-flex min-h-11 items-center gap-2 rounded-full bg-tertiary px-6 py-3 type-label-large font-medium text-on-tertiary shadow-level-1 transition-transform hover:scale-105"
           >
-            S&apos;inscrire sur Google Play
+            {CROSS_PAGE_COPY.googlePlayCta}
           </a>
           <a
             href={APP_STORE}
@@ -563,7 +595,15 @@ export default function CrossPage() {
             rel="noopener noreferrer"
             className="inline-flex min-h-11 items-center gap-2 rounded-full border border-outline px-6 py-3 type-label-large font-medium text-on-surface transition-colors hover:bg-surface-container-high"
           >
-            Réserver sur l&apos;App Store
+            {CROSS_PAGE_COPY.appStoreCta}
+          </a>
+          <a
+            href={STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-6 py-3 type-label-large font-medium text-on-primary shadow-level-1 transition-transform hover:scale-105"
+          >
+            {CROSS_PAGE_COPY.storeCtaLabel}
           </a>
         </div>
       </section>
@@ -595,7 +635,7 @@ export default function CrossPage() {
                     <span className="font-bold">@inazuma_cross</span>
                   </span>
                   <time className="type-label-medium text-on-surface-variant">
-                    {formatFrDate(t.date)}
+                    {formatFrDate(t.date, locale)}
                   </time>
                 </div>
                 <p className="type-body-medium text-on-surface">{t.textFr}</p>
@@ -630,7 +670,7 @@ export default function CrossPage() {
                   className="flex flex-col gap-1 px-5 py-4 transition-colors hover:bg-surface-container-high sm:flex-row sm:items-center sm:gap-4"
                 >
                   <time className="type-label-large shrink-0 text-primary">
-                    {formatFrDate(item.date)}
+                    {formatFrDate(item.date, locale)}
                   </time>
                   <span className="type-body-large text-on-surface">
                     {item.titleFr}
@@ -642,6 +682,148 @@ export default function CrossPage() {
         </Reveal>
       </section>
 
+      {/* ===================== COLLABORATION VICTORY ROAD 2026 ===================== */}
+      {victoryRoad2026 ? (
+        <section className="mb-12">
+          <Reveal
+            blur
+            className="mb-6 overflow-hidden rounded-3xl border border-primary/30 shadow-level-2"
+          >
+            <div className="relative aspect-[16/9] bg-surface-container-high">
+              <Image
+                src={victoryRoad2026.localKvImage}
+                alt={CROSS_PAGE_COPY.vrCollabSectionTitle}
+                fill
+                sizes="100vw"
+                className="object-cover"
+              />
+            </div>
+          </Reveal>
+          <Reveal>
+            <h2 className="type-headline-medium mb-1 font-bold text-primary">
+              {CROSS_PAGE_COPY.vrCollabSectionTitle}
+            </h2>
+            <p className="mb-3 type-label-large text-secondary">
+              {CROSS_PAGE_COPY.vrCollabPeriodPrefix}
+              {victoryRoad2026.period}
+            </p>
+            <p className="mb-4 type-body-large text-on-surface-variant">
+              {victoryRoad2026.storyFr}
+            </p>
+            <p className="mb-6 type-body-small text-on-surface-variant/70">
+              <a
+                href={victoryRoad2026.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2"
+              >
+                {CROSS_PAGE_COPY.vrCollabSourceLabel}
+              </a>
+            </p>
+            <h3 className="mb-4 type-title-medium font-bold text-on-surface">
+              {CROSS_PAGE_COPY.vrCollabCharactersLabel} (
+              {victoryRoad2026.characters.length})
+            </h3>
+          </Reveal>
+          <RevealGroup
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            stagger={0.06}
+          >
+            {victoryRoad2026.characters.map((ch) => (
+              <RevealChild key={ch.nameJa}>
+                <Card className="h-full overflow-hidden border-l-4 border-l-primary bg-surface-container-low shadow-sm">
+                  {(ch.localFullImage ?? ch.localThumb) ? (
+                    <div className="relative aspect-[4/3] bg-surface-container-high">
+                      <Image
+                        src={(ch.localFullImage ?? ch.localThumb) as string}
+                        alt={ch.nameFr}
+                        fill
+                        sizes="(max-width: 640px) 100vw, 33vw"
+                        className="object-contain p-2"
+                      />
+                    </div>
+                  ) : null}
+                  <CardHeader>
+                    <CardTitle className="flex flex-wrap items-center gap-2 type-title-small">
+                      <Badge className="bg-primary text-on-primary">
+                        {ch.roleOrPosition}
+                      </Badge>
+                      <span>{ch.nameFr}</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="type-body-small text-on-surface-variant">
+                      {ch.nameJa}
+                    </p>
+                    {ch.hissatsuNameJa ? (
+                      <p className="mt-1 type-label-medium font-medium text-secondary">
+                        {ch.hissatsuNameJa}
+                      </p>
+                    ) : null}
+                    {ch.localHissatsuImage ? (
+                      <div className="relative mt-3 aspect-video overflow-hidden rounded-lg border border-outline-variant/30 bg-surface-container-high">
+                        <Image
+                          src={ch.localHissatsuImage}
+                          alt={ch.hissatsuNameJa ?? ch.nameFr}
+                          fill
+                          sizes="280px"
+                          className="object-cover"
+                        />
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              </RevealChild>
+            ))}
+          </RevealGroup>
+        </section>
+      ) : null}
+
+      {/* ===================== GUIDE OFFICIEL ===================== */}
+      {guidePoints && guidePoints.length > 0 ? (
+        <section className="mb-12">
+          <Reveal>
+            <h2 className="type-headline-medium mb-1 font-bold text-primary">
+              {CROSS_PAGE_COPY.guideSectionTitle}
+            </h2>
+            <p className="mb-6 type-body-small text-on-surface-variant/70">
+              <a
+                href={GUIDE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2"
+              >
+                {CROSS_PAGE_COPY.guideSourceLabel}
+              </a>
+            </p>
+          </Reveal>
+          <RevealGroup
+            className="grid grid-cols-1 gap-4 md:grid-cols-2"
+            stagger={0.08}
+          >
+            {guidePoints.map((pt, idx) => (
+              <RevealChild key={pt.titleJa}>
+                <Card className="h-full border-t-4 border-t-secondary bg-surface-container-low shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 type-title-small">
+                      <Badge className="bg-secondary-container text-on-secondary-container">
+                        {idx + 1}
+                      </Badge>
+                      <span>{pt.titleJa}</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="type-body-small text-on-surface-variant">
+                      {pt.bodyJa}
+                    </p>
+                  </CardContent>
+                </Card>
+              </RevealChild>
+            ))}
+          </RevealGroup>
+        </section>
+      ) : null}
+
       {/* ===================== COLLABORATION SAMURAI BLUE 2026 ===================== */}
       <section className="mb-12">
         {/* Key visual de la page spéciale */}
@@ -652,7 +834,7 @@ export default function CrossPage() {
           <div className="relative aspect-[16/9] bg-rg-marine">
             <Image
               src={localImages.samuraiBlueKeyVisual}
-              alt="Projet Équipe Nationale du Japon 2026 — visuel principal"
+              alt="Projet Équipe Nationale du Japon 2026 : visuel principal"
               fill
               sizes="100vw"
               className="object-cover"
@@ -737,7 +919,7 @@ export default function CrossPage() {
                             >
                               <Image
                                 src={img}
-                                alt={`${c.skillsFr[j] ?? "Technique spéciale"} — ${c.nameFr}`}
+                                alt={`${c.skillsFr[j] ?? "Technique spéciale"} (${c.nameFr})`}
                                 fill
                                 sizes="160px"
                                 className="object-cover"
@@ -782,7 +964,7 @@ export default function CrossPage() {
           </Reveal>
         </div>
 
-        {/* Slider des uniformes (wear item) — carousel comme le site */}
+        {/* Slider des uniformes (wear item) : carousel comme le site */}
         <Reveal className="mt-8">
           <h3 className="mb-3 type-title-medium font-bold text-on-surface">
             {samuraiBlue2026.wearItem.headingFr}
@@ -958,7 +1140,7 @@ export default function CrossPage() {
                         >
                           <Image
                             src={src as string}
-                            alt={`Capture — ${m.nameFr}`}
+                            alt={`Capture : ${m.nameFr}`}
                             fill
                             sizes="(max-width: 640px) 50vw, 25vw"
                             className="object-cover"
@@ -1138,7 +1320,7 @@ export default function CrossPage() {
             rel="noopener noreferrer"
             className="inline-flex min-h-11 items-center rounded-full border border-outline px-5 py-2.5 type-label-large text-on-surface transition-colors hover:bg-surface-container-high sm:min-h-0"
           >
-            Google Play (pré-enregistrement)
+            {CROSS_PAGE_COPY.googlePlayCta}
           </a>
           <a
             href={APP_STORE}
@@ -1146,7 +1328,23 @@ export default function CrossPage() {
             rel="noopener noreferrer"
             className="inline-flex min-h-11 items-center rounded-full border border-outline px-5 py-2.5 type-label-large text-on-surface transition-colors hover:bg-surface-container-high sm:min-h-0"
           >
-            App Store (réservation)
+            {CROSS_PAGE_COPY.appStoreCta}
+          </a>
+          <a
+            href={STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 items-center rounded-full border border-outline px-5 py-2.5 type-label-large text-on-surface transition-colors hover:bg-surface-container-high sm:min-h-0"
+          >
+            {CROSS_PAGE_COPY.storeCtaLabel}
+          </a>
+          <a
+            href={GUIDE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 items-center rounded-full border border-outline px-5 py-2.5 type-label-large text-on-surface transition-colors hover:bg-surface-container-high sm:min-h-0"
+          >
+            {CROSS_PAGE_COPY.guideCtaLabel}
           </a>
         </Reveal>
         <Reveal className="mt-8 flex items-center gap-6">

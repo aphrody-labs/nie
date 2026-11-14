@@ -32,7 +32,7 @@ export interface ThemeOption {
 }
 
 /**
- * Les cinq thèmes officiels partagent le même sélecteur dans le chrome.
+ * Les sept thèmes officiels partagent le même sélecteur dans le chrome.
  */
 export const DEFAULT_THEMES: ThemeOption[] = [
   {
@@ -59,6 +59,16 @@ export const DEFAULT_THEMES: ThemeOption[] = [
     id: "achillea",
     image: THEMES.achillea.icon,
     label: "Achilléa",
+  },
+  {
+    id: "inazuma",
+    image: THEMES.inazuma.icon,
+    label: "Inazuma",
+  },
+  {
+    id: "nie",
+    image: THEMES.nie.icon,
+    label: "NIE Studio",
   },
 ];
 

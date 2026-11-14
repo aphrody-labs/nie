@@ -38,14 +38,12 @@ describe("clampText", () => {
   });
 
   it("wikiTitle falls back to the short brand for long subjects", () => {
-    expect(wikiTitle("Kevin")).toBe(
-      "Kevin | Inazuma Eleven Victory Road - Azalée",
-    );
-    expect(wikiTitle("Kevin Dragonfly Archibald Nathan")).toBe(
-      "Kevin Dragonfly Archibald Nathan | Azalée",
+    expect(wikiTitle("Kevin")).toBe("Kevin | Inazuma Eleven - Azalée");
+    expect(wikiTitle("Kevin Dragonfly Archibald Frostbite Senior")).toBe(
+      "Kevin Dragonfly Archibald Frostbite Senior | Azalée",
     );
     expect(wikiTitle("Raimon", "Équipes")).toBe(
-      "Raimon | Équipes - Inazuma Eleven Victory Road - Azalée",
+      "Raimon | Équipes - Inazuma Eleven - Azalée",
     );
   });
 

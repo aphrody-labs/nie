@@ -30,6 +30,7 @@
     "./openapi": "./openapi.generated.ts",
     "./infra": "./infra.ts",
     "./rg-urls": "./rg-urls.ts",
+    "./rg-m3.json": "./rg-m3.json",
     "./tsconfig-base.json": "./tsconfig-base.json",
     "./tsconfig-nextjs.json": "./tsconfig-nextjs.json",
     "./tsconfig-bun.json": "./tsconfig-bun.json",

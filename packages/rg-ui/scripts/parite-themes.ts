@@ -25,6 +25,8 @@ export const ANCIENNES: Record<ThemeId, Partial<Record<Role, string>>> = {
     "on-surface": "#f0dfd7",
   },
   achillea: { primary: "#d7bafb", surface: "#151218", "on-surface": "#e7e0e8" },
+  inazuma: { primary: "#1b41b2", surface: "#f6f9ff", "on-surface": "#0c1730" },
+  nie: { primary: "#97c0fc", surface: "#131420", "on-surface": "#fcfaf8" },
 };
 
 export interface Ecart {

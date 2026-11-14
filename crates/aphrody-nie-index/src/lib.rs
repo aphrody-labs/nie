@@ -13,6 +13,10 @@ pub mod memory;
 #[cfg(all(feature = "host", not(all(target_arch = "wasm32", target_os = "unknown"))))]
 pub mod atlas;
 
+/// Index plein texte BM25 base sur `tantivy`.
+#[cfg(all(feature = "host", not(all(target_arch = "wasm32", target_os = "unknown"))))]
+pub mod fts;
+
 #[cfg(all(feature = "host", not(all(target_arch = "wasm32", target_os = "unknown"))))]
 mod host {
     use std::path::{Path, PathBuf};

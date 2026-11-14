@@ -3,7 +3,7 @@
 
 export const OPENAPI_VERSION = "3.2.1" as const;
 export const OPENAPI_DIALECT = "https://spec.openapis.org/oas/3.2/dialect/2025-09-19" as const;
-export const OPENAPI_PATH_COUNT = 57 as const;
+export const OPENAPI_PATH_COUNT = 68 as const;
 export const OPENAPI_SCHEMA_COUNT = 235 as const;
 
 export const MONOREPO_OPENAPI = {
@@ -1057,6 +1057,330 @@ export const MONOREPO_OPENAPI = {
         "responses": {
           "200": {
             "description": "Aperçu public Azalée"
+          }
+        }
+      }
+    },
+    "/api/games": {
+      "get": {
+        "tags": [
+          "azalee",
+          "inagle",
+          "wiki",
+          "website"
+        ],
+        "operationId": "listGamesCatalog",
+        "summary": "Catalogue complet des jeux Inazuma Eleven (1er DS à Bold Revolution)",
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "fr",
+                "en",
+                "ja",
+                "es"
+              ],
+              "default": "fr"
+            }
+          },
+          {
+            "name": "era",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Catalogue localisé des épisodes et époques"
+          }
+        }
+      }
+    },
+    "/api/games/{slug}": {
+      "get": {
+        "tags": [
+          "azalee",
+          "inagle",
+          "wiki",
+          "website"
+        ],
+        "operationId": "getGameDetail",
+        "summary": "Fiche détaillée d'un épisode Inazuma Eleven par slug ou alias",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "fr",
+                "en",
+                "ja",
+                "es"
+              ],
+              "default": "fr"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Détails du jeu, wikis communautaires et hubs mods"
+          },
+          "404": {
+            "description": "Jeu introuvable"
+          }
+        }
+      }
+    },
+    "/api/mods": {
+      "get": {
+        "tags": [
+          "azalee",
+          "community",
+          "wiki",
+          "website"
+        ],
+        "operationId": "listCommunityMods",
+        "summary": "Index des mods communautaires (GameBanana & hubs Inazuma Eleven)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SearchQ"
+          },
+          {
+            "name": "game",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Liste des mods et hubs indexés"
+          }
+        }
+      }
+    },
+    "/api/community/wikis": {
+      "get": {
+        "tags": [
+          "azalee",
+          "community",
+          "wiki",
+          "website"
+        ],
+        "operationId": "listCommunityWikis",
+        "summary": "Annuaire et index multilingue (JA/EN/FR/ES) des wikis communautaires",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SearchQ"
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "fr",
+                "en",
+                "ja",
+                "es"
+              ]
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pages wikis et portails communautaires par langue"
+          }
+        }
+      }
+    },
+    "/api/design/themes": {
+      "get": {
+        "tags": [
+          "website",
+          "platform"
+        ],
+        "operationId": "listDesignThemes",
+        "summary": "Manifeste Material Design 3 des 9 thèmes Rose Griffon / Azalée / NIE",
+        "responses": {
+          "200": {
+            "description": "Liste des thèmes M3 et sélecteurs CSS"
+          }
+        }
+      }
+    },
+    "/api/design/tokens": {
+      "get": {
+        "tags": [
+          "website",
+          "platform"
+        ],
+        "operationId": "getDesignTokens",
+        "summary": "Jetons M3/shadcn/contractuels du système de design unifié",
+        "responses": {
+          "200": {
+            "description": "Tokens complets de couleur, typographie et contrat"
+          }
+        }
+      }
+    },
+    "/api/locales/{lang}": {
+      "get": {
+        "tags": [
+          "inagle",
+          "website",
+          "platform"
+        ],
+        "operationId": "getLocaleDictionary",
+        "summary": "Dictionnaire d'interface IEVR/Azalée pour une langue (fr, en, ja, es)",
+        "parameters": [
+          {
+            "name": "lang",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "fr",
+                "en",
+                "ja",
+                "es"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dictionnaire JSON de traductions"
+          },
+          "404": {
+            "description": "Langue non supportée"
+          }
+        }
+      }
+    },
+    "/api/translate": {
+      "get": {
+        "tags": [
+          "inagle",
+          "azalee",
+          "website"
+        ],
+        "operationId": "translateQueryText",
+        "summary": "Traduction IEVR (glossaire VFS 4 langues + pipeline japonais BudouX/Romaji)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SearchQ"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "ja"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "fr"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Traduction, segmentation et entrées glossaire correspondantes"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "inagle",
+          "azalee",
+          "website"
+        ],
+        "operationId": "translateBatchText",
+        "summary": "Traduction d'un lot de textes IEVR avec segmentation japonaise",
+        "responses": {
+          "200": {
+            "description": "Résultats de traduction par texte"
+          }
+        }
+      }
+    },
+    "/v1/wiki/games": {
+      "get": {
+        "tags": [
+          "nie",
+          "wiki",
+          "inagle"
+        ],
+        "operationId": "v1ListWikiGames",
+        "summary": "Catalogue canonique des jeux servi par NIE / Azalée / API v1",
+        "responses": {
+          "200": {
+            "description": "Catalogue des jeux"
+          }
+        }
+      }
+    },
+    "/v1/wiki/mods": {
+      "get": {
+        "tags": [
+          "nie",
+          "wiki",
+          "community"
+        ],
+        "operationId": "v1ListWikiMods",
+        "summary": "Index des mods et hubs communautaires servi par NIE / Azalée / API v1",
+        "responses": {
+          "200": {
+            "description": "Index des mods"
+          }
+        }
+      }
+    },
+    "/v1/design/tokens": {
+      "get": {
+        "tags": [
+          "nie",
+          "platform"
+        ],
+        "operationId": "v1GetDesignTokens",
+        "summary": "Manifeste design M3/contract servi par NIE / Azalée / API v1",
+        "responses": {
+          "200": {
+            "description": "Manifeste design tokens"
           }
         }
       }

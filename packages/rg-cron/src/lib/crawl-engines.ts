@@ -1,6 +1,12 @@
 import { accessSync, constants, existsSync } from "node:fs";
+import * as cheerio from "cheerio";
 import { CString, dlopen, FFIType, ptr, type Pointer } from "bun:ffi";
 import type { CrawlEngineKind, CrawlPageStatus } from "@rosegriffon/db/schema";
+import {
+  runCrawleeCheerioBatch,
+  runCrawleePatchrightBatch,
+} from "./crawlee-runner";
+import { impitFetch, impitFetchText } from "./impit-client";
 import {
   assertPublicCrawlUrl,
   isObscuraCdpAvailable,
@@ -82,7 +88,12 @@ export function resolveMediaWikiTarget(
     return null;
   }
   const host = parsed.hostname.toLowerCase();
-  if (!host.endsWith(".fandom.com") && !host.endsWith("wikipedia.org")) {
+  if (
+    !host.endsWith(".fandom.com") &&
+    !host.endsWith("wikipedia.org") &&
+    !host.endsWith(".miraheze.org") &&
+    !host.endsWith(".wiki.gg")
+  ) {
     return null;
   }
 
@@ -127,14 +138,22 @@ export async function fetchMediaWikiApi(
   });
 
   const apiUrl = `${target.apiEndpoint}?${queryParams.toString()}`;
-  const response = await fetchImpl(apiUrl, {
-    headers: {
-      "user-agent":
-        "RoseGriffonBot/1.0 (https://rosegriffon.fr; contact@rosegriffon.fr)",
-      accept: "application/json",
-    },
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+  const wikiHeaders = {
+    "user-agent":
+      "RoseGriffonBot/1.0 (https://rosegriffon.fr; contact@rosegriffon.fr)",
+    accept: "application/json",
+  };
+  const response = options.fetchImpl
+    ? await fetchImpl(apiUrl, {
+        headers: wikiHeaders,
+        signal: AbortSignal.timeout(timeoutMs),
+      })
+    : (
+        await impitFetch(apiUrl, {
+          headers: wikiHeaders,
+          timeoutMs,
+        })
+      ).response;
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
@@ -413,65 +432,48 @@ export function extractHtmlSignals(
   links: string[];
   assets: string[];
 } {
-  let title = extractTitleWithLightpanda(html);
-  if (!title) {
-    const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-    title = titleMatch?.[1]?.replace(/\s+/g, " ").trim() ?? null;
-  }
+  const $ = cheerio.load(html);
+  const title =
+    extractTitleWithLightpanda(html) ||
+    $("title").first().text().replace(/\s+/g, " ").trim() ||
+    $("meta[property='og:title']").attr("content")?.trim() ||
+    null;
 
-  const langMatch = html.match(/<html[^>]+lang=["']([^"']+)["']/i);
-  const language = langMatch?.[1]?.trim() ?? null;
+  const language = $("html").attr("lang")?.trim() || null;
 
   const links = new Set<string>();
   const assets = new Set<string>();
-  const rewriter = new HTMLRewriter()
-    .on("a[href]", {
-      element(el) {
-        const href = el.getAttribute("href");
-        if (!href || href.startsWith("#") || href.startsWith("javascript:"))
-          return;
-        try {
-          const resolved = new URL(href, baseUrl);
-          if (resolved.protocol === "http:" || resolved.protocol === "https:") {
-            links.add(resolved.href);
-          }
-        } catch {
-          // ignore malformed href
-        }
-      },
-    })
-    .on("img[src], img[data-src], meta[property='og:image']", {
-      element(el) {
-        const raw =
-          el.getAttribute("data-src") ||
-          el.getAttribute("src") ||
-          el.getAttribute("content");
-        if (!raw || raw.startsWith("data:")) return;
-        try {
-          const resolved = new URL(raw, baseUrl);
-          if (resolved.protocol === "http:" || resolved.protocol === "https:") {
-            assets.add(resolved.href);
-          }
-        } catch {
-          // ignore malformed asset URL
-        }
-      },
-    });
 
-  // Trigger HTMLRewriter handlers synchronously/fast over full HTML.
-  rewriter.transform(html);
+  $("a[href]").each((_idx, el) => {
+    const href = $(el).attr("href");
+    if (!href || href.startsWith("#") || href.startsWith("javascript:")) return;
+    try {
+      const resolved = new URL(href, baseUrl);
+      if (resolved.protocol === "http:" || resolved.protocol === "https:") {
+        links.add(resolved.href);
+      }
+    } catch {
+      // ignore malformed href
+    }
+  });
 
-  const plainText = html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
+  $("img[src], img[data-src], meta[property='og:image']").each((_idx, el) => {
+    const node = $(el);
+    const raw =
+      node.attr("data-src") || node.attr("src") || node.attr("content");
+    if (!raw || raw.startsWith("data:")) return;
+    try {
+      const resolved = new URL(raw, baseUrl);
+      if (resolved.protocol === "http:" || resolved.protocol === "https:") {
+        assets.add(resolved.href);
+      }
+    } catch {
+      // ignore malformed asset URL
+    }
+  });
+
+  $("script, style, noscript, template").remove();
+  const plainText = ($("body").text() || $.root().text())
     .replace(/\s+/g, " ")
     .trim();
 
@@ -857,6 +859,94 @@ export async function crawlUrlWithEngines(
   const chromeBin = allowExternalCli ? resolveChromeBin() : null;
 
   const tryBrowserOrder: Array<() => Promise<CrawlFetchOutcome | null>> = [];
+  if (pref === "crawlee-cheerio" && allowExternalCli) {
+    try {
+      const batch = await runCrawleeCheerioBatch([safeUrl.href], {
+        timeoutSecs: Math.ceil(timeoutMs / 1000),
+      });
+      const item = batch[0];
+      if (item && !item.error) {
+        const challenge = detectAntiBotChallenge(
+          item.status,
+          item.html,
+          item.title,
+        );
+        if (challenge.challenged) {
+          return {
+            url: safeUrl.href,
+            normalizedUrl: lpNormalized,
+            engine: "crawlee-cheerio",
+            sourceKind,
+            status: "challenged",
+            httpStatus: item.status,
+            title: item.title,
+            language: item.language,
+            excerpt: null,
+            bodyText: null,
+            discoveredLinks: [],
+            discoveredAssets: [],
+            metadata: { challengeProvider: challenge.provider },
+          };
+        }
+        return {
+          url: safeUrl.href,
+          normalizedUrl: lpNormalized,
+          engine: "crawlee-cheerio",
+          sourceKind,
+          status: "ok",
+          httpStatus: item.status,
+          title: item.title,
+          language: item.language,
+          excerpt: item.text.slice(0, 500) || null,
+          bodyText: item.text || null,
+          discoveredLinks: item.links,
+          discoveredAssets: item.assets,
+          metadata: { finalUrl: item.finalUrl, crawleeCheerio: true },
+        };
+      }
+    } catch {
+      // Fall through to standard engine cascade.
+    }
+  } else if (
+    (pref === "crawlee-playwright" || pref === "patchright") &&
+    allowExternalCli
+  ) {
+    try {
+      const batch = await runCrawleePatchrightBatch([safeUrl.href], {
+        timeoutSecs: Math.max(30, Math.ceil(timeoutMs / 1000)),
+      });
+      const item = batch[0];
+      if (item && !item.error) {
+        const challenge = detectAntiBotChallenge(
+          item.status,
+          item.html,
+          item.title,
+        );
+        return {
+          url: safeUrl.href,
+          normalizedUrl: lpNormalized,
+          engine: pref,
+          sourceKind,
+          status: challenge.challenged ? "challenged" : "ok",
+          httpStatus: item.status,
+          title: item.title,
+          language: item.language,
+          excerpt: challenge.challenged
+            ? null
+            : item.text.slice(0, 500) || null,
+          bodyText: challenge.challenged ? null : item.text || null,
+          discoveredLinks: challenge.challenged ? [] : item.links,
+          discoveredAssets: challenge.challenged ? [] : item.assets,
+          metadata: challenge.challenged
+            ? { challengeProvider: challenge.provider }
+            : { finalUrl: item.finalUrl, patchright: true },
+        };
+      }
+    } catch {
+      // Fall through to standard cascade.
+    }
+  }
+
   if (pref === "lightpanda") {
     if (lightpandaBin) {
       tryBrowserOrder.push(() =>
@@ -914,6 +1004,8 @@ export async function crawlUrlWithEngines(
         ),
       );
     }
+  } else if (pref === "impit") {
+    // Skip CLI pre-browsers when Impit is explicitly requested.
   } else {
     if (obscuraPath && !options.preferBrowser) {
       tryBrowserOrder.push(() =>
@@ -949,47 +1041,65 @@ export async function crawlUrlWithEngines(
     if (res) return res;
   }
 
-  // 4. Direct Crawlee HTTP fetch + Lightpanda FFI signal extraction.
+  // 4. Impit Chrome TLS HTTP fetch (or injected test fetchImpl) + Cheerio DOM extraction.
   try {
-    const res = await fetchImpl(safeUrl.href, {
-      headers: {
-        "user-agent": DEFAULT_BROWSER_AGENT_UA,
-        accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "accept-language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6",
-      },
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    const body = await res.text();
-    const challenge = detectAntiBotChallenge(res.status, body);
-    if (challenge.challenged) {
-      return {
-        url: safeUrl.href,
-        normalizedUrl: lpNormalized,
-        engine: "crawlee-fetch",
-        sourceKind,
-        status: "challenged",
-        httpStatus: res.status,
-        title: null,
-        language: null,
-        excerpt: null,
-        bodyText: null,
-        discoveredLinks: [],
-        discoveredAssets: [],
-        metadata: { challengeProvider: challenge.provider },
-      };
+    let status = 0;
+    let ok = false;
+    let body = "";
+    let transportEngine: CrawlEngineKind = "crawlee-fetch";
+
+    if (options.fetchImpl) {
+      const res = await fetchImpl(safeUrl.href, {
+        headers: {
+          "user-agent": DEFAULT_BROWSER_AGENT_UA,
+          accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "accept-language":
+            "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6,es;q=0.5",
+        },
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      status = res.status;
+      ok = res.ok;
+      body = await res.text();
+    } else {
+      const impitRes = await impitFetchText(safeUrl.href, { timeoutMs });
+      status = impitRes.status;
+      ok = impitRes.ok;
+      body = impitRes.text;
+      transportEngine =
+        impitRes.transport === "impit" ? "impit" : "crawlee-fetch";
     }
 
-    if (res.ok && body) {
+    const challenge = detectAntiBotChallenge(status, body);
+    if (challenge.challenged) {
+      if (!options.preferBrowser) {
+        return {
+          url: safeUrl.href,
+          normalizedUrl: lpNormalized,
+          engine: transportEngine,
+          sourceKind,
+          status: "challenged",
+          httpStatus: status,
+          title: null,
+          language: null,
+          excerpt: null,
+          bodyText: null,
+          discoveredLinks: [],
+          discoveredAssets: [],
+          metadata: { challengeProvider: challenge.provider },
+        };
+      }
+    } else if (ok && body) {
       const signals = extractHtmlSignals(body, safeUrl.href);
       const lpCaps = getLightpandaCapabilities();
       return {
         url: safeUrl.href,
         normalizedUrl: lpNormalized,
-        engine: lpCaps ? "lightpanda" : "crawlee-fetch",
+        engine: lpCaps ? "lightpanda" : transportEngine,
         sourceKind,
         status: "ok",
-        httpStatus: res.status,
+        httpStatus: status,
         title: signals.title,
         language: signals.language,
         excerpt: signals.text.slice(0, 500) || null,
@@ -998,6 +1108,7 @@ export async function crawlUrlWithEngines(
         discoveredAssets: signals.assets,
         metadata: {
           lightpandaFfi: Boolean(lpCaps),
+          impit: transportEngine === "impit",
         },
       };
     }
@@ -1023,7 +1134,7 @@ export async function crawlUrlWithEngines(
     }
   }
 
-  // 5. Optional agent-browser / Bun.WebView fallback when explicitly requested.
+  // 5. Stealth Patchright browser fallback when requested or challenged.
   if (options.preferBrowser) {
     try {
       const doc = await chargerDocument(safeUrl.href, timeoutMs);
@@ -1032,7 +1143,7 @@ export async function crawlUrlWithEngines(
         return {
           url: safeUrl.href,
           normalizedUrl: lpNormalized,
-          engine: "agent-browser",
+          engine: "patchright",
           sourceKind,
           status: "challenged",
           httpStatus: doc.status,
@@ -1045,11 +1156,12 @@ export async function crawlUrlWithEngines(
           metadata: { challengeProvider: challenge.provider },
         };
       }
-      const signals = extractHtmlSignals(doc.html, doc.url);
+      const finalDocUrl = doc.url ?? safeUrl.href;
+      const signals = extractHtmlSignals(doc.html, finalDocUrl);
       return {
         url: safeUrl.href,
         normalizedUrl: lpNormalized,
-        engine: "agent-browser",
+        engine: "patchright",
         sourceKind,
         status: "ok",
         httpStatus: doc.status,
@@ -1059,13 +1171,13 @@ export async function crawlUrlWithEngines(
         bodyText: signals.text || null,
         discoveredLinks: signals.links,
         discoveredAssets: signals.assets,
-        metadata: { finalUrl: doc.url },
+        metadata: { finalUrl: finalDocUrl, patchright: true },
       };
     } catch (error) {
       return {
         url: safeUrl.href,
         normalizedUrl: lpNormalized,
-        engine: "agent-browser",
+        engine: "patchright",
         sourceKind,
         status: "error",
         httpStatus: null,
@@ -1165,14 +1277,23 @@ export async function discoverCharacterSearchUrls(
     }
   }
 
-  // 2. Google News RSS (public RSS feed, zero anti-bot gate).
+  // 2. Google News RSS (public RSS feed, Chrome TLS via Impit when not mocked).
   for (const q of queries.slice(0, 2)) {
     try {
       const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=fr&gl=FR&ceid=FR:fr`;
-      const res = await fetchImpl(rssUrl, {
-        headers: { accept: "application/rss+xml,application/xml,text/xml" },
-        signal: AbortSignal.timeout(timeoutMs),
-      });
+      const res = options.fetchImpl
+        ? await fetchImpl(rssUrl, {
+            headers: { accept: "application/rss+xml,application/xml,text/xml" },
+            signal: AbortSignal.timeout(timeoutMs),
+          })
+        : (
+            await impitFetch(rssUrl, {
+              headers: {
+                accept: "application/rss+xml,application/xml,text/xml",
+              },
+              timeoutMs,
+            })
+          ).response;
       if (!res.ok) continue;
       const xml = await res.text();
       const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
@@ -1201,10 +1322,11 @@ export async function discoverCharacterSearchUrls(
     }
   }
 
-  // 3. Fandom MediaWiki OpenSearch across EN / FR / Manga-Encyclopedie wikis.
+  // 3. Fandom MediaWiki OpenSearch across EN / FR / ES / Manga-Encyclopedie wikis.
   const wikiApis = [
     "https://inazuma-eleven.fandom.com/api.php",
     "https://inazuma-eleven.fandom.com/fr/api.php",
+    "https://inazuma.fandom.com/es/api.php",
     "https://manga-encyclopedie.fandom.com/fr/api.php",
   ];
   const primarySearch = queries[0] ?? "Byron Love";
@@ -1215,10 +1337,17 @@ export async function discoverCharacterSearchUrls(
       url.searchParams.set("search", primarySearch);
       url.searchParams.set("limit", "5");
       url.searchParams.set("format", "json");
-      const res = await fetchImpl(url.href, {
-        headers: { accept: "application/json" },
-        signal: AbortSignal.timeout(timeoutMs),
-      });
+      const res = options.fetchImpl
+        ? await fetchImpl(url.href, {
+            headers: { accept: "application/json" },
+            signal: AbortSignal.timeout(timeoutMs),
+          })
+        : (
+            await impitFetch(url.href, {
+              headers: { accept: "application/json" },
+              timeoutMs,
+            })
+          ).response;
       if (!res.ok) continue;
       const payload = (await res.json()) as [
         string?,

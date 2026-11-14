@@ -15,17 +15,23 @@ import { containsJapanese } from "../../text/japanese-detect";
 import {
   searchDatabaseTranslate,
   searchGlossaryTranslate,
-  translateTextHelper,
+  translateTextDetailed,
   type TranslateMatch,
 } from "../translate-lookup";
 import type { TranslateOptions } from "../types";
+
+function parseTargetLang(raw?: string): "fr" | "en" | "es" {
+  if (raw === "en" || raw === "es" || raw === "fr") return raw;
+  return "fr";
+}
 
 export function registerTranslateCommand(program: Command): void {
   program
     .command("translate [text]")
     .description(
-      "Traduit du texte en français en appliquant le glossaire consolidé",
+      "Traduit du texte (FR, EN, ES) en appliquant le dictionnaire IEVR et le glossaire consolidé",
     )
+    .option("-t, --to <lang>", "Langue cible (fr, en, es)", "fr")
     .option("-j, --json", "Format de sortie en JSON brute")
     .action(async (text: string | undefined, options: TranslateOptions) => {
       suppressLogs(!!options.json);
@@ -93,7 +99,8 @@ export function registerTranslateCommand(program: Command): void {
           return scoreOf(b) - scoreOf(a);
         });
 
-        const translatedBlock = await translateTextHelper(inputText);
+        const targetLang = parseTargetLang(options.to);
+        const detailed = await translateTextDetailed(inputText, targetLang);
 
         if (options.json) {
           restoreLogs(true);
@@ -102,7 +109,12 @@ export function registerTranslateCommand(program: Command): void {
               {
                 original: inputText,
                 detectedLanguage: isJa ? "ja" : "en",
-                translatedText: translatedBlock,
+                targetLang,
+                translatedText: detailed.translated,
+                reading: detailed.reading,
+                romaji: detailed.romaji,
+                segments: detailed.segments,
+                matchedEntities: detailed.matchedEntities,
                 matches: merged.slice(0, 15),
               },
               null,
@@ -116,18 +128,24 @@ export function registerTranslateCommand(program: Command): void {
             );
             const rows = merged.slice(0, 15).map((r) => ({
               Type: r.typeLabel,
-              "Nom FR": r.name_fr || "—",
-              "Nom EN": r.name_en || "—",
-              "Nom JA": r.name_ja || "—",
-              Romaji: r.name_roma || "—",
+              "Nom FR": r.name_fr || "-",
+              "Nom EN": r.name_en || "-",
+              "Nom JA": r.name_ja || "-",
+              Romaji: r.name_roma || "-",
             }));
             console.log(renderAsciiTable(rows));
           }
 
+          if (detailed.reading || detailed.romaji) {
+            console.log(
+              `\n${colors.cyan}Lecture : ${detailed.reading || "-"} | Romaji : ${detailed.romaji || "-"}${colors.reset}`,
+            );
+          }
+
           console.log(
-            `\n${colors.bold}${colors.green}Traduction brute du texte :${colors.reset}`,
+            `\n${colors.bold}${colors.green}Traduction (${targetLang}) :${colors.reset}`,
           );
-          console.log(translatedBlock);
+          console.log(detailed.translated);
         }
         process.exit(0);
       } catch (e) {

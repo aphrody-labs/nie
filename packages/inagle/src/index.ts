@@ -173,3 +173,5 @@ export * as ui from "./ui/index.js";
 export * as dotnet from "./dotnet/index.js";
 export * as docs from "./docs/index.js";
 export * as formats from "./formats/index.js";
+export * as games from "./games/index.js";
+export * from "./games/index.js";

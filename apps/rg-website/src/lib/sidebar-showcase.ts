@@ -1,9 +1,5 @@
 export type RgThemeId =
-  | "roy"
-  | "gaelle"
-  | "azalee-light"
-  | "azalee-dark"
-  | "achillea";
+  "roy" | "gaelle" | "azalee-light" | "azalee-dark" | "achillea";
 
 export interface SidebarMascotMeta {
   alt: string;

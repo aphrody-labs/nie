@@ -33,15 +33,16 @@ export class WikiSqlRepository {
         ? sql`(name_fr ilike ${needle} escape '\\' or name_en ilike ${needle} escape '\\' or name_ja ilike ${needle} escape '\\')`
         : sql.raw("true");
       const where = sql`where ${textWhere} and ${extraWhere}`;
-      const result =
-        await sql<Row>`select * from public.${sql.raw(table)} ${where} order by id asc limit ${limit} offset ${offset}`.execute(
+      const [result, count] = await Promise.all([
+        sql<Row>`select * from public.${sql.raw(table)} ${where} order by id asc limit ${limit} offset ${offset}`.execute(
           this.db,
-        );
-      const count = await sql<{
-        count: string;
-      }>`select count(*)::text as count from public.${sql.raw(table)} ${where}`.execute(
-        this.db,
-      );
+        ),
+        sql<{
+          count: string;
+        }>`select count(*)::text as count from public.${sql.raw(table)} ${where}`.execute(
+          this.db,
+        ),
+      ]);
       return {
         data: result.rows,
         count: Number(count.rows[0]?.count ?? 0),

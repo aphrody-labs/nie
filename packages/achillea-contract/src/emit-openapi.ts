@@ -49,7 +49,10 @@ const schemaRef = (name: string) => ({
   $ref: `#/components/schemas/${name}`,
 });
 
-const jsonResponse = (description: string, schema: Record<string, unknown>) => ({
+const jsonResponse = (
+  description: string,
+  schema: Record<string, unknown>,
+) => ({
   description,
   content: { "application/json": { schema } },
 });
@@ -65,7 +68,8 @@ export function emitOpenApi(contract: IrContract): AchilleaOpenApiDocument {
     info: {
       title: "Achilléa & Ranked Domain API",
       version: contract.version,
-      summary: "Contrat OpenAPI 3.2.1 généré depuis @rosegriffon/achillea-types",
+      summary:
+        "Contrat OpenAPI 3.2.1 généré depuis @rosegriffon/achillea-types",
       description: `Source canonique ${contract.source}@${contract.version} — schémas du domaine compétitif Achilléa et Ranked.`,
       license: { name: "Apache-2.0" },
     },

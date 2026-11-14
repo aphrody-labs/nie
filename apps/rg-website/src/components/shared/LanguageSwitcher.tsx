@@ -21,7 +21,8 @@ import {
 const LANGUAGES = DEFAULT_LOCALE_REGISTRY.locales
   .map(({ tag }) => tag)
   .filter(
-    (tag): tag is Language => tag === "fr" || tag === "en" || tag === "ja",
+    (tag): tag is Language =>
+      tag === "fr" || tag === "en" || tag === "ja" || tag === "es",
   );
 
 export function LanguageSwitcher() {

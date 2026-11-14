@@ -17,7 +17,13 @@ export {
   parseAcceptLanguage,
   type LanguagePreference,
 } from "./accept-language";
-export { UI_MESSAGES, uiMessage, type UiMessageKey } from "./messages";
+export {
+  UI_MESSAGES,
+  formatIcuMessage,
+  uiMessage,
+  type UiMessageKey,
+  type UiMessageValues,
+} from "./messages";
 export {
   resolveLocale,
   type LocaleResolutionInput,

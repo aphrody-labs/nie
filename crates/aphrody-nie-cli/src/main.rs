@@ -233,6 +233,21 @@ enum Cmd {
         /// Sortie JSON plutôt qu'un résumé lisible.
         #[arg(long)]
         json: bool,
+        /// Exporte un lexique multilingue unifié depuis le VFS (ex: packages/inagle/data/ievr-i18n.json).
+        #[arg(long)]
+        export: Option<PathBuf>,
+        /// Langues à exporter séparées par des virgules (ou `all` pour toutes les langues IEVR).
+        #[arg(long, value_delimiter = ',')]
+        langs: Vec<String>,
+        /// Dossier de sortie pour les fichiers `<lang>.json` (hashes `0x...` + clés UI seedées).
+        #[arg(long)]
+        locales_out: Option<PathBuf>,
+        /// Dossier existant contenant `<lang>.json` à préserver/fusionner (ex: apps/rg-website/public/locales).
+        #[arg(long)]
+        seed_locales: Option<PathBuf>,
+        /// Catégories TEXT_FILES à exporter séparées par des virgules (défaut : toutes les catégories utiles).
+        #[arg(long, value_delimiter = ',')]
+        categories: Vec<String>,
     },
     /// Convertit un asset du jeu vers un format d'échange.
     ///
@@ -3125,7 +3140,21 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
             game_dir,
             samples,
             json,
-        } => locales_cmd(game_dir, samples, json),
+            export,
+            langs,
+            locales_out,
+            seed_locales,
+            categories,
+        } => locales_cmd(
+            game_dir,
+            samples,
+            json,
+            export.as_deref(),
+            &langs,
+            locales_out.as_deref(),
+            seed_locales.as_deref(),
+            &categories,
+        ),
         Cmd::Convert {
             src,
             to,
@@ -5557,26 +5586,44 @@ fn lire_source(src: &str, game_dir: Option<PathBuf>) -> anyhow::Result<Vec<u8>> 
         .with_context(|| format!("« {src} » introuvable, ni sur le disque ni dans le VFS"))
 }
 
-/// Charge une référence de comparaison : chemin local, ou URL `https://` récupérée par `curl`.
-///
-/// `curl` plutôt qu'un client HTTP en dépendance : la comparaison est un outil de mise au point,
-/// pas une fonction du moteur — elle ne justifie pas de faire entrer une pile TLS dans la CLI.
+/// Charge une reference de comparaison : chemin local, ou URL `http(s)://` recuperee par `reqwest`.
+#[cfg(feature = "host")]
 fn lire_reference(reference: &str) -> anyhow::Result<Vec<u8>> {
     if !reference.starts_with("http://") && !reference.starts_with("https://") {
         return std::fs::read(reference)
-            .with_context(|| format!("lecture de la référence « {reference} »"));
+            .with_context(|| format!("lecture de la reference « {reference} »"));
     }
-    let sortie = std::process::Command::new("curl")
-        .args(["-sSL", "--fail", "--max-time", "120", reference])
-        .output()
-        .with_context(|| format!("curl indisponible pour « {reference} »"))?;
-    if !sortie.status.success() {
-        anyhow::bail!(
-            "téléchargement de « {reference} » : {}",
-            String::from_utf8_lossy(&sortie.stderr).trim()
-        );
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .context("initialisation du runtime tokio pour lire_reference")?;
+    rt.block_on(async {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(120))
+            .build()
+            .context("construction client reqwest")?;
+        let resp = client
+            .get(reference)
+            .send()
+            .await
+            .with_context(|| format!("telechargement HTTP « {reference} »"))?
+            .error_for_status()
+            .with_context(|| format!("statut HTTP en echec pour « {reference} »"))?;
+        let bytes = resp
+            .bytes()
+            .await
+            .with_context(|| format!("lecture du corps « {reference} »"))?;
+        Ok(bytes.to_vec())
+    })
+}
+
+#[cfg(not(feature = "host"))]
+fn lire_reference(reference: &str) -> anyhow::Result<Vec<u8>> {
+    if !reference.starts_with("http://") && !reference.starts_with("https://") {
+        return std::fs::read(reference)
+            .with_context(|| format!("lecture de la reference « {reference} »"));
     }
-    Ok(sortie.stdout)
+    anyhow::bail!("support HTTP reqwest indisponible sans feature host pour « {reference} »")
 }
 
 /// Décrit l'installation : binaire, VFS, corpus de dumps.
@@ -5742,8 +5789,21 @@ lancable    NON — {manquants} composant(s) manquant(s)"
 /// The shared classifier derives tags from `common/text`, then sees whether the same exact tag
 /// appears in menu textures, font resources, and Criware containers. It deliberately does not
 /// turn an `<LG>` template into a path unless the resulting resource is indexed by the VFS.
-fn locales_cmd(game_dir: Option<PathBuf>, samples: usize, json: bool) -> anyhow::Result<()> {
+fn locales_cmd(
+    game_dir: Option<PathBuf>,
+    samples: usize,
+    json: bool,
+    export: Option<&std::path::Path>,
+    langs: &[String],
+    locales_out: Option<&std::path::Path>,
+    seed_locales: Option<&std::path::Path>,
+    categories: &[String],
+) -> anyhow::Result<()> {
     let vfs = open_vfs(game_dir)?;
+    if export.is_some() || locales_out.is_some() {
+        return export_vfs_locales(&vfs, export, langs, locales_out, seed_locales, categories, json);
+    }
+
     let report = aphrody_nie_formats::locale::discover_locale_assets(
         vfs.iter().map(|(path, _)| path),
         samples,
@@ -5768,6 +5828,338 @@ fn locales_cmd(game_dir: Option<PathBuf>, samples: usize, json: bool) -> anyhow:
                 }
             }
         }
+    }
+    Ok(())
+}
+
+fn export_vfs_locales(
+    vfs: &aphrody_nie_formats::vfs::Vfs,
+    export: Option<&std::path::Path>,
+    langs: &[String],
+    locales_out: Option<&std::path::Path>,
+    seed_locales: Option<&std::path::Path>,
+    categories: &[String],
+    json_out: bool,
+) -> anyhow::Result<()> {
+    use std::collections::{BTreeMap, BTreeSet};
+
+    const ALL_VFS_LANGS: &[&str] = &[
+        "ja", "en", "fr", "es", "de", "it", "pt", "zh_hans", "zh_hant",
+    ];
+    const CORE_CATEGORIES: &[&str] = &[
+        "chara",
+        "chara_add",
+        "skill",
+        "team",
+        "belong_team",
+        "item",
+        "map",
+        "mission",
+        "quest_title",
+        "soccer_common",
+        "soccer_technic",
+        "soccer_suggest",
+        "soccer_passive",
+        "system",
+        "menu",
+        "setting",
+        "help",
+        "playstyle",
+        "aura",
+        "special_tactics",
+        "super_tactics",
+        "dictionary",
+        "formation",
+        "shop",
+        "post",
+        "craft",
+        "data_file",
+        "medal",
+        "search",
+        "trophy",
+        "constellation",
+    ];
+
+    let target_langs: Vec<String> = if langs.is_empty() {
+        vec![
+            "ja".to_string(),
+            "en".to_string(),
+            "fr".to_string(),
+            "es".to_string(),
+        ]
+    } else if langs.iter().any(|l| l == "all") {
+        ALL_VFS_LANGS.iter().map(|s| (*s).to_string()).collect()
+    } else {
+        langs.to_vec()
+    };
+
+    let export_all_cats = categories.iter().any(|c| c == "all");
+    let export_cat_filter: BTreeSet<&str> = if categories.is_empty() {
+        CORE_CATEGORIES.iter().copied().collect()
+    } else {
+        categories.iter().map(String::as_str).collect()
+    };
+
+    let mut per_lang_all_hashes: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+    for lang in &target_langs {
+        per_lang_all_hashes.insert(lang.clone(), BTreeMap::new());
+    }
+
+    #[derive(serde::Serialize)]
+    struct HashEntry {
+        category: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        ja_raw: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        romaji: Option<String>,
+        #[serde(flatten)]
+        texts: BTreeMap<String, String>,
+    }
+
+    #[derive(serde::Serialize)]
+    struct JaTranslation {
+        hash_id: String,
+        category: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        romaji: Option<String>,
+        #[serde(flatten)]
+        texts: BTreeMap<String, String>,
+    }
+
+    let mut exported_entries: BTreeMap<String, HashEntry> = BTreeMap::new();
+    let mut ja_to_translations: BTreeMap<String, JaTranslation> = BTreeMap::new();
+    let mut category_counts: BTreeMap<String, usize> = BTreeMap::new();
+    let mut ui_hashes: BTreeSet<String> = BTreeSet::new();
+
+    for &(cat_key, file_stem) in aphrody_nie_data::text::TEXT_FILES {
+        let include_in_export = export_all_cats || export_cat_filter.contains(cat_key);
+        let is_ui_cat = matches!(
+            cat_key,
+            "system" | "menu_setting" | "setting_menu" | "help" | "soccer" | "playstyle"
+        );
+
+        let mut lang_clean: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+        let mut ja_raw_map: BTreeMap<String, String> = BTreeMap::new();
+
+        for lang in &target_langs {
+            let vfs_path = format!("data/common/text/{lang}/{file_stem}.cfg.bin");
+            let Ok(bytes) = vfs.read(&vfs_path) else {
+                continue;
+            };
+            let Some(root) = aphrody_nie_formats::cfgbin::to_iecode_json(&bytes) else {
+                continue;
+            };
+            let parsed = aphrody_nie_data::text::parse_text_file(&root);
+            let mut map = BTreeMap::new();
+            let lang_store = per_lang_all_hashes.entry(lang.clone()).or_default();
+            for (hash_id, txt) in parsed {
+                let key = format!("0x{:08X}", hash_id.0);
+                if is_ui_cat {
+                    ui_hashes.insert(key.clone());
+                }
+                lang_store.insert(key.clone(), txt.clone());
+                if include_in_export {
+                    map.insert(key, txt);
+                }
+            }
+            if include_in_export && lang == "ja" {
+                for (hash_id, raw) in aphrody_nie_data::text::parse_text_file_raw(&root) {
+                    ja_raw_map.insert(format!("0x{:08X}", hash_id.0), raw);
+                }
+            }
+            if include_in_export && !map.is_empty() {
+                lang_clean.insert(lang.clone(), map);
+            }
+        }
+
+        if !include_in_export {
+            continue;
+        }
+
+        let mut cat_hashes: BTreeSet<String> = BTreeSet::new();
+        for map in lang_clean.values() {
+            cat_hashes.extend(map.keys().cloned());
+        }
+        category_counts.insert(cat_key.to_string(), cat_hashes.len());
+
+        for hash_key in cat_hashes {
+            let mut texts = BTreeMap::new();
+            for lang in &target_langs {
+                if let Some(val) = lang_clean.get(lang).and_then(|m| m.get(&hash_key)) {
+                    texts.insert(lang.clone(), val.clone());
+                }
+            }
+            let ja_raw = ja_raw_map.get(&hash_key).filter(|r| r.contains('/')).cloned();
+            let romaji = ja_raw
+                .as_deref()
+                .and_then(aphrody_nie_data::text::jp::furigana_readings_to_romaji)
+                .or_else(|| {
+                    texts
+                        .get("ja")
+                        .filter(|s| {
+                            aphrody_nie_data::text::jp::is_japanese(s)
+                                && !aphrody_nie_data::text::jp::has_kanji(s)
+                        })
+                        .map(|s| aphrody_nie_data::text::jp::to_romaji(s))
+                });
+
+            if let Some(ja_text) = texts.get("ja") {
+                let norm_ja = ja_text.trim();
+                if !norm_ja.is_empty()
+                    && !norm_ja.contains('\n')
+                    && norm_ja.chars().count() <= 48
+                    && (texts.contains_key("fr")
+                        || texts.contains_key("en")
+                        || texts.contains_key("es"))
+                {
+                    fn cat_rank(cat: &str) -> u8 {
+                        match cat {
+                            "skill" | "chara" | "team" | "aura" | "special_tactics"
+                            | "super_tactics" => 4,
+                            "map" | "quest_title" | "trophy" | "system" | "menu" => 3,
+                            "item" | "help" | "post" | "dictionary" => 2,
+                            _ => 1,
+                        }
+                    }
+                    let is_real_translation = ["fr", "en", "es"]
+                        .iter()
+                        .any(|l| texts.get(*l).is_some_and(|v| v != norm_ja));
+                    let cand_rank = cat_rank(cat_key);
+                    let should_write = match ja_to_translations.get(norm_ja) {
+                        None => true,
+                        Some(existing) => {
+                            let existing_real = ["fr", "en", "es"]
+                                .iter()
+                                .any(|l| existing.texts.get(*l).is_some_and(|v| v != norm_ja));
+                            let existing_rank = cat_rank(&existing.category);
+                            (!existing_real && is_real_translation)
+                                || (is_real_translation == existing_real
+                                    && cand_rank > existing_rank)
+                        }
+                    };
+                    if should_write {
+                        let mut tr_texts = BTreeMap::new();
+                        for l in ["en", "fr", "es"] {
+                            if let Some(v) = texts.get(l) {
+                                tr_texts.insert(l.to_string(), v.clone());
+                            }
+                        }
+                        ja_to_translations.insert(
+                            norm_ja.to_string(),
+                            JaTranslation {
+                                hash_id: hash_key.clone(),
+                                category: cat_key.to_string(),
+                                romaji: romaji.clone(),
+                                texts: tr_texts,
+                            },
+                        );
+                    }
+                }
+            }
+
+            exported_entries.insert(
+                hash_key,
+                HashEntry {
+                    category: cat_key.to_string(),
+                    ja_raw,
+                    romaji,
+                    texts,
+                },
+            );
+        }
+    }
+
+    // Use aho-corasick to verify key iconic Inazuma Japanese terms exist cleanly in the dictionary.
+    let canonical_needles = [
+        "亜風炉 照美",
+        "アフロディ",
+        "ゴッドノウズ",
+        "イナズマイレブン",
+        "円堂 守",
+        "豪炎寺 修也",
+        "鬼道 有人",
+        "稲妻",
+    ];
+    let ac = aho_corasick::AhoCorasick::new(canonical_needles)?;
+    let mut canonical_hits = 0usize;
+    for ja_key in ja_to_translations.keys() {
+        canonical_hits += ac.find_iter(ja_key).count();
+    }
+
+    let mut written_locales: BTreeMap<String, usize> = BTreeMap::new();
+    if let Some(out_dir) = locales_out {
+        std::fs::create_dir_all(out_dir)?;
+        let mut seeded_by_lang: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+        let mut seed_hex_union: BTreeSet<String> = BTreeSet::new();
+
+        if let Some(seed_dir) = seed_locales {
+            for lang in &target_langs {
+                let p = seed_dir.join(format!("{lang}.json"));
+                if p.is_file() {
+                    let raw = std::fs::read_to_string(&p)?;
+                    let map: BTreeMap<String, String> = serde_json::from_str(&raw)?;
+                    for k in map.keys() {
+                        if k.starts_with("0x") {
+                            seed_hex_union.insert(k.clone());
+                        }
+                    }
+                    seeded_by_lang.insert(lang.clone(), map);
+                }
+            }
+        }
+
+        let target_hex_keys: BTreeSet<String> = if seed_hex_union.is_empty() {
+            ui_hashes.clone()
+        } else {
+            seed_hex_union.union(&ui_hashes).cloned().collect()
+        };
+
+        for lang in &target_langs {
+            let mut merged: BTreeMap<String, String> =
+                seeded_by_lang.remove(lang).unwrap_or_default();
+            if let Some(vfs_hashes) = per_lang_all_hashes.get(lang) {
+                for hex_key in &target_hex_keys {
+                    if let Some(val) = vfs_hashes.get(hex_key) {
+                        merged.insert(hex_key.clone(), val.clone());
+                    }
+                }
+            }
+            let out_path = out_dir.join(format!("{lang}.json"));
+            std::fs::write(&out_path, serde_json::to_string_pretty(&merged)?)?;
+            written_locales.insert(lang.clone(), merged.len());
+        }
+    }
+
+    if let Some(export_path) = export {
+        if let Some(parent) = export_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let payload = serde_json::json!({
+            "source": "ievr-vfs",
+            "langs": target_langs,
+            "categories": category_counts,
+            "canonical_hits": canonical_hits,
+            "ja_term_count": ja_to_translations.len(),
+            "hash_entry_count": exported_entries.len(),
+            "ja_to_translations": ja_to_translations,
+            "hash_entries": exported_entries,
+        });
+        std::fs::write(export_path, serde_json::to_string(&payload)?)?;
+    }
+
+    let summary = serde_json::json!({
+        "langs": target_langs,
+        "categories": category_counts.len(),
+        "canonical_hits": canonical_hits,
+        "ja_terms": ja_to_translations.len(),
+        "hash_entries": exported_entries.len(),
+        "written_locales": written_locales,
+        "export": export.map(|p| p.display().to_string()),
+    });
+    if json_out {
+        println!("{}", serde_json::to_string_pretty(&summary)?);
+    } else {
+        println!("{}", serde_json::to_string(&summary)?);
     }
     Ok(())
 }

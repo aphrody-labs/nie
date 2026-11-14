@@ -13,6 +13,7 @@ workspace = true
 [features]
 default = ["host"]
 host = [
+  "dep:reqwest",
   "dep:rusqlite",
   "dep:yolo-re-core",
   "yolo-re-core/nie",
@@ -23,6 +24,7 @@ host = [
 [dependencies]
 anyhow = { workspace = true }
 hex = "0.4"
+reqwest = { workspace = true, features = ["blocking", "rustls"], optional = true }
 rusqlite = { workspace = true, optional = true }
 sha2 = { workspace = true }
 serde = { workspace = true, features = ["std", "derive"] }

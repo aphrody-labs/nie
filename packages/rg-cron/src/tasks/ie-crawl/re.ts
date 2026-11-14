@@ -4,108 +4,103 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { crawlDataPath } from "../../lib/shared-path";
-import {
-  WebCdpPage,
-  waitForSelector,
-  type NavigationResponse,
-} from "../../lib/web-cdp";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import {
+  downloadAssetIfMissing,
+  fetchHtmlResilient,
+  resolveRepoRoot,
+} from "../../lib/http-crawl";
+import { crawlDataPath } from "../../lib/shared-path";
+import { extraireRePortal } from "./portal-extract";
 
-const DATA_ROOT = crawlDataPath("inazuma.jp/re");
+const RE_URLS = [
+  { lang: "en", url: "https://www.inazuma.jp/re/en/" },
+  { lang: "ja", url: "https://www.inazuma.jp/re/" },
+] as const;
 
-interface RePageTarget {
-  lang: string;
-  url: string;
-}
+export async function crawlRe(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  console.log("[Crawl RE] Recuperation du portail INAZUMA ELEVEN RE...");
 
-async function safeGoto(
-  page: WebCdpPage,
-  url: string,
-  timeout = 30000,
-): Promise<NavigationResponse> {
-  return Promise.race([
-    page.goto(url),
-    new Promise<never>((_, reject) =>
-      setTimeout(
-        () =>
-          reject(new Error(`Navigation timeout (${timeout}ms) pour ${url}`)),
-        timeout,
-      ),
-    ),
-  ]);
-}
-
-export async function crawlRe(): Promise<{ success: boolean; error?: string }> {
-  console.log("[Crawl RE] Démarrage du crawl de Inazuma Eleven RE...");
-
-  const targets: RePageTarget[] = [
-    { lang: "ja", url: "https://www.inazuma.jp/re/" },
-    { lang: "en", url: "https://www.inazuma.jp/re/en/" },
-    { lang: "fr", url: "https://www.inazuma.jp/re/fr/" },
-  ];
-
-  let page: WebCdpPage | undefined;
   try {
-    page = await WebCdpPage.connect();
-    let crawlCount = 0;
+    const extractedByLang: Record<
+      string,
+      ReturnType<typeof extraireRePortal>
+    > = {};
+    let teaserImageUrl: string | null = null;
 
-    for (const target of targets) {
-      const outputDir = join(DATA_ROOT, target.lang);
-      await mkdir(outputDir, { recursive: true });
+    for (const src of RE_URLS) {
+      const res = await fetchHtmlResilient(src.url);
+      if (!res.ok || res.html.length < 400) continue;
 
-      console.log(`[Crawl RE] Scraping page ${target.lang} : ${target.url}`);
+      const extracted = extraireRePortal(res.html);
+      extractedByLang[src.lang] = extracted;
+      if (!teaserImageUrl && extracted.teaserImageUrl) {
+        teaserImageUrl = extracted.teaserImageUrl;
+      }
+
       try {
-        const response = await safeGoto(page, target.url);
-        // On vérifie le code HTTP de la réponse si disponible
-        const status = response ? response.status : 200;
-        if (status >= 400) {
-          console.warn(
-            `[Crawl RE] URL non disponible (HTTP ${status}) : ${target.url}`,
-          );
-          continue;
-        }
-
-        await waitForSelector(page, "body", 15000).catch(() => {});
-        const html = await page.content();
-        if (html.length < 500) {
-          console.warn(
-            `[Crawl RE] WebCdpPage trop courte ou vide pour ${target.lang}, abandon.`,
-          );
-          continue;
-        }
-
-        await writeFile(join(outputDir, "index.html"), html);
-
-        const meta = {
-          id: `re-${target.lang}`,
-          title: `Inazuma Eleven RE - Portal (${target.lang.toUpperCase()})`,
-          date: new Date().toISOString().split("T")[0] || "",
-          url: target.url,
-          category: "RE Remake",
-          language: target.lang,
-        };
-
+        const outDir = crawlDataPath("inazuma.jp/re", src.lang);
+        await mkdir(outDir, { recursive: true });
+        await writeFile(join(outDir, "index.html"), res.html, "utf8");
         await writeFile(
-          join(outputDir, "meta.json"),
-          JSON.stringify(meta, null, 2),
+          join(outDir, "meta.json"),
+          JSON.stringify(
+            {
+              crawledAt: new Date().toISOString(),
+              url: src.url,
+              ...extracted,
+            },
+            null,
+            2,
+          ),
+          "utf8",
         );
-        crawlCount++;
-      } catch (err) {
-        console.warn(`[Crawl RE] Impossible de scraper ${target.url} :`, err);
+      } catch {
+        // Disque partage optionnel
       }
     }
 
+    if (Object.keys(extractedByLang).length === 0) {
+      return {
+        success: false,
+        error: "Portail INAZUMA ELEVEN RE inaccessible",
+      };
+    }
+
+    const repoRoot = resolveRepoRoot();
+    if (repoRoot) {
+      if (teaserImageUrl) {
+        await downloadAssetIfMissing(
+          teaserImageUrl,
+          join(repoRoot, "apps/rg-website/public/games/inazuma-re-pv.jpg"),
+        );
+      }
+      await writeFile(
+        join(repoRoot, "packages/inagle/data/re-live.json"),
+        `${JSON.stringify(
+          {
+            crawledAt: new Date().toISOString(),
+            en: extractedByLang.en ?? null,
+            ja: extractedByLang.ja ?? null,
+          },
+          null,
+          2,
+        )}\n`,
+        "utf8",
+      );
+    }
+
     console.log(
-      `[Crawl RE] Crawl terminé. ${crawlCount} langues sauvegardées.`,
+      `[Crawl RE] Synchronise (${Object.keys(extractedByLang).join("/")}).`,
     );
     return { success: true };
-  } catch (err: unknown) {
+  } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[Crawl RE] Erreur critique lors du crawl RE :", err);
+    console.error("[Crawl RE] Erreur critique :", msg);
     return { success: false, error: msg };
-  } finally {
-    await page?.close().catch(() => undefined);
   }
 }

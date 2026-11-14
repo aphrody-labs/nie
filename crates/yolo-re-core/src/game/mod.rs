@@ -1,41 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Game RE engine (Apache-2.0):
-//! AOB signature scanning, live process-memory inspection, the DBXV2 binary format
-//! parsers (BAC/BDM/CMS/CUS/EMB/EMD/EMM/ESK/MSG/PUP/SAV), the Dragon Ball game
-//! catalog, Steam install inspection, text extraction and the unified state; plus the
-//! game-agnostic asset pipeline ([`assets`], feature `assets`) that mounts, indexes and
-//! exports any installed game (CPK through the canonical `aphrody-nie-formats` readers).
+//! Game RE façade over [`aphrody_re_core::game`] plus Rose Griffon asset/VFS/glTF pipelines.
+
 #[cfg(any(feature = "wasm", feature = "dbxv2"))]
 pub mod api;
 #[cfg(feature = "assets")]
 pub mod assets;
-pub mod catalog;
 pub mod convert;
 /// Export a DBXV2 `.emd` object to GLB so it renders through the nie 3D pipeline.
 #[cfg(feature = "dbxv2")]
 pub mod emd_gltf;
-pub mod error;
-pub mod formats;
-pub mod fs;
-pub mod gameplay;
 #[cfg(feature = "dbxv2")]
 pub mod index;
-pub mod inventory;
-pub mod live;
-pub mod reverse;
 /// Engine-facing asset runtime: streams and format-decodes assets from the merged games.
 #[cfg(feature = "assets")]
 pub mod runtime;
-pub mod steam;
-pub mod text;
-pub mod unified;
 /// Streamed mount of several game installs under one `<game>/<path>` namespace.
 #[cfg(feature = "assets")]
 pub mod unified_vfs;
-pub mod world;
-
 #[cfg(feature = "wasm")]
 pub mod wasm;
+
+pub use aphrody_re_core::game::{
+    catalog, error, formats, fs, gameplay, inventory, live, reverse, steam, text, unified, world,
+};
 
 pub use catalog::{
     CANON_STATUS_DERIVED_GAME, DetectedGame, DragonBallGame, GameEngine, Platform, SaveLocation,
@@ -52,7 +39,7 @@ pub use formats::{
     emb::{EmbFile, EmbRgbaTexture, EmbTextureEntry, TexturePixelFormat},
     emd::{EmdFile, EmdMesh, EmdModelPart, EmdSubmesh, EmdVertex},
     emm::{EmmFile, EmmMaterial, EmmParameter},
-    esk::{EskBone, EskFile, standard_dbxv2_skeleton},
+    esk::{EskBone, EskFile},
     model_assemble::{AssembledCharacterModel, ModelPrimitive},
     moveset::{CharacterMoveset, MoveFrameData},
     msg::{MsgEntry, MsgFile},

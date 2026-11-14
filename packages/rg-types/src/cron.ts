@@ -66,6 +66,7 @@ export const TACHES_CRON = [
   "achillea:ranked-file",
   "achillea:ranked-promotions",
   "character:crawl",
+  "community:mods",
   "fleet:crawl",
 ] as const;
 
@@ -537,6 +538,16 @@ export const CATALOGUE_TACHES: readonly DescriptionTache[] = Object.freeze([
     planification: "*/15 * * * *",
     famille: "donnees",
     niveau: "admin-strict",
+    motifInterdiction: null,
+    dureeIndicative: "quelques minutes",
+  },
+  {
+    nom: "community:mods",
+    titre: "Mods et wikis communautaires IE",
+    role: "crawle GameBanana (14 jeux), inazuma-eleven.fr/mods, Fandom (EN/FR/ES), wikis JP (wikiwiki/game8/atwiki) et TraduSquare (ES) vers Orama, SQLite et R2",
+    planification: "0 */6 * * *",
+    famille: "donnees",
+    niveau: "admin",
     motifInterdiction: null,
     dureeIndicative: "quelques minutes",
   },

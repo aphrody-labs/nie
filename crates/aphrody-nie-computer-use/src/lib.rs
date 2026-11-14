@@ -493,27 +493,21 @@ pub fn probe(request: &ProbeRequest) -> Result<ProbeResult> {
         }
         Surface::Ghidra => {
             let url = &request.ghidra_url;
-            let response = std::process::Command::new("curl")
-                .args([
-                    "--silent",
-                    "--show-error",
-                    "--max-time",
-                    "3",
-                    "-o",
-                    "NUL",
-                    "-w",
-                    "%{http_code}",
-                    url,
-                ])
-                .output()
-                .with_context(|| "curl is required for the non-destructive Ghidra probe")?;
-            let code = String::from_utf8_lossy(&response.stdout).trim().to_owned();
-            let available = matches!(code.as_str(), "200" | "400" | "401" | "404" | "405");
+            let client = reqwest::blocking::Client::builder()
+                .timeout(std::time::Duration::from_secs(3))
+                .build()
+                .with_context(|| "failed to build reqwest client for Ghidra probe")?;
+            let response = client
+                .get(url)
+                .send()
+                .with_context(|| format!("HTTP probe failed for Ghidra URL {url}"))?;
+            let status_code = response.status().as_u16();
+            let available = matches!(status_code, 200 | 400 | 401 | 404 | 405);
             Ok(ProbeResult {
                 surface: Surface::Ghidra,
                 available,
                 target: url.clone(),
-                detail: format!("HTTP status {code}"),
+                detail: format!("HTTP status {status_code}"),
             })
         }
     }

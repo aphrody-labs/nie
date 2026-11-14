@@ -53,7 +53,24 @@ function enCache<A extends unknown[], R>(
 
 export const wikiService: typeof service = {
   ...service,
+  getAllTeams: enCache("teams-all", service.getAllTeams.bind(service)),
   getAurasList: enCache("auras", service.getAurasList.bind(service)),
+  getCharacterAuras: enCache(
+    "chara-auras",
+    service.getCharacterAuras.bind(service),
+  ),
+  getCharacterByBaseSlug: enCache(
+    "chara-base-slug",
+    service.getCharacterByBaseSlug.bind(service),
+  ),
+  getCharacterBySlug: enCache(
+    "chara-slug",
+    service.getCharacterBySlug.bind(service),
+  ),
+  getCharacterForms: enCache(
+    "chara-forms",
+    service.getCharacterForms.bind(service),
+  ),
   getCharactersList: enCache(
     "characters",
     service.getCharactersList.bind(service),
@@ -62,6 +79,7 @@ export const wikiService: typeof service = {
     "coordinators",
     service.getCoordinatorsList.bind(service),
   ),
+  getFormations: enCache("formations", service.getFormations.bind(service)),
   getGalleryCategoryCounts: enCache(
     "gallery-counts",
     service.getGalleryCategoryCounts.bind(service),

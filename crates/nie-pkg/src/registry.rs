@@ -3,7 +3,7 @@ use std::fmt::Write as _;
 
 use serde::{Deserialize, Serialize};
 
-use crate::model::{Feature, Game, Platform};
+use crate::model::{EraInfo, Feature, Game, Platform};
 
 const EMBEDDED: &str = include_str!("../registry/games.toml");
 const SCHEMA: u32 = 1;
@@ -22,10 +22,12 @@ pub enum RegistryError {
     DuplicatePlatform(String, Platform),
 }
 
-/// All known games.
+/// All known games and canonical timeline eras.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Registry {
     pub schema: u32,
+    #[serde(default, rename = "era", skip_serializing_if = "Vec::is_empty")]
+    pub eras: Vec<EraInfo>,
     #[serde(rename = "game")]
     pub games: Vec<Game>,
 }
@@ -73,6 +75,13 @@ impl Registry {
     /// Lookup by id or alias.
     pub fn get(&self, key: &str) -> Option<&Game> {
         self.games.iter().find(|g| g.matches(key))
+    }
+
+    /// Lookup by canonical web/API slug, falling back to id or alias.
+    pub fn by_slug(&self, slug: &str) -> Option<&Game> {
+        self.games
+            .iter()
+            .find(|g| g.slug == slug || g.matches(slug))
     }
 
     pub fn on_platform(&self, platform: Platform) -> impl Iterator<Item = &Game> {

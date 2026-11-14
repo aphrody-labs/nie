@@ -1,6 +1,6 @@
 /**
- * `@rosegriffon/azalee` — cœur de l'encyclopédie Azalée (Inazuma Eleven:
- * Victory Road), utilisable sans aucun framework.
+ * `@rosegriffon/azalee` — cœur de l'encyclopédie Azalée (toute la saga
+ * Inazuma Eleven, de 2008 aux titres en développement), utilisable sans framework.
  *
  * **Cette racine est client-safe** : uniquement des types, des règles de jeu
  * pures, la résolution d'URLs CDN, le glossaire de traduction et la recherche
@@ -21,6 +21,7 @@
 
 // --- Règles de jeu, texte, assets, recherche (purs) ------------------------
 export * from "./game";
+export * from "./games";
 export * from "./images";
 export * from "./search";
 export * from "./text";

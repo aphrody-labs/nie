@@ -58,8 +58,22 @@ export function normalizeCrawlUrl(rawUrl: string): {
 }
 
 let crawleeSupportChecked: boolean | null = null;
+const runtimeDynamicImport = new Function(
+  "specifier",
+  "return import(specifier)",
+) as <T>(specifier: string) => Promise<T>;
+
 export async function isCrawleeCoreAvailable(): Promise<boolean> {
   if (crawleeSupportChecked !== null) return crawleeSupportChecked;
+  try {
+    const mod = await runtimeDynamicImport<typeof import("crawlee")>("crawlee");
+    if (typeof mod.CheerioCrawler === "function") {
+      crawleeSupportChecked = true;
+      return true;
+    }
+  } catch {
+    // Fallback to optional require resolution when running in restricted loaders.
+  }
   try {
     const req = createOptionalRequire();
     if (!req) {

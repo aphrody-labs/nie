@@ -41,12 +41,14 @@
 ## 2. ABI Contracts & Memory Management
 
 ### 2.1 Rust C-ABI (`libiecode.so`)
+
 - **Symbol Prefix**: `nie_*`
 - **Calling Convention**: System V AMD64 ABI (Linux) / Microsoft x64 ABI (Windows)
 - **String Management**: Output strings allocated by Rust are freed via `nie_free_string(char* ptr)`.
 - **Status Codes**: Functions return `0` on success, negative integers on error (`-1` Invalid Argument, `-2` Buffer Too Small, `-3` Corrupt Data).
 
 ### 2.2 .NET 10 NativeAOT (`IECODE.Ffi.so`)
+
 - **Symbol Prefix**: `iecode_*`
 - **Compiler**: `dotnet publish /p:PublishAot=true` producing self-contained native `.so` without external runtime dependency.
 - **Node-API**: Compliant with Node.js N-API v8 and Bun native addon loader.
@@ -57,7 +59,11 @@
 
 ```typescript
 import { Inagle } from "@aphrody/inagle";
-import { nieCrc32, nieDecompressCrilayla, nieProbeHeader } from "@aphrody/inagle/ffi";
+import {
+  nieCrc32,
+  nieDecompressCrilayla,
+  nieProbeHeader,
+} from "@aphrody/inagle/ffi";
 import { IecodeDotnet } from "@aphrody/inagle/dotnet";
 
 // 1. Instant header probe

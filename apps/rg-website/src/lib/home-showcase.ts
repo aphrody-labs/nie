@@ -124,10 +124,30 @@ export const HERO_SHOWCASE_DATA = {
 } as const;
 
 export const ELEMENT_ASSETS: ElementAssetItem[] = [
-  { href: "/wiki/chara?element=Feu", id: "Feu", image: "/spirit_type/fire.webp", label: "Feu" },
-  { href: "/wiki/chara?element=Vent", id: "Vent", image: "/spirit_type/wind.webp", label: "Vent" },
-  { href: "/wiki/chara?element=Montagne", id: "Montagne", image: "/spirit_type/mountain.webp", label: "Montagne" },
-  { href: "/wiki/chara?element=Forêt", id: "Forêt", image: "/spirit_type/forest.webp", label: "Forêt" },
+  {
+    href: "/wiki/chara?element=Feu",
+    id: "Feu",
+    image: "/spirit_type/fire.webp",
+    label: "Feu",
+  },
+  {
+    href: "/wiki/chara?element=Vent",
+    id: "Vent",
+    image: "/spirit_type/wind.webp",
+    label: "Vent",
+  },
+  {
+    href: "/wiki/chara?element=Montagne",
+    id: "Montagne",
+    image: "/spirit_type/mountain.webp",
+    label: "Montagne",
+  },
+  {
+    href: "/wiki/chara?element=Forêt",
+    id: "Forêt",
+    image: "/spirit_type/forest.webp",
+    label: "Forêt",
+  },
 ];
 
 export const ELEMENT_ICON_BY_NAME: Record<string, string> = {
@@ -143,15 +163,39 @@ export const ELEMENT_ICON_BY_NAME: Record<string, string> = {
 };
 
 export const ROLE_ASSETS: RoleAssetItem[] = [
-  { code: "ATT", href: "/wiki/chara?position=FW", image: "/move/tir.webp", label: "Attaquant" },
-  { code: "MIL", href: "/wiki/chara?position=MF", image: "/move/dribble.webp", label: "Milieu" },
-  { code: "DEF", href: "/wiki/chara?position=DF", image: "/move/defense.webp", label: "Défenseur" },
-  { code: "GAR", href: "/wiki/chara?position=GK", image: "/move/gardien.webp", label: "Gardien" },
+  {
+    code: "ATT",
+    href: "/wiki/chara?position=FW",
+    image: "/move/tir.webp",
+    label: "Attaquant",
+  },
+  {
+    code: "MIL",
+    href: "/wiki/chara?position=MF",
+    image: "/move/dribble.webp",
+    label: "Milieu",
+  },
+  {
+    code: "DEF",
+    href: "/wiki/chara?position=DF",
+    image: "/move/defense.webp",
+    label: "Défenseur",
+  },
+  {
+    code: "GAR",
+    href: "/wiki/chara?position=GK",
+    image: "/move/gardien.webp",
+    label: "Gardien",
+  },
 ];
 
 export const RARITY_ASSETS: RarityAssetItem[] = [
   { id: "normal", image: "/rarity/normal.webp", label: "Normal" },
-  { id: "experimente", image: "/rarity/experimente.webp", label: "Expérimenté" },
+  {
+    id: "experimente",
+    image: "/rarity/experimente.webp",
+    label: "Expérimenté",
+  },
   { id: "emerite", image: "/rarity/emerite.webp", label: "Émérite" },
   { id: "legendaire", image: "/rarity/legendaire.webp", label: "Légendaire" },
   { id: "heros", image: "/rarity/heros.webp", label: "Héros" },
@@ -159,31 +203,123 @@ export const RARITY_ASSETS: RarityAssetItem[] = [
 ];
 
 export const COMMON_SPRITE_SHORTCUTS: SpriteShortcutItem[] = [
-  { href: "/wiki/chara", key: "chara", label: "Joueurs", subtitle: "Base & profils" },
-  { href: "/wiki/skill", key: "skill", label: "Techniques", subtitle: "Hissatsu" },
-  { href: "/wiki/aura/esprits-guerriers", key: "keshin", label: "Keshin", subtitle: "Esprits guerriers" },
-  { href: "/wiki/aura/totems", key: "soul", label: "Totems", subtitle: "Souls" },
-  { href: "/wiki/aura/miximax", key: "miximax", label: "Miximax", subtitle: "Fusions" },
-  { href: "/wiki/aura/eveil", key: "eveil", label: "Éveil", subtitle: "Super-états" },
-  { darkBadge: true, href: "/wiki/tactic", key: "justice", label: "Tactiques", subtitle: "Spéciales" },
-  { darkBadge: true, href: "/wiki/passive", key: "tension", label: "Passifs", subtitle: "Systèmes" },
+  {
+    href: "/wiki/chara",
+    key: "chara",
+    label: "Joueurs",
+    subtitle: "Base & profils",
+  },
+  {
+    href: "/wiki/skill",
+    key: "skill",
+    label: "Techniques",
+    subtitle: "Hissatsu",
+  },
+  {
+    href: "/wiki/aura/esprits-guerriers",
+    key: "keshin",
+    label: "Keshin",
+    subtitle: "Esprits guerriers",
+  },
+  {
+    href: "/wiki/aura/totems",
+    key: "soul",
+    label: "Totems",
+    subtitle: "Souls",
+  },
+  {
+    href: "/wiki/aura/miximax",
+    key: "miximax",
+    label: "Miximax",
+    subtitle: "Fusions",
+  },
+  {
+    href: "/wiki/aura/eveil",
+    key: "eveil",
+    label: "Éveil",
+    subtitle: "Super-états",
+  },
+  {
+    darkBadge: true,
+    href: "/wiki/tactic",
+    key: "justice",
+    label: "Tactiques",
+    subtitle: "Spéciales",
+  },
+  {
+    darkBadge: true,
+    href: "/wiki/passive",
+    key: "tension",
+    label: "Passifs",
+    subtitle: "Systèmes",
+  },
 ];
 
 export const CATEGORY_ICON_SHORTCUTS: CategoryShortcutItem[] = [
-  { href: "/wiki/equipe", key: "emblem", label: "Équipes", subtitle: "Clubs & écoles" },
-  { href: "/wiki/stade", key: "stadium", label: "Stades", subtitle: "Terrains" },
-  { href: "/wiki/item", key: "chest", label: "Objets", subtitle: "Équipements" },
-  { href: "/wiki/capsule", key: "ticket", label: "Capsules", subtitle: "Boutique" },
-  { href: "/wiki/invocation", key: "star-token", label: "Invocations", subtitle: "Gacha" },
-  { href: "/wiki/drops", key: "creature", label: "Drops", subtitle: "Récompenses" },
+  {
+    href: "/wiki/equipe",
+    key: "emblem",
+    label: "Équipes",
+    subtitle: "Clubs & écoles",
+  },
+  {
+    href: "/wiki/stade",
+    key: "stadium",
+    label: "Stades",
+    subtitle: "Terrains",
+  },
+  {
+    href: "/wiki/item",
+    key: "chest",
+    label: "Objets",
+    subtitle: "Équipements",
+  },
+  {
+    href: "/wiki/capsule",
+    key: "ticket",
+    label: "Capsules",
+    subtitle: "Boutique",
+  },
+  {
+    href: "/wiki/invocation",
+    key: "star-token",
+    label: "Invocations",
+    subtitle: "Gacha",
+  },
+  {
+    href: "/wiki/drops",
+    key: "creature",
+    label: "Drops",
+    subtitle: "Récompenses",
+  },
 ];
 
 export const RANK_TIER_ASSETS: RankTierAsset[] = [
-  { href: "/achillea/ranked/tiers", image: "/achillea/ranks/supernova.webp", label: "Supernova" },
-  { href: "/achillea/ranked/tiers", image: "/achillea/ranks/legendaire.webp", label: "Légendaire" },
-  { href: "/achillea/ranked/tiers", image: "/achillea/ranks/divin.webp", label: "Divin" },
-  { href: "/achillea/ranked/tiers", image: "/achillea/ranks/diamant.webp", label: "Diamant" },
-  { href: "/achillea/ranked/tiers", image: "/achillea/ranks/or.webp", label: "Or" },
+  {
+    href: "/achillea/ranked/tiers",
+    image: "/achillea/ranks/supernova.webp",
+    label: "Supernova",
+  },
+  {
+    href: "/achillea/ranked/tiers",
+    image: "/achillea/ranks/legendaire.webp",
+    label: "Légendaire",
+  },
+  {
+    href: "/achillea/ranked/tiers",
+    image: "/achillea/ranks/divin.webp",
+    label: "Divin",
+  },
+  {
+    href: "/achillea/ranked/tiers",
+    image: "/achillea/ranks/diamant.webp",
+    label: "Diamant",
+  },
+  {
+    href: "/achillea/ranked/tiers",
+    image: "/achillea/ranks/or.webp",
+    label: "Or",
+  },
 ];
 
 export const BENTO_COPY = {
@@ -200,7 +336,8 @@ export const BENTO_COPY = {
     logoAlt: "Emblème Achilléa",
     logoSrc: "/achillea.webp",
     matchesSuffix: "matchs",
-    subtitle: "Classement 1v1, clans et tournois homologués Inazuma Eleven Victory Road.",
+    subtitle:
+      "Classement 1v1, clans et tournois homologués Inazuma Eleven Victory Road.",
     title: "Achilléa E-Sport",
     winsLabel: "V",
   },
@@ -211,7 +348,8 @@ export const BENTO_COPY = {
     ctaLabel: "Ouvrir le Wiki",
     logoAlt: "Logo Wiki Azalée",
     logoSrc: "/azale.webp",
-    subtitle: "Données extraites du jeu : personnages, techniques, statistiques et textures.",
+    subtitle:
+      "Données extraites du jeu : personnages, techniques, statistiques et textures.",
     title: "Wiki Azalée",
   },
   heading: "Trois pôles complémentaires",
@@ -226,17 +364,20 @@ export const BENTO_COPY = {
     logoSrc: "/rgtv/rgtv.webp",
     nextStreamFallback: "Casts tournois & soirées communauté sur Twitch.",
     offlineBadge: "Programme TV",
-    subtitle: "Retransmissions de tournois, interviews et soirées création communautaire.",
+    subtitle:
+      "Retransmissions de tournois, interviews et soirées création communautaire.",
     title: "Rose Griffon TV",
   },
-  subHeading: "Encyclopédie technique, circuit compétitif et diffusion en direct reliés au même compte.",
+  subHeading:
+    "Encyclopédie technique, circuit compétitif et diffusion en direct reliés au même compte.",
 } as const;
 
 export const ASSET_SHOWCASE_COPY = {
   ariaLabel: "Explorateur de ressources et studio 3D",
   badge: "Ressources authentiques du jeu",
   heading: "Sprites, textures et modèles 3D en temps réel",
-  subHeading: "Chaque icône, poste, palier et maillage provient directement des archives décodées d'Inazuma Eleven Victory Road.",
+  subHeading:
+    "Chaque icône, poste, palier et maillage provient directement des archives décodées d'Inazuma Eleven Victory Road.",
   tabs: [
     { id: "atlas", label: "Atlas & Postes" },
     { id: "elements", label: "Éléments & Raretés" },
@@ -262,7 +403,8 @@ export const ASSET_SHOWCASE_COPY = {
     posterAvatarSrc:
       "https://cdn.rosegriffon.fr/dx11/menu/200_icon/10_icon_chr/face/c01001900_l.png?w=256&format=webp",
     posterBgSrc: "/inazuma-cross/home-keyvisual.webp",
-    subtitle: "Orbit, zoom et inspection directe du maillage sur le navigateur.",
+    subtitle:
+      "Orbit, zoom et inspection directe du maillage sur le navigateur.",
     title: "Aperçu cut-in Waza 3D",
   },
 } as const;
@@ -274,7 +416,8 @@ export const DISCORD_HOME_COPY = {
   joinLabel: "Rejoindre",
   memberCountSuffix: "en ligne",
   openDiscordAriaPrefix: "Rejoindre le serveur Discord",
-  subHeading: "Discussions quotidiennes, recherche de partenaires et support des tournois.",
+  subHeading:
+    "Discussions quotidiennes, recherche de partenaires et support des tournois.",
 } as const;
 
 export function cdnFacePortraitUrl(internalCode: string): string {

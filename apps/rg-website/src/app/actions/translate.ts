@@ -1,6 +1,14 @@
 "use server";
 
 import { isKana, toKatakana, toHiragana } from "wanakana";
+import { similarityScore } from "@rosegriffon/azalee/search/fuzzy-match";
+import {
+  segmentJapanese,
+  translateJp,
+  type TranslateJpResult,
+  type TranslateTargetLang,
+} from "@rosegriffon/azalee/text/ievr-i18n";
+import { containsJapanese } from "@rosegriffon/azalee/text/japanese-detect";
 import { japaneseToRomaji } from "@rosegriffon/azalee/text/japanese-romaji";
 import { createPostgresClient } from "@rosegriffon/db/postgres-client";
 import { TACTIC_FR } from "@rosegriffon/azalee/text/translations";
@@ -57,50 +65,19 @@ function normalizeForSearch(input: string): string {
   );
 }
 
-/** Découpe une requête normalisée en tokens non vides. */
+/** Découpe une requête normalisée en tokens non vides (via BudouX pour le japonais). */
 function tokenize(input: string): string[] {
+  if (containsJapanese(input)) {
+    const segs = segmentJapanese(input).map(normalizeForSearch).filter(Boolean);
+    if (segs.length > 0) return segs;
+  }
   const norm = normalizeForSearch(input);
   if (!norm) return [];
   return norm.split(" ").filter(Boolean);
 }
 
-/**
- * Distance de Levenshtein (édition) entre deux chaînes — implémentation O(n·m)
- * à deux lignes, sans dépendance.
- */
-function levenshtein(a: string, b: string): number {
-  if (a === b) return 0;
-  if (a.length === 0) return b.length;
-  if (b.length === 0) return a.length;
-
-  let prev = Array.from({ length: b.length + 1 }, () => 0);
-  let curr = Array.from({ length: b.length + 1 }, () => 0);
-  for (let j = 0; j <= b.length; j++) prev[j] = j;
-
-  for (let i = 1; i <= a.length; i++) {
-    curr[0] = i;
-    const ca = a.charCodeAt(i - 1);
-    for (let j = 1; j <= b.length; j++) {
-      const cost = ca === b.charCodeAt(j - 1) ? 0 : 1;
-      const del = prev[j]! + 1;
-      const ins = curr[j - 1]! + 1;
-      const sub = prev[j - 1]! + cost;
-      curr[j] = del < ins ? (del < sub ? del : sub) : ins < sub ? ins : sub;
-    }
-    const tmp = prev;
-    prev = curr;
-    curr = tmp;
-  }
-  return prev[b.length]!;
-}
-
-/** Similarité normalisée 0-1 dérivée de la distance de Levenshtein. */
-function similarity(a: string, b: string): number {
-  if (!a && !b) return 1;
-  const maxLen = Math.max(a.length, b.length);
-  if (maxLen === 0) return 1;
-  return 1 - levenshtein(a, b) / maxLen;
-}
+/** Similarité normalisée 0-1 mutualisée via `@rosegriffon/azalee/search/fuzzy-match`. */
+const similarity = similarityScore;
 
 /**
  * Score de pertinence d'un nom candidat vis-à-vis d'une requête, tous deux
@@ -751,4 +728,15 @@ export async function searchTranslations(
   });
 
   return kept.slice(0, 50);
+}
+
+/**
+ * Action serveur de traduction japonaise enrichie par le dictionnaire IEVR VFS,
+ * BudouX, Kuromoji/WanaKana et `google-translate-api-x`.
+ */
+export async function translateJapaneseAction(
+  text: string,
+  targetLang: TranslateTargetLang = "fr",
+): Promise<TranslateJpResult> {
+  return await translateJp(text, targetLang);
 }

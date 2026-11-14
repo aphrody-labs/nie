@@ -13,13 +13,15 @@ workspace = true
 [features]
 default = []
 serde = ["dep:serde"]
-std = ["serde_json/std"]
+std = ["serde_json/std", "dep:wana_kana"]
 
 [dependencies]
 serde_json = { version = "1.0.154", default-features = false, features = [
   "alloc",
 ] }
 serde = { version = "1.0.228", default-features = false, features = ["alloc", "derive"], optional = true }
+winnow = { workspace = true }
+wana_kana = { workspace = true, optional = true }
 
 [[bin]]
 name = "export_passives"

@@ -4,225 +4,306 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { crawlDataPath } from "../../lib/shared-path";
-import { WebCdpPage, waitForSelector } from "../../lib/web-cdp";
-import { extrairePatchNotes, extraireTopics } from "./html-extract";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { existsSync } from "node:fs";
+import * as cheerio from "cheerio";
+import { sql } from "../../lib/db";
+import { fetchHtmlResilient, resolveRepoRoot } from "../../lib/http-crawl";
+import { crawlDataPath } from "../../lib/shared-path";
+import { extrairePatchNotes, extraireTopics } from "./html-extract";
+import { extrairePatchNoteDetail, normalizeDotDate } from "./portal-extract";
 
-const DATA_ROOT = crawlDataPath("inazuma.jp/victory-road");
+const TOPICS_SOURCES = [
+  { lang: "fr", url: "https://www.inazuma.jp/victory-road/fr/topics/" },
+  { lang: "en", url: "https://www.inazuma.jp/victory-road/en/topics/" },
+  { lang: "ja", url: "https://www.inazuma.jp/victory-road/topics/" },
+] as const;
 
-async function safeGoto(
-  page: WebCdpPage,
-  url: string,
-  timeout = 30000,
-): Promise<unknown> {
-  return Promise.race([
-    page.goto(url),
-    new Promise((_, reject) =>
-      setTimeout(
-        () =>
-          reject(new Error(`Navigation timeout (${timeout}ms) pour ${url}`)),
-        timeout,
-      ),
-    ),
-  ]);
+const PATCH_PLATFORMS: ReadonlyArray<{
+  slug: "ps-steam" | "switch" | "xbox";
+  platforms: string[];
+}> = [
+  { slug: "ps-steam", platforms: ["ps4", "ps5", "steam"] },
+  { slug: "switch", platforms: ["switch"] },
+  { slug: "xbox", platforms: ["xbox"] },
+];
+
+async function writeSafe(
+  dir: string,
+  file: string,
+  content: string,
+): Promise<void> {
+  try {
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, file), content, "utf8");
+  } catch {
+    // Disque partage optionnel hors VPS
+  }
+}
+
+function versionSortScore(verId: string): number {
+  const m = verId.match(/ver_(\d+)_(\d+)_(\d+)/i);
+  if (!m) return 0;
+  return (
+    Number.parseInt(m[1]!, 10) * 10_000 +
+    Number.parseInt(m[2]!, 10) * 100 +
+    Number.parseInt(m[3]!, 10)
+  );
 }
 
 export async function crawlNews(): Promise<{
   success: boolean;
   error?: string;
 }> {
-  console.log(
-    "[Crawl News] Démarrage du crawl des actualités (Topics et Patch Notes) multi-langues...",
-  );
+  console.log("[Crawl News] Récupération Topics + Patch Notes Victory Road...");
 
-  let page: WebCdpPage | undefined;
   try {
-    page = await WebCdpPage.connect();
+    const repoRoot = resolveRepoRoot();
+    const manifestTopics: Array<{
+      id: string;
+      lang: string;
+      date: string;
+      title: string;
+      url: string;
+      summary: string;
+      imageUrl: string | null;
+    }> = [];
+    const seenTopicIds = new Set<string>();
 
-    // ==========================================
-    // 1. CRAWL TOPICS (FR, EN, JA)
-    // ==========================================
-    const topicLocales = [
-      "fr",
-      "en",
-      "ja",
-      "es",
-      "de",
-      "it",
-      "zh-tw",
-      "zh-cn",
-      "pt-br",
-    ] as const;
+    // 1. Topics FR / EN / JA
+    for (const src of TOPICS_SOURCES) {
+      const res = await fetchHtmlResilient(src.url);
+      if (!res.ok || res.html.length < 400) continue;
 
-    for (const locale of topicLocales) {
-      const topicsDir = join(DATA_ROOT, locale, "topics");
-      await mkdir(topicsDir, { recursive: true });
+      await writeSafe(
+        crawlDataPath("inazuma.jp", "victory-road", src.lang, "topics"),
+        "index.html",
+        res.html,
+      );
 
-      const url =
-        locale === "ja"
-          ? "https://www.inazuma.jp/victory-road/topics/"
-          : `https://www.inazuma.jp/victory-road/${locale}/topics/`;
+      const topics = extraireTopics(res.html);
+      for (const topic of topics.slice(0, 12)) {
+        const key = `${src.lang}:${topic.id}`;
+        if (seenTopicIds.has(key)) continue;
+        seenTopicIds.add(key);
 
-      console.log(`[Crawl News] Scraping Topics index [${locale}] : ${url}`);
-      try {
-        await safeGoto(page, url);
-        await waitForSelector(page, "body", 15000).catch(() => {});
-        const topicsIndexHtml = await page.content();
-        await writeFile(join(topicsDir, "index.html"), topicsIndexHtml);
-
-        const topicLinks = extraireTopics(topicsIndexHtml);
-
-        console.log(
-          `[Crawl News] Topics [${locale}] : ${topicLinks.length} trouvés. Traitement des détails...`,
-        );
-
-        for (const topic of topicLinks) {
-          const detailDir = join(topicsDir, topic.id);
-          const detailPath = join(detailDir, "index.html");
-
-          if (existsSync(detailPath)) {
-            continue;
+        const detailRes = await fetchHtmlResilient(topic.url);
+        let summary = "";
+        let imageUrl: string | null = null;
+        if (detailRes.ok && detailRes.html.length > 400) {
+          const $d = cheerio.load(detailRes.html);
+          summary = $d("article p, .topicsDetail p, main p")
+            .slice(0, 3)
+            .text()
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 360);
+          const ogImg = $d("meta[property='og:image']").attr("content");
+          const bodyImg = $d("article img, .topicsDetail img")
+            .first()
+            .attr("src");
+          const rawImg = bodyImg || ogImg;
+          if (rawImg) {
+            imageUrl = rawImg.startsWith("http")
+              ? rawImg
+              : new URL(rawImg, "https://www.inazuma.jp").toString();
           }
 
-          console.log(
-            `[Crawl News] Scraping topic detail [${locale}]: ${topic.title} (${topic.url})`,
+          await writeSafe(
+            crawlDataPath(
+              "inazuma.jp",
+              "victory-road",
+              src.lang,
+              "topics",
+              topic.id,
+            ),
+            "index.html",
+            detailRes.html,
           );
-          await mkdir(detailDir, { recursive: true });
-
-          try {
-            await safeGoto(page, topic.url);
-            await waitForSelector(page, "body", 15000).catch(() => {});
-            const detailHtml = await page.content();
-            await writeFile(detailPath, detailHtml);
-
-            const meta = {
-              id: topic.id,
-              title: topic.title,
-              date: topic.date,
-              url: topic.url,
-              locale,
-              category: "General",
-              thumbnail: null,
-            };
-            await writeFile(
-              join(detailDir, "meta.json"),
-              JSON.stringify(meta, null, 2),
-            );
-          } catch (err) {
-            console.error(
-              `[Crawl News] Erreur lors du scraping de topic ${topic.id} [${locale}] :`,
-              err,
-            );
-          }
         }
-      } catch (err) {
-        console.error(
-          `[Crawl News] Erreur lors du chargement de l'index des topics [${locale}] :`,
-          err,
-        );
+
+        manifestTopics.push({
+          id: topic.id,
+          lang: src.lang,
+          date: normalizeDotDate(topic.date),
+          title: topic.title,
+          url: topic.url,
+          summary,
+          imageUrl,
+        });
       }
     }
 
-    // ==========================================
-    // 2. CRAWL PATCH NOTES (EN, JA)
-    // ==========================================
-    const patchLocales = ["en", "ja"] as const;
-    const platforms = ["ps-steam", "switch", "xbox"] as const;
+    if (repoRoot && manifestTopics.length > 0) {
+      const target = join(
+        repoRoot,
+        "packages/inagle/data/official-topics.json",
+      );
+      const existingRaw = await readFile(target, "utf8").catch(() => "[]");
+      const existing = JSON.parse(existingRaw) as typeof manifestTopics;
+      const byKey = new Map<string, (typeof manifestTopics)[number]>();
+      for (const t of existing) byKey.set(`${t.lang}:${t.id}`, t);
+      for (const t of manifestTopics) byKey.set(`${t.lang}:${t.id}`, t);
+      const merged = Array.from(byKey.values()).sort((a, b) =>
+        b.date.localeCompare(a.date),
+      );
+      await writeFile(
+        target,
+        `${JSON.stringify({ updatedAt: new Date().toISOString(), topics: merged }, null, 2)}\n`,
+        "utf8",
+      );
+    }
 
-    for (const locale of patchLocales) {
-      for (const platform of platforms) {
-        const platformDir = join(DATA_ROOT, locale, "patchnote", platform);
-        await mkdir(platformDir, { recursive: true });
+    // 2. Patch Notes EN + JA fallback pour les dernières versions non traduites (ex: ver_7_2_2)
+    let existingIds = new Set<string>();
+    try {
+      const existingRows = await sql<
+        Array<{ id: string; content_html: string | null }>
+      >`
+        SELECT id, content_html FROM patch_notes
+      `;
+      existingIds = new Set(
+        existingRows
+          .filter((r) => (r.content_html?.length ?? 0) > 40)
+          .map((r) => r.id),
+      );
+      // Normaliser les anciennes dates non paddées (`2025.12.6` -> `2025.12.06`)
+      const allDates = await sql<Array<{ id: string; date: string }>>`
+        SELECT id, date FROM patch_notes
+      `;
+      for (const row of allDates) {
+        const norm = normalizeDotDate(row.date);
+        if (norm && norm !== row.date) {
+          await sql`UPDATE patch_notes SET date = ${norm} WHERE id = ${row.id}`;
+        }
+      }
+    } catch (e) {
+      console.warn("[Crawl News] Connexion patch_notes indisponible :", e);
+    }
 
-        const platformUrl =
-          locale === "ja"
-            ? `https://www.inazuma.jp/victory-road/patchnote/${platform}/`
-            : `https://www.inazuma.jp/victory-road/en/patchnote/${platform}/`;
+    const candidates = new Map<
+      string,
+      {
+        dbId: string;
+        platSlug: string;
+        platforms: string[];
+        verId: string;
+        url: string;
+        title: string;
+        date: string;
+        lang: "en" | "ja";
+      }
+    >();
 
-        console.log(
-          `[Crawl News] Scraping Patch Notes index [${locale}] plateforme ${platform} : ${platformUrl}`,
+    for (const lang of ["en", "ja"] as const) {
+      const langPrefix = lang === "en" ? "/victory-road/en" : "/victory-road";
+      for (const plat of PATCH_PLATFORMS) {
+        const indexUrl = `https://www.inazuma.jp${langPrefix}/patchnote/${plat.slug}/`;
+        const indexRes = await fetchHtmlResilient(indexUrl);
+        if (!indexRes.ok || indexRes.html.length < 400) continue;
+
+        await writeSafe(
+          crawlDataPath(
+            "inazuma.jp",
+            "victory-road",
+            lang,
+            "patchnote",
+            plat.slug,
+          ),
+          "index.html",
+          indexRes.html,
         );
 
-        try {
-          await safeGoto(page, platformUrl);
-          await waitForSelector(page, "body", 15000).catch(() => {});
-          const platformHtml = await page.content();
-
-          const patchLinks = extrairePatchNotes(platformHtml);
-
-          await writeFile(
-            join(platformDir, "index.json"),
-            JSON.stringify(patchLinks, null, 2),
-          );
-          console.log(
-            `[Crawl News] Platform [${locale}] ${platform} : ${patchLinks.length} patch notes trouvés.`,
-          );
-
-          for (const patch of patchLinks) {
-            const patchDetailDir = join(platformDir, patch.id);
-            const patchDetailPath = join(patchDetailDir, "index.html");
-
-            if (existsSync(patchDetailPath)) {
-              continue;
-            }
-
-            console.log(
-              `[Crawl News] Scraping patch note detail [${locale}]: ${patch.title} (${patch.url})`,
-            );
-            await mkdir(patchDetailDir, { recursive: true });
-
-            try {
-              await safeGoto(page, patch.url);
-              await waitForSelector(page, "body", 15000).catch(() => {});
-              const patchHtml = await page.content();
-              await writeFile(patchDetailPath, patchHtml);
-
-              const data = {
-                id: patch.id,
-                title: patch.title,
-                date: patch.date,
-                url: patch.url,
-                locale,
-                platform:
-                  platform === "ps-steam"
-                    ? ["ps4", "ps5", "steam"]
-                    : [platform],
-                featured_image: null,
-              };
-              await writeFile(
-                join(patchDetailDir, "data.json"),
-                JSON.stringify(data, null, 2),
-              );
-            } catch (err) {
-              console.error(
-                `[Crawl News] Erreur lors du scraping du patch note ${patch.id} [${locale}] :`,
-                err,
-              );
-            }
+        const list = extrairePatchNotes(indexRes.html);
+        for (const item of list) {
+          // Exclure les liens croisés d'autres plateformes présents dans la navigation
+          if (!item.url.includes(`/patchnote/${plat.slug}/`)) continue;
+          const dbId = `${plat.slug}_${item.id}`;
+          if (!candidates.has(dbId)) {
+            candidates.set(dbId, {
+              dbId,
+              platSlug: plat.slug,
+              platforms: plat.platforms,
+              verId: item.id,
+              url: item.url,
+              title: item.title,
+              date: normalizeDotDate(item.date),
+              lang,
+            });
           }
-        } catch (err) {
-          console.error(
-            `[Crawl News] Erreur de chargement pour la plateforme ${platform} [${locale}] :`,
-            err,
-          );
         }
+      }
+    }
+
+    // Trier par version décroissante et synchroniser les manquants ou plus récents
+    const sortedCandidates = Array.from(candidates.values()).sort(
+      (a, b) => versionSortScore(b.verId) - versionSortScore(a.verId),
+    );
+
+    let upsertedCount = 0;
+    for (const item of sortedCandidates) {
+      const needsFetch = !existingIds.has(item.dbId) || upsertedCount < 6;
+      if (!needsFetch) continue;
+
+      const detailRes = await fetchHtmlResilient(item.url);
+      if (!detailRes.ok || detailRes.html.length < 300) continue;
+
+      const detail = extrairePatchNoteDetail(
+        detailRes.html,
+        item.url,
+        item.title,
+      );
+      const normDate = detail.date || item.date;
+
+      await writeSafe(
+        crawlDataPath(
+          "inazuma.jp",
+          "victory-road",
+          item.lang,
+          "patchnote",
+          item.platSlug,
+          item.verId,
+        ),
+        "index.html",
+        detailRes.html,
+      );
+
+      try {
+        await sql`
+          INSERT INTO patch_notes (id, title, date, platform, url, content_html, updated_at)
+          VALUES (
+            ${item.dbId},
+            ${detail.title || item.title},
+            ${normDate},
+            ${JSON.stringify(item.platforms)}::jsonb,
+            ${item.url},
+            ${detail.contentHtml},
+            NOW()
+          )
+          ON CONFLICT (id) DO UPDATE SET
+            title = EXCLUDED.title,
+            date = CASE WHEN EXCLUDED.date <> '' THEN EXCLUDED.date ELSE patch_notes.date END,
+            platform = EXCLUDED.platform,
+            url = EXCLUDED.url,
+            content_html = CASE
+              WHEN length(EXCLUDED.content_html) > 40 THEN EXCLUDED.content_html
+              ELSE patch_notes.content_html
+            END,
+            updated_at = NOW()
+        `;
+        upsertedCount++;
+      } catch (e) {
+        console.warn(`[Crawl News] Upsert ${item.dbId} ignoré :`, e);
       }
     }
 
     console.log(
-      "[Crawl News] Synchronisation des actualités multi-langues terminée avec succès.",
+      `[Crawl News] Termine (${manifestTopics.length} topics, ${sortedCandidates.length} patchs détectés, ${upsertedCount} synchronisés en DB).`,
     );
     return { success: true };
-  } catch (err: any) {
-    console.error(
-      "[Crawl News] Erreur critique lors du crawl des actualités :",
-      err,
-    );
-    return { success: false, error: err.message || String(err) };
-  } finally {
-    await page?.close().catch(() => undefined);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[Crawl News] Erreur critique :", msg);
+    return { success: false, error: msg };
   }
 }

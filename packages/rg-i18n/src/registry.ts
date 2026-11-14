@@ -270,5 +270,6 @@ export const DEFAULT_LOCALE_REGISTRY = createLocaleRegistry({
     { direction: "ltr", tag: "fr" },
     { direction: "ltr", fallbacks: ["fr"], tag: "en" },
     { direction: "ltr", fallbacks: ["fr"], tag: "ja" },
+    { direction: "ltr", fallbacks: ["fr"], tag: "es" },
   ],
 });

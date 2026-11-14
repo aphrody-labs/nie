@@ -50,7 +50,12 @@ function group(
       hashId: row.hash_id,
       category: row.category,
     };
-    if (row.locale === "fr" || row.locale === "en" || row.locale === "ja")
+    if (
+      row.locale === "fr" ||
+      row.locale === "en" ||
+      row.locale === "ja" ||
+      row.locale === "es"
+    )
       entry[row.locale] = row.value;
     out.set(row.hash_id, entry);
   }
@@ -82,7 +87,7 @@ export async function getTextLocale(
   locale: GameTextLocale = "fr",
 ): Promise<string | undefined> {
   const text = await getText(hashId);
-  return text?.[locale] ?? text?.fr ?? text?.en ?? text?.ja;
+  return text?.[locale] ?? text?.fr ?? text?.en ?? text?.es ?? text?.ja;
 }
 
 export async function getTexts(
@@ -105,7 +110,7 @@ export async function getTexts(
   if (projectionSource() === "vfs") {
     const wanted = new Set(keys);
     const rows = [];
-    for (const locale of ["fr", "en", "ja"] as const)
+    for (const locale of ["fr", "en", "es", "ja"] as const)
       for (const row of vfsTexts(locale))
         if (wanted.has(row.hashId)) rows.push({ hash_id: row.hashId, ...row });
     return group(rows);

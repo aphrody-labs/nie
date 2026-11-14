@@ -31,7 +31,7 @@ import {
   getVfsCatalog,
   getNieReMap,
   VFS_FORMATS,
-  NIE_CRITICAL_OFFSETS
+  NIE_CRITICAL_OFFSETS,
 } from "@aphrody/inagle/docs";
 
 // Query VFS formats

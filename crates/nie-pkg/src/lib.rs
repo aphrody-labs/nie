@@ -14,6 +14,9 @@ mod store;
 #[cfg(feature = "ui")]
 pub mod ui;
 
-pub use model::{Ecosystem, Feature, Game, Platform, Release, Support};
+pub use model::{
+    CommunityWikiSource, Ecosystem, EraInfo, Feature, Game, GameLink, LocalizedList, LocalizedText,
+    ModHubRef, Platform, Release, Support,
+};
 pub use registry::{Registry, RegistryError};
 pub use store::{FileRecord, Installed, Store, StoreError, VerifyReport};

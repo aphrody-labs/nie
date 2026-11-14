@@ -143,6 +143,12 @@ aphrody-nie-zukan = { default-features = false, path = "crates/aphrody-nie-zukan
 aphrody-nie-ui = { path = "crates/aphrody-nie-ui", version = "1.4.7" }
 lz4_flex = "0.14"
 taffy = "0.15.1"
+winnow = { version = "1.0.5", default-features = false, features = [
+  "alloc",
+  "parser",
+] }
+wana_kana = "5.0.0"
+aho-corasick = "1.1.5"
 
 [patch.crates-io]
 zip = { git = "https://github.com/zip-rs/zip2", tag = "v8.6.0" }

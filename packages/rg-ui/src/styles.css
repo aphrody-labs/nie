@@ -201,7 +201,7 @@
 	 * commune (0.60) pour rester lisibles sur fond clair comme sur fond sombre —
 	 * le rouge d'origine disparaît sur le marine du thème Roy.
 	 *
-	 * ⚠ Elles existaient en SIX exemplaires divergents dans `apps/azalee`
+	 * Attention: elles existaient en SIX exemplaires divergents dans `apps/azalee`
 	 * (`PassiveCard`, `PassiveDetail`, `TeamStats`, `FormationField`, deux
 	 * `opengraph-image`), et le VENT y était tantôt bleu, tantôt vert. L'icône du
 	 * jeu tranche : il est bleu. Toute nouvelle surface qui colore un élément
@@ -271,6 +271,30 @@
     --rg-marine-clair: oklch(0.31 0.07 264); /* #16264a — dégradé de marine */
     --rg-brique-clair: oklch(0.63 0.12 35); /* #d16854 — dégradé de brique */
     --rg-sur-marine: oklch(0.98 0.004 90); /* blanc cassé — texte sur marine */
+
+    /* Official Inazuma Eleven portal tokens (https://www.inazuma.jp/). */
+    --inazuma-navy-dark: #082475;
+    --inazuma-navy: #0c1730;
+    --inazuma-royal: #102670;
+    --inazuma-cobalt: #1b41b2;
+    --inazuma-azure: #165ebf;
+    --inazuma-cyan: #00aeef;
+    --inazuma-cyan-bright: #3ec4e9;
+    --inazuma-gold: #ffe900;
+    --inazuma-crimson: #cf0000;
+    --inazuma-turf: #3e6817;
+
+    /* Native nie.exe pixel-perfect tokens (crates/aphrody-nie-ui). */
+    --jeu-fond-abysse: #131420;
+    --jeu-fond-nuit: #152d52;
+    --jeu-fond-profond: #224271;
+    --jeu-accent-cyan: #97c0fc;
+    --jeu-accent-turquoise: #5f9efc;
+    --jeu-accent-ambre: #e6c961;
+    --jeu-accent-brique: #c74955;
+    --jeu-texte-vif: #fcfaf8;
+    --jeu-surface-glace: #e0ecff;
+    --screen-header-blue: #0874ff;
 
     /* États sémantiques partagés (succès / info / alerte). L'erreur passe par
 		 * `--destructive`, déjà thémé. Sans ces tokens, les composants retombent
@@ -523,6 +547,84 @@
     --sidebar-border: var(--md-sys-color-outline-variant);
     --sidebar-ring: var(--md-sys-color-primary);
   }
+
+  :root.theme-inazuma,
+  .theme-inazuma,
+  :root.inazuma,
+  .inazuma {
+    color-scheme: light;
+    --background: var(--md-sys-color-surface);
+    --foreground: var(--md-sys-color-on-surface);
+    --card: var(--md-sys-color-surface-container-lowest);
+    --card-foreground: var(--md-sys-color-on-surface);
+    --popover: var(--md-sys-color-surface-container-lowest);
+    --popover-foreground: var(--md-sys-color-on-surface);
+    --primary: var(--md-sys-color-primary);
+    --primary-foreground: var(--md-sys-color-on-primary);
+    --secondary: var(--md-sys-color-secondary-container);
+    --secondary-foreground: var(--md-sys-color-on-secondary-container);
+    --muted: var(--md-sys-color-surface-container);
+    --muted-foreground: var(--md-sys-color-on-surface-variant);
+    --accent: var(--md-sys-color-tertiary-container);
+    --accent-foreground: var(--md-sys-color-on-tertiary-container);
+    --destructive: var(--md-sys-color-error);
+    --destructive-foreground: var(--md-sys-color-on-error);
+    --border: var(--md-sys-color-outline-variant);
+    --input: var(--md-sys-color-outline-variant);
+    --ring: var(--md-sys-color-primary);
+    --chart-1: #082475;
+    --chart-2: #3ec4e9;
+    --chart-3: #ffd106;
+    --chart-4: #cf0000;
+    --chart-5: #3e6817;
+    --sidebar: #082475;
+    --sidebar-foreground: #ffffff;
+    --sidebar-primary: #102670;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: rgba(62, 196, 233, 0.22);
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: rgba(62, 196, 233, 0.35);
+    --sidebar-ring: rgba(255, 233, 0, 0.55);
+  }
+
+  :root.theme-nie,
+  .theme-nie,
+  :root.nie,
+  .nie {
+    color-scheme: dark;
+    --background: var(--md-sys-color-surface);
+    --foreground: var(--md-sys-color-on-surface);
+    --card: var(--md-sys-color-surface-container-low);
+    --card-foreground: var(--md-sys-color-on-surface);
+    --popover: var(--md-sys-color-surface-container-high);
+    --popover-foreground: var(--md-sys-color-on-surface);
+    --primary: var(--md-sys-color-primary);
+    --primary-foreground: var(--md-sys-color-on-primary);
+    --secondary: var(--md-sys-color-secondary-container);
+    --secondary-foreground: var(--md-sys-color-on-secondary-container);
+    --muted: var(--md-sys-color-surface-container);
+    --muted-foreground: var(--md-sys-color-on-surface-variant);
+    --accent: var(--md-sys-color-tertiary-container);
+    --accent-foreground: var(--md-sys-color-on-tertiary-container);
+    --destructive: var(--md-sys-color-error);
+    --destructive-foreground: var(--md-sys-color-on-error);
+    --border: var(--md-sys-color-outline-variant);
+    --input: var(--md-sys-color-outline);
+    --ring: var(--md-sys-color-primary);
+    --chart-1: #97c0fc;
+    --chart-2: #5f9efc;
+    --chart-3: #e6c961;
+    --chart-4: #c74955;
+    --chart-5: #0874ff;
+    --sidebar: #131420;
+    --sidebar-foreground: #fcfaf8;
+    --sidebar-primary: #152d52;
+    --sidebar-primary-foreground: #e0ecff;
+    --sidebar-accent: rgba(151, 192, 252, 0.18);
+    --sidebar-accent-foreground: #fcfaf8;
+    --sidebar-border: rgba(151, 192, 252, 0.3);
+    --sidebar-ring: rgba(151, 192, 252, 0.45);
+  }
   :root.theme-azalee-dark,
   .theme-azalee-dark,
   :root.azalee-dark,
@@ -566,6 +668,84 @@
     --sidebar-ring: var(--md-sys-color-primary);
   }
 
+  :root.theme-inazuma,
+  .theme-inazuma,
+  :root.inazuma,
+  .inazuma {
+    color-scheme: light;
+    --background: var(--md-sys-color-surface);
+    --foreground: var(--md-sys-color-on-surface);
+    --card: var(--md-sys-color-surface-container-lowest);
+    --card-foreground: var(--md-sys-color-on-surface);
+    --popover: var(--md-sys-color-surface-container-lowest);
+    --popover-foreground: var(--md-sys-color-on-surface);
+    --primary: var(--md-sys-color-primary);
+    --primary-foreground: var(--md-sys-color-on-primary);
+    --secondary: var(--md-sys-color-secondary-container);
+    --secondary-foreground: var(--md-sys-color-on-secondary-container);
+    --muted: var(--md-sys-color-surface-container);
+    --muted-foreground: var(--md-sys-color-on-surface-variant);
+    --accent: var(--md-sys-color-tertiary-container);
+    --accent-foreground: var(--md-sys-color-on-tertiary-container);
+    --destructive: var(--md-sys-color-error);
+    --destructive-foreground: var(--md-sys-color-on-error);
+    --border: var(--md-sys-color-outline-variant);
+    --input: var(--md-sys-color-outline-variant);
+    --ring: var(--md-sys-color-primary);
+    --chart-1: #082475;
+    --chart-2: #3ec4e9;
+    --chart-3: #ffd106;
+    --chart-4: #cf0000;
+    --chart-5: #3e6817;
+    --sidebar: #082475;
+    --sidebar-foreground: #ffffff;
+    --sidebar-primary: #102670;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: rgba(62, 196, 233, 0.22);
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: rgba(62, 196, 233, 0.35);
+    --sidebar-ring: rgba(255, 233, 0, 0.55);
+  }
+
+  :root.theme-nie,
+  .theme-nie,
+  :root.nie,
+  .nie {
+    color-scheme: dark;
+    --background: var(--md-sys-color-surface);
+    --foreground: var(--md-sys-color-on-surface);
+    --card: var(--md-sys-color-surface-container-low);
+    --card-foreground: var(--md-sys-color-on-surface);
+    --popover: var(--md-sys-color-surface-container-high);
+    --popover-foreground: var(--md-sys-color-on-surface);
+    --primary: var(--md-sys-color-primary);
+    --primary-foreground: var(--md-sys-color-on-primary);
+    --secondary: var(--md-sys-color-secondary-container);
+    --secondary-foreground: var(--md-sys-color-on-secondary-container);
+    --muted: var(--md-sys-color-surface-container);
+    --muted-foreground: var(--md-sys-color-on-surface-variant);
+    --accent: var(--md-sys-color-tertiary-container);
+    --accent-foreground: var(--md-sys-color-on-tertiary-container);
+    --destructive: var(--md-sys-color-error);
+    --destructive-foreground: var(--md-sys-color-on-error);
+    --border: var(--md-sys-color-outline-variant);
+    --input: var(--md-sys-color-outline);
+    --ring: var(--md-sys-color-primary);
+    --chart-1: #97c0fc;
+    --chart-2: #5f9efc;
+    --chart-3: #e6c961;
+    --chart-4: #c74955;
+    --chart-5: #0874ff;
+    --sidebar: #131420;
+    --sidebar-foreground: #fcfaf8;
+    --sidebar-primary: #152d52;
+    --sidebar-primary-foreground: #e0ecff;
+    --sidebar-accent: rgba(151, 192, 252, 0.18);
+    --sidebar-accent-foreground: #fcfaf8;
+    --sidebar-border: rgba(151, 192, 252, 0.3);
+    --sidebar-ring: rgba(151, 192, 252, 0.45);
+  }
+
   :root.theme-achillea,
   .theme-achillea,
   :root.achillea,
@@ -603,6 +783,84 @@
     --sidebar-accent-foreground: var(--md-sys-color-on-tertiary-container);
     --sidebar-border: var(--md-sys-color-outline-variant);
     --sidebar-ring: var(--md-sys-color-primary);
+  }
+
+  :root.theme-inazuma,
+  .theme-inazuma,
+  :root.inazuma,
+  .inazuma {
+    color-scheme: light;
+    --background: var(--md-sys-color-surface);
+    --foreground: var(--md-sys-color-on-surface);
+    --card: var(--md-sys-color-surface-container-lowest);
+    --card-foreground: var(--md-sys-color-on-surface);
+    --popover: var(--md-sys-color-surface-container-lowest);
+    --popover-foreground: var(--md-sys-color-on-surface);
+    --primary: var(--md-sys-color-primary);
+    --primary-foreground: var(--md-sys-color-on-primary);
+    --secondary: var(--md-sys-color-secondary-container);
+    --secondary-foreground: var(--md-sys-color-on-secondary-container);
+    --muted: var(--md-sys-color-surface-container);
+    --muted-foreground: var(--md-sys-color-on-surface-variant);
+    --accent: var(--md-sys-color-tertiary-container);
+    --accent-foreground: var(--md-sys-color-on-tertiary-container);
+    --destructive: var(--md-sys-color-error);
+    --destructive-foreground: var(--md-sys-color-on-error);
+    --border: var(--md-sys-color-outline-variant);
+    --input: var(--md-sys-color-outline-variant);
+    --ring: var(--md-sys-color-primary);
+    --chart-1: #082475;
+    --chart-2: #3ec4e9;
+    --chart-3: #ffd106;
+    --chart-4: #cf0000;
+    --chart-5: #3e6817;
+    --sidebar: #082475;
+    --sidebar-foreground: #ffffff;
+    --sidebar-primary: #102670;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: rgba(62, 196, 233, 0.22);
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: rgba(62, 196, 233, 0.35);
+    --sidebar-ring: rgba(255, 233, 0, 0.55);
+  }
+
+  :root.theme-nie,
+  .theme-nie,
+  :root.nie,
+  .nie {
+    color-scheme: dark;
+    --background: var(--md-sys-color-surface);
+    --foreground: var(--md-sys-color-on-surface);
+    --card: var(--md-sys-color-surface-container-low);
+    --card-foreground: var(--md-sys-color-on-surface);
+    --popover: var(--md-sys-color-surface-container-high);
+    --popover-foreground: var(--md-sys-color-on-surface);
+    --primary: var(--md-sys-color-primary);
+    --primary-foreground: var(--md-sys-color-on-primary);
+    --secondary: var(--md-sys-color-secondary-container);
+    --secondary-foreground: var(--md-sys-color-on-secondary-container);
+    --muted: var(--md-sys-color-surface-container);
+    --muted-foreground: var(--md-sys-color-on-surface-variant);
+    --accent: var(--md-sys-color-tertiary-container);
+    --accent-foreground: var(--md-sys-color-on-tertiary-container);
+    --destructive: var(--md-sys-color-error);
+    --destructive-foreground: var(--md-sys-color-on-error);
+    --border: var(--md-sys-color-outline-variant);
+    --input: var(--md-sys-color-outline);
+    --ring: var(--md-sys-color-primary);
+    --chart-1: #97c0fc;
+    --chart-2: #5f9efc;
+    --chart-3: #e6c961;
+    --chart-4: #c74955;
+    --chart-5: #0874ff;
+    --sidebar: #131420;
+    --sidebar-foreground: #fcfaf8;
+    --sidebar-primary: #152d52;
+    --sidebar-primary-foreground: #e0ecff;
+    --sidebar-accent: rgba(151, 192, 252, 0.18);
+    --sidebar-accent-foreground: #fcfaf8;
+    --sidebar-border: rgba(151, 192, 252, 0.3);
+    --sidebar-ring: rgba(151, 192, 252, 0.45);
   }
 
   /* ─────────────────────────────────────────────────────────────────────────
@@ -652,6 +910,14 @@
     color: var(--foreground);
   }
   :where(.theme-achillea:not(:root)) {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+  :where(.theme-inazuma:not(:root)) {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+  :where(.theme-nie:not(:root)) {
     background-color: var(--background);
     color: var(--foreground);
   }

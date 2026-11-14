@@ -2,7 +2,7 @@
   "name": "@rosegriffon/inagle",
   "version": "1.4.8",
   "private": false,
-  "description": "Universal Game Data API for Inazuma Eleven: Victory Road — parsers, types, and tools for IEVR game data",
+  "description": "Universal Game Data API for the Inazuma Eleven saga (IE1 to Victory Road, Cross, RE, Bold Revolution) — parsers, catalog, types, and tools",
   "keywords": [
     "cfg-bin",
     "game-data",
@@ -121,6 +121,16 @@
       "import": "./src/game/*.ts",
       "default": "./src/game/*.ts"
     },
+    "./games": {
+      "types": "./src/games/index.ts",
+      "import": "./src/games/index.ts",
+      "default": "./src/games/index.ts"
+    },
+    "./games/*": {
+      "types": "./src/games/*.ts",
+      "import": "./src/games/*.ts",
+      "default": "./src/games/*.ts"
+    },
     "./cpk": {
       "types": "./src/cpk/index.ts",
       "import": "./src/cpk/index.ts",
@@ -202,15 +212,18 @@
     "@aphrody/runtime-sdk": "0.1.3",
     "@leeoniya/ufuzzy": "^1.0.19",
     "@rosegriffon/db": "workspace:*",
+    "budoux": "catalog:",
     "cheerio": "^1.2.0",
     "commander": "^15.0.0",
     "drizzle-orm": "^0.45.3",
-    "kuroshiro": "^1.2.0",
+    "google-translate-api-x": "catalog:",
+    "intl-messageformat": "catalog:",
+    "kuroshiro": "catalog:",
     "kuroshiro-analyzer-kuromoji": "^1.1.0",
     "picocolors": "^1.1.1",
     "sharp": "^0.35.5",
     "wanakana": "^5.3.1",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/bun": "1.4.2",
@@ -224,6 +237,10 @@
     "@aphrody/agent-browser": {
       "optional": true
     }
+  },
+  "optionalDependencies": {
+    "impit": "catalog:",
+    "patchright": "catalog:"
   },
   "engines": {
     "bun": ">=1.4.5"

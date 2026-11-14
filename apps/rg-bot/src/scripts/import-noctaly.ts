@@ -256,25 +256,31 @@ async function interroger(
  */
 async function chargerPageClassement(url: string): Promise<string | null> {
   const cookies = await lireEnteteCookies();
-  const arguments_ = [
-    "curl",
-    "--silent",
-    "--show-error",
-    "--max-time",
-    "20",
-    "--user-agent",
-    NAVIGATEUR,
-    ...(cookies ? ["--header", `cookie: ${cookies}`] : []),
-    url,
-  ];
-  const proc = Bun.spawn(arguments_, { stderr: "pipe", stdout: "pipe" });
-  const sortie = await new Response(proc.stdout).text();
-  const code = await proc.exited;
-  if (code !== 0) {
-    console.warn(`  ⚠ classement : curl a rendu le code ${code}`);
+  try {
+    const { Impit } = await import("impit");
+    const client = new Impit({
+      browser: "chrome",
+      vanillaFallback: true,
+      timeout: 20_000,
+    });
+    const reponse = await client.fetch(url, {
+      headers: {
+        "user-agent": NAVIGATEUR,
+        ...(cookies ? { cookie: cookies } : {}),
+      },
+      timeout: 20_000,
+    });
+    if (!reponse.ok) {
+      console.warn(`  ⚠ classement : impit a rendu HTTP ${reponse.status}`);
+      return null;
+    }
+    return await reponse.text();
+  } catch (err) {
+    console.warn(
+      `  ⚠ classement : impit en erreur (${err instanceof Error ? err.message : String(err)})`,
+    );
     return null;
   }
-  return sortie;
 }
 
 /**

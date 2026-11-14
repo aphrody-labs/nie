@@ -25,7 +25,9 @@ export function isUsableEnvValue(
   return true;
 }
 
-export function isValidPostgresUrl(url: string | null | undefined): url is string {
+export function isValidPostgresUrl(
+  url: string | null | undefined,
+): url is string {
   if (!isUsableEnvValue(url)) return false;
   try {
     const parsed = new URL(url);

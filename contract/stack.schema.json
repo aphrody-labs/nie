@@ -22,7 +22,14 @@
     "project": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "version", "license", "domain", "cookieDomain", "repoUrl"],
+      "required": [
+        "name",
+        "version",
+        "license",
+        "domain",
+        "cookieDomain",
+        "repoUrl"
+      ],
       "properties": {
         "name": { "type": "string", "minLength": 1 },
         "version": { "type": "string", "minLength": 1 },
@@ -35,7 +42,18 @@
     "http": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["healthPath", "docsPath", "openapiPath", "apiPrefix", "legacyApiPrefix", "defaultPorts", "origins", "cors", "trustedOrigins", "routes"],
+      "required": [
+        "healthPath",
+        "docsPath",
+        "openapiPath",
+        "apiPrefix",
+        "legacyApiPrefix",
+        "defaultPorts",
+        "origins",
+        "cors",
+        "trustedOrigins",
+        "routes"
+      ],
       "properties": {
         "healthPath": { "type": "string", "pattern": "^/" },
         "docsPath": { "type": "string", "pattern": "^/" },
@@ -44,7 +62,11 @@
         "legacyApiPrefix": { "type": "string", "pattern": "^/" },
         "defaultPorts": {
           "type": "object",
-          "additionalProperties": { "type": "integer", "minimum": 1, "maximum": 65535 }
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          }
         },
         "origins": {
           "type": "object",
@@ -63,8 +85,16 @@
           "additionalProperties": false,
           "required": ["methods", "allowedHeaders", "credentials"],
           "properties": {
-            "methods": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-            "allowedHeaders": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+            "methods": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 1
+            },
+            "allowedHeaders": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 1
+            },
             "credentials": { "type": "boolean" }
           }
         },
@@ -73,7 +103,11 @@
           "additionalProperties": false,
           "required": ["prod", "native", "dev"],
           "properties": {
-            "prod": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+            "prod": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 1
+            },
             "native": { "type": "array", "items": { "type": "string" } },
             "dev": { "type": "array", "items": { "type": "string" } }
           }
@@ -87,7 +121,19 @@
     "auth": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["provider", "issuer", "audiences", "cookieName", "ttlSeconds", "passwordMinLength", "requireEmailVerification", "apiKeyPrefix", "secretMinLength", "defaultRole", "roles"],
+      "required": [
+        "provider",
+        "issuer",
+        "audiences",
+        "cookieName",
+        "ttlSeconds",
+        "passwordMinLength",
+        "requireEmailVerification",
+        "apiKeyPrefix",
+        "secretMinLength",
+        "defaultRole",
+        "roles"
+      ],
       "properties": {
         "provider": { "type": "string" },
         "issuer": { "type": "string" },
@@ -117,8 +163,19 @@
         "defaultRole": { "type": "string" },
         "roles": {
           "type": "object",
-          "additionalProperties": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-          "required": ["all", "admin", "userManagement", "botAdmin", "moderator", "staff"]
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "required": [
+            "all",
+            "admin",
+            "userManagement",
+            "botAdmin",
+            "moderator",
+            "staff"
+          ]
         }
       }
     },
@@ -147,7 +204,13 @@
     "ui": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["framework", "primitives", "tokensManifest", "defaultTheme", "themes"],
+      "required": [
+        "framework",
+        "primitives",
+        "tokensManifest",
+        "defaultTheme",
+        "themes"
+      ],
       "properties": {
         "framework": { "type": "string" },
         "primitives": { "type": "string" },

@@ -74,13 +74,12 @@ function cFieldIdent(raw: string): string {
 }
 
 function cUpperMacro(name: string): string {
-  return toSnakeCase(name).replace(/[^a-zA-Z0-9_]/g, "_").toUpperCase();
+  return toSnakeCase(name)
+    .replace(/[^a-zA-Z0-9_]/g, "_")
+    .toUpperCase();
 }
 
-function cTypeFor(
-  type: IrType,
-  defined: ReadonlySet<string>,
-): string {
+function cTypeFor(type: IrType, defined: ReadonlySet<string>): string {
   switch (type.kind) {
     case "string":
     case "date":

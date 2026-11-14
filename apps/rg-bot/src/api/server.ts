@@ -12,7 +12,10 @@ import { authController } from "./modules/auth";
 import { dbPlugin } from "./plugins/db";
 import { publicCache } from "./plugins/public-cache";
 import { elysiaAuth } from "@rosegriffon/auth/elysia";
-import { contractTrustedOrigins, STACK_CONTRACT } from "@rosegriffon/config/contract";
+import {
+  contractTrustedOrigins,
+  STACK_CONTRACT,
+} from "@rosegriffon/config/contract";
 import { MONOREPO_OPENAPI } from "@rosegriffon/config/openapi";
 import { handleAnnounceHttp, handleCronHttp } from "@rosegriffon/cron";
 
@@ -62,12 +65,20 @@ export const app = new Elysia()
   // à la racine : monté sur `/`, il recevait toute URL inconnue et interrogeait la base pour
   // répondre — 500 au lieu de 404 dès que Postgres manquait. Les routes explicites de
   // `authController` (`/v1/auth/realtime-token`, `/v1/auth/logout`…) restent prioritaires.
-  .all(`${STACK_CONTRACT.http.routes.authPrefix}/*`, ({ request }) => elysiaAuth.handler(request), {
-    parse: "none",
-  })
-  .all(`${STACK_CONTRACT.http.routes.wellKnownPrefix}/*`, ({ request }) => elysiaAuth.handler(request), {
-    parse: "none",
-  })
+  .all(
+    `${STACK_CONTRACT.http.routes.authPrefix}/*`,
+    ({ request }) => elysiaAuth.handler(request),
+    {
+      parse: "none",
+    },
+  )
+  .all(
+    `${STACK_CONTRACT.http.routes.wellKnownPrefix}/*`,
+    ({ request }) => elysiaAuth.handler(request),
+    {
+      parse: "none",
+    },
+  )
   .get("/.well-known/agent-configuration", ({ request }) =>
     (
       elysiaAuth.api as unknown as {
@@ -94,9 +105,13 @@ export const app = new Elysia()
     },
     { parse: "none" },
   )
-  .post(STACK_CONTRACT.http.routes.discordAnnounce, ({ request }) => handleAnnounceHttp(request), {
-    parse: "none",
-  })
+  .post(
+    STACK_CONTRACT.http.routes.discordAnnounce,
+    ({ request }) => handleAnnounceHttp(request),
+    {
+      parse: "none",
+    },
+  )
   .group(STACK_CONTRACT.http.apiPrefix, (v1) =>
     v1
       .use(achilleaModule)

@@ -261,9 +261,9 @@ describe("génération", () => {
     expect(openapiDoc.jsonSchemaDialect).toBe(
       "https://spec.openapis.org/oas/3.2/dialect/2025-09-19",
     );
-    expect(Object.keys(openapiDoc.components?.schemas ?? {}).length).toBeGreaterThan(
-      100,
-    );
+    expect(
+      Object.keys(openapiDoc.components?.schemas ?? {}).length,
+    ).toBeGreaterThan(100);
   });
 
   test("les fichiers versionnés dans generated/ sont à jour", async () => {

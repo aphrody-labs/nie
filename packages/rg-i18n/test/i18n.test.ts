@@ -18,7 +18,7 @@ import {
 } from "../src/index";
 
 describe("registre BCP-47", () => {
-  test("déclare fr, en et ja avec leur direction et leur repli", () => {
+  test("déclare fr, en, ja et es avec leur direction et leur repli", () => {
     expect(DEFAULT_LOCALE_REGISTRY.defaultLocale).toBe("fr");
     expect(
       DEFAULT_LOCALE_REGISTRY.locales.map(({ tag, direction }) => ({
@@ -29,9 +29,11 @@ describe("registre BCP-47", () => {
       { direction: "ltr", tag: "fr" },
       { direction: "ltr", tag: "en" },
       { direction: "ltr", tag: "ja" },
+      { direction: "ltr", tag: "es" },
     ]);
     expect(buildFallbackChain("en")).toEqual(["en", "fr"]);
     expect(buildFallbackChain("ja-JP")).toEqual(["ja", "fr"]);
+    expect(buildFallbackChain("es-ES")).toEqual(["es", "fr"]);
     expect(buildFallbackChain("fr-CA")).toEqual(["fr"]);
   });
 

@@ -4,23 +4,23 @@ import { absoluteUrl } from "@/lib/site-url";
 
 export const metadata: Metadata = {
   title: {
-    default: "Azalée — Le Wiki Inazuma Eleven: Victory Road | Rose Griffon",
+    default: "Azalée — Encyclopédie Inazuma Eleven | Rose Griffon",
     // Pas de suffixe : chaque page du wiki porte déjà sa marque (« … - Azalée »,
     // « … | Azalée »). L'ancien gabarit « %s | Wiki Azalée | Rose Griffon » la
     // répétait et poussait 169 titres au-delà de 65 caractères (crawl du 5/11/2026).
     template: "%s",
   },
   description:
-    "Base de données complète Inazuma Eleven: Victory Road. Personnages, techniques, objets, quêtes et wiki communautaire.",
+    "Encyclopédie complète de toute la saga Inazuma Eleven : du premier épisode jusqu'à Victory Road, Cross, RE et Bold Revolution.",
   icons: {
     icon: "/RG_Azalee-logo.webp",
     shortcut: "/RG_Azalee-logo.webp",
     apple: "/RG_Azalee-logo.webp",
   },
   openGraph: {
-    title: "Azalée — Le Wiki Inazuma Eleven: Victory Road",
+    title: "Azalée — Encyclopédie Inazuma Eleven",
     description:
-      "Base de données complète Inazuma Eleven: Victory Road. Personnages, techniques, objets, quêtes et wiki communautaire.",
+      "Encyclopédie complète de toute la saga Inazuma Eleven : du premier épisode jusqu'à Victory Road, Cross, RE et Bold Revolution.",
     url: absoluteUrl("/wiki"),
     siteName: "Azalée Wiki",
     locale: "fr_FR",
@@ -36,9 +36,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Azalée — Le Wiki Inazuma Eleven: Victory Road",
+    title: "Azalée — Encyclopédie Inazuma Eleven",
     description:
-      "Base de données complète Inazuma Eleven: Victory Road. Personnages, techniques, objets, quêtes et wiki communautaire.",
+      "Encyclopédie complète de toute la saga Inazuma Eleven : du premier épisode jusqu'à Victory Road, Cross, RE et Bold Revolution.",
     images: ["/RG_Azalee-logo.webp"],
   },
 };

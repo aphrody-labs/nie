@@ -57,7 +57,9 @@ function findAtom(
   atomType: string,
   startOffset = 0,
 ): AtomHeader | null {
-  return parseAtoms(buffer, startOffset).find((a) => a.type === atomType) ?? null;
+  return (
+    parseAtoms(buffer, startOffset).find((a) => a.type === atomType) ?? null
+  );
 }
 
 export interface SavePlayerStats {

@@ -20,9 +20,10 @@ const PUBLIC_DIR = join(import.meta.dir, "../../public");
 function assertPublicAsset(assetPath: string) {
   if (!assetPath.startsWith("/")) return;
   const diskPath = join(PUBLIC_DIR, assetPath.slice(1));
-  expect(existsSync(diskPath), `Asset manquant dans public/: ${assetPath}`).toBe(
-    true,
-  );
+  expect(
+    existsSync(diskPath),
+    `Asset manquant dans public/: ${assetPath}`,
+  ).toBe(true);
 }
 
 describe("home-showcase & sidebar-showcase assets", () => {

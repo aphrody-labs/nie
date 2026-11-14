@@ -36,8 +36,14 @@ const ROUTE_ASSET_MAP: Record<string, RichRouteAsset> = {
   "/achillea/organizations/validate": { key: "medal", kind: "game" },
   "/achillea/ranked": { kind: "image", src: "/achillea/ranks/legendaire.webp" },
   "/achillea/ranked/history": { key: "match-history", kind: "svg" },
-  "/achillea/ranked/leaderboard": { kind: "image", src: "/achillea/ranks/supernova.webp" },
-  "/achillea/ranked/tiers": { kind: "image", src: "/achillea/ranks/divin.webp" },
+  "/achillea/ranked/leaderboard": {
+    kind: "image",
+    src: "/achillea/ranks/supernova.webp",
+  },
+  "/achillea/ranked/tiers": {
+    kind: "image",
+    src: "/achillea/ranks/divin.webp",
+  },
   "/achillea/tournaments": { kind: "image", src: "/achillea/ranks/or.webp" },
   "/achillea/tournaments/circuit/ranking": { key: "medal", kind: "game" },
   "/achillea/tournaments/create": { key: "bracket-plus", kind: "svg" },
@@ -81,11 +87,7 @@ export function SidebarRichIcon(item: NavItem): ReactNode {
       );
     case "game":
       return (
-        <GameSpriteIcon
-          name={mapped.key}
-          size={20}
-          className="shrink-0"
-        />
+        <GameSpriteIcon name={mapped.key} size={20} className="shrink-0" />
       );
     case "common":
       return (

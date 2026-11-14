@@ -5,6 +5,7 @@ import type { CharacterIntelTarget } from "@rosegriffon/inagle";
 import { cache, crawlerTracker, getRedisClient } from "@rosegriffon/db/redis";
 import type { CrawlFetchOutcome } from "./crawl-engines";
 import { sql } from "./db";
+import { CrawlOramaIndex } from "./orama-index";
 import type { R2UploadResult } from "./r2-assets";
 
 export const CHARACTER_CRAWL_EVENTS_CHANNEL = "rg:crawl:character:events";
@@ -57,16 +58,22 @@ export interface StoredCharacterAssetSummary {
 
 export class CharacterCrawlStore {
   private readonly sqlite: Database;
+  private readonly persistOrama: boolean;
+  private readonly oramaIndex: CrawlOramaIndex;
 
   constructor(
     sqlitePath = Bun.env.RG_CRAWL_SQLITE_PATH || "var/character-crawl.sqlite",
   ) {
-    if (sqlitePath !== ":memory:") {
+    this.persistOrama = sqlitePath !== ":memory:";
+    if (this.persistOrama) {
       mkdirSync(dirname(sqlitePath), { recursive: true });
     }
     this.sqlite = new Database(sqlitePath);
     this.sqlite.run("PRAGMA journal_mode = WAL;");
     this.sqlite.run("PRAGMA busy_timeout = 5000;");
+    this.oramaIndex = new CrawlOramaIndex(
+      this.persistOrama ? `${sqlitePath}.orama.json` : ":memory:",
+    );
     this.initSchema();
   }
 
@@ -373,6 +380,24 @@ export class CharacterCrawlStore {
       }
     }
 
+    if (outcome.status === "ok" && (outcome.title || outcome.bodyText)) {
+      this.oramaIndex.indexDocument({
+        id: `${targetSlug}:${contentHash.slice(0, 16)}:${outcome.normalizedUrl}`,
+        targetSlug,
+        url: outcome.url,
+        normalizedUrl: outcome.normalizedUrl,
+        title: outcome.title ?? outcome.normalizedUrl,
+        excerpt: outcome.excerpt ?? "",
+        bodyText: outcome.bodyText ?? "",
+        language: outcome.language ?? "und",
+        sourceKind: outcome.sourceKind,
+        engine: outcome.engine,
+        depth,
+        tags: [targetSlug, outcome.sourceKind, outcome.engine],
+        fetchedAt: now,
+      });
+    }
+
     return { contentHash, changed };
   }
 
@@ -505,7 +530,22 @@ export class CharacterCrawlStore {
       .all(targetSlug) as StoredCharacterAssetSummary[];
   }
 
+  searchIndex(
+    term: string,
+    options: {
+      language?: string;
+      sourceKind?: string;
+      targetSlug?: string;
+      limit?: number;
+    } = {},
+  ) {
+    return this.oramaIndex.searchDocuments(term, options);
+  }
+
   close(): void {
+    if (this.persistOrama) {
+      this.oramaIndex.persist();
+    }
     this.sqlite.close();
   }
 }

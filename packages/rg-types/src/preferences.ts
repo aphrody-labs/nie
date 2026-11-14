@@ -12,10 +12,12 @@ export const THEME_IDS = [
   "azalee-light",
   "azalee-dark",
   "achillea",
+  "inazuma",
+  "nie",
 ] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 
-export const LOCALE_IDS = ["fr", "en", "ja"] as const;
+export const LOCALE_IDS = ["fr", "en", "ja", "es"] as const;
 export type LocaleId = (typeof LOCALE_IDS)[number];
 
 export const FONT_IDS = [

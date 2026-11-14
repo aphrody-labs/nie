@@ -103,6 +103,7 @@ export const DICTIONNAIRE_NAV_FR: Record<string, string> = {
   "nav.wiki.coaches": "Entraîneurs",
   "nav.wiki.drops": "Drops",
   "nav.wiki.gallery": "Galerie",
+  "nav.wiki.games": "Tous les jeux",
   "nav.wiki.hyper_skills": "Hyper technique",
   "nav.wiki.invocation": "Invocation (Univers)",
   "nav.wiki.items": "Objets",

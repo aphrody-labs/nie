@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { getServerLocale } from "@/lib/i18n/server-locale";
+import { getSagaHubCopy, SAGA_HUB_COPY } from "@/lib/wiki/games-copy";
 import Image from "next/image";
 import Link from "@/components/shared/Link";
 import { Suspense } from "react";
@@ -16,24 +18,22 @@ import { getCharacterImageUrl } from "@rosegriffon/azalee/images";
 
 export const metadata: Metadata = {
   alternates: { canonical: absoluteUrl("/wiki") },
-  description:
-    "L'information la plus précise autour d'Inazuma Eleven. Stats, techniques, et actualités en français.",
+  description: SAGA_HUB_COPY.bannerSubtitle,
   openGraph: withDefaultOgImage({
-    title: "Azalée - Inazuma Eleven: Victory Road",
-    description:
-      "L'information la plus précise autour d'Inazuma Eleven. Stats, techniques, et actualités en français.",
+    title: "Azalée : Encyclopédie Inazuma Eleven (toute la saga)",
+    description: SAGA_HUB_COPY.bannerSubtitle,
     url: absoluteUrl("/wiki"),
     siteName: "Azalée",
     locale: "fr_FR",
     type: "website",
   }),
-  title: "Azalée - Inazuma Eleven: Victory Road",
+  title: "Azalée : Encyclopédie Inazuma Eleven (toute la saga)",
   twitter: {
     card: "summary_large_image",
     creator: "@Azalee_IE",
-    description: "L'information la plus précise autour d'Inazuma Eleven.",
+    description: SAGA_HUB_COPY.bannerSubtitle,
     site: "@Azalee_IE",
-    title: "Azalée - Inazuma Eleven: Victory Road",
+    title: "Azalée : Encyclopédie Inazuma Eleven (toute la saga)",
   },
 };
 
@@ -112,14 +112,28 @@ function getElementBadgeClass(element: string | null): string {
   return "bg-surface-container text-on-surface-variant border-outline-variant/20";
 }
 
-export default async function HomePage() {
+interface WikiHomeSnapshot {
+  articles: any[];
+  recentTweets: any[];
+  wikiStats: WikiSectionStats;
+  featuredCharacters: FeaturedCharacterRow[];
+  featuredSkills: FeaturedSkillRow[];
+  totalTeams: number;
+}
+
+const WIKI_HOME_TTL_MS = 60_000;
+let wikiHomeCache: {
+  expiresAt: number;
+  promise: Promise<WikiHomeSnapshot>;
+} | null = null;
+
+async function fetchWikiHomeSnapshot(): Promise<WikiHomeSnapshot> {
   const pool = getPgPool();
   const inaglePool = getInaglePgPool();
 
   const [
-    { rows: pinnedArticles },
-    { rows: latestArticles },
-    { rows: latestTweets },
+    { rows: articles },
+    { rows: recentTweets },
     wikiCountsRes,
     featuredCharsRes,
     featuredSkillsRes,
@@ -130,16 +144,7 @@ export default async function HomePage() {
         `SELECT * FROM articles
          WHERE status = $1 AND app = $2
          ORDER BY published_at DESC
-         LIMIT 1`,
-        ["published", "azalee"],
-      )
-      .catch(() => ({ rows: [] })),
-    pool
-      .query(
-        `SELECT * FROM articles
-         WHERE status = $1 AND app = $2
-         ORDER BY published_at DESC
-         LIMIT 3 OFFSET 1`,
+         LIMIT 4`,
         ["published", "azalee"],
       )
       .catch(() => ({ rows: [] })),
@@ -208,11 +213,6 @@ export default async function HomePage() {
       })),
   ]);
 
-  const pinned = (pinnedArticles || []) as any[];
-  const latest = (latestArticles || []) as any[];
-  const standardNews = [...pinned, ...latest].slice(0, 3);
-  const recentTweets = (latestTweets || []) as any[];
-
   const wikiStats: WikiSectionStats = {
     characters: 6111,
     items: 1834,
@@ -225,9 +225,44 @@ export default async function HomePage() {
     wikiStats[key] = count;
   }
 
-  const featuredCharacters = featuredCharsRes.rows;
-  const featuredSkills = featuredSkillsRes.rows;
-  const totalTeams = teamStatsRes.rows[0]?.total_teams ?? 162;
+  return {
+    articles: articles as any[],
+    recentTweets: recentTweets as any[],
+    wikiStats,
+    featuredCharacters: featuredCharsRes.rows,
+    featuredSkills: featuredSkillsRes.rows,
+    totalTeams: teamStatsRes.rows[0]?.total_teams ?? 162,
+  };
+}
+
+function getCachedWikiHome(): Promise<WikiHomeSnapshot> {
+  const now = Date.now();
+  if (wikiHomeCache && now < wikiHomeCache.expiresAt) {
+    return wikiHomeCache.promise;
+  }
+  const promise = fetchWikiHomeSnapshot().catch((err) => {
+    wikiHomeCache = null;
+    throw err;
+  });
+  wikiHomeCache = { expiresAt: now + WIKI_HOME_TTL_MS, promise };
+  return promise;
+}
+
+export default async function HomePage() {
+  const [locale, homeData] = await Promise.all([
+    getServerLocale(),
+    getCachedWikiHome(),
+  ]);
+  const sagaCopy = getSagaHubCopy(locale);
+  const {
+    articles,
+    recentTweets,
+    wikiStats,
+    featuredCharacters,
+    featuredSkills,
+    totalTeams,
+  } = homeData;
+  const standardNews = articles.slice(0, 3);
 
   const jsonLd = [
     {
@@ -235,7 +270,7 @@ export default async function HomePage() {
       "@type": "WebSite",
       alternateName: "Azalee Inazuma Eleven Wiki",
       description:
-        "Base de données complète Inazuma Eleven: Victory Road. Personnages, techniques, objets et actualités en français.",
+        "Encyclopédie complète de la saga Inazuma Eleven : du premier épisode DS à Victory Road, Cross, RE et Bold Revolution. Personnages, techniques, objets et notes de patch en français.",
       inLanguage: "fr",
       name: "Azalée",
       potentialAction: {
@@ -318,12 +353,49 @@ export default async function HomePage() {
                   </span>
                 </div>
                 <h2 className="font-[BradBunR] text-xl md:text-2xl font-black text-on-surface tracking-tight">
-                  Base de Données Inazuma Eleven: Victory Road
+                  {sagaCopy.bannerTitle}
                 </h2>
                 <p className="text-sm text-on-surface-variant/80 mt-1 max-w-2xl">
-                  Statistiques officielles, modèles 3D, répliques doublées,
-                  séquences vidéo et techniques spéciales en français.
+                  {sagaCopy.bannerSubtitle}
                 </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Link
+                    href="/wiki/jeux"
+                    className="inline-flex items-center rounded-full bg-primary px-3.5 py-1 text-xs font-bold text-on-primary transition-opacity hover:opacity-90"
+                  >
+                    {sagaCopy.gamesBadgeCount}
+                  </Link>
+                  <Link
+                    href="/wiki/jeux/inazuma-eleven-re"
+                    className="inline-flex items-center rounded-full bg-surface-container-high px-3 py-1 text-xs font-semibold text-on-surface hover:bg-surface-container-highest"
+                  >
+                    INAZUMA ELEVEN RE
+                  </Link>
+                  <Link
+                    href="/wiki/jeux/inazuma-eleven-bold-revolution"
+                    className="inline-flex items-center rounded-full bg-surface-container-high px-3 py-1 text-xs font-semibold text-on-surface hover:bg-surface-container-highest"
+                  >
+                    Bold Revolution
+                  </Link>
+                  <Link
+                    href="/wiki/cross"
+                    className="inline-flex items-center rounded-full bg-secondary-container px-3 py-1 text-xs font-semibold text-on-secondary-container hover:opacity-90"
+                  >
+                    Cross ({sagaCopy.crossBadgeLive})
+                  </Link>
+                  <Link
+                    href="/wiki/jeux/inazuma-eleven"
+                    className="inline-flex items-center rounded-full bg-surface-container-high px-3 py-1 text-xs font-semibold text-on-surface hover:bg-surface-container-highest"
+                  >
+                    DS / GO / Ares
+                  </Link>
+                  <Link
+                    href="/wiki/mods"
+                    className="inline-flex items-center rounded-full bg-tertiary-container px-3 py-1 text-xs font-semibold text-on-tertiary-container hover:opacity-90"
+                  >
+                    {sagaCopy.modsBadgeLabel}
+                  </Link>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full lg:w-auto">
@@ -536,7 +608,7 @@ export default async function HomePage() {
                           <div className="flex items-center gap-1">
                             <span className="font-medium">Puissance :</span>
                             <span className="font-bold text-amber-500 tabular-nums">
-                              {skill.power_max ?? "—"}
+                              {skill.power_max ?? "-"}
                             </span>
                           </div>
                           {skill.tp_cost !== null && skill.tp_cost > 0 && (

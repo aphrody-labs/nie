@@ -45,7 +45,11 @@ export function RgVectorIcon({ className, name, ...rest }: SvgIconProps) {
       return (
         <svg {...SHARED} {...rest} className={cls}>
           <path d="M12 2.5 19.5 5.8V11.8c0 4.8-3.2 8.2-7.5 9.7-4.3-1.5-7.5-4.9-7.5-9.7V5.8L12 2.5Z" />
-          <path d="M9.2 12.2 12 8.8l2.8 3.4-2.8 3.4-2.8-3.4Z" fill="currentColor" fillOpacity="0.22" />
+          <path
+            d="M9.2 12.2 12 8.8l2.8 3.4-2.8 3.4-2.8-3.4Z"
+            fill="currentColor"
+            fillOpacity="0.22"
+          />
           <path d="M12 8.8v6.8" />
         </svg>
       );
@@ -54,7 +58,11 @@ export function RgVectorIcon({ className, name, ...rest }: SvgIconProps) {
         <svg {...SHARED} {...rest} className={cls}>
           <rect x="3.5" y="5" width="17" height="15.5" rx="3" />
           <path d="M8 3.2v3.2M16 3.2v3.2M3.5 9.5h17" />
-          <path d="M9.5 13h5l-1 2.8a1.5 1.5 0 0 1-3 0L9.5 13Z" fill="currentColor" fillOpacity="0.22" />
+          <path
+            d="M9.5 13h5l-1 2.8a1.5 1.5 0 0 1-3 0L9.5 13Z"
+            fill="currentColor"
+            fillOpacity="0.22"
+          />
           <path d="M12 16v2.2" />
         </svg>
       );
@@ -106,7 +114,10 @@ export function RgVectorIcon({ className, name, ...rest }: SvgIconProps) {
       return (
         <svg {...SHARED} {...rest} className={cls}>
           <path d="M4 18.5h16" />
-          <path d="M6.5 15.5v-3.5M10.5 15.5V9.5M14.5 15.5V11M18.5 15.5V6.5" strokeWidth="2.2" />
+          <path
+            d="M6.5 15.5v-3.5M10.5 15.5V9.5M14.5 15.5V11M18.5 15.5V6.5"
+            strokeWidth="2.2"
+          />
           <path d="M6 8.5 11.5 5l3 2 4-3" />
         </svg>
       );
@@ -166,7 +177,15 @@ export function RgVectorIcon({ className, name, ...rest }: SvgIconProps) {
       return (
         <svg {...SHARED} {...rest} className={cls}>
           <rect x="4" y="4" width="16" height="16" rx="2.5" />
-          <rect x="7" y="7.5" width="5" height="4.5" rx="0.8" fill="currentColor" fillOpacity="0.22" />
+          <rect
+            x="7"
+            y="7.5"
+            width="5"
+            height="4.5"
+            rx="0.8"
+            fill="currentColor"
+            fillOpacity="0.22"
+          />
           <path d="M14 8.5h3M14 11.5h3M7 15.2h10" />
         </svg>
       );
@@ -175,7 +194,13 @@ export function RgVectorIcon({ className, name, ...rest }: SvgIconProps) {
         <svg {...SHARED} {...rest} className={cls}>
           <path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 2.3-.9 2.3-2 0-.6-.3-1.1-.6-1.5-.4-.5-.1-1.2.5-1.2h2.2c2.2 0 4.1-1.7 4.1-3.9A8.5 8.5 0 0 0 12 3.5Z" />
           <circle cx="8" cy="10.5" r="1.1" fill="currentColor" stroke="none" />
-          <circle cx="11.5" cy="7.5" r="1.1" fill="currentColor" stroke="none" />
+          <circle
+            cx="11.5"
+            cy="7.5"
+            r="1.1"
+            fill="currentColor"
+            stroke="none"
+          />
           <circle cx="15.5" cy="10" r="1.1" fill="currentColor" stroke="none" />
         </svg>
       );

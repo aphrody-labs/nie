@@ -30,9 +30,13 @@ describe("unified polyglot stack contract", () => {
   });
 
   test("contract/openapi.json satisfies OpenAPI 3.2.1 across all monorepo domains", async () => {
-    const openapiJson = await Bun.file(join(ROOT, "contract/openapi.json")).json();
+    const openapiJson = await Bun.file(
+      join(ROOT, "contract/openapi.json"),
+    ).json();
     expect(OPENAPI_VERSION).toBe("3.2.1");
-    expect(OPENAPI_DIALECT).toBe("https://spec.openapis.org/oas/3.2/dialect/2025-09-19");
+    expect(OPENAPI_DIALECT).toBe(
+      "https://spec.openapis.org/oas/3.2/dialect/2025-09-19",
+    );
     expect(openapiJson).toEqual(MONOREPO_OPENAPI);
     expect(OPENAPI_PATH_COUNT).toBeGreaterThanOrEqual(25);
     expect(OPENAPI_SCHEMA_COUNT).toBeGreaterThanOrEqual(150);
@@ -63,9 +67,7 @@ describe("unified polyglot stack contract", () => {
     expect(isValidPostgresUrl("https://rosegriffon.fr")).toBe(false);
 
     expect(contractTrustedOrigins(true)).toContain("https://rosegriffon.fr");
-    expect(contractTrustedOrigins(true)).not.toContain(
-      "http://localhost:3000",
-    );
+    expect(contractTrustedOrigins(true)).not.toContain("http://localhost:3000");
     expect(contractTrustedOrigins(false)).toContain("http://localhost:3000");
   });
 
@@ -78,9 +80,15 @@ describe("unified polyglot stack contract", () => {
       expect(native.domain()).toBe(STACK_CONTRACT.project.domain);
       expect(native.openapiVersion()).toBe(STACK_CONTRACT.openapi.version);
       expect(native.openapiDialect()).toBe(STACK_CONTRACT.openapi.dialect);
-      expect(native.defaultPort("api")).toBe(STACK_CONTRACT.http.defaultPorts.api);
-      expect(native.defaultPort("azalee")).toBe(STACK_CONTRACT.http.defaultPorts.azalee);
-      expect(native.defaultPort("ranked")).toBe(STACK_CONTRACT.http.defaultPorts.ranked);
+      expect(native.defaultPort("api")).toBe(
+        STACK_CONTRACT.http.defaultPorts.api,
+      );
+      expect(native.defaultPort("azalee")).toBe(
+        STACK_CONTRACT.http.defaultPorts.azalee,
+      );
+      expect(native.defaultPort("ranked")).toBe(
+        STACK_CONTRACT.http.defaultPorts.ranked,
+      );
       expect(native.defaultPort("modelServe")).toBe(
         STACK_CONTRACT.http.defaultPorts.modelServe,
       );

@@ -19,11 +19,13 @@ export const CHROME_THEMES: ThemeType[] = [
   "azalee-light",
   "azalee-dark",
   "achillea",
+  "inazuma",
+  "nie",
 ];
 
 /**
- * Provider thèmes Rose Griffon — wrap next-themes avec la liste explicite
- * des cinq thèmes supportés. La classe est appliquée sur `<html>`
+ * Provider thèmes Rose Griffon : wrappe next-themes avec la liste explicite
+ * des sept thèmes supportés. La classe est appliquée sur `<html>`
  * (`class="roy"`, etc.) et `styles.css` aligne sur ces noms.
  */
 export function ThemeProvider({
@@ -95,6 +97,8 @@ export function useTheme() {
     isGaelle: ctx.theme === "gaelle",
     isAzalee: ctx.theme?.startsWith("azalee") ?? false,
     isAchillea: ctx.theme === "achillea",
+    isInazuma: ctx.theme === "inazuma",
+    isNie: ctx.theme === "nie",
     // TOUJOURS une palette définie. Au rendu serveur (et avant hydratation)
     // `ctx.theme` est `undefined` : la version optionnelle renvoyait
     // `undefined`, et tout consommateur qui lit `colors.primary` — la page

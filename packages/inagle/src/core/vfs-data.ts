@@ -12,6 +12,7 @@ let selectedRoot: string | undefined;
 let mounted: NieVfsHandle | undefined;
 let entries: string[] | undefined;
 const documents = new Map<string, ConfigDocument>();
+const configLookupCache = new Map<string, string | null>();
 export function configureGameVfs(gameDir?: string): void {
   const root = gameDir || undefined;
   if (root === selectedRoot) return;
@@ -19,6 +20,7 @@ export function configureGameVfs(gameDir?: string): void {
   mounted = undefined;
   entries = undefined;
   documents.clear();
+  configLookupCache.clear();
   selectedRoot = root;
 }
 
@@ -45,14 +47,25 @@ export function gameVfsPaths(): string[] {
 }
 
 export function findVfsConfig(category: string, prefix: string): string | null {
+  const cacheKey = `${category}\0${prefix}`;
+  if (configLookupCache.has(cacheKey)) {
+    return configLookupCache.get(cacheKey)!;
+  }
   const base = `data/common/gamedata/${category}/`;
-  const match = gameVfsPaths()
-    .filter(
-      (path) => path.startsWith(base + prefix) && path.endsWith(".cfg.bin"),
-    )
-    .sort()
-    .at(-1);
-  return match ? match.slice(base.length) + ".json" : null;
+  const fullPrefix = base + prefix;
+  let latest: string | null = null;
+  for (const path of gameVfsPaths()) {
+    if (
+      path.startsWith(fullPrefix) &&
+      path.endsWith(".cfg.bin") &&
+      (latest === null || path > latest)
+    ) {
+      latest = path;
+    }
+  }
+  const resolved = latest ? latest.slice(base.length) + ".json" : null;
+  configLookupCache.set(cacheKey, resolved);
+  return resolved;
 }
 
 export function readVfsConfig(path: string): ConfigDocument | null {

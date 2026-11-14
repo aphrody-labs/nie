@@ -15,8 +15,11 @@ export interface JsonOption {
   json?: boolean;
 }
 
-/** `azalee translate [text] [-j]` */
-export type TranslateOptions = JsonOption;
+/** `azalee translate [text] [-t fr|en|es] [-j]` */
+export interface TranslateOptions extends JsonOption {
+  /** Langue cible de traduction (`fr`, `en`, `es`). */
+  to?: "fr" | "en" | "es";
+}
 
 /** `azalee search [query] [-j]` */
 export type SearchOptions = JsonOption;
@@ -78,6 +81,24 @@ export type ItemOptions = JsonOption;
 
 /** `azalee team [query] [-j]` */
 export type TeamOptions = JsonOption;
+
+/** `azalee games [query] [-l <locale>] [-e <era>] [-s <status>] [-j]` */
+export interface GamesOptions extends JsonOption {
+  /** Langue d'affichage (`fr`, `en`, `ja`, `es`). */
+  locale?: string;
+  /** Filtre par époque. */
+  era?: string;
+  /** Filtre par statut. */
+  status?: string;
+}
+
+/** `azalee mods [query] [-g <slug>] [-l <lang>] [-j]` */
+export interface ModsOptions extends JsonOption {
+  /** Slug de jeu à filtrer. */
+  game?: string;
+  /** Langue cible pour les wikis (`fr`, `en`, `ja`, `es`). */
+  lang?: string;
+}
 
 /** `azalee random-team [-f <formation>] [-e <element>] [-p <playstyle>] [-j]` */
 export interface RandomTeamOptions extends JsonOption {

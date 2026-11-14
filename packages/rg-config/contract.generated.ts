@@ -9,7 +9,13 @@ export const STACK_CONTRACT = {
     "license": "Apache-2.0",
     "domain": "rosegriffon.fr",
     "cookieDomain": ".rosegriffon.fr",
-    "repoUrl": "https://github.com/aphrody-labs/rosegriffon.git"
+    "repoUrl": "https://github.com/aphrody-labs/rosegriffon.git",
+    "locales": [
+      "fr",
+      "en",
+      "ja",
+      "es"
+    ]
   },
   "http": {
     "healthPath": "/health",
@@ -243,31 +249,51 @@ export const STACK_CONTRACT = {
     "framework": "next+react+base-ui+tailwindcss",
     "primitives": "@base-ui/react",
     "tokensManifest": "packages/rg-config/rg-m3.json",
-    "defaultTheme": "rosegriffon-light",
+    "defaultTheme": "roy",
     "themes": [
       {
+        "id": "roy",
+        "seed": "#3f5b9a",
+        "dark": false
+      },
+      {
+        "id": "gaelle",
+        "seed": "#a62b0c",
+        "dark": false
+      },
+      {
         "id": "rosegriffon-light",
-        "seed": "#e91e63",
+        "seed": "#8e4957",
         "dark": false
       },
       {
         "id": "rosegriffon-dark",
-        "seed": "#e91e63",
-        "dark": true
-      },
-      {
-        "id": "achillea",
-        "seed": "#6d00ce",
+        "seed": "#ffb2be",
         "dark": true
       },
       {
         "id": "azalee-light",
-        "seed": "#f89c5a",
+        "seed": "#805300",
         "dark": false
       },
       {
         "id": "azalee-dark",
-        "seed": "#f89c5a",
+        "seed": "#f5bc62",
+        "dark": true
+      },
+      {
+        "id": "achillea",
+        "seed": "#cebaff",
+        "dark": true
+      },
+      {
+        "id": "inazuma",
+        "seed": "#3358ad",
+        "dark": false
+      },
+      {
+        "id": "nie",
+        "seed": "#a5c9ff",
         "dark": true
       }
     ]

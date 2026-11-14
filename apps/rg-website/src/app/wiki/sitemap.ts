@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { getInaglePgPool } from "@rosegriffon/db/pg";
+import { INAZUMA_GAMES } from "@rosegriffon/inagle/games";
 import { SITE_URL } from "@/lib/site-url";
 import { wikiService } from "@/lib/wiki-service";
 
@@ -70,6 +71,14 @@ const STATIC_PAGES: Array<{
   changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"];
 }> = [
   { changeFrequency: "weekly", path: "", priority: 0.8 },
+  { changeFrequency: "weekly", path: "/jeux", priority: 0.9 },
+  { changeFrequency: "weekly", path: "/mods", priority: 0.85 },
+  ...INAZUMA_GAMES.map((game) => ({
+    changeFrequency: "monthly" as const,
+    path: `/jeux/${game.slug}`,
+    priority:
+      game.status === "in-development" || game.era === "modern" ? 0.8 : 0.7,
+  })),
   { changeFrequency: "weekly", path: "/chara", priority: 0.9 },
   { changeFrequency: "weekly", path: "/skill", priority: 0.9 },
   { changeFrequency: "weekly", path: "/item", priority: 0.8 },

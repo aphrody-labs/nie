@@ -53,7 +53,9 @@ export function resolveMirrorSqlitePath(
     const abs = resolve(explicitPath);
     if (isAvailable(abs)) return abs;
     if (options.strictExplicit) {
-      throw new Error(`The explicitly selected SQLite mirror is unavailable: ${abs}`);
+      throw new Error(
+        `The explicitly selected SQLite mirror is unavailable: ${abs}`,
+      );
     }
   }
 
@@ -73,7 +75,9 @@ export function resolveMirrorSqlitePath(
     ...(options.baseDirs ?? []),
     process.env.IECODE_ROOT,
     process.cwd(),
-    process.env.IECODE_DATA_DIR ? resolve(process.env.IECODE_DATA_DIR, "..") : undefined,
+    process.env.IECODE_DATA_DIR
+      ? resolve(process.env.IECODE_DATA_DIR, "..")
+      : undefined,
   ]
     .map((b) => b?.trim())
     .filter((b): b is string => Boolean(b));

@@ -160,6 +160,11 @@ export function construireNavigationItems(): NavItem[] {
     // — Base de données (wiki curé) —
     // Sprite « chara » : portrait/personnage, donc index des joueurs.
     {
+      icon: "sports_esports",
+      label: "nav.wiki.games",
+      path: w("/jeux"),
+    },
+    {
       commonSprite: "chara",
       icon: "groups",
       label: "nav.wiki.players",

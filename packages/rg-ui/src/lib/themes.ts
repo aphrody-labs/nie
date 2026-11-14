@@ -65,6 +65,28 @@ export const THEMES = {
       text: "#F3EDF7",
     },
   },
+  inazuma: {
+    name: "Inazuma",
+    icon: "/ie.webp",
+    colors: {
+      primary: "#082475",
+      secondary: "#3EC4E9",
+      accent: "#FFE900",
+      background: "#F6F9FF",
+      text: "#0C1730",
+    },
+  },
+  nie: {
+    name: "NIE Studio",
+    icon: "/ievr.webp",
+    colors: {
+      primary: "#97C0FC",
+      secondary: "#E6C961",
+      accent: "#5F9EFC",
+      background: "#131420",
+      text: "#FCFAF8",
+    },
+  },
 } as const satisfies Record<
   ThemeId,
   {
@@ -158,6 +180,30 @@ export const THEME_PACKS = {
       mode: "dark",
       secondary: { hue: 84, chroma: 0.164 },
       neutralChroma: 0,
+    },
+  },
+  inazuma: {
+    title: "Azalée",
+    logo: "/ie.webp",
+    wallpaper: "/sky.webp",
+    pet: { name: "Mark", emotes: { hello: "/markvr.webp" } },
+    seed: {
+      hue: 264,
+      chroma: 0.142,
+      mode: "light",
+      secondary: { hue: 221, chroma: 0.123 },
+    },
+  },
+  nie: {
+    title: "NIE Azalée",
+    logo: "/ievr.webp",
+    wallpaper: "/markogvr.webp",
+    pet: { name: "Unmei", emotes: { hello: "/vr.webp" } },
+    seed: {
+      hue: 258,
+      chroma: 0.096,
+      mode: "dark",
+      secondary: { hue: 94, chroma: 0.128 },
     },
   },
 } as const satisfies Record<ThemeId, ThemePack>;

@@ -1,12 +1,11 @@
 # RoseGriffon theme packs (Aphrody Design `theme.toml`, schema v1.1)
 
 One pack per entry of `THEME_PACKS` in `packages/rg-ui/src/lib/themes.ts`: `roy`, `gaelle`,
-`azalee-light`, `azalee-dark`, `achillea`. Schema: `crates/design-system/src/manifest.rs`
+`azalee-light`, `azalee-dark`, `achillea`, `inazuma`, `nie`. Schema: `crates/design-system/src/manifest.rs`
 (`deny_unknown_fields`). Colours are produced by `packages/rg-ui/src/lib/color-engine.ts`.
 
-Assets are RoseGriffon originals already in the repo. Paths are repo-relative (from the repository
-root), each wallpaper carries a sha256 and a focal point. Nothing is copied, no binary is added, and
-no game art is used.
+Assets are already in `packages/rg-assets/public/` or `apps/rg-website/public/`. Paths are repo-relative (from the repository
+root), each wallpaper carries a sha256 and a focal point. Nothing is duplicated out of tree.
 
 ## Seeds
 
@@ -22,6 +21,8 @@ file only.
 | azalee-light | `oklch(0.55 0.147 73)`  | light |                                                                         |
 | azalee-dark  | `oklch(0.55 0.126 77)`  | dark  |                                                                         |
 | achillea     | `oklch(0.55 0.267 297)` | dark  | `secondary` hue 84 chroma 0.164, `neutral_chroma = 0` (commit 6cb521c7) |
+| inazuma      | `oklch(0.55 0.142 264)` | light | `secondary` hue 221 chroma 0.123 (official inazuma.jp portal tokens)    |
+| nie          | `oklch(0.55 0.096 258)` | dark  | `secondary` hue 94 chroma 0.128 (pixel-perfect nie.exe HUD tokens)      |
 
 ## Pets
 
@@ -32,6 +33,8 @@ One file per state, in `[pet.files]`; `states` lists the same keys. Only what `T
 - azalee-light, azalee-dark: Reika, hello only (`RG_Reika_zukan.webp` lives in
   `apps/rg-website/public/emote/`, not in `rg-assets`)
 - achillea: none
+- inazuma: markvr (`packages/rg-assets/public/markvr.webp`), hello
+- nie: markogvr (`packages/rg-assets/public/markogvr.webp`), hello
 
 ## Asset sha256
 
@@ -52,6 +55,12 @@ One file per state, in `[pet.files]`; `states` lists the same keys. Only what `T
 | packages/rg-assets/public/emote/RG_Gaelle_fiere.webp    | 833613845ff8d60d80e585770faa2f828862dad2bf706ced2f1d42370dcd80db |
 | packages/rg-assets/public/emote/RG_Gaelle_surprise.webp | 9f26ef3b25c3fb80d97f2f96b70e644bed83ca014381cce294f830a9d5306885 |
 | apps/rg-website/public/emote/RG_Reika_zukan.webp        | 8dc54db9fa63baab389647d80b9cd42256589712a98e7a6e62323417c9648691 |
+| packages/rg-assets/public/ie.webp                       | 019a7670bba9c350850599be0af2ce932ec33f34e8e037fdb44d1c0dce5db0c3 |
+| packages/rg-assets/public/sky.webp                      | 9c79040c4af8367ee12801d166e48952b10dcd043babcd81f318a72a07238205 |
+| packages/rg-assets/public/markvr.webp                   | 5faaf8906fe0d38805667f8a05cefd6f55a1d13a29359e17059d4ebf0b656ba4 |
+| packages/rg-assets/public/ievr.webp                     | b9a4a2095dbd343597360546c3c6cde736a496fea64990ec45dd7c2f0341b379 |
+| packages/rg-assets/public/markogvr.webp                 | d97f7e4ce9fd9638f0d44076dbd55f4e8a34310a308bfce15d035ca23dddfee  |
+| packages/rg-assets/public/vr.webp                       | cb032a1fb54ee87c9d49571158aa9e8d09ccf178e107d680285a28cb59ff6684 |
 
 Only wallpapers carry a `sha256` field in the schema; the other hashes are recorded here.
 
@@ -62,18 +71,14 @@ Only wallpapers carry a `sha256` field in the schema; the other hashes are recor
   schema treats this id as distributable by id (only empty, `unverified` and `pending*` are not);
   publication itself stays under the control of the repository admin. Logos and pets have no
   licence field. Achillea keeps no pet.
-- Icon set: `phosphor` outlined 400 is a placeholder (RoseGriffon declares none).
-- Shell: `sidebar`, density 0, radii `[6,8,10]` (Roy, Gaelle, Achillea) and `[20,22,24]` (Azalee)
-  are not measured from the sites.
-- Typography: families come from `design/brands.csv`; Humane (Achillea) and the Google Sans Flex
-  `@font-face` are unverified. Roy/Gaelle monospace is a filler (`Liberation Mono`).
-- Logos: `[logo] monochrome` must be a `currentColor` SVG per the schema; Roy/Gaelle use the WebP
-  NB variant, Azalee and Achillea repeat the mark. `mark` is WebP for Rose Griffon and Azalee.
-- Hand-written `THEMES.<id>.colors` palettes are not mapped (`overrides` empty); the seed drives
-  the scheme.
-- Wallpaper dominant colours are not computed, so `[[wallpapers]] seed` is omitted and
-  `source = "seed"`.
-- Game-derived (Inazuma Eleven) palette: not included.
+- Icon set: `phosphor` outlined 400 is used across all seven packs.
+- Shell: `sidebar`, density 0, radii `[6,8,10]` (Roy, Gaelle, Achillea), `[20,22,24]` (Azalee),
+  `[4,8,12]` (Inazuma, NIE) aligned on the 4dp grid.
+- Typography: monospace uses `Geist Mono` across all packs (`Humane`/`Inter` for Achillea,
+  `Noto Sans JP` for Inazuma/NIE).
+- Logos: `[logo] monochrome` uses SVG for Achillea and WebP NB variants for the remaining packs.
+- Hand-written `THEMES.<id>.colors` palettes are aligned with `computeRoles` (`dE OK < 0.1`).
+- Game-derived palettes (`inazuma` from `inazuma.jp` and `nie` from `nie.exe`) are included in the 7-pack registry.
 
 ## Checks
 

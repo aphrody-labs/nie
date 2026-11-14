@@ -15,12 +15,13 @@ pub enum Platform {
     Switch2,
     Ps4,
     Ps5,
+    Xbox,
     Pc,
     Mobile,
 }
 
 impl Platform {
-    pub const ALL: [Platform; 9] = [
+    pub const ALL: [Platform; 10] = [
         Platform::Ds,
         Platform::N3ds,
         Platform::Wii,
@@ -28,6 +29,7 @@ impl Platform {
         Platform::Switch2,
         Platform::Ps4,
         Platform::Ps5,
+        Platform::Xbox,
         Platform::Pc,
         Platform::Mobile,
     ];
@@ -41,6 +43,7 @@ impl Platform {
             Platform::Switch2 => "switch2",
             Platform::Ps4 => "ps4",
             Platform::Ps5 => "ps5",
+            Platform::Xbox => "xbox",
             Platform::Pc => "pc",
             Platform::Mobile => "mobile",
         }
@@ -151,21 +154,236 @@ pub struct Ecosystem {
     pub url: String,
 }
 
-/// Per-game manifest.
+/// Multilingual text map (`fr`, `en`, `ja`, `es`) stored in `games.toml`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LocalizedText {
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub fr: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub en: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub ja: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub es: String,
+}
+
+impl LocalizedText {
+    pub fn pick(&self, lang: &str) -> &str {
+        let base = lang.split(['-', '_']).next().unwrap_or(lang);
+        match base {
+            "en" => {
+                if !self.en.is_empty() {
+                    &self.en
+                } else if !self.fr.is_empty() {
+                    &self.fr
+                } else if !self.es.is_empty() {
+                    &self.es
+                } else {
+                    &self.ja
+                }
+            }
+            "ja" => {
+                if !self.ja.is_empty() {
+                    &self.ja
+                } else if !self.en.is_empty() {
+                    &self.en
+                } else if !self.fr.is_empty() {
+                    &self.fr
+                } else {
+                    &self.es
+                }
+            }
+            "es" => {
+                if !self.es.is_empty() {
+                    &self.es
+                } else if !self.en.is_empty() {
+                    &self.en
+                } else if !self.fr.is_empty() {
+                    &self.fr
+                } else {
+                    &self.ja
+                }
+            }
+            _ => {
+                if !self.fr.is_empty() {
+                    &self.fr
+                } else if !self.en.is_empty() {
+                    &self.en
+                } else if !self.es.is_empty() {
+                    &self.es
+                } else {
+                    &self.ja
+                }
+            }
+        }
+    }
+}
+
+/// Multilingual bullet list (`fr`, `en`, `ja`, `es`) stored in `games.toml`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LocalizedList {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fr: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub en: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ja: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub es: Vec<String>,
+}
+
+impl LocalizedList {
+    pub fn pick(&self, lang: &str) -> &[String] {
+        let base = lang.split(['-', '_']).next().unwrap_or(lang);
+        match base {
+            "en" => {
+                if !self.en.is_empty() {
+                    &self.en
+                } else if !self.fr.is_empty() {
+                    &self.fr
+                } else if !self.es.is_empty() {
+                    &self.es
+                } else {
+                    &self.ja
+                }
+            }
+            "ja" => {
+                if !self.ja.is_empty() {
+                    &self.ja
+                } else if !self.en.is_empty() {
+                    &self.en
+                } else {
+                    &self.fr
+                }
+            }
+            "es" => {
+                if !self.es.is_empty() {
+                    &self.es
+                } else if !self.en.is_empty() {
+                    &self.en
+                } else {
+                    &self.fr
+                }
+            }
+            _ => {
+                if !self.fr.is_empty() {
+                    &self.fr
+                } else if !self.en.is_empty() {
+                    &self.en
+                } else if !self.es.is_empty() {
+                    &self.es
+                } else {
+                    &self.ja
+                }
+            }
+        }
+    }
+}
+
+/// Community wiki endpoint associated with a game (EN, FR, ES, JA).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommunityWikiSource {
+    pub lang: String,
+    pub name: String,
+    pub url: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub api_url: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub kind: String,
+}
+
+/// Modding hub / GameBanana / Inazuma Mods reference associated with a game.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModHubRef {
+    pub platform: String,
+    pub name: String,
+    pub url: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gamebanana_id: Option<u32>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub api_url: String,
+}
+
+/// Internal wiki route link attached to a game entry.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GameLink {
+    pub href: String,
+    #[serde(default)]
+    pub label: LocalizedText,
+}
+
+/// Saga timeline era group metadata stored in `games.toml`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EraInfo {
+    pub id: String,
+    #[serde(default)]
+    pub label: LocalizedText,
+    #[serde(default)]
+    pub description: LocalizedText,
+}
+
+/// Per-game manifest (unified single source of truth for Rust, C23, OpenAPI, CLI, TUI, GUI, Web).
+/// Note: scalar fields precede table/array fields so `toml::to_string` always roundtrips cleanly.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Game {
     pub id: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub slug: String,
+    #[serde(default)]
+    pub order: u32,
     pub title: String,
     pub series: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub era: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub status: String,
     #[serde(default)]
     pub aliases: Vec<String>,
     /// Bumped whenever the manifest changes; drives `update`.
     pub revision: u32,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub release_year: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release_date_ja: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release_date_eu: Option<String>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub protagonist: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub developer: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub thumbnail: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cover: Option<String>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub official_url: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub store_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub series_filter_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub related_series_keys: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub platforms_display: Vec<String>,
+    #[serde(default)]
+    pub titles: LocalizedText,
+    #[serde(default)]
+    pub status_detail: LocalizedText,
+    #[serde(default)]
+    pub summaries: LocalizedText,
+    #[serde(default)]
+    pub highlights: LocalizedList,
     #[serde(default)]
     pub features: BTreeMap<Feature, Support>,
     pub releases: Vec<Release>,
     #[serde(default)]
     pub ecosystem: Vec<Ecosystem>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub internal_links: Vec<GameLink>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub community_wikis: Vec<CommunityWikiSource>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub mod_hubs: Vec<ModHubRef>,
 }
 
 impl Game {
