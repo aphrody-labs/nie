@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import dynamicImport from "next/dynamic";
-import Image from "next/image";
 
+import { HomeAssetShowcase } from "@/components/home/HomeAssetShowcase";
+import { HomeDiscordSection } from "@/components/home/HomeDiscordSection";
+import { HomeHeroShowcase } from "@/components/home/HomeHeroShowcase";
+import { HomeUniversesBento } from "@/components/home/HomeUniversesBento";
 import { NextEventBanner } from "@/components/home/NextEventBanner";
-import FusionBlock from "@/components/shared/FusionBlock";
 import { RealtimeSettingsListener } from "@/components/shared/RealtimeSettingsListener";
 import {
   OrganizationSchema,
@@ -12,13 +14,11 @@ import {
 import { getCalendarEvents } from "@/lib/api/events";
 import { getPublicSetting } from "@/lib/api/settings";
 import { SERVEURS_DISCORD } from "@/lib/discord";
+import { chargerVitrineAccueil } from "@/lib/home-showcase-server";
 import { SITE_URL } from "@/lib/site-url";
 
 const ProjectsSection = dynamicImport(
   () => import("@/components/shared/ProjectsSection"),
-);
-const DiscordSection = dynamicImport(
-  () => import("@/components/shared/DiscordSection"),
 );
 
 // ISR : HTML mis en cache, régénéré au plus toutes les 5 min en arrière-plan (et à la publication).
@@ -126,7 +126,10 @@ async function chargerDonneesAccueil() {
 }
 
 export default async function Home() {
-  const data = await chargerDonneesAccueil();
+  const [data, showcase] = await Promise.all([
+    chargerDonneesAccueil(),
+    chargerVitrineAccueil(),
+  ]);
 
   return (
     <>
@@ -135,60 +138,22 @@ export default async function Home() {
       <RealtimeSettingsListener />
 
       <div className="flex flex-col min-h-screen">
-        <div className="flex flex-col gap-7 pb-12 pt-2 min-[600px]:gap-8 min-[840px]:pb-16 min-[840px]:pt-4">
-          {/* 1. Prochain Événement si programmé */}
+        <div className="flex flex-col gap-10 pb-14 pt-2 min-[600px]:gap-12 min-[840px]:pb-20 min-[840px]:pt-4">
           {data.prochain && (
             <section className="w-full" aria-label="Prochain événement">
               <NextEventBanner event={data.prochain} />
             </section>
           )}
 
-          {/* Présentation de l'association + recherche fédérée. */}
-          <section
-            className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8"
-            aria-labelledby="about-heading"
-          >
-            <FusionBlock isImageLeft image={data.introImage} isPriority>
-              <div className="flex h-full flex-col justify-center space-y-4 py-1">
-                <div className="flex items-center gap-2">
-                  <div className="relative size-8 shrink-0">
-                    <Image
-                      src="/RG_Logo_V2.5.webp"
-                      alt="Rose Griffon"
-                      fill
-                      sizes="32px"
-                      className="object-contain"
-                    />
-                  </div>
-                  <span className="text-xs font-black uppercase tracking-wider text-primary">
-                    Association Inazuma Eleven France
-                  </span>
-                </div>
-                <h1
-                  id="about-heading"
-                  className="font-expressive-title text-2xl font-black leading-tight text-foreground sm:text-3xl md:text-4xl"
-                >
-                  {data.introTitle}
-                </h1>
-                <p className="text-sm font-medium leading-relaxed text-muted-foreground sm:text-base">
-                  {data.introText}
-                </p>
-              </div>
-            </FusionBlock>
-          </section>
+          <HomeHeroShowcase rgtvFollowers={null} showcase={showcase} />
 
-          <div className="content-deferred">
-            <ProjectsSection />
-          </div>
+          <HomeUniversesBento rgtvFollowers={null} showcase={showcase} />
 
-          <section
-            className="content-deferred mx-auto grid w-full max-w-7xl gap-4 px-4 sm:px-6 lg:grid-cols-2 lg:px-8"
-            aria-label="Serveurs Discord"
-          >
-            {SERVEURS_DISCORD.map((serveur) => (
-              <DiscordSection key={serveur.cle} serveur={serveur} compact />
-            ))}
-          </section>
+          <HomeAssetShowcase />
+
+          <ProjectsSection />
+
+          <HomeDiscordSection serveurs={SERVEURS_DISCORD} />
         </div>
       </div>
     </>

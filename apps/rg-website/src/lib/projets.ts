@@ -46,10 +46,8 @@ export const PROJETS: Projet[] = [
       "Un mois de célébration pour les 18 ans d'Inazuma Eleven : postez votre OC avec #IERGDay et rejoignez la fresque collaborative de la communauté.",
     emote: "roy-coeur",
     href: "/iergday",
-    // Pas de visuel : l'affiche vivait dans le bucket Storage `assets` de
-    // l'ancien projet Supabase, que la bascule n'a pas recopié (400 NoSuchKey
-    // en prod). La carte retombe sur son icône plutôt que sur une image cassée.
     icone: Hash,
+    image: "/oc/astro-lor/planche-og-tenue-foot.webp",
     slug: "iergday",
     surAccueil: true,
     titre: "IERG Day",

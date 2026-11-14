@@ -71,8 +71,19 @@ function NavItemButton({
             isActive ? "opacity-100 scale-100" : "opacity-0 scale-50"
           }`}
         />
-        {customIcon ??
-          (LucideIcon && (
+        {customIcon ? (
+          <span
+            className={`relative z-10 flex items-center justify-center transition-colors duration-200 ${
+              isActive
+                ? "text-on-secondary-container"
+                : "text-sidebar-foreground/80"
+            }`}
+            aria-hidden="true"
+          >
+            {customIcon}
+          </span>
+        ) : (
+          LucideIcon && (
             <LucideIcon
               size={24}
               className={`relative z-10 transition-colors duration-200 ${
@@ -83,7 +94,8 @@ function NavItemButton({
               fill={isActive ? "currentColor" : "none"}
               aria-hidden="true"
             />
-          ))}
+          )
+        )}
       </span>
 
       {/* Label */}

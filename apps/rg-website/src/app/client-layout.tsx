@@ -28,7 +28,8 @@ import { PiedDePage } from "@/components/layout/PiedDePage";
 import { Header } from "@/components/layout/Header";
 import { isAdminRole } from "@/lib/auth-roles";
 import { MobileBottomNavigation } from "@/components/layout/MobileBottomNavigation";
-import { NavIcone } from "@/components/layout/NavIcone";
+import { RgSidebarFooter } from "@/components/layout/RgSidebarFooter";
+import { SidebarRichIcon } from "@/components/layout/SidebarRichIcon";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import SidebarNavigationHandler from "@/components/layout/SidebarNavigationHandler";
 import EdgeSwipeDetector from "@/components/shared/EdgeSwipeDetector";
@@ -249,8 +250,9 @@ function RoutedSidebar() {
   return (
     <AppSidebar
       canView={canView}
-      renderIcon={NavIcone}
+      renderIcon={SidebarRichIcon}
       headerSlot={null}
+      footerSlot={<RgSidebarFooter />}
       t={t}
     />
   );
@@ -258,12 +260,12 @@ function RoutedSidebar() {
 
 function RoutedNavigationRail() {
   const { t } = useLanguage();
-  return <WebsiteNavigationRail renderIcon={NavIcone} t={t} />;
+  return <WebsiteNavigationRail renderIcon={SidebarRichIcon} t={t} />;
 }
 
 function RoutedMobileNavigation() {
   const { t } = useLanguage();
-  return <MobileBottomNavigation renderIcon={NavIcone} t={t} />;
+  return <MobileBottomNavigation renderIcon={SidebarRichIcon} t={t} />;
 }
 
 export default function ClientLayout({
