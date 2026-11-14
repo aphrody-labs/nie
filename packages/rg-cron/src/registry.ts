@@ -100,6 +100,14 @@ export const REGISTRE_TACHES: Readonly<Record<string, DefinitionTache>> =
       horsServerless:
         "pilote un navigateur headless (`Bun.WebView`) et écrit ses corpus sur disque",
     },
+    "character:crawl": {
+      executer: (options) =>
+        import("./tasks/ie-crawl/character-watch").then((m) =>
+          m.runCharacterCrawl({ argument: options.argument }),
+        ),
+      horsServerless:
+        "orchestre Obscura, Lightpanda, Crawlee, agent-browser et Inagle avec cache SQLite/Redis et assets R2",
+    },
     "website:qa": {
       executer: () =>
         import("./tasks/ie-crawl/website-qa").then((m) => m.runWebsiteQa()),

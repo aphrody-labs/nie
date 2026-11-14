@@ -65,6 +65,7 @@ export const TACHES_CRON = [
   "achillea:classement-annonce",
   "achillea:ranked-file",
   "achillea:ranked-promotions",
+  "character:crawl",
 ] as const;
 
 export type TacheCron = (typeof TACHES_CRON)[number];
@@ -527,6 +528,16 @@ export const CATALOGUE_TACHES: readonly DescriptionTache[] = Object.freeze([
     niveau: "admin",
     motifInterdiction: null,
     dureeIndicative: "quelques secondes",
+  },
+  {
+    nom: "character:crawl",
+    titre: "Veille continue fiches personnages",
+    role: "crawle en continu Zukan, wikis et Google (Obscura, Lightpanda, Crawlee, agent-browser, Inagle) avec cache SQLite/Redis, Postgres et assets R2",
+    planification: "*/15 * * * *",
+    famille: "donnees",
+    niveau: "admin-strict",
+    motifInterdiction: null,
+    dureeIndicative: "quelques minutes",
   },
 ] as const satisfies readonly DescriptionTache[]);
 

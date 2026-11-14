@@ -1,7 +1,17 @@
 import type { Generated } from "kysely";
+import type {
+  CharacterCrawlAssetTable,
+  CharacterCrawlPageTable,
+  CharacterCrawlTargetTable,
+} from "./character-crawl";
+
+export * from "./character-crawl";
 
 export interface PublicTables {
   articles: ArticleTable;
+  character_crawl_assets: CharacterCrawlAssetTable;
+  character_crawl_pages: CharacterCrawlPageTable;
+  character_crawl_targets: CharacterCrawlTargetTable;
   events: CalendarEventTable;
   orders: OrderTable;
 }
