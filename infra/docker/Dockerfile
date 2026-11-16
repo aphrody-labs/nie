@@ -157,6 +157,8 @@ COPY rust-toolchain.toml Cargo.toml Cargo.lock ./
 COPY crates ./crates
 # Cargo workspace member outside crates/ (the workspace manifest must load in full).
 COPY tools/steam-index ./tools/steam-index
+# include_str! inputs of the crates (nie-model-serve embeds the OpenAPI document).
+COPY contract ./contract
 
 # ---------------------------------------------------------------------------
 # model-serve: static musl binary on bare Alpine
