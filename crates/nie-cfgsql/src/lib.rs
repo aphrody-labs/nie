@@ -385,6 +385,8 @@ pub fn from_bytes(bytes: &[u8]) -> Result<Dataset, Error> {
     if cfgbin::is_rdbn(bytes) {
         let rdbn = cfgbin::parse(bytes).map_err(|e| Error::Parse(e.to_string()))?;
         Ok(from_rdbn_lists(&cfgbin::read_values(&rdbn, bytes)))
+    } else if is_empty_t2b(bytes) {
+        Ok(from_t2b(&CfgBinFile { format: cfgbin::Format::T2b, entries: Vec::new() }))
     } else if cfgbin::is_t2b(bytes) || has_empty_string_table(bytes) {
         let file = cfgbin::cfgbin_parse(bytes).map_err(|e| Error::Parse(e.to_string()))?;
         Ok(from_t2b(&file))
@@ -409,6 +411,18 @@ pub fn has_empty_string_table(bytes: &[u8]) -> bool {
         && strings == 0
         && off >= 16
         && usize::try_from(off).is_ok_and(|o| o <= bytes.len())
+}
+
+/// A T2B file with no entry at all: 0 entries, string table at offset 16, length 0 and 0
+/// strings (48 bytes in the game: 38 files such as `*_encount_config_*.cfg.bin`, the key table
+/// header is empty too). Valid, and it maps to two empty tables.
+#[must_use]
+pub fn is_empty_t2b(bytes: &[u8]) -> bool {
+    if bytes.len() < 16 {
+        return false;
+    }
+    let word = |i: usize| i32::from_le_bytes([bytes[i], bytes[i + 1], bytes[i + 2], bytes[i + 3]]);
+    word(0) == 0 && word(4) == 16 && word(8) == 0 && word(12) == 0
 }
 
 pub(crate) fn qualified(schema: Option<&str>, name: &str) -> String {
@@ -657,6 +671,20 @@ mod tests {
         h[8] = 1; // non-empty string table: handled by is_t2b instead
         assert!(!has_empty_string_table(&h));
         assert!(!has_empty_string_table(b"short"));
+    }
+
+    #[test]
+    fn empty_t2b_is_two_empty_tables() {
+        // The real 48-byte file: 0 entries, string table at 16, then an empty key table.
+        let mut b = vec![0u8; 48];
+        b[4] = 16;
+        b[16] = 16;
+        assert!(is_empty_t2b(&b));
+        let d = from_bytes(&b).unwrap();
+        assert_eq!(d.tables.len(), 2);
+        assert!(d.rows.iter().all(Vec::is_empty));
+        let db = rusqlite::Connection::open_in_memory().unwrap();
+        db.execute_batch(&d.to_sql(Dialect::Sqlite)).unwrap();
     }
 
     #[test]
