@@ -349,12 +349,30 @@ pub fn from_bytes(bytes: &[u8]) -> Result<Dataset, Error> {
     if cfgbin::is_rdbn(bytes) {
         let rdbn = cfgbin::parse(bytes).map_err(|e| Error::Parse(e.to_string()))?;
         Ok(from_rdbn_lists(&cfgbin::read_values(&rdbn, bytes)))
-    } else if cfgbin::is_t2b(bytes) {
+    } else if cfgbin::is_t2b(bytes) || has_empty_string_table(bytes) {
         let file = cfgbin::cfgbin_parse(bytes).map_err(|e| Error::Parse(e.to_string()))?;
         Ok(from_t2b(&file))
     } else {
         Err(Error::UnknownFormat)
     }
+}
+
+/// T2B files whose names all live in the key table have a string table of length 0
+/// (`chara_param_*.cfg.bin`, `seasonal_chara_param_*.cfg.bin`); `cfgbin::is_t2b` requires a
+/// positive length, so recognise that header shape here: count > 0, offset inside the buffer,
+/// string table length 0 and string count 0.
+#[must_use]
+pub fn has_empty_string_table(bytes: &[u8]) -> bool {
+    if bytes.len() < 16 {
+        return false;
+    }
+    let word = |i: usize| i32::from_le_bytes([bytes[i], bytes[i + 1], bytes[i + 2], bytes[i + 3]]);
+    let (count, off, len, strings) = (word(0), word(4), word(8), word(12));
+    count > 0
+        && len == 0
+        && strings == 0
+        && off >= 16
+        && usize::try_from(off).is_ok_and(|o| o <= bytes.len())
 }
 
 fn quote_ident(name: &str) -> String {
@@ -569,6 +587,17 @@ mod tests {
         let kids: i64 = db.query_row("SELECT count(*) FROM t2b_entry WHERE parent = 0", [], |r| r.get(0)).unwrap();
         let vars: i64 = db.query_row("SELECT count(*) FROM t2b_var WHERE entry = 0", [], |r| r.get(0)).unwrap();
         assert_eq!((kids, vars), (1, 3));
+    }
+
+    #[test]
+    fn empty_string_table_header() {
+        let mut h = vec![0u8; 32];
+        h[0] = 3; // entries
+        h[4] = 32; // string table offset
+        assert!(has_empty_string_table(&h));
+        h[8] = 1; // non-empty string table: handled by is_t2b instead
+        assert!(!has_empty_string_table(&h));
+        assert!(!has_empty_string_table(b"short"));
     }
 
     #[test]

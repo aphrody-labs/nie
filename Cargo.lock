@@ -5134,6 +5134,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "nie-cfgsql"
+version = "1.4.8"
+dependencies = [
+ "nie-formats",
+ "rusqlite",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "nie-cli"
 version = "1.4.8"
 dependencies = [
@@ -5537,6 +5546,14 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tracing",
+]
+
+[[package]]
+name = "nie-sitemap"
+version = "1.4.8"
+dependencies = [
+ "nie-formats",
+ "serde_json",
 ]
 
 [[package]]
