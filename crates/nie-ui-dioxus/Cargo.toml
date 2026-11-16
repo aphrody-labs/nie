@@ -16,8 +16,8 @@ default = ["ssr"]
 ssr = ["dep:dioxus-ssr"]
 
 [dependencies]
-dioxus = { version = "0.7.10", default-features = false, features = ["macro", "html", "signals", "hooks"] }
-dioxus-ssr = { version = "0.7.10", optional = true }
+dioxus = { workspace = true, features = ["macro", "html", "signals", "hooks"] }
+dioxus-ssr = { workspace = true, optional = true }
 nie-cfgsql = { path = "../nie-cfgsql", version = "1.4.8" }
 taffy = { workspace = true }
 serde = { workspace = true }
