@@ -57,14 +57,13 @@ fn fixture() -> (
     let mut chunks = HashMap::new();
     let mut expected = HashMap::new();
     let mut manifest_files = Vec::new();
-    let mut n = 0u8;
     for (name, parts) in files {
         let mut offset = 0u64;
         let mut mchunks = Vec::new();
         let mut whole = Vec::new();
         for p in parts {
-            n += 1;
-            let id = ChunkId([n; 20]);
+            // steamroom 0.3 checks the decrypted chunk against its id: the id is the SHA-1 of the plain bytes.
+            let id = ChunkId(Sha1Hash::compute(p).0);
             chunks.insert(id.clone(), Bytes::from(encrypt(p)));
             let mut c = ManifestChunk::new(id, SteamAdler32::compute(p).0, p.len() as u32);
             c.offset = Some(offset);

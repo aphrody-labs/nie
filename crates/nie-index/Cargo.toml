@@ -2,7 +2,7 @@
 name = "nie-index"
 version = "1.4.8"
 edition = "2024"
-rust-version = "1.97"
+rust-version = "1.100"
 license = "Apache-2.0"
 publish = false
 description = "Bounded in-memory and SQLite-backed knowledge index for reverse engineering"

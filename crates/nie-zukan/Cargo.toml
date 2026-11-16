@@ -2,7 +2,7 @@
 name = "nie-zukan"
 version = "1.4.8"
 edition = "2024"
-rust-version = "1.97"
+rust-version = "1.100"
 license-file = "LICENSE"
 publish = false
 description = "Inagle encyclopedia HTML parsing, query coding, fuzzy matching, SQLite correlation and optional live pull for IE research"

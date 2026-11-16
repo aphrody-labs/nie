@@ -2,7 +2,7 @@
 name = "nie-pkg"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.95"
+rust-version = "1.100"
 license-file = "LICENSE"
 publish = false
 description = "NIE game package manager: per-game manifests, registry of every Inazuma Eleven game, install/list/verify/update of user-owned dumps"

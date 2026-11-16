@@ -2,7 +2,7 @@
 name = "nie-trace"
 version = "1.4.8"
 edition = "2024"
-rust-version = "1.97"
+rust-version = "1.100"
 license = "Apache-2.0"
 publish = false
 description = "Live memory read/write and bounded reverse-engineering probes for Inazuma Eleven runtime processes"

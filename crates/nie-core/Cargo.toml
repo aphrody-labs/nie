@@ -2,7 +2,7 @@
 name = "nie-core"
 version = "1.4.8"
 edition = "2024"
-rust-version = "1.97"
+rust-version = "1.100"
 license-file = "LICENSE.upstream"
 publish = false
 description = "Reverse-engineered Inazuma Eleven Victory Road data models and deterministic gameplay algorithms"

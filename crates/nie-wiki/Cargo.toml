@@ -2,7 +2,7 @@
 name = "nie-wiki"
 version = "1.4.8"
 edition = "2024"
-rust-version = "1.97"
+rust-version = "1.100"
 license-file = "LICENSE"
 publish = false
 description = "Explore IEVR game data from the SQLite mirror"
