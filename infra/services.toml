@@ -24,10 +24,11 @@ domain = "rosegriffon.fr"
 url = "https://github.com/aphrody-labs/rosegriffon.git"
 
 [services.nie]
-entry = "crates/aphrody-nie-cli"
+entry = "crates/nie-cli"
 dockerfile = "infra/docker/Dockerfile"
 target = "nie"
 compose = "compose.yaml"
+profile = "nie"
 port = 8790
 health = "/health"
 role = "prod"
@@ -45,7 +46,7 @@ env = [
 upstream = { name = "nie_serve", keepalive = 16 }
 
 [services.model-serve]
-entry = "crates/aphrody-nie-model-serve"
+entry = "crates/nie-model-serve"
 dockerfile = "infra/docker/Dockerfile"
 target = "model-serve"
 compose = "compose.yaml"
@@ -172,7 +173,7 @@ state = ["db/inagle"]
 env = ["POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_DB"]
 
 [services.steam-depot]
-entry = "https://github.com/aphrody-dev/steam-depot (canonical: aphrody-dev/src crates/steam-depot)"
+entry = "upstream steam-depot crate (see infra/docker/steam-depot/Dockerfile)"
 dockerfile = "infra/docker/steam-depot/Dockerfile"
 compose = "compose.yaml"
 profile = "tools"

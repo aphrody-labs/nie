@@ -23,8 +23,8 @@ The host nginx owns TLS; the stack nginx publishes only `127.0.0.1:18080` and th
 | `nginx`       | `nginxinc/nginx-unprivileged`, `infra/docker/nginx/`                                | 8080 | `/nginx-health` |
 | `website`     | `apps/rg-website` (Next standalone, Bun)                                            | 3100 | `/api/health` |
 | `core`        | `apps/rg-bot/src/core.ts`: Discord gateways, ranked, unified API `/v1`, cron (aliases `api`, `bot`) | 8810 | `/health`     |
-| `model-serve` | `crates/aphrody-nie-model-serve`, static musl                                       | 8792 | `/health`     |
-| `nie`         | `crates/aphrody-nie-cli` (cloud feature), static musl                               | 8790 | `/health`     |
+| `model-serve` | `crates/nie-model-serve`, static musl                                       | 8792 | `/health`     |
+| `nie`         | `crates/nie-cli` (cloud feature), profile `nie` (opt-in), static musl        | 8790 | `/health`     |
 | `cron`        | `packages/rg-cron/src/scheduler.ts`, profile `cron-split` (opt-in)                  | 8811 | `/health`     |
 | `redis`       | cache only, no persistence                                                          | 6379 | `redis-cli ping` |
 | `inagle-pg`   | Postgres for Azalee/Inagle, mesh bind `RG_MESH_IP:15433`                            | 5432 | `pg_isready`  |

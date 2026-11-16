@@ -61,6 +61,8 @@ services:
     <<: [*common, *env]
     image: ${RG_REGISTRY:-rosegriffon}/nie:${RG_TAG:-latest}
     build: { <<: *build, target: nie }
+    # Opt-in (`--profile nie`): nothing in the prod nginx routes to it yet.
+    profiles: [nie]
     environment:
       NIE_HOST: 0.0.0.0
       NIE_PORT: "8790"

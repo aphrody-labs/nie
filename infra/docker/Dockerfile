@@ -8,8 +8,8 @@
 #   core         apps/rg-bot/src/core.ts: Discord gateways (rg, azalee, achillea),
 #                ranked Colyseus, unified API /v1, bot admin       :8810
 #   cron         packages/rg-cron/src/scheduler.ts (Bun.cron)     :8811, opt-in
-#   nie          crates/aphrody-nie-cli (--features cloud), musl  :8790
-#   model-serve  crates/aphrody-nie-model-serve, static musl      :8792
+#   nie          crates/nie-cli (--features cloud), musl  :8790
+#   model-serve  crates/nie-model-serve, static musl      :8792
 #
 # Policy: Alpine runtimes, pinned versions, non-root uid 1000 (matches the host `ubuntu`
 # owner of the /srv/rosegriffon bind mounts), no secret in any layer. Build-time NEXT_PUBLIC_*
@@ -163,15 +163,15 @@ FROM rust-base AS model-serve-build
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/src/target \
-    cargo build --locked --release -p aphrody-nie-model-serve --features host \
-    && install -D -m 0755 target/release/aphrody-nie-model-serve /out/aphrody-nie-model-serve \
-    && ! ldd /out/aphrody-nie-model-serve 2>/dev/null | grep -q "=>"
+    cargo build --locked --release -p nie-model-serve --features host \
+    && install -D -m 0755 target/release/nie-model-serve /out/nie-model-serve \
+    && ! ldd /out/nie-model-serve 2>/dev/null | grep -q "=>"
 
 FROM alpine:${ALPINE_VERSION} AS model-serve
 RUN addgroup -g 1000 -S nie && adduser -u 1000 -S -G nie -h /srv/nie nie \
     && mkdir -p /data/game /var/cache/nie-model-serve /srv/nie \
     && chown nie:nie /var/cache/nie-model-serve /srv/nie
-COPY --from=model-serve-build /out/aphrody-nie-model-serve /usr/local/bin/aphrody-nie-model-serve
+COPY --from=model-serve-build /out/nie-model-serve /usr/local/bin/nie-model-serve
 COPY --from=nie-rclone-build /out/nie-rclone /usr/local/bin/nie-rclone
 ENV NIE_GAME_DIR=/data/game \
     NIE_MODEL_SERVE_HOST=0.0.0.0 \
@@ -187,7 +187,7 @@ EXPOSE 8792
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
     CMD ["wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8792/health"]
 # Env NIE_GAME_SOURCE / NIE_GAME_DIR resolve inside the binary so cloud URIs override /data/game cleanly.
-CMD ["sh", "-c", "exec aphrody-nie-model-serve --port \"${NIE_MODEL_SERVE_PORT:-8792}\" --cache-dir \"${NIE_MODEL_CACHE_DIR:-/var/cache/nie-model-serve}\" --threads \"${NIE_MODEL_SERVE_THREADS:-8}\" $NIE_MODEL_SERVE_ARGS"]
+CMD ["sh", "-c", "exec nie-model-serve --port \"${NIE_MODEL_SERVE_PORT:-8792}\" --cache-dir \"${NIE_MODEL_CACHE_DIR:-/var/cache/nie-model-serve}\" --threads \"${NIE_MODEL_SERVE_THREADS:-8}\" $NIE_MODEL_SERVE_ARGS"]
 
 # ---------------------------------------------------------------------------
 # nie: pure-Rust cloud HTTP server + VFS/format CLI on bare Alpine
@@ -196,7 +196,7 @@ FROM rust-base AS nie-build
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/src/target \
-    cargo build --locked --release -p aphrody-nie-cli --no-default-features --features cloud --bin nie \
+    cargo build --locked --release -p nie-cli --no-default-features --features cloud --bin nie \
     && install -D -m 0755 target/release/nie /out/nie \
     && ! ldd /out/nie 2>/dev/null | grep -q "=>"
 

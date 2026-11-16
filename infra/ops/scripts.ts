@@ -133,6 +133,10 @@ export function deployScript(
   const ship = buildHost && buildHost.key !== host.key;
   const lines = [
     prelude(host, infra, env, ref),
+    // Prod hosts are shared with other tenants: one deploy at a time (file lock, held until exit).
+    ...(host.capabilities?.includes("prod")
+      ? [`exec 9>/srv/deploy.lock; flock -w 900 9`]
+      : []),
     `docker compose${profileFlags(list)} config -q`,
     ...(ship
       ? shipLines(buildHost, list, env)
