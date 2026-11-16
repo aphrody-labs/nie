@@ -69,6 +69,7 @@ pub fn router(state: Shared) -> Router {
         .route("/wiki/files", get(root_dir))
         .route("/wiki/files/", get(root_dir))
         .route("/wiki/files/{*path}", get(files))
+        .route("/api/ui/{*path}", get(api_ui))
         .route("/cdn/static/{*path}", get(asset))
         .route("/{name}", get(top_file))
         .with_state(state)
@@ -86,13 +87,30 @@ async fn root_dir(State(s): State<Shared>) -> Response {
     dir_page(&s, "").await
 }
 
-async fn dir_page(s: &AppState, path: &str) -> Response {
+/// A page ready to serialise: its status, UI tree and document title.
+pub struct Built {
+    /// HTTP status.
+    pub status: StatusCode,
+    /// The page as a UI tree (rendered to HTML, or sent as JSON for a client-side Dioxus app).
+    pub ui: UiNode,
+    /// Document title.
+    pub title: String,
+}
+
+async fn build_dir(s: &AppState, path: &str) -> Result<Built, Response> {
     match s.db.list_dir(path, 500).await {
         Ok(d) if d.dirs.is_empty() && d.files.is_empty() => {
-            (StatusCode::NOT_FOUND, html(&pages::not_found(path, &s.theme), "Not found")).into_response()
+            Ok(Built { status: StatusCode::NOT_FOUND, ui: pages::not_found(path, &s.theme), title: "Not found".into() })
         }
-        Ok(d) => html(&pages::directory(path, &d, &s.theme), &format!("/{path}")).into_response(),
-        Err(e) => fail(&e),
+        Ok(d) => Ok(Built { status: StatusCode::OK, ui: pages::directory(path, &d, &s.theme), title: format!("/{path}") }),
+        Err(e) => Err(fail(&e)),
+    }
+}
+
+async fn dir_page(s: &AppState, path: &str) -> Response {
+    match build_dir(s, path).await {
+        Ok(b) => (b.status, html(&b.ui, &b.title)).into_response(),
+        Err(r) => r,
     }
 }
 
@@ -101,19 +119,13 @@ fn is_image(path: &str) -> bool {
     [".g4tx", ".png", ".webp", ".jpg", ".jpeg"].iter().any(|e| p.ends_with(e))
 }
 
-async fn files(State(s): State<Shared>, Path(raw): Path<String>) -> Response {
-    let path = nie_formats::vfs_manifest::canonical_path(&raw);
-    let entry = match s.db.entry(&path).await {
-        Ok(e) => e,
-        Err(e) => return fail(&e),
-    };
+async fn build_file(s: &AppState, raw: &str) -> Result<Built, Response> {
+    let path = nie_formats::vfs_manifest::canonical_path(raw);
+    let entry = s.db.entry(&path).await.map_err(|e| fail(&e))?;
     let Some((pack, size)) = entry else {
-        return dir_page(&s, &path).await;
+        return build_dir(s, &path).await;
     };
-    let cfg = match s.db.file(&path).await {
-        Ok(c) => c,
-        Err(e) => return fail(&e),
-    };
+    let cfg = s.db.file(&path).await.map_err(|e| fail(&e))?;
     let mut tables = Vec::new();
     if let Some(c) = &cfg {
         let res: Result<(), DbError> = async {
@@ -129,13 +141,27 @@ async fn files(State(s): State<Shared>, Path(raw): Path<String>) -> Response {
             Ok(())
         }
         .await;
-        if let Err(e) = res {
-            return fail(&e);
-        }
+        res.map_err(|e| fail(&e))?;
     }
     let image = is_image(&path).then(|| format!("{}/static/{}.png", s.cdn_base, nie_sitemap::encode_path(&path)));
     let view = FileView { path: &path, pack: &pack, size, cfg: cfg.as_ref(), tables, image };
-    html(&pages::file(&view, &s.theme), &path).into_response()
+    Ok(Built { status: StatusCode::OK, ui: pages::file(&view, &s.theme), title: path.clone() })
+}
+
+async fn files(State(s): State<Shared>, Path(raw): Path<String>) -> Response {
+    match build_file(&s, &raw).await {
+        Ok(b) => (b.status, html(&b.ui, &b.title)).into_response(),
+        Err(r) => r,
+    }
+}
+
+/// `/api/ui/<path>`: the same page as JSON (`UiNode`), the data a client-side Dioxus app renders
+/// with the shared `NodeView` component.
+async fn api_ui(State(s): State<Shared>, Path(raw): Path<String>) -> Response {
+    match build_file(&s, &raw).await {
+        Ok(b) => (b.status, [(header::CONTENT_TYPE, "application/json")], serde_json::to_string(&b.ui).unwrap_or_default()).into_response(),
+        Err(r) => r,
+    }
 }
 
 async fn top_file(State(s): State<Shared>, Path(name): Path<String>) -> Response {
