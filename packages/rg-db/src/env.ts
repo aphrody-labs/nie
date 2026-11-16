@@ -4,7 +4,7 @@
 // Repli quand aucune URL n'est configurée : l'origine courante côté navigateur
 // (URL relatives `/storage/v1/…` relayées par l'app vers Supabase), la pile
 // Supabase locale (`supabase start`) côté serveur.
-import { isUsableEnvValue } from "./sql-core";
+import { isUsableEnvValue } from "./env-value";
 
 const LOCAL_SUPABASE_URL = "http://127.0.0.1:54321";
 
