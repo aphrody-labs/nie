@@ -1,14 +1,9 @@
 # steam plugin
 
-Knowledge and tools for the Steam ecosystem. It works from Claude Code (as a plugin), from
-agy/Gemini and Codex (the skills are mirrored to `.agents/skills/steam`, see the
-repository `AGENTS.md`), and from any MCP client.
+Tools for the Steam ecosystem: an MCP server and a debugging agent. The Steam skills (steam-*, gaming-stack) come from the aphrody-skills plugin.
 
 ## Components
 
-- `skills/`: steam-web-api, steam-auth, steam-ids-and-urls, steam-content-cdn,
-  steam-client-windows, steam-linux-proton, steam-community-tools, steam-local-inspect,
-  gaming-stack.
 - `agents/steam-expert.md`: deep debugging agent (Proton, depots, auth).
 - `servers/steam-mcp.ts`: MCP stdio server without npm dependencies started with `bun run`. Tools:
   `web_api_call`, `store_appdetails`, `resolve_steamid`, `local_apps`, `read_vdf`,
