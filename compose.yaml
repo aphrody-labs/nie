@@ -3,7 +3,7 @@
 # optional cron service (profile cron-split).
 # Images: infra/docker/Dockerfile. Runbook, cutover and rollback: infra/docker/README.md.
 #
-#   just deploy-stack            build on vps, `up -d --wait`, smoke checks (the only deploy entry)
+#   just deploy                  build on the build role (fr1), ship, `up -d --wait` on prd, verify
 #   docker compose config        validate
 #
 # Host layout (bind mounts, RG_SRV_ROOT defaults to /srv/rosegriffon):
@@ -39,7 +39,7 @@ x-build: &build
 
 # In-container paths and service URLs that the systemd env files carried as host paths.
 x-paths: &paths
-  APHRODY_WORKSPACE_ROOT: /app
+  RG_REPO_ROOT: /app
   RG_BOT_DIR: /app/apps/rg-bot
   GOOGLE_APPLICATION_CREDENTIALS: /run/rg-secrets/google-calendar-service.json
   REDIS_URL: redis://redis:6379
@@ -272,8 +272,8 @@ services:
 
   # --- profile "tools": on-demand jobs, owned by the Steam/CDN agent --------------------
   # Slot reserved for:
-  #   steam-depot  infra/docker/steam-depot/ (aphrody-dev/steam-depot (src crates/steam-depot), `bun-steam-depot`, static musl,
-  #                Alpine). STEAM_HOME=/srv/rosegriffon/steam (0700), writes the game into
+  #   steam-depot  infra/docker/steam-depot/ (static musl `bun-steam-depot` on Alpine).
+  #                STEAM_HOME=/srv/rosegriffon/steam (0700), writes the game into
   #                ${RG_SRV_ROOT}/game/ievr. Run: docker compose --profile tools run --rm steam-depot
   #   cdn-sync     Bun.s3 push of ${RG_SRV_ROOT}/cdn/static to R2/S3.
   #                Run: docker compose --profile tools run --rm cdn-sync

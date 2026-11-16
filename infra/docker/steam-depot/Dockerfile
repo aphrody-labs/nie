@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # SPDX-License-Identifier: Apache-2.0
 #
-# steam-depot: static musl `bun-steam-depot` (aphrody-dev/steam-depot, feature `depot`) on Alpine.
+# steam-depot: static musl `bun-steam-depot` (upstream crate, feature `depot`) on Alpine.
 # Replaces Valve steamcmd for our use: one interactive `login`, then unattended `update`/`verify`
 # of the Windows depots of an app into /game.
 #
@@ -20,7 +20,6 @@ RUN apk add --no-cache musl-dev build-base perl pkgconf linux-headers
 WORKDIR /src
 COPY rust-toolchain.toml ./
 # rust-toolchain.toml pins the channel; rustup installs it on first use.
-# Canonical source: aphrody-dev/src crates/steam-depot, mirrored read-only to aphrody-dev/steam-depot.
 ARG STEAM_DEPOT_REV=d098b41687a63767ee5eee3a351b2936a1d902e6
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \

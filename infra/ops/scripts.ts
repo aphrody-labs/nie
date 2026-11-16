@@ -133,8 +133,6 @@ export function deployScript(
   const ship = buildHost && buildHost.key !== host.key;
   const lines = [
     prelude(host, infra, env, ref),
-    // Two rg-core processes would log the same Discord bots in twice and run cron twice.
-    `if systemctl is-active --quiet rg-core 2>/dev/null; then echo "rg-core.service is active on $(hostname): cut over first"; exit 1; fi`,
     `docker compose${profileFlags(list)} config -q`,
     ...(ship
       ? shipLines(buildHost, list, env)
@@ -148,6 +146,9 @@ export function deployScript(
       // Belt and braces: a recreated upstream gets a new IP; reload re-resolves it even if nginx itself was not recreated.
       `docker compose exec -T nginx nginx -s reload </dev/null || true`,
     );
+  // Whole stack on the prod host: systemd keeps it up across reboots (unit + RG_TAG recorded).
+  if (all && longRunning.length && host.capabilities?.includes("prod"))
+    lines.push(`sh infra/scripts/install-stack-unit.sh "$RG_TAG"`);
   for (const t of tools)
     lines.push(
       `echo "${t.name}: image ready, run with: docker compose --profile tools run --rm ${t.name}"`,

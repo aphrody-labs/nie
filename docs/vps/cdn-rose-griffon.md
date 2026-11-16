@@ -37,7 +37,7 @@ cdn.rosegriffon.fr  → nginx  ───────┤
 
 ## Configuration nginx
 
-Fichier source : `infra/nginx/cdn.rosegriffon.conf` → déployé dans `/etc/nginx/conf.d/cdn.rosegriffon.conf`.
+Fichier source : `infra/docker/cdn-edge/rosegriffon-cdn.conf` → déployé dans `/etc/nginx/conf.d/cdn.rosegriffon.conf`.
 
 ### Best-practices appliquées
 
@@ -365,7 +365,7 @@ Commits :
 
 ## Refs
 
-- [`infra/nginx/cdn.rosegriffon.conf`](../infra/nginx/cdn.rosegriffon.conf)
+- [`infra/docker/cdn-edge/rosegriffon-cdn.conf`](../infra/docker/cdn-edge/rosegriffon-cdn.conf)
 - [`apps/cdn/server.ts`](../apps/cdn/server.ts) — API uploads (Bun :8804)
 - [`scripts/ops/cdn-sync.ts`](../scripts/ops/cdn-sync.ts) — sync miroir + brotli/gzip
 - [`scripts/ops/safe-deploy.sh`](../scripts/ops/safe-deploy.sh) — hook post-build

@@ -51,5 +51,5 @@ mesh_ip = "10.200.77.5"
 cores = 8
 capabilities = ["docker", "prod"]
 srv_root = "/srv/rosegriffon"
-stack_dir = "/root/src/rosegriffon-stack"
+stack_dir = "/srv/rosegriffon/src"
 env_file = "/etc/rosegriffon/rosegriffon.env"

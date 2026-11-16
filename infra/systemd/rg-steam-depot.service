@@ -12,10 +12,11 @@ ConditionPathExists=/srv/rosegriffon/steam/steam-tokens.json
 
 [Service]
 Type=oneshot
-WorkingDirectory=/root/src/rosegriffon-stack
+WorkingDirectory=/srv/rosegriffon/src
+EnvironmentFile=-/etc/rosegriffon/stack.env
 Nice=19
 IOSchedulingClass=idle
 CPUWeight=10
 IOWeight=10
-ExecStart=/usr/bin/flock -w 7200 /var/lock/aphrody-heavy.lock /usr/bin/docker compose --profile tools run --rm -T -e STEAM_MAX_DOWNLOADS=8 steam-depot update
+ExecStart=/usr/bin/flock -w 7200 /var/lock/rosegriffon-heavy.lock /usr/bin/docker compose --profile tools run --rm -T -e STEAM_MAX_DOWNLOADS=8 steam-depot update
 SuccessExitStatus=2

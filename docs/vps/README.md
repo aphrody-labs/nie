@@ -1,5 +1,4 @@
-# VPS-era references
+# VPS references
 
-Documents of the former `aphrody-code/vps` monorepo that describe Rose Griffon
-surfaces: the original `cdn.rosegriffon.fr` service and the Supabase Free
-reference. Kept for history; the current deployment is described in `docs/`.
+Rose Griffon surfaces: the `cdn.rosegriffon.fr` service and the Supabase Free reference.
+The current deployment is `infra/docker/README.md`.
