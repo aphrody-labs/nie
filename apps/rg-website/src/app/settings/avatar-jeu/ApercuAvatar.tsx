@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Aperçu 3D réel d'un avatar `chara_edit` : le GLB assemblé par `aphrody-nie-model-serve`
+ * Aperçu 3D réel d'un avatar `chara_edit` : le GLB assemblé par `nie-model-serve`
  * (route `/model-avatar/…` du CDN), affiché par `<model-viewer>`.
  *
  * Le cadrage vise le buste, comme le rond du profil : il est calculé sur les dimensions réelles du

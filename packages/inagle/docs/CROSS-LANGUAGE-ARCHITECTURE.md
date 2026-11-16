@@ -26,13 +26,13 @@
 +------------------+------------------+   +------------------+------------------+
                    |                                         |
 +------------------v-----------------------------------------v------------------+
-|              RUST NIE ENGINE (crates/aphrody-nie-*)                            |
-|                 C-ABI: `aphrody-nie-ffi` (Cargo target directory)             |
-|   - `aphrody-nie-core`: CRC32 (reflected), Viola cipher, PRNG, endian IO       |
-|   - `aphrody-nie-formats`: CRILAYLA SIMD decompressor, G4TX, G4MD, RDBN        |
-|   - `aphrody-nie-save`: Lives save decryption (002AB8F4-* containers)        |
-|   - `aphrody-nie-data`: In-game gamedata schemas, players, growth curves       |
-|   - `aphrody-nie-wiki`: Relational SQLite database queries and drop tables   |
+|              RUST NIE ENGINE (crates/nie-*)                            |
+|                 C-ABI: `nie-ffi` (Cargo target directory)             |
+|   - `nie-core`: CRC32 (reflected), Viola cipher, PRNG, endian IO       |
+|   - `nie-formats`: CRILAYLA SIMD decompressor, G4TX, G4MD, RDBN        |
+|   - `nie-save`: Lives save decryption (002AB8F4-* containers)        |
+|   - `nie-data`: In-game gamedata schemas, players, growth curves       |
+|   - `nie-wiki`: Relational SQLite database queries and drop tables   |
 +-------------------------------------------------------------------------------+
 ```
 
@@ -58,13 +58,13 @@
 ## 3. High-Performance TypeScript Usage
 
 ```typescript
-import { Inagle } from "@aphrody/inagle";
+import { Inagle } from "@rosegriffon/inagle";
 import {
   nieCrc32,
   nieDecompressCrilayla,
   nieProbeHeader,
-} from "@aphrody/inagle/ffi";
-import { IecodeDotnet } from "@aphrody/inagle/dotnet";
+} from "@rosegriffon/inagle/ffi";
+import { IecodeDotnet } from "@rosegriffon/inagle/dotnet";
 
 // 1. Instant header probe
 const probe = nieProbeHeader(rawBuffer);

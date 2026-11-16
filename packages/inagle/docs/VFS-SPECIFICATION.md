@@ -1,7 +1,7 @@
 # Victory Road Virtual File System (VFS) Specification
 
 > Comprehensive, authoritative technical specification for the Inazuma Eleven: Victory Road Virtual File System.
-> Grounded in `aphrody-nie-formats`, `IECODE.Core.CriFs`, and reverse engineering of `nie.exe`.
+> Grounded in `nie-formats`, `IECODE.Core.CriFs`, and reverse engineering of `nie.exe`.
 
 ---
 

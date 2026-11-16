@@ -90,7 +90,7 @@ describe("nie-bridge Level-5 binary contracts", () => {
   });
 
   it("derives CRI CPK decryption keys from archive filenames matching NIE", () => {
-    // Exact reference vector from aphrody-nie-formats/src/cpk.rs:55
+    // Exact reference vector from nie-formats/src/cpk.rs:55
     const key = deriveCpkKeyFromFilename(
       "1d08dda99e8549431c6c7b459ed8deab.cpk",
     );

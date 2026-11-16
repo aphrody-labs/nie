@@ -2,7 +2,7 @@
 
 Logique métier **portable** d'Achilléa : un seul code source qui tourne en **navigateur**, en **edge (Deno / Web)**, en **Node** et en **Bun**.
 
-Aucune dépendance Discord (`discord.js` / `@aphrody/discordx`), ORM (`@mikro-orm/*`), DI (`tsyringe`) ni API Node-only. Uniquement des standards Web (`crypto.subtle`, `crypto.getRandomValues`, `Intl`, `URL`, `TextEncoder`) + `@rosegriffon/achillea-types`, `@casl/ability`, `@sindresorhus/transliterate`.
+Aucune dépendance Discord (`discord.js` / `discordx`), ORM (`@mikro-orm/*`), DI (`tsyringe`) ni API Node-only. Uniquement des standards Web (`crypto.subtle`, `crypto.getRandomValues`, `Intl`, `URL`, `TextEncoder`) + `@rosegriffon/achillea-types`, `@casl/ability`, `@sindresorhus/transliterate`.
 
 ## Domaines
 

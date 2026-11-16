@@ -162,7 +162,7 @@ export function generateOpenAPI(config: OpenAPIConfig = {}): object {
                   schema: {
                     type: "object",
                     properties: {
-                      name: { type: "string", example: "@aphrody/inagle" },
+                      name: { type: "string", example: "@rosegriffon/inagle" },
                       version: { type: "string", example: "0.3.0" },
                       stats: {
                         type: "object",

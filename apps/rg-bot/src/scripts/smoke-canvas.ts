@@ -12,7 +12,7 @@
  * écrits dans le dépôt.
  */
 
-import { tempPath } from "@aphrody/paths";
+import { tempPath } from "@rosegriffon/config/paths";
 import { resolve } from "node:path";
 
 import type * as ServicesSite from "../services/website";

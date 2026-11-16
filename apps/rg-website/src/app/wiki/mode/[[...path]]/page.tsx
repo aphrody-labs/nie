@@ -20,7 +20,7 @@
  * texture et les messages localisés du mode. Quand il est là, la fiche ne se contente plus de
  * lister des noms de fichiers — elle montre ce qu'ils contiennent, images comprises.
  */
-import { iecodeDataPath } from "@aphrody/paths";
+import { iecodeDataPath } from "@rosegriffon/config/paths";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { Metadata } from "next";

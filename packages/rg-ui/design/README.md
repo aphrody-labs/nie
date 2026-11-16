@@ -1,7 +1,7 @@
 # Rose Griffon design intelligence
 
 Brand theme data and stack guidance for `@rosegriffon/ui`, moved from the UI/UX Pro Max
-catalog of Bun UI (`aphrody-labs/bun-ui`, `packages/m3-design/intelligence/ui-ux-pro-max`,
+catalog of Bun UI (`upstream Material 3 guidance`, `packages/m3-design/intelligence/ui-ux-pro-max`,
 last at commit `efc5b0d`) so Bun UI carries no Rose Griffon brand material.
 
 - `brands.csv`: the seven Rose Griffon, Azalée and Achilléa themes (effective role values,
@@ -11,7 +11,7 @@ last at commit `efc5b0d`) so Bun UI carries no Rose Griffon brand material.
 - This file: the Rose Griffon design specification. `packages/rg-ui` and
   `apps/rg-website` live in this monorepo.
 
-rg-ui is itself built on the M3 tokens (`@aphrody/m3-tokens` dependency): its themes declare
+rg-ui is itself built on the M3 tokens (generated sheets, `src/lib/breakpoints.ts` for the window size classes): its themes declare
 `--md-sys-color-*` roles and map shadcn variables onto them, so both vocabularies work inside it.
 Use `@rosegriffon/ui` + `@rosegriffon/app-shell` for Rose Griffon, Azalée or Achilléa web
 surfaces; it owns the five chrome themes, the shadcn bridge, Base UI components and the shared
@@ -77,13 +77,13 @@ scope; Achilléa uses `@font-face` families in `apps/rg-website/src/app/achillea
 
 `apps/azalee-web/app/globals.css` uses `@import "tailwindcss" source(none);` with an explicit
 `@source` list and a `data-slot` width fallback for the sidebar. Both apps compile through
-`@aphrody/bun-plugin-tailwind/postcss` (`postcss.config.mjs`).
+`@tailwindcss/postcss` (`postcss.config.mjs`).
 
 ## Next.js 16 on Bun
 
-- Next is the `aphrody-labs/next.js` fork (`next 16.5.0-canary.5`, root `package.json` override);
-  run it with `@aphrody/next-bun` (`next-bun dev|start`, builds through
-  `scripts/iecode/rg/next-build.ts`). `bunfig.toml` sets `env = false` so Next loads its own env files.
+- Next is the upstream canary (root `package.json` catalog and override);
+  run it with `bun --bun next dev|start` (builds through
+  `scripts/next-build.ts`). `bunfig.toml` sets `env = false` so Next loads its own env files.
 - `proxy.ts` (not `middleware.ts`) with a narrow literal matcher and optimistic cookie checks
   (`apps/rg-website/src/proxy.ts`).
 - `next.config.ts`: `reactCompiler: true`, `transpilePackages` for workspace sources,

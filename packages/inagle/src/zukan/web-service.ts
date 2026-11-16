@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-/** Thin optional-peer binding; Aphrody Web owns all network acquisition. */
+/** Network acquisition for the zukan crawlers: Impit when installed, else an injected service. */
 export interface WebResponse {
   status: number;
   truncated: boolean;
@@ -13,10 +13,9 @@ export interface ZukanWebService {
 
 export type ZukanWebServiceFactory = () =>
   ZukanWebService | Promise<ZukanWebService>;
-const APHRODY_WEB_MODULE = "@aphrody/agent-browser/service";
 let serviceFactory: ZukanWebServiceFactory | null = null;
 
-/** Override the service for another host or tests; null restores the optional peer. */
+/** Override the service for another host or tests; null restores the default (Impit). */
 export function setZukanWebServiceFactory(
   factory: ZukanWebServiceFactory | null,
 ): void {
@@ -63,20 +62,9 @@ export async function createZukanWebService(): Promise<ZukanWebService> {
   if (serviceFactory) return serviceFactory();
   const impitService = await createImpitZukanWebService();
   if (impitService) return impitService;
-  let module: { WebService?: new () => ZukanWebService };
-  try {
-    const specifier = APHRODY_WEB_MODULE;
-    module = await import(specifier);
-  } catch (error) {
-    throw new Error(
-      `No Web service: install impit or ${APHRODY_WEB_MODULE}, or call setZukanWebServiceFactory().`,
-      { cause: error },
-    );
-  }
-  if (typeof module.WebService !== "function") {
-    throw new Error(`${APHRODY_WEB_MODULE} does not export WebService`);
-  }
-  return new module.WebService();
+  throw new Error(
+    "No Web service: install impit or call setZukanWebServiceFactory().",
+  );
 }
 
 /** Require complete original HTML before domain parsing or writing source evidence. */

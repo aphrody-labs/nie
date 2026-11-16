@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * @aphrody/nie-ui — Asset Optimization & Multi-Format Converter Pipeline
+ * @rosegriffon/nie-ui — Asset Optimization & Multi-Format Converter Pipeline
  *
  * Converts native game binary assets into web-optimized, readable formats:
  * - G4TX / DDS -> WebP / PNG / AVIF

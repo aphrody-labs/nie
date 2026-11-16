@@ -26,7 +26,7 @@ const profile = await resolveProfile(supabase, user);
   `apps/website/src/lib/auth.ts` fournit le pool PostgreSQL (compatible PostgreSQL 17 et 18), l'envoi de
   courriels, les cookies Next.js et l'adaptateur Patreon.
 - **Identité d'expédition et automatisation des courriels :**
-  L'identité canonique d'envoi et d'authentification transactionnelle est `contact@aphrody.com` (OVH SMTP `ssl0.ovh.net:465` TLS implicite), avec repli applicatif pour Rose Griffon.
+  L'identité canonique d'envoi et d'authentification transactionnelle est `contact@rosegriffon.fr` (OVH SMTP `ssl0.ovh.net:465` TLS implicite), avec repli applicatif pour Rose Griffon.
 - **Fournisseurs OAuth Sociaux :**
   - Discord (`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`)
   - GitHub (`GITHUB_CLIENT_ID` / `AUTH_GITHUB_ID`, `GITHUB_CLIENT_SECRET` / `AUTH_GITHUB_SECRET`)

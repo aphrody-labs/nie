@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Rose Griffon site presets, moved from @aphrody/bun-web/testing/sites/rosegriffon (aphrody-labs/bun-ui).
+ * Rose Griffon site presets, 
  *
  * Test presets and helpers for Rose Griffon (`rosegriffon.fr`):
  * - Canonical URL presets, origin registry, and slug normalizer (no trailing slashes, kebab-case).
@@ -9,10 +9,18 @@
  * - API health check probe with latency timing and timeout handling.
  */
 
-import type {
-  PwCookieParam,
-  PlaywrightBrowserContext,
-} from "@aphrody/bun-web/testing/next";
+/** Cookie parameter accepted by Playwright's `BrowserContext.addCookies`. */
+export interface PwCookieParam {
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+}
+
+/** The part of a Playwright `BrowserContext` used here. */
+export interface PlaywrightBrowserContext {
+  addCookies(cookies: PwCookieParam[]): Promise<void>;
+}
 
 /** Canonical origins for Rose Griffon domains. */
 export const ROSE_GRIFFON_ORIGINS = {
@@ -58,7 +66,7 @@ export const ROSE_GRIFFON_AUTH_COOKIES = {
 
 /**
  * Builds a canonical Rose Griffon URL for `path`.
- * Enforces no trailing slashes on non-root paths according to the Aphrody SEO specification.
+ * Enforces no trailing slashes on non-root paths according to the SEO rules of the site.
  */
 export function roseGriffonUrl(
   path: string,
@@ -169,7 +177,7 @@ export async function injectRoseGriffonAuth(
     return;
   }
   throw new TypeError(
-    "injectRoseGriffonAuth: target does not support cookie injection (expected TestPage, PlaywrightPage, or BrowserContext)",
+    "injectRoseGriffonAuth: target does not support cookie injection (expected a Playwright page, a BrowserContext or a CDP session)",
   );
 }
 

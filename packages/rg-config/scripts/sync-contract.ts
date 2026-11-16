@@ -773,7 +773,7 @@ async function main(): Promise<number> {
       content: renderTypeScript(parsed),
     },
     {
-      rel: "crates/aphrody-nie-core/src/contract_generated.rs",
+      rel: "crates/nie-core/src/contract_generated.rs",
       content: renderRust(parsed),
     },
     {

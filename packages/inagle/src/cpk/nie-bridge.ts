@@ -1,8 +1,8 @@
 /**
  * @file nie-bridge.ts
  * @description Bridges Azalee CPK extraction to the verified byte-exact CPK / @UTF table schema
- * and CRILAYLA decompression algorithms matching aphrody-nie-formats::cpk.
- * Deduplicated and unified through @aphrody/inagle/nie-bridge.
+ * and CRILAYLA decompression algorithms matching nie-formats::cpk.
+ * Deduplicated and unified through @rosegriffon/inagle/nie-bridge.
  */
 
 import {

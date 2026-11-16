@@ -32,10 +32,10 @@ if (absent && Bun.env.RG_REQUIRE_WEBVIEW === "1")
   throw new Error(`Bun.WebView indisponible : ${absent}`);
 if (absent)
   console.warn(
-    `[Aphrody Web CDP] Navigateur indisponible (${absent}) — test navigateur sauté.`,
+    `[WebView CDP] Navigateur indisponible (${absent}) — test navigateur sauté.`,
   );
 
-describe("Aphrody Web CDP integration", () => {
+describe("WebView CDP integration", () => {
   it.skipIf(absent !== null)(
     "navigates to google.com and returns rendered HTML",
     async () => {

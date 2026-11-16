@@ -122,7 +122,7 @@ export const app = new Elysia()
       .use(inagleModule)
       .use(azaleeBridgeModule)
       .use(authController)
-      // Discord HTTP interactions forwarded by crates/aphrody-rg-server. Lazy:
+      // Discord HTTP interactions forwarded by crates/rg-server. Lazy:
       // the executor reads the bot token and loads the command modules.
       .post(
         "/discord/interactions/execute",

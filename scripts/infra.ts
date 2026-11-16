@@ -36,7 +36,7 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
 // Unités RG, vhosts RG, réglages hôte et units transverses : propriété du dépôt
-// aphrody-infra (le dépôt rg ne garde que le code applicatif).
+// the infra repository (le dépôt rg ne garde que le code applicatif).
 // Ils vivent désormais dans yolo : `$YOLO_ROOT/config/host` (défaut `~/yolo`).
 const YOLO_ROOT =
   Bun.env.YOLO_ROOT ??
@@ -48,7 +48,7 @@ const HOTE_SYSTEMD = INFRA_SYSTEMD;
 const INFRA_SYSCTL = `${INFRA_HOTE}/rg/sysctl`;
 const INFRA_LOGROTATE = `${INFRA_HOTE}/rg/logrotate`;
 const HOST_CLI = `${YOLO_ROOT}/packages/core/src/host/cli.ts`;
-// Les services du jeu et les vhosts Aphrody ont migré dans le dépôt `niers`.
+// Les services du jeu et les vhosts de la plateforme ont migré dans le dépôt `niers`.
 // Les recopier ici recréerait deux sources de vérité qui divergent. Le contrôle
 // suit donc leur source canonique là où elle vit réellement.
 const NIE_REPO_ROOT = (() => {
@@ -142,7 +142,7 @@ const lire = async (chemin: string | null): Promise<string | null> => {
   return await fichier.text();
 };
 
-/** Dépôt source d'une unité : niers, rg, sinon aphrody-infra (units transverses). */
+/** Dépôt source d'une unité : niers, rg, sinon the infra repository (units transverses). */
 const sourceUnité = (
   nom: string,
   dansNiers: string[],

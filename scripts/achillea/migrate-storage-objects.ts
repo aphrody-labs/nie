@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { homedir } from "node:os";
-import { statePath } from "@aphrody/paths";
+import { statePath } from "@rosegriffon/config/paths";
 import { createHash } from "node:crypto";
 import {
   appendFile,

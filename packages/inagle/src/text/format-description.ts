@@ -1,6 +1,6 @@
 /**
  * Linear-time single-pass parser and formatter for IEVR rich-text descriptions and ruby furigana.
- * Mirrors the Rust `aphrody_nie_data::text` AST (`text`, `furigana`, `tag`) with O(n) scanning
+ * Mirrors the Rust `nie_data::text` AST (`text`, `furigana`, `tag`) with O(n) scanning
  * (zero regex backtracking) and zero runtime dependencies so browser/SSR/CLI callers stay pure.
  */
 

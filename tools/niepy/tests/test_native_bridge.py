@@ -38,7 +38,7 @@ def test_iecode_crilayla_roundtrip():
 
 
 def test_nie_ffi_pure():
-    """Vérifie l'exposition pure des capacités du crate Rust aphrody-nie-ffi."""
+    """Vérifie l'exposition pure des capacités du crate Rust nie-ffi."""
     from niepy.native_bridge import NieFfiPure
 
     v = NieFfiPure.version()

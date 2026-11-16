@@ -1,8 +1,8 @@
 // Flatten every RDBN typed table ("cfg.bin", non-T2B) of the user's IEVR install into one long SQLite table.
 // Structure (lists, types, field order, field hashes, string table) comes from the decoder's raw RDBN JSON already
-// stored in var/ie-inventory/ievr-cfg.sqlite (aphrody-nie-formats::cfgbin::parse); values are read from the raw file
+// stored in var/ie-inventory/ievr-cfg.sqlite (nie-formats::cfgbin::parse); values are read from the raw file
 // under var/ie-extract with a line-for-line port of cfgbin::read_values / read_field_value, in a pool of Bun Workers
-// (one per CPU core). Same JSON value conventions as aphrody-nie-explore bridge::rdbn_value_to_json (Hash as
+// (one per CPU core). Same JSON value conventions as nie-explore bridge::rdbn_value_to_json (Hash as
 // "0xXXXXXXXX"), except Blob fields (AbilityData / EnhanceData / StatusRate / Unknown), kept as upper hex instead of
 // null. If the Rust CLI exists (NIE_CLI, default target/release/nie.exe; NOT NIE_EXE, which names the game binary), every file is cross-checked against
 // `nie mod get --limite 0` and mismatching cells are counted.

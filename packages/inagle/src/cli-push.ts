@@ -262,7 +262,7 @@ async function importCharacters(service: any, db: DataAdapter) {
         rarity_label: c.rarity || CHAR_RARITY_NAMES[c.rarityCode] || null,
         position: getPositionFr(c.positionRaw),
         element: ELEMENT_NAMES[c.elementRaw]?.fr || null,
-        // chara_base CHARA_BASE_INFO var[11]: 1 = male, 2 = female (aphrody-nie-data chara_base.rs);
+        // chara_base CHARA_BASE_INFO var[11]: 1 = male, 2 = female (nie-data chara_base.rs);
         // 0 / 4 / 5 (placeholders, special units) stay unknown.
         gender: c.gender === 1 ? "M" : c.gender === 2 ? "F" : null,
         series: c.series || null,

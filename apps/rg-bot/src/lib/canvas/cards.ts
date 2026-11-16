@@ -8,7 +8,7 @@
  * ou une liste de 25 membres ne fassent jamais déborder une carte.
  */
 
-import { type Canvas, createCanvas, type SKRSContext2D } from "@aphrody/canvas";
+import { type Canvas, createCanvas, type SKRSContext2D } from "@napi-rs/canvas";
 
 import {
   BORDURE_OR,

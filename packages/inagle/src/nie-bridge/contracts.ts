@@ -1,6 +1,6 @@
 /**
  * @file contracts.ts
- * @description Byte-exact Level-5 binary contracts matching aphrody-nie-formats.
+ * @description Byte-exact Level-5 binary contracts matching nie-formats.
  * Provides immutable constants, struct layouts, and binary validations for IEVR formats.
  */
 
@@ -96,7 +96,7 @@ export function computeLevel5Crc32(input: string | Uint8Array): number {
 
 /**
  * Computes the raw NIE/Level-5 CRC32 accumulator without the final inversion.
- * Identical to nie-engine::g4::crc32_of / aphrody-nie-formats::crc32_nie.
+ * Identical to nie-engine::g4::crc32_of / nie-formats::crc32_nie.
  * Used for uniformKeeperModelIdCrc, uniformFielderModelIdCrc, and asset model ID CRC fields.
  */
 export function computeNieCrc32(input: string | Uint8Array): number {

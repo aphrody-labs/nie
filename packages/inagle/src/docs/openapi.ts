@@ -1,6 +1,6 @@
 /**
  * @file openapi.ts
- * @description OpenAPI 3.2.1 specification generator and serializers for @aphrody/inagle.
+ * @description OpenAPI 3.2.1 specification generator and serializers for @rosegriffon/inagle.
  * Documents REST and RPC endpoints for game data, VFS virtual file system,
  * binary format inspection, and nie.exe reverse-engineering services.
  */
@@ -226,9 +226,9 @@ export function generateOpenApiSpec(): OpenApiDocument {
       description:
         "Authoritative OpenAPI 3.2.1 specification for Inazuma Eleven: Victory Road game data, VFS virtual file system, and nie.exe reverse-engineering services across Bun, Rust NIE crates, and C# IECODE.Core.",
       contact: {
-        name: "Aphrody Code Team",
+        name: "Rose Griffon",
         url: "https://inagle.google.com",
-        email: "contact@aphrody.com",
+        email: "contact@rosegriffon.fr",
       },
       license: {
         name: "MIT",

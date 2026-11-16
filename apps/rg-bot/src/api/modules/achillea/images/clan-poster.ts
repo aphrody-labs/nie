@@ -3,7 +3,7 @@
  * Top 5 des membres par ELO 1v1 de la saison courante, ELO moyen, effectif.
  */
 
-import { createCanvas, type Image } from "@aphrody/canvas";
+import { createCanvas, type Image } from "@napi-rs/canvas";
 import type { Kysely } from "kysely";
 import type { Database } from "@rosegriffon/db/schema";
 import { MatchMode } from "@rosegriffon/achillea-core/enums";

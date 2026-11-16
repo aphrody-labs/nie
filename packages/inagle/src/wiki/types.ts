@@ -27,7 +27,7 @@ export type {
 export { ElementId, PositionId, RarityId };
 
 // ============================================================================
-// STATS & NUMERICAL MODELS (Grounded in aphrody-nie-wiki::model::StatBlock)
+// STATS & NUMERICAL MODELS (Grounded in nie-wiki::model::StatBlock)
 // ============================================================================
 
 export interface WikiStatBlock {

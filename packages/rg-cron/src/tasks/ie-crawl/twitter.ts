@@ -91,7 +91,7 @@ export async function crawlTwitter(
   count?: number;
   error?: string;
 }> {
-  // Multi-comptes officiels (additif, source x-accounts.ts — mis à jour après discovery Aphrody X + search).
+  // Multi-comptes officiels (additif, source x-accounts.ts — mis à jour après discovery X + search).
   // Inclut les comptes validés (principaux + fallback low-activity pour complétude historique).
   // Par défaut, tous les comptes officiels. La veille horaire, elle, ne demande
   // QUE le dernier post d'`@Azalee_IE` : l'archive des autres comptes est déjà
@@ -108,8 +108,8 @@ export async function crawlTwitter(
   let hasErrors = false;
 
   try {
-    // Utilise pleinement le session Aphrody X si présent (prioritaire),
-    // fallback sur loadOrEnv ( .aphrody ou X_* env) — supporte le flux CLI Aphrody X.
+    // Utilise pleinement le X si présent (prioritaire),
+    // fallback sur loadOrEnv (~/.rosegriffon ou X_* env) — supporte le flux X.
     let session: XSession;
     const xCookie = loadXCookieHeader();
     if (xCookie) {
@@ -198,8 +198,8 @@ export async function crawlTwitter(
         console.log(
           `[Crawl Twitter] Crawl historique complet de @${screenName}...`,
         );
-        // rg cron + Aphrody X : MAX plus élevé pour AkihiroHino (CEO Level-5, tweets clés pour Azalée wiki + RAG).
-        // "peuple tout les tweets" via pagination userTweets + session Aphrody X.
+        // rg cron + X : MAX plus élevé pour AkihiroHino (CEO Level-5, tweets clés pour Azalée wiki + RAG).
+        // "peuple tout les tweets" via pagination userTweets + X.
         // `parCompte` borne la moisson : la veille horaire ne demande qu'UN
         // post (le dernier), là où un rattrapage d'archive en demande 1200.
         // Sans cette borne, la veille repaginait toute la timeline chaque
@@ -270,7 +270,7 @@ export async function crawlTwitter(
         );
         if (screenName === "AkihiroHino") {
           console.log(
-            `[AkihiroHino] Peuplement tweets CEO Level-5 via rg-cron + Aphrody X (historique étendu, pour sync Azalée + RAG + traductions).`,
+            `[AkihiroHino] Peuplement tweets CEO Level-5 via rg-cron + X (historique étendu, pour sync Azalée + RAG + traductions).`,
           );
         }
 

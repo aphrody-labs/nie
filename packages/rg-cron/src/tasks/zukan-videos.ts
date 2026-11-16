@@ -9,7 +9,7 @@
  *
  * Source : `zukan.inazuma.jp`, deux pages par locale. L'acquisition passe par
  * le service Web d'inagle, branché ici sur `Bun.WebView` : son transport par
- * défaut (import dynamique de `@aphrody/agent-browser/service`) n'existe pas
+ * défaut (Impit ou import dynamique) n’existe pas
  * dans le binaire compilé de `rg-core`. Toute la logique vit dans
  * `@rosegriffon/inagle/zukan/sync-skill-videos` ; cette tâche n'est que le point
  * d'entrée cron et son rapport.

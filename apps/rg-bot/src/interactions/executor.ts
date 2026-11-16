@@ -3,7 +3,7 @@
  *
  * ── LE CHEMIN D'UNE INTERACTION ────────────────────────────────────────────
  * Discord poste chaque interaction sur l'endpoint HTTP de l'application, servi
- * par `crates/aphrody-rg-server` (fonction Rust Vercel). Celle-ci vérifie la
+ * par `crates/rg-server` (fonction Rust Vercel). Celle-ci vérifie la
  * signature Ed25519, répond elle-même au PING, puis transmet le corps BRUT ici
  * avec `X-Internal-Secret`. On reconstruit l'interaction discord.js, on la donne
  * à `client.executeInteraction` — exactement les mêmes modules de commandes que
@@ -34,7 +34,7 @@ import { timingSafeEqual } from "node:crypto";
 import {
   createProductionCacheOptions,
   safeExecuteInteraction,
-} from "@aphrody/discord-kit";
+} from "../lib/discord-kit";
 import { waitUntil } from "@vercel/functions";
 import {
   ClientApplication,

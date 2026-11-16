@@ -18,13 +18,13 @@ import {
  */
 export function getLlmIndexDocument(): LlmIndexDocument {
   return {
-    projectName: "@aphrody/inagle",
+    projectName: "@rosegriffon/inagle",
     version: "2.0.4",
     description:
       "Universal Game Data API, CRI VFS stream engine, and nie.exe reverse-engineering specification for Inazuma Eleven: Victory Road.",
     updatedAt: "2026-10-01",
     quickstartPrompt:
-      "You are working on Inazuma Eleven: Victory Road reverse engineering and data extraction. Use @aphrody/inagle/docs for authoritative format signatures, CPK decryption rules, nie.exe memory offsets, and cross-language FFI bindings across Bun, Rust, and .NET.",
+      "You are working on Inazuma Eleven: Victory Road reverse engineering and data extraction. Use @rosegriffon/inagle/docs for authoritative format signatures, CPK decryption rules, nie.exe memory offsets, and cross-language FFI bindings across Bun, Rust, and .NET.",
     sections: {
       Architecture: [
         {
@@ -123,7 +123,7 @@ export function generateLlmsTxt(): string {
 
 ## Core Repositories & Crates
 - Inagle API and CLI: \`packages/inagle\`; web apps are external consumers.
-- Rust NIE crates: \`crates/aphrody-nie-*\`, including \`aphrody-nie-core\`, \`aphrody-nie-formats\`, \`aphrody-nie-save\`, and \`aphrody-nie-ffi\`.
+- Rust NIE crates: \`crates/nie-*\`, including \`nie-core\`, \`nie-formats\`, \`nie-save\`, and \`nie-ffi\`.
 - C# .NET 10 solution: \`apps/iecode-dotnet\`; NativeAOT C-ABI project: \`apps/iecode-dotnet/Ffi\`.
 
 ## Verified Constants Quick Reference
@@ -181,7 +181,7 @@ The IECODE ecosystem unifies three high-performance runtimes into a single coher
    - Fast user-facing CLI (inagle vfs, inagle format, inagle zukan, inagle wiki).
    - High-throughput web API and wiki query engine.
    - Dynamic FFI bindings via \`bun:ffi\` communicating with both Rust and .NET.
-2. Rust NIE C-ABI (crates/aphrody-nie-ffi -> the Cargo target directory's release library):
+2. Rust NIE C-ABI (crates/nie-ffi -> the Cargo target directory's release library):
    - High-efficiency SIMD-accelerated CRILAYLA decompression and compression.
    - CRI position-aware XOR stream cipher and Viola fixed-key decrypter.
    - Relational database binary (RDBN / T2B cfg.bin) parsing into zero-copy JSON strings.
@@ -339,10 +339,10 @@ Runtime Memory Structures & Layouts:
 Using Inagle in Bun TypeScript:
 --------------------------------------------------------------------------------
 \`\`\`typescript
-import { Inagle } from "@aphrody/inagle";
-import { nieCrc32, nieDecompressCrilayla } from "@aphrody/inagle/ffi";
-import { IecodeDotnet } from "@aphrody/inagle/dotnet";
-import { getVfsCatalog, resolveFormat } from "@aphrody/inagle/docs";
+import { Inagle } from "@rosegriffon/inagle";
+import { nieCrc32, nieDecompressCrilayla } from "@rosegriffon/inagle/ffi";
+import { IecodeDotnet } from "@rosegriffon/inagle/dotnet";
+import { getVfsCatalog, resolveFormat } from "@rosegriffon/inagle/docs";
 
 // 1. Inspect format magic
 const fmt = resolveFormat("G4TX");

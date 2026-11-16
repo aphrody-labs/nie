@@ -145,7 +145,7 @@ def chemin_bibliotheque() -> Path:
     cherches = "\n  ".join(str(c) for c in candidats) or "  (racine du dépôt introuvable)"
     raise FileNotFoundError(
         "Bibliothèque native nie_ffi introuvable. Construis-la avec :\n"
-        "    cargo build -p aphrody-nie-ffi --release\n"
+        "    cargo build -p nie-ffi --release\n"
         "puis relance. Chemins essayés :\n  " + cherches + "\n"
         "Tu peux aussi forcer NIE_FFI_PATH vers le fichier."
     )

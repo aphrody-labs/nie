@@ -4,7 +4,7 @@
  * Extrait la logique de crawl de l'ordre officiel des personnages depuis
  * `zukan.inazuma.jp/en/chara_param` (pages paginées). C'est le scraper PROUVÉ en
  * production (cron `ie-crawl/zukan.ts`) : navigation via le navigateur headless
- * `WebCdpPage` d'Aphrody Web (le contenu est rendu côté client, un
+ * `WebCdpPage` (le contenu est rendu côté client, un
  * simple `fetch()` ne suffit pas pour la liste hydratée), puis parsing cheerio
  * avec les sélecteurs éprouvés (`ul.charaListBox`) et la regex CloudFront
  * `cloudfront\.net/1/([^."\s]+)`.
@@ -12,7 +12,7 @@
  * ⚠️ CONTRAINTE BARREL : ce module dépend du transport CDP. Il NE DOIT JAMAIS
  * être ré-exporté par `zukan/index.ts` ni `src/index.ts` (le barrel est
  * value-importé en runtime par Azalée → bundle Next cassé). Importer en leaf :
- *   import { crawlZukanOrderPages } from "@aphrody/inagle/zukan/order";
+ *   import { crawlZukanOrderPages } from "@rosegriffon/inagle/zukan/order";
  *
  * Le helper pur `buildOrderMap` est aussi exporté ici pour les
  * scripts qui crawlent en `fetch()` statique (cf. crawl-zukan-order.ts).

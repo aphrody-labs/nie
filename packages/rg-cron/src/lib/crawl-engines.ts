@@ -332,7 +332,7 @@ export async function fetchMediaWikiApi(
 }
 
 // ---------------------------------------------------------------------------
-// Lightpanda native FFI (`browser_capi.dll`) + CLI/CDP bridge
+// Lightpanda native FFI (`LIGHTPANDA_DLL_PATH`) + CLI/CDP bridge
 // ---------------------------------------------------------------------------
 
 const lightpandaSymbols = {
@@ -348,10 +348,9 @@ let cachedLpLib: LightpandaLib | null | undefined;
 
 function getLightpandaLib(): LightpandaLib | null {
   if (cachedLpLib !== undefined) return cachedLpLib;
-  const candidate =
-    Bun.env.LIGHTPANDA_DLL_PATH ||
-    "C:\\aphrody\\packages\\browser\\native\\zig-out\\bin\\browser_capi.dll";
-  if (!existsSync(candidate)) {
+  // Aucun chemin par défaut : la bibliothèque est désignée par LIGHTPANDA_DLL_PATH.
+  const candidate = Bun.env.LIGHTPANDA_DLL_PATH;
+  if (!candidate || !existsSync(candidate)) {
     cachedLpLib = null;
     return null;
   }

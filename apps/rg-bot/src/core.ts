@@ -10,7 +10,7 @@
  *     SEUL port du service : santé, modèles, API unifiée `/v1/*` et administration des bots y sont
  *     routés avant Colyseus (`demarrerRanked({ intercepter })`) ;
  *   - l'API unifiée Elysia en processus (`app.handle`), qui sert aussi l'ancien préfixe `/api/*` ;
- *   - `aphrody-nie-model-serve` (Rust, serveur HTTP sans point d'entrée FFI) en enfant supervisé
+ *   - `nie-model-serve` (Rust, serveur HTTP sans point d'entrée FFI) en enfant supervisé
  *     sur la boucle locale, relayé par ce port sans recopier sa logique ;
  *   - les tâches planifiées du registre `@rosegriffon/cron` via `Bun.cron`, même délai, historique
  *     et bail d'unicité que la route `/v1/cron/*`.
@@ -195,7 +195,7 @@ async function demarrerCoeur(): Promise<void> {
   // nie-model-serve : binaire Rust autonome (pas d'entrée FFI), relayé sur la boucle locale.
   const portModeles = Number(Bun.env.NIE_MODEL_SERVE_PORT ?? 8792);
   const binaireModeles =
-    Bun.env.NIE_MODEL_SERVE_BIN ?? Bun.which("aphrody-nie-model-serve");
+    Bun.env.NIE_MODEL_SERVE_BIN ?? Bun.which("nie-model-serve");
   const jeuIevr = Bun.env.NIE_GAME_DIR;
   let modeles: Superviseur | null = null;
   // `NIE_MODEL_SERVE_URL` : serveur de modèles externe (autre hôte ou service), relayé sans enfant local.
@@ -262,7 +262,7 @@ async function demarrerCoeur(): Promise<void> {
   const { clientActif } = await import("./lib/client-actif");
   const hotesModeles = hotes(
     Bun.env.RG_CORE_MODEL_HOSTS,
-    "cdn.rosegriffon.fr,nie.aphrody.app",
+    "cdn.rosegriffon.fr",
   );
   const hotesBot = hotes(Bun.env.RG_CORE_BOT_HOSTS, "bot.rosegriffon.fr");
   const origineModeles = (

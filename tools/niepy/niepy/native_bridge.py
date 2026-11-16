@@ -1,4 +1,4 @@
-"""Pont natif unifié IECODE : interopérabilité directe avec IECODE.Core (.NET 10 NativeAOT) et aphrody-nie-ffi (Rust).
+"""Pont natif unifié IECODE : interopérabilité directe avec IECODE.Core (.NET 10 NativeAOT) et nie-ffi (Rust).
 
 Permet d'exécuter l'ensemble des algorithmes de bas niveau (Level-5 CRC32, CRILAYLA,
 détection de formats, déchiffrement CPK) directement en mémoire native sans passer
@@ -239,7 +239,7 @@ class IecodeBridge:
 
 
 class NieFfiPure:
-    """Interface pure et complète vers les fonctionnalités natives de aphrody-nie-ffi (Rust)."""
+    """Interface pure et complète vers les fonctionnalités natives de nie-ffi (Rust)."""
 
     @classmethod
     def version(cls) -> str:

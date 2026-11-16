@@ -4,7 +4,7 @@
  * nul), comme le classement.
  */
 
-import { createCanvas, type Image, type SKRSContext2D } from "@aphrody/canvas";
+import { createCanvas, type Image, type SKRSContext2D } from "@napi-rs/canvas";
 import type { Kysely } from "kysely";
 import type { Database } from "@rosegriffon/db/schema";
 import { MatchMode } from "@rosegriffon/achillea-core/enums";

@@ -9,9 +9,7 @@
       "@rosegriffon/types": ["../rg-types/src/index.ts"],
       "@rosegriffon/types/*": ["../rg-types/src/*"],
       "@rosegriffon/auth": ["../rg-auth/src/index.ts"],
-      "@rosegriffon/auth/*": ["../rg-auth/src/*"],
-      "@aphrody/x": ["./types/x-shim.d.ts"],
-      "@aphrody/x/*": ["./types/x-shim.d.ts"]
+      "@rosegriffon/auth/*": ["../rg-auth/src/*"]
     }
   }
 }

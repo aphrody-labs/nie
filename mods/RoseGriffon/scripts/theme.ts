@@ -34,7 +34,7 @@ type ModTheme = {
   };
 };
 const mod = Bun.TOML.parse(await Bun.file(themePath).text()) as ModTheme;
-if (mod.schema !== "aphrody.theme/3")
+if (mod.schema !== "rosegriffon.theme/3")
   throw new Error(`${themePath}: unsupported schema ${mod.schema}`);
 if (!(NOMS_THEMES as readonly string[]).includes(mod.theme)) {
   throw new Error(

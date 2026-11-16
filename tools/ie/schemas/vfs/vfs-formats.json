@@ -1,7 +1,7 @@
 {
   "$schema": "./vfs-registry.schema.json",
   "version": "2.0.4",
-  "engine": "aphrody-nie-formats",
+  "engine": "nie-formats",
   "totalFormats": 28,
   "formats": [
     {
@@ -63,7 +63,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::g4tx::G4txContainer",
+        "rust": "nie_formats::g4tx::G4txContainer",
         "typescript": "Inagle.formats.G4txContainer",
         "csharp": "IECODE.Core.Formats.Level5.G4tx",
         "python": "niepy.formats.G4txContainer",
@@ -122,7 +122,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::g4md::G4md",
+        "rust": "nie_formats::g4md::G4md",
         "typescript": "Inagle.formats.G4md",
         "csharp": "IECODE.Core.Formats.Level5.G4md",
         "python": "niepy.formats.G4md",
@@ -174,7 +174,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::g4mg::G4mg",
+        "rust": "nie_formats::g4mg::G4mg",
         "typescript": "Inagle.formats.G4mg",
         "csharp": "IECODE.Core.Formats.Level5.G4mg",
         "python": "niepy.formats.G4mg",
@@ -212,7 +212,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::g4mt::G4mt",
+        "rust": "nie_formats::g4mt::G4mt",
         "typescript": "Inagle.formats.G4mt",
         "csharp": "IECODE.Core.Formats.Level5.G4mt",
         "python": "niepy.formats.G4mt",
@@ -257,7 +257,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::g4sk::G4sk",
+        "rust": "nie_formats::g4sk::G4sk",
         "typescript": "Inagle.formats.G4sk",
         "csharp": "IECODE.Core.Formats.Level5.G4sk",
         "python": "niepy.formats.G4sk",
@@ -302,7 +302,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::g4pk::G4pk",
+        "rust": "nie_formats::g4pk::G4pk",
         "typescript": "Inagle.formats.G4pk",
         "csharp": "IECODE.Core.Formats.Level5.G4pk",
         "python": "niepy.formats.G4pk",
@@ -340,7 +340,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::g4ra::G4ra",
+        "rust": "nie_formats::g4ra::G4ra",
         "typescript": "Inagle.formats.G4ra",
         "csharp": "IECODE.Core.Formats.Level5.G4ra",
         "python": "niepy.formats.G4ra",
@@ -378,7 +378,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::FileFormat::Agi",
+        "rust": "nie_formats::FileFormat::Agi",
         "typescript": "Inagle.formats.Agi",
         "csharp": "IECODE.Core.Formats.Level5.Agi",
         "python": "niepy.formats.Agi",
@@ -416,7 +416,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::objbin::Objb",
+        "rust": "nie_formats::objbin::Objb",
         "typescript": "Inagle.formats.Objb",
         "csharp": "IECODE.Core.Formats.Level5.Objb",
         "python": "niepy.formats.Objb",
@@ -454,7 +454,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::col::Pxcl",
+        "rust": "nie_formats::col::Pxcl",
         "typescript": "Inagle.formats.Pxcl",
         "csharp": "IECODE.Core.Formats.Level5.Pxcl",
         "python": "niepy.formats.Pxcl",
@@ -534,7 +534,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::cfgbin::Rdbn",
+        "rust": "nie_formats::cfgbin::Rdbn",
         "typescript": "Inagle.formats.Rdbn",
         "csharp": "IECODE.Core.Formats.Level5.Rdbn",
         "python": "niepy.formats.Rdbn",
@@ -572,7 +572,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::mevbin::Mevbin",
+        "rust": "nie_formats::mevbin::Mevbin",
         "typescript": "Inagle.formats.Mevbin",
         "csharp": "IECODE.Core.Formats.Level5.Mevbin",
         "python": "niepy.formats.Mevbin",
@@ -610,7 +610,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::g4cm::G4cm",
+        "rust": "nie_formats::g4cm::G4cm",
         "typescript": "Inagle.formats.G4cm",
         "csharp": "IECODE.Core.Formats.Level5.G4cm",
         "python": "niepy.formats.G4cm",
@@ -662,7 +662,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::cpk::CpkReader",
+        "rust": "nie_formats::cpk::CpkReader",
         "typescript": "Inagle.formats.CpkReader",
         "csharp": "IECODE.Core.Formats.Criware.CriFs.Cpk",
         "python": "niepy.formats.CpkReader",
@@ -707,7 +707,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::cri_audio::Awb",
+        "rust": "nie_formats::cri_audio::Awb",
         "typescript": "Inagle.formats.Afs2",
         "csharp": "IECODE.Core.Formats.Criware.CriAudio.Afs2",
         "python": "niepy.formats.Afs2",
@@ -766,7 +766,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::cpk::UtfTable",
+        "rust": "nie_formats::cpk::UtfTable",
         "typescript": "Inagle.formats.UtfTable",
         "csharp": "IECODE.Core.Formats.Criware.CriFs.UtfTable",
         "python": "niepy.formats.UtfTable",
@@ -825,7 +825,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::g4tx::DdsHeader",
+        "rust": "nie_formats::g4tx::DdsHeader",
         "typescript": "Inagle.formats.DdsHeader",
         "csharp": "IECODE.Core.Formats.DirectX.Dds",
         "python": "niepy.formats.DdsHeader",
@@ -856,7 +856,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::image_out::PngImage",
+        "rust": "nie_formats::image_out::PngImage",
         "typescript": "Inagle.formats.PngImage",
         "csharp": "IECODE.Core.Formats.Images.Png",
         "python": "niepy.formats.PngImage",
@@ -901,7 +901,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::cri_audio::Wav",
+        "rust": "nie_formats::cri_audio::Wav",
         "typescript": "Inagle.formats.Wav",
         "csharp": "IECODE.Core.Formats.Audio.Wav",
         "python": "niepy.formats.Wav",
@@ -939,7 +939,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::FileFormat::Xpck",
+        "rust": "nie_formats::FileFormat::Xpck",
         "typescript": "Inagle.formats.Xpck",
         "csharp": "IECODE.Core.Formats.Level5.Xpck",
         "python": "niepy.formats.Xpck",
@@ -977,7 +977,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::FileFormat::Xfsa",
+        "rust": "nie_formats::FileFormat::Xfsa",
         "typescript": "Inagle.formats.Xfsa",
         "csharp": "IECODE.Core.Formats.Level5.Xfsa",
         "python": "niepy.formats.Xfsa",
@@ -1022,7 +1022,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::crilayla::CriLayla",
+        "rust": "nie_formats::crilayla::CriLayla",
         "typescript": "Inagle.formats.CriLayla",
         "csharp": "IECODE.Core.Formats.Criware.CriFs.Compression.CriLayla",
         "python": "niepy.formats.CriLayla",
@@ -1060,7 +1060,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::cri_audio::Acb",
+        "rust": "nie_formats::cri_audio::Acb",
         "typescript": "Inagle.formats.Acb",
         "csharp": "IECODE.Core.Formats.Criware.CriAudio.Acb",
         "python": "niepy.formats.Acb",
@@ -1098,7 +1098,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::usm::UsmReader",
+        "rust": "nie_formats::usm::UsmReader",
         "typescript": "Inagle.formats.UsmReader",
         "csharp": "IECODE.Core.Formats.Criware.CriMovie.Usm",
         "python": "niepy.formats.UsmReader",
@@ -1136,7 +1136,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::navm::Navm",
+        "rust": "nie_formats::navm::Navm",
         "typescript": "Inagle.formats.Navm",
         "csharp": "IECODE.Core.Formats.Level5.Navm",
         "python": "niepy.formats.Navm",
@@ -1174,7 +1174,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::col::Col",
+        "rust": "nie_formats::col::Col",
         "typescript": "Inagle.formats.Col",
         "csharp": "IECODE.Core.Formats.Level5.Col",
         "python": "niepy.formats.Col",
@@ -1212,7 +1212,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_formats::col::Cols",
+        "rust": "nie_formats::col::Cols",
         "typescript": "Inagle.formats.Cols",
         "csharp": "IECODE.Core.Formats.Level5.Cols",
         "python": "niepy.formats.Cols",
@@ -1264,7 +1264,7 @@
         }
       ],
       "crossLanguageTypes": {
-        "rust": "aphrody_nie_save::LivesContainer",
+        "rust": "nie_save::LivesContainer",
         "typescript": "Inagle.formats.LiveSave",
         "csharp": "IECODE.Core.Formats.Level5.LiveSave",
         "python": "niepy.formats.LiveSave",

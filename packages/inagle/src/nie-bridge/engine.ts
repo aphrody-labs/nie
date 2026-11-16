@@ -1,6 +1,6 @@
 /**
  * @file engine.ts
- * @description Authoritative binary validation and parsing bridge grounded in aphrody-nie-formats.
+ * @description Authoritative binary validation and parsing bridge grounded in nie-formats.
  */
 
 import {
@@ -144,7 +144,7 @@ export function probeFormat(
 }
 
 /**
- * Parses and validates an authoritative RDBN (cfg.bin) header matching aphrody-nie-formats.
+ * Parses and validates an authoritative RDBN (cfg.bin) header matching nie-formats.
  * Throws an Error if the buffer is malformed or invalid.
  */
 export function parseRdbnHeader(
@@ -206,7 +206,7 @@ export function parseRdbnHeader(
 
 /**
  * Parses and computes exact table offsets for a Level-5 G4TX texture container.
- * Strictly implements the table layout formula from aphrody-nie-formats/src/g4tx.rs.
+ * Strictly implements the table layout formula from nie-formats/src/g4tx.rs.
  */
 export function parseG4txHeader(
   buffer: ArrayBuffer | Uint8Array,
@@ -237,7 +237,7 @@ export function parseG4txHeader(
   const subTextureCount = view.getUint32(0x18, true);
   const textureDataSize = view.getUint32(0x1c, true);
 
-  // Exact offsets matching aphrody-nie-formats::g4tx:
+  // Exact offsets matching nie-formats::g4tx:
   // entry_offset = 0x60
   // sub_entry_offset = entry_offset + texture_count * 0x30
   // hash_offset = align16(sub_entry_offset + sub_texture_count * 0x18)
@@ -273,7 +273,7 @@ export function parseG4txHeader(
 }
 
 // ============================================================================
-// CRILAYLA Decompression (Byte-exact port from aphrody-nie-formats::crilayla)
+// CRILAYLA Decompression (Byte-exact port from nie-formats::crilayla)
 // ============================================================================
 
 /**
@@ -417,7 +417,7 @@ class BitReader {
 
 /**
  * Decompresses a CRILAYLA compressed buffer and returns the uncompressed bytes.
- * Byte-exact with aphrody-nie-formats::crilayla::decompress.
+ * Byte-exact with nie-formats::crilayla::decompress.
  */
 export function decompressCrilayla(
   buffer: ArrayBuffer | Uint8Array,
@@ -534,7 +534,7 @@ function computeXorByte(crc: number, position: number): number {
 
 /**
  * Decrypts (in-place) a block of CRI Middleware position-XOR encrypted data.
- * Exact port of CriwareCrypt.DecryptBlock / aphrody-nie-formats::cpk::decrypt_block.
+ * Exact port of CriwareCrypt.DecryptBlock / nie-formats::cpk::decrypt_block.
  * Encryption is an involutory XOR: running it twice with the same key restores cleartext.
  *
  * @param buffer - Data buffer to decrypt/encrypt in-place

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * @aphrody/nie-ui/studio - Unified Inazuma Eleven: Victory Road Studio Engine
+ * @rosegriffon/nie-ui/studio - Unified Inazuma Eleven: Victory Road Studio Engine
  *
  * Full cross-platform GUI and headless automation suite uniting:
  * 1. Save Editor & Live Process Memory Map
@@ -19,7 +19,7 @@ import {
   createFilmProject,
   type FilmClip,
   type FilmProject,
-} from "@aphrody/filmcraft";
+} from "@rosegriffon/filmcraft";
 
 export interface AtomHeader {
   offset: number;
@@ -169,7 +169,7 @@ export class NieStudioEngine {
     coins?: number;
   }): Promise<SaveEditResult> {
     const slot = options.slot ?? "002AB8F4-USERDATALIVE";
-    const binary = process.env.NIE_HEADLESS_BIN ?? "aphrody-nie-headless";
+    const binary = process.env.NIE_HEADLESS_BIN ?? "nie-headless";
 
     return new Promise((resolve) => {
       const args = ["save-edit", "--slot", slot];
@@ -381,7 +381,7 @@ export class NieStudioEngine {
       mkdirSync(outputDir, { recursive: true });
     }
 
-    const binary = process.env.NIE_HEADLESS_BIN ?? "aphrody-nie-headless";
+    const binary = process.env.NIE_HEADLESS_BIN ?? "nie-headless";
     return new Promise((resolve) => {
       const proc = spawn(binary, ["pipeline", "--out-dir", outputDir], {
         stdio: ["ignore", "pipe", "pipe"],

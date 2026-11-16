@@ -236,7 +236,7 @@ def is_g4tx(data: bytes | bytearray | memoryview) -> bool:
 
 
 def parse_g4tx_header(data: bytes | bytearray | memoryview) -> G4txHeaderInfo:
-    """Lit l'en-tête G4TX et calcule les offsets précis selon aphrody-nie-formats::g4tx."""
+    """Lit l'en-tête G4TX et calcule les offsets précis selon nie-formats::g4tx."""
     b = bytes(data)
     if len(b) < 0x60:
         raise ValueError(f"Tampon G4TX trop court : >= 0x60 attendu, reçu {len(b)}")

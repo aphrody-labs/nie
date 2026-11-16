@@ -61,7 +61,7 @@ export const PUBLIC_CDN_BASE = (
 export const CDN_BASE = PUBLIC_CDN_BASE;
 
 /**
- * Origine interne de `aphrody-nie-model-serve` pour les lectures serveur (`SSR` / `RSC`),
+ * Origine interne de `nie-model-serve` pour les lectures serveur (`SSR` / `RSC`),
  * contournant le blocage public nginx sur `/vfs/*` et le rate-limit `nie_assets`.
  * Côté navigateur, retombe sur [`PUBLIC_CDN_BASE`].
  */

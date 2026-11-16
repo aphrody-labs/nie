@@ -1,6 +1,6 @@
 /**
  * @file index.ts
- * @description Master entry point for @aphrody/inagle/docs.
+ * @description Master entry point for @rosegriffon/inagle/docs.
  * Exports OpenAPI 3.1 specifications, VFS architecture catalog, nie.exe reverse-engineering maps,
  * Answer.AI llms.txt models, and static documentation exporters.
  */
@@ -49,7 +49,7 @@ export function generateVfsSpecificationMarkdown(): string {
   return `# Victory Road Virtual File System (VFS) Specification
 
 > Comprehensive, authoritative technical specification for the Inazuma Eleven: Victory Road Virtual File System.
-> Grounded in \`aphrody-nie-formats\`, \`IECODE.Core.CriFs\`, and reverse engineering of \`nie.exe\`.
+> Grounded in \`nie-formats\`, \`IECODE.Core.CriFs\`, and reverse engineering of \`nie.exe\`.
 
 ---
 
@@ -225,13 +225,13 @@ export function generateCrossLanguageArchitectureMarkdown(): string {
 +------------------+------------------+   +------------------+------------------+
                    |                                         |
 +------------------v-----------------------------------------v------------------+
-|              RUST NIE ENGINE (crates/aphrody-nie-*)                            |
-|                 C-ABI: \`aphrody-nie-ffi\` (Cargo target directory)             |
-|   - \`aphrody-nie-core\`: CRC32 (reflected), Viola cipher, PRNG, endian IO       |
-|   - \`aphrody-nie-formats\`: CRILAYLA SIMD decompressor, G4TX, G4MD, RDBN        |
-|   - \`aphrody-nie-save\`: Lives save decryption (002AB8F4-* containers)        |
-|   - \`aphrody-nie-data\`: In-game gamedata schemas, players, growth curves       |
-|   - \`aphrody-nie-wiki\`: Relational SQLite database queries and drop tables   |
+|              RUST NIE ENGINE (crates/nie-*)                            |
+|                 C-ABI: \`nie-ffi\` (Cargo target directory)             |
+|   - \`nie-core\`: CRC32 (reflected), Viola cipher, PRNG, endian IO       |
+|   - \`nie-formats\`: CRILAYLA SIMD decompressor, G4TX, G4MD, RDBN        |
+|   - \`nie-save\`: Lives save decryption (002AB8F4-* containers)        |
+|   - \`nie-data\`: In-game gamedata schemas, players, growth curves       |
+|   - \`nie-wiki\`: Relational SQLite database queries and drop tables   |
 +-------------------------------------------------------------------------------+
 \`\`\`
 
@@ -255,9 +255,9 @@ export function generateCrossLanguageArchitectureMarkdown(): string {
 ## 3. High-Performance TypeScript Usage
 
 \`\`\`typescript
-import { Inagle } from "@aphrody/inagle";
-import { nieCrc32, nieDecompressCrilayla, nieProbeHeader } from "@aphrody/inagle/ffi";
-import { IecodeDotnet } from "@aphrody/inagle/dotnet";
+import { Inagle } from "@rosegriffon/inagle";
+import { nieCrc32, nieDecompressCrilayla, nieProbeHeader } from "@rosegriffon/inagle/ffi";
+import { IecodeDotnet } from "@rosegriffon/inagle/dotnet";
 
 // 1. Instant header probe
 const probe = nieProbeHeader(rawBuffer);
@@ -276,7 +276,7 @@ await IecodeDotnet.extractCpk("data/packs/common.cpk", "dist/common");
  * Generates the README.md content for packages/inagle/docs.
  */
 export function generateDocsReadmeMarkdown(): string {
-  return `# @aphrody/inagle/docs
+  return `# @rosegriffon/inagle/docs
 
 Universal technical documentation, OpenAPI 3.2.1 specifications, VFS architecture catalog,
 and \`nie.exe\` reverse-engineering reference for **Inazuma Eleven: Victory Road**.
@@ -310,7 +310,7 @@ import {
   getNieReMap,
   VFS_FORMATS,
   NIE_CRITICAL_OFFSETS
-} from "@aphrody/inagle/docs";
+} from "@rosegriffon/inagle/docs";
 
 // Query VFS formats
 const formats = VFS_FORMATS;

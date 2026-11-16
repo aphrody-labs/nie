@@ -5,7 +5,7 @@
 
 import { FFIType, ptr, suffix, type Pointer } from "bun:ffi";
 import { resolve } from "node:path";
-import { nativeLibrary, readNativeBytes } from "@aphrody/runtime-sdk/ffi";
+import { nativeLibrary, readNativeBytes } from "../ffi/runtime.js";
 import {
   type DetectedFormat,
   type DotnetBridgeStatus,

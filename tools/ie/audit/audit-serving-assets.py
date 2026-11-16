@@ -3,7 +3,7 @@
 Le VFS porte 255 308 fichiers repartis sur 39 extensions. Deux services les exposent :
 
   * `nie-site` (:8085) — `/f/<chemin VFS>` rend les octets BRUTS, sans decodage ;
-  * `aphrody-nie-model-serve` (:8790) — decode a la demande : `/tex/...png`, `/audio/...`, `/model/...`
+  * `nie-model-serve` (:8790) — decode a la demande : `/tex/...png`, `/audio/...`, `/model/...`
 
 Dire « le serving d'assets marche » n'a aucun sens sans compter. Ce script tire un echantillon
 par extension, demande chaque fichier aux deux services, et rend un tableau : combien de
@@ -31,7 +31,7 @@ SITE = "http://127.0.0.1:8085"
 AMONT = "http://127.0.0.1:8790"
 DELAI = 30.0
 
-# Les routes de decodage de `aphrody-nie-model-serve`, par extension. `None` = aucun decodage n'est
+# Les routes de decodage de `nie-model-serve`, par extension. `None` = aucun decodage n'est
 # attendu pour ce format : l'absence de route n'est alors PAS un echec, c'est un choix.
 #
 # La convention est mesuree, pas devinee : `/tex/<chemin sans .g4tx>.png` — passer
@@ -125,7 +125,7 @@ def echantillonner(ext: str, combien: int) -> list[str]:
 def demander(url: str, essais: int = 2) -> tuple[int, int, float]:
     """`(code, octets, millisecondes)`. Code 0 quand la connexion elle-meme echoue.
 
-    Reessaie une fois : `aphrody-nie-model-serve` a un pool de workers borne, et une requete lourde
+    Reessaie une fois : `nie-model-serve` a un pool de workers borne, et une requete lourde
     en cours peut faire perdre la suivante. Un seul essai mesure alors l'occupation du
     service, pas sa capacite — ce qui est exactement le contraire de ce qu'on cherche.
     """
@@ -190,7 +190,7 @@ def main() -> int:
 
     for nom, url in (
         ("nie-site", f"{SITE}/healthz"),
-        ("aphrody-nie-model-serve", f"{AMONT}/health"),
+        ("nie-model-serve", f"{AMONT}/health"),
     ):
         code, _, _ = demander(url)
         if code != 200:

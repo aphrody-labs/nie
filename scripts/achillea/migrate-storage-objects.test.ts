@@ -1,4 +1,4 @@
-import { tempPath } from "@aphrody/paths";
+import { tempPath } from "@rosegriffon/config/paths";
 import { afterEach, describe, expect, test } from "bun:test";
 import { chmod, mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import path from "node:path";

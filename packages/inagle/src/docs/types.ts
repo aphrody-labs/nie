@@ -1,6 +1,6 @@
 /**
  * @file types.ts
- * @description Types and schemas for @aphrody/inagle/docs.
+ * @description Types and schemas for @rosegriffon/inagle/docs.
  * Covers OpenAPI 3.2.1 specifications, VFS architecture catalog,
  * nie.exe reverse engineering mappings, and Answer.AI llms.txt models.
  */
@@ -174,7 +174,7 @@ export interface VfsDirectoryCategory {
 
 export interface VfsCatalog {
   version: string;
-  authoritativeEngine: "aphrody-nie-formats" | "IECODE.Core.CriFs";
+  authoritativeEngine: "nie-formats" | "IECODE.Core.CriFs";
   totalKnownPacks: number;
   defaultSectorSize: number;
   utfTableOffset: number;

@@ -8,7 +8,7 @@
     "retainedInRootHistory": true
   },
   "publishedImplementation": {
-    "package": "@aphrody/rg-ui",
+    "package": "@rosegriffon/ui",
     "version": "1.0.4",
     "lockIntegrity": "sha512-Gno7XYYjlT+jbvvxz/Dr4UoF5iasHzyDG/FCAh3oODQ67oRuqTX7FmidAcpWKmEqggsIebbP+Gum2E1OAUSBoQ==",
     "input": "Existing root-installed @rosegriffon/ui alias from the shared lock",

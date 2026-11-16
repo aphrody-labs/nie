@@ -1,6 +1,6 @@
 /**
  * @file docs.test.ts
- * @description Unit tests for @aphrody/inagle/docs: OpenAPI 3.1 generator,
+ * @description Unit tests for @rosegriffon/inagle/docs: OpenAPI 3.1 generator,
  * VFS catalog, nie.exe reverse-engineering specification, Answer.AI llms.txt models,
  * and static documentation file exporter.
  */
@@ -32,14 +32,14 @@ import {
   VFS_PACK_RULES,
 } from "../src/docs/index.js";
 
-describe("@aphrody/inagle/docs", () => {
+describe("@rosegriffon/inagle/docs", () => {
   describe("VFS Catalog Specification", () => {
     it("should catalog all 28 authoritative binary formats", () => {
       expect(VFS_FORMATS.length).toBe(28);
 
       const catalog = getVfsCatalog();
       expect(catalog.version).toBe("2.0.5");
-      expect(catalog.authoritativeEngine).toBe("aphrody-nie-formats");
+      expect(catalog.authoritativeEngine).toBe("nie-formats");
       expect(catalog.supportedFormats.length).toBe(28);
       expect(catalog.defaultSectorSize).toBe(0x800);
       expect(catalog.utfTableOffset).toBe(0x10);
@@ -196,7 +196,7 @@ describe("@aphrody/inagle/docs", () => {
   describe("Answer.AI llms.txt Standard", () => {
     it("should produce a structured LlmIndexDocument model", () => {
       const index = getLlmIndexDocument();
-      expect(index.projectName).toBe("@aphrody/inagle");
+      expect(index.projectName).toBe("@rosegriffon/inagle");
       expect(index.sections.Architecture).toBeDefined();
       expect(index.sections.Vfs).toBeDefined();
       expect(index.sections.ReverseEngineering).toBeDefined();
@@ -204,7 +204,7 @@ describe("@aphrody/inagle/docs", () => {
 
     it("should generate compliant llms.txt content", () => {
       const txt = generateLlmsTxt();
-      expect(txt.startsWith("# @aphrody/inagle")).toBe(true);
+      expect(txt.startsWith("# @rosegriffon/inagle")).toBe(true);
       expect(txt).toContain("> Universal Game Data API");
       expect(txt).toContain("## Documentation");
       expect(txt).toContain(
@@ -249,7 +249,7 @@ describe("@aphrody/inagle/docs", () => {
       expect(nieMd).toContain("0x1406d5840");
 
       const readmeMd = generateDocsReadmeMarkdown();
-      expect(readmeMd).toContain("# @aphrody/inagle/docs");
+      expect(readmeMd).toContain("# @rosegriffon/inagle/docs");
     });
 
     it("should export all documentation files to target directory", async () => {

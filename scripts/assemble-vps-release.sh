@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# Build exactly one immutable RG artifact. Activation is owned by aphrody-infra
+# Build exactly one immutable RG artifact. Activation is owned by the host infra repository
 # (scripts/atomic-deploy-rg.sh). The systemd units and nginx route table packaged
 # here live in yolo (`$RG_INFRA_ROOT/config/host`, default `$HOME/yolo`): rg only
 # contributes application code.
@@ -26,7 +26,7 @@ catalog="$catalog_snapshot"
 [[ -d "$host_root/systemd/rg" && -f "$host_root/rg/nginx-routes.json" && -f "$infra_root/scripts/nginx-gen.ts" ]] || {
   echo "$host_root/{systemd/rg,rg/nginx-routes.json} (set RG_INFRA_ROOT) and scripts/nginx-gen.ts required" >&2; exit 2;
 }
-# Units and routes are release content: they must be committed in aphrody-infra
+# Units and routes are release content: they must be committed in the infra repository
 # so the artifact records exactly which yolo revision it carries.
 infra_commit="$(git -C "$infra_cfg_root" rev-parse --verify 'HEAD^{commit}')"
 git -C "$infra_cfg_root" diff --quiet HEAD -- config/host packages/core/src/host &&
@@ -95,18 +95,6 @@ cleanup() {
 trap cleanup EXIT
 
 git archive --format=tar "$commit" | tar -xf - -C "$stage"
-# Python host tooling belongs to the sibling workspace, not this Bun runtime artifact.
-# Exclude only its thin dispatch symlinks; every other escaping link remains an error.
-python3 - "$stage" <<'PYTHON'
-import pathlib
-import sys
-root = pathlib.Path(sys.argv[1]).resolve()
-for path in (root / 'scripts').rglob('*.py'):
-    if path.is_symlink() and str(path.readlink()).endswith(
-        '/aphrody-py/tools/infra/scripts/python-workspace-dispatch.py'
-    ):
-        path.unlink()
-PYTHON
 python3 - "$stage" <<'PY'
 import pathlib
 import sys
@@ -120,7 +108,6 @@ for path in pathlib.Path(sys.argv[1]).rglob('*'):
         raise SystemExit('release source contains a secret-like file')
 PY
 cd "$stage"
-# @aphrody/* dependencies are pinned content-addressed archives; no registry credential is required.
 bun run install:workspace
 
 # These workspace packages export dist/ files, which are absent from git.
@@ -222,7 +209,7 @@ commit = sys.argv[3]
 yolo_root = sys.argv[4]
 host_cli = pathlib.Path(yolo_root) / 'packages/core/src/host/cli.ts'
 infra_commit = sys.argv[5]
-# Timers (backups, monitor) are host-owned by aphrody-infra and never shipped in
+# Timers (backups, monitor) are host-owned by the host infra repository and never shipped in
 # the release, nor are retired services; the activation adapter applies the same
 # filter to its roster.
 services = [service for service in catalog['services']
@@ -247,7 +234,7 @@ for service in services:
 
 manifest = {
     'schemaVersion': 1,
-    'repository': 'aphrody-labs/aphrody',
+    'repository': 'aphrody-labs/rosegriffon',
     'iecodeSource': json.loads((root / '.cache/iecode-packages/manifest.json').read_text()),
     'commit': commit,
     'builtAt': datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z'),

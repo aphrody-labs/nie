@@ -1466,14 +1466,14 @@
           "hex": "48 43 41 00"
         }
       ],
-      "header": "Full list with descriptors in crates/aphrody-nie-formats/src/lib.rs (FormatDescriptor); see docs/ie/iecode-docs/nie/FORMATS.md and formats/VFS-FORMAT-SPECIFICATIONS.md",
+      "header": "Full list with descriptors in crates/nie-formats/src/lib.rs (FormatDescriptor); see docs/ie/iecode-docs/nie/FORMATS.md and formats/VFS-FORMAT-SPECIFICATIONS.md",
       "parsers": [
         {
-          "path": "crates/aphrody-nie-formats",
+          "path": "crates/nie-formats",
           "scope": "decode"
         },
         {
-          "path": "crates/aphrody-nie-formats/src/{cpk.rs,crilayla.rs}",
+          "path": "crates/nie-formats/src/{cpk.rs,crilayla.rs}",
           "scope": "decode"
         }
       ],

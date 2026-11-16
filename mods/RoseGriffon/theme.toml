@@ -3,7 +3,7 @@
 #   - files:   @rosegriffon/assets (npm), falling back to cdn.rosegriffon.fr through its own sharedAssetUrl()
 #   - game:    the real game's packs, read through nie from your install
 # Dependencies are in package.json; `bun install` in this folder fetches them.
-schema = "aphrody.theme/3"
+schema = "rosegriffon.theme/3"
 
 # A theme name from @rosegriffon/ui NOMS_THEMES: theme-roy, theme-gaelle, theme-azalee-light,
 # theme-azalee-dark, theme-achillea.

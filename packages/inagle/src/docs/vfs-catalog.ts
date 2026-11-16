@@ -2,7 +2,7 @@
  * @file vfs-catalog.ts
  * @description Comprehensive, factual catalog and specification of the Victory Road Virtual File System (VFS).
  * Covers CriFs CPK packaging, @UTF schema, CRILAYLA compression, CRI position-XOR cipher,
- * directory topologies, and format signatures. Grounded in aphrody-nie-formats and IECODE.Core.
+ * directory topologies, and format signatures. Grounded in nie-formats and IECODE.Core.
  */
 
 import type {
@@ -514,7 +514,7 @@ export const VFS_DIRECTORIES: VfsDirectoryCategory[] = [
 export function getVfsCatalog(): VfsCatalog {
   return {
     version: "2.0.5",
-    authoritativeEngine: "aphrody-nie-formats",
+    authoritativeEngine: "nie-formats",
     totalKnownPacks: VFS_PACK_RULES.length,
     defaultSectorSize: 0x800,
     utfTableOffset: 0x10,

@@ -172,7 +172,7 @@ async function main() {
 
     case "nie": {
       const proc = Bun.spawn(
-        ["cargo", "run", "--quiet", "-p", "aphrody-nie-cli", "--", ...subArgs],
+        ["cargo", "run", "--quiet", "-p", "nie-cli", "--", ...subArgs],
         {
           cwd: resolve(import.meta.dir, "../../.."),
           env: { ...process.env, RUSTC_WRAPPER: "" },

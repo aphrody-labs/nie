@@ -8,7 +8,7 @@
  * Ici, on ne fait qu'exécuter la décision.
  *
  * ── POURQUOI LES IMPORTS SONT DYNAMIQUES ───────────────────────────────────
- * `@aphrody/discordx` construit son arbre de commandes à partir des décorateurs
+ * `discordx` construit son arbre de commandes à partir des décorateurs
  * exécutés à l'import : importer un module de commande, c'est l'enregistrer.
  * Une liste d'`import` statiques en tête de fichier enregistrerait donc TOUT
  * pour TOUT LE MONDE, et les deux bots — qui vivent sur le même serveur —
@@ -32,7 +32,7 @@ import {
   initApplicationCommandsSafe,
   resolveGrantedIntents,
   safeExecuteInteraction,
-} from "@aphrody/discord-kit";
+} from "./lib/discord-kit";
 
 import { MODULE_LOADERS } from "./modules";
 import { definirClientActif } from "./lib/client-actif";

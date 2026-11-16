@@ -1,6 +1,6 @@
 /**
  * Outils de rendu partagés des images Achilléa (carte joueur, affiche de clan,
- * licence PDF) sur `@aphrody/canvas` (Skia).
+ * licence PDF) sur `@napi-rs/canvas` (Skia).
  *
  * Polices : Inter (« Achillea Sans ») et Satoshi Black (« Achillea Display
  * Num ») sont servies par `@rosegriffon/assets/public/achillea/fonts`. Le repli
@@ -13,7 +13,7 @@ import {
   loadImage,
   type Image,
   type SKRSContext2D,
-} from "@aphrody/canvas";
+} from "@napi-rs/canvas";
 import { rgUrl } from "@rosegriffon/config/rg-urls";
 
 const FONTS: ReadonlyArray<{ file: string; alias: string }> = [

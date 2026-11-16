@@ -19,7 +19,7 @@ info:
     - **Achilléa & Ranked Arena** (`ranked.rosegriffon.fr`, port 4002)
     - **Azalée Wiki & Game Data** (`azalee.rosegriffon.fr`, port 8807)
     - **Inagle Game Data & VFS** (`inagle`)
-    - **aphrody-nie-model-serve** (`cdn.rosegriffon.fr`, port 8792)
+    - **nie-model-serve** (`cdn.rosegriffon.fr`, port 8792)
     - **rg-website Next.js API** (`rosegriffon.fr`, port 3000)
   license:
     name: Apache-2.0
@@ -158,7 +158,7 @@ paths:
     post:
       tags: [platform]
       operationId: executeDiscordInteraction
-      summary: Exécuter une interaction Discord transmise par aphrody-rg-server
+      summary: Exécuter une interaction Discord transmise par rg-server
       responses:
         "200":
           description: Réponse d'interaction Discord

@@ -8,16 +8,16 @@ Scan: aphrody 1948 commits (all branches), yolo 199, iecode 176, aphrody-labs/rg
 
 | Source repo             | Commit        | Source path                                                                                                | Destination                                                            | Files |
 | ----------------------- | ------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ----- |
-| iecode                  | `b337ab25`    | `crates/nie/aphrody-nie-ui`                                                                                | `rust/nie-ui`                                                          | 11    |
-| iecode                  | `b337ab25`    | `crates/nie/aphrody-nie-render`                                                                            | `rust/nie-render`                                                      | 2     |
-| iecode                  | `b337ab25`    | `crates/nie/aphrody-nie-render3d`                                                                          | `rust/nie-render3d`                                                    | 16    |
-| iecode                  | `b337ab25`    | `crates/nie/aphrody-nie-viewer-web`                                                                        | `rust/nie-viewer-web`                                                  | 2     |
-| iecode                  | `b337ab25`    | `crates/nie/aphrody-nie-wasm`                                                                              | `rust/nie-wasm`                                                        | 11    |
-| iecode                  | `b337ab25`    | `crates/nie/aphrody-nie-lua-web`                                                                           | `rust/nie-lua-web`                                                     | 6     |
-| iecode                  | `b337ab25`    | `crates/nie/aphrody-nie-app/src/render.rs`                                                                 | `rust/ref/nie-app-render.rs`                                           | 1     |
-| iecode                  | `b337ab25`    | `crates/nie/aphrody-nie-game/tests/menu_render_gate.rs`                                                    | `rust/ref/menu_render_gate.rs`                                         | 1     |
-| iecode                  | `b337ab25`    | `crates/nie/aphrody-nie-cli/src/render_cmd.rs`                                                             | `rust/ref/cli-render_cmd.rs`                                           | 1     |
-| iecode                  | `b337ab25`    | `crates/nie/aphrody-nie-cli/src/seed_ui.rs`                                                                | `rust/ref/cli-seed_ui.rs`                                              | 1     |
+| iecode                  | `b337ab25`    | `crates/nie/nie-ui`                                                                                | `rust/nie-ui`                                                          | 11    |
+| iecode                  | `b337ab25`    | `crates/nie/nie-render`                                                                            | `rust/nie-render`                                                      | 2     |
+| iecode                  | `b337ab25`    | `crates/nie/nie-render3d`                                                                          | `rust/nie-render3d`                                                    | 16    |
+| iecode                  | `b337ab25`    | `crates/nie/nie-viewer-web`                                                                        | `rust/nie-viewer-web`                                                  | 2     |
+| iecode                  | `b337ab25`    | `crates/nie/nie-wasm`                                                                              | `rust/nie-wasm`                                                        | 11    |
+| iecode                  | `b337ab25`    | `crates/nie/nie-lua-web`                                                                           | `rust/nie-lua-web`                                                     | 6     |
+| iecode                  | `b337ab25`    | `crates/nie/nie-app/src/render.rs`                                                                 | `rust/ref/nie-app-render.rs`                                           | 1     |
+| iecode                  | `b337ab25`    | `crates/nie/nie-game/tests/menu_render_gate.rs`                                                    | `rust/ref/menu_render_gate.rs`                                         | 1     |
+| iecode                  | `b337ab25`    | `crates/nie/nie-cli/src/render_cmd.rs`                                                             | `rust/ref/cli-render_cmd.rs`                                           | 1     |
+| iecode                  | `b337ab25`    | `crates/nie/nie-cli/src/seed_ui.rs`                                                                | `rust/ref/cli-seed_ui.rs`                                              | 1     |
 | iecode                  | `b337ab25`    | `docs/nie/DESIGN-UI.md`                                                                                    | `docs/nie/DESIGN-UI.md`                                                | 1     |
 | iecode                  | `b337ab25`    | `docs/nie/DESIGN.md`                                                                                       | `docs/nie/DESIGN.md`                                                   | 1     |
 | iecode                  | `b337ab25`    | `docs/nie/RENDER-QA.md`                                                                                    | `docs/nie/RENDER-QA.md`                                                | 1     |
@@ -68,7 +68,7 @@ Scan: aphrody 1948 commits (all branches), yolo 199, iecode 176, aphrody-labs/rg
 
 ## Kept in source repos (reason)
 
-- iecode `crates/nie/aphrody-nie-{ui,render,render3d,viewer-web,wasm,lua-web}`: iecode Rust crate dedup is in progress by another agent; remove after it lands. render3d is still a dependency of nie-app/runtime.
+- iecode `crates/nie/nie-{ui,render,render3d,viewer-web,wasm,lua-web}`: iecode Rust crate dedup is in progress by another agent; remove after it lands. render3d is still a dependency of nie-app/runtime.
 - iecode `apps/<website>/src/lib/{nie-wasm-web,nie-engine.ts,nie-game.ts}`: imported by the RG website pages.
 - iecode `.agents/skills/{pixel-perfect,nie-render-pipeline}`, yolo `plugins/iecode/skills/*`: skills are consumed by plugins; the nie-ui skill points here.
 - iecode `packages/inagle/src/ui`: inside packages/inagle (FFI dedup agent).

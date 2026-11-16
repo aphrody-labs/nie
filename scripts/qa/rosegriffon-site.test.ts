@@ -1,14 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-/**
- * Rose Griffon preset checks, preserved from aphrody-labs/bun-ui
- * packages/bun-web/test/testing/sites.test.ts when the presets moved here. They need the
- * bun-web test engine (test/testing/setup.ts) and BunCdpPage (src/testing/cdp.ts) of a bun-web
- * checkout, so this file is not named *.test.ts and is not collected by `bun test`.
- */
-
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { BunCdpPage } from "@aphrody/bun-web/src/testing/cdp.ts";
-import type { CdpSend } from "@aphrody/bun-web/testing/next";
+import { describe, expect, test } from "bun:test";
 import {
   ROSE_GRIFFON_ORIGINS,
   ROSE_GRIFFON_ROUTES,
@@ -34,16 +25,6 @@ const mockFailingFetch: FetchLike = async () => {
 };
 
 describe("Rose Griffon site helpers", () => {
-  let page: BunCdpPage;
-
-  beforeEach(async () => {
-    page = await BunCdpPage.connect();
-  });
-
-  afterEach(async () => {
-    await page.close();
-  });
-
   test("URL presets and roseGriffonUrl normalizer enforce canonical SEO shape", () => {
     expect(ROSE_GRIFFON_ORIGINS.site).toBe("https://rosegriffon.fr");
     expect(ROSE_GRIFFON_ROUTES.news).toBe("/news");
@@ -86,22 +67,31 @@ describe("Rose Griffon site helpers", () => {
     expect(headers.Cookie).toContain("rg_csrf=csrf-xyz");
   });
 
-  test("injectRoseGriffonAuth injects cookies into a CDP page", async () => {
+  test("injectRoseGriffonAuth injects cookies through a CDP session", async () => {
+    const sent: Array<{ method: string; params: unknown }> = [];
     await injectRoseGriffonAuth(
-      { _cdp: page as unknown as CdpSend },
+      {
+        _cdp: {
+          _send: async (method: string, params: unknown) => {
+            sent.push({ method, params });
+            return {};
+          },
+        },
+      },
       { session: "injected-session", csrf: "injected-csrf" },
     );
 
-    const result = (await (page as unknown as CdpSend)._send(
-      "Network.getCookies",
-      {},
-    )) as {
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.method).toBe("Network.setCookies");
+    const { cookies } = sent[0]!.params as {
       cookies: Array<{ name: string; value: string }>;
     };
-    const sessionCookie = result.cookies.find((c) => c.name === "rg_session");
-    expect(sessionCookie?.value).toBe("injected-session");
-    const csrfCookie = result.cookies.find((c) => c.name === "rg_csrf");
-    expect(csrfCookie?.value).toBe("injected-csrf");
+    expect(cookies.find((k) => k.name === "rg_session")?.value).toBe(
+      "injected-session",
+    );
+    expect(cookies.find((k) => k.name === "rg_csrf")?.value).toBe(
+      "injected-csrf",
+    );
   });
 
   test("checkRoseGriffonApiHealth reports latency and status", async () => {

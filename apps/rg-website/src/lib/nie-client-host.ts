@@ -1,5 +1,5 @@
 /**
- * Thin browser loader for `NieGpuClient` (crates/aphrody-nie-wasm/src/gpu_client.rs). Rust owns
+ * Thin browser loader for `NieGpuClient` (crates/nie-wasm/src/gpu_client.rs). Rust owns
  * the frame: the requestAnimationFrame loop, keyboard and gamepad input, devicePixelRatio sizing
  * up to 4K and the WebGPU (WebGL2 fallback) surface on the canvas. This module only fetches and
  * instantiates the wasm, hands it the canvas, answers asset requests and plays the audio/video

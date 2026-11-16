@@ -4,7 +4,7 @@ import {
   BREAKPOINTS as M3_BREAKPOINTS,
   classifyWidth,
   type WindowSizeClass,
-} from "@aphrody/m3-tokens/breakpoints";
+} from "../lib/breakpoints";
 export const BREAKPOINTS = {
   MEDIUM: M3_BREAKPOINTS.medium,
   EXPANDED: M3_BREAKPOINTS.expanded,

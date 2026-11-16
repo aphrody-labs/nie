@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "iecode-monorepo-validation",
-  "authority": "@aphrody/bun-workspace",
+  "authority": "@rosegriffon/workspace",
   "workspaceRoot": "..",
   "stages": [
     {
@@ -76,19 +76,19 @@
       "steps": [
         {
           "repo": "iecode",
-          "command": ["run", "--filter", "@aphrody/inagle", "lint"]
+          "command": ["run", "--filter", "@rosegriffon/inagle", "lint"]
         },
         {
           "repo": "iecode",
-          "command": ["run", "--filter", "@aphrody/inagle", "typecheck"]
+          "command": ["run", "--filter", "@rosegriffon/inagle", "typecheck"]
         },
         {
           "repo": "iecode",
-          "command": ["run", "--filter", "@aphrody/inagle", "test"]
+          "command": ["run", "--filter", "@rosegriffon/inagle", "test"]
         },
         {
           "repo": "iecode",
-          "command": ["run", "--filter", "@aphrody/inagle", "build"]
+          "command": ["run", "--filter", "@rosegriffon/inagle", "build"]
         }
       ]
     },
@@ -98,11 +98,11 @@
       "steps": [
         {
           "repo": "iecode",
-          "command": ["run", "--filter", "@aphrody/inagle-cross", "lint"]
+          "command": ["run", "--filter", "@rosegriffon/inagle-cross", "lint"]
         },
         {
           "repo": "iecode",
-          "command": ["run", "--filter", "@aphrody/inagle-cross", "typecheck"]
+          "command": ["run", "--filter", "@rosegriffon/inagle-cross", "typecheck"]
         }
       ]
     }

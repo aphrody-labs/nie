@@ -1,7 +1,7 @@
 /**
  * @file index.ts
  * @description Type-safe bridge exposing IECODE .NET & Node-API / NativeAOT to Bun.
- * @module @aphrody/inagle/dotnet
+ * @module @rosegriffon/inagle/dotnet
  */
 
 import { dotnetBridge } from "./bridge.js";

@@ -1,4 +1,4 @@
-# @aphrody/inagle
+# @rosegriffon/inagle
 
 > Universal Game Data API, CRI VFS stream engine, and nie.exe reverse-engineering specification for Inazuma Eleven: Victory Road.
 
@@ -12,7 +12,7 @@
 
 ## Core Repositories & Crates
 - Inagle API and CLI: `packages/inagle`; web apps are external consumers.
-- Rust NIE crates: `crates/aphrody-nie-*`, including `aphrody-nie-core`, `aphrody-nie-formats`, `aphrody-nie-save`, and `aphrody-nie-ffi`.
+- Rust NIE crates: `crates/nie-*`, including `nie-core`, `nie-formats`, `nie-save`, and `nie-ffi`.
 - C# .NET 10 solution: `apps/iecode-dotnet`; NativeAOT C-ABI project: `apps/iecode-dotnet/Ffi`.
 
 ## Verified Constants Quick Reference

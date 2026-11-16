@@ -43,7 +43,7 @@
  * avoir vu la distribution réelle. Une conversion se fait à la main, en CLI.
  */
 import { $ } from "bun";
-import { workspacePath } from "@aphrody/paths";
+import { workspacePath } from "@rosegriffon/config/paths";
 import { join } from "node:path";
 import { environnementBun } from "./db";
 
@@ -67,7 +67,7 @@ interface ResultatImportNoctaly {
  * clairement d'un import réussi.
  */
 export async function runNoctalyImport(): Promise<ResultatImportNoctaly> {
-  // Resolved from the workspace root (cwd or APHRODY_WORKSPACE_ROOT), never from the bundled module location.
+  // Resolved from the workspace root (cwd or RG_REPO_ROOT), never from the bundled module location.
   const botDir = process.env.RG_BOT_DIR ?? workspacePath("apps", "rg-bot");
   const script = join(botDir, "src", "scripts", "import-noctaly.ts");
   // Le shell de Bun résout un `bun` nu vers `process.execPath` : dans `rg-core`,

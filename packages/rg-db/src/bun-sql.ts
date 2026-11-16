@@ -1,6 +1,5 @@
 import { STACK_CONTRACT } from "@rosegriffon/config/contract";
-import { resolvePoolSize } from "@aphrody/sql/env";
-import { createSql } from "@aphrody/sql/postgres";
+import { createSql, resolvePoolSize } from "./sql-core";
 import type { SQL } from "bun";
 import { getDatabaseURL, getInagleDatabaseURL } from "./pg";
 
@@ -97,8 +96,6 @@ export function createBunSql(options: BunSqlOptions = {}): SQL {
     maxLifetime: options.maxLifetime ?? POOL_DEFAULTS.maxLifetimeSec,
     connectionTimeout:
       options.connectionTimeout ?? POOL_DEFAULTS.connectTimeoutSec,
-    tls: "inherit",
-    prepare: "auto",
   });
 }
 

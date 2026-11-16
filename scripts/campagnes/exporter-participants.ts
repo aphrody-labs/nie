@@ -49,7 +49,7 @@
 // Défauts : slug `iergday`, mode de poids `par_oeuvre`, sortie
 // `apps/website/src/data/campagnes/<slug>-roster.json` (`--complet` → `<slug>-roster-complet.json`).
 // `--verifier` n'écrit rien : il recalcule tout et compare au fichier déjà sur disque.
-import { checkoutRoot } from "@aphrody/paths";
+import { checkoutRoot } from "@rosegriffon/config/paths";
 import { createBunSql } from "@rosegriffon/db/bun-sql";
 
 import { SQL_CREATIONS } from "../../apps/rg-website/src/lib/x-campagnes/sql-creations";

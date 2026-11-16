@@ -4,7 +4,7 @@ import { createElement, type ReactNode } from "react";
 import { Button } from "../src/components/button";
 import { Badge } from "../src/components/badge";
 import { breakpointForWidth } from "../src/hooks/use-mobile";
-import { classifyWidth } from "@aphrody/m3-tokens/breakpoints";
+import { classifyWidth } from "../src/lib/breakpoints";
 
 test("Base UI button retains semantic button and disabled behavior during SSR", () => {
   const html = renderToStaticMarkup(

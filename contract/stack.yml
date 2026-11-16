@@ -75,7 +75,6 @@ http:
     credentials: true
   trustedOrigins:
     prod:
-      - https://rg.aphrody.com
       - https://rosegriffon.fr
       - https://www.rosegriffon.fr
       - https://api.rosegriffon.fr

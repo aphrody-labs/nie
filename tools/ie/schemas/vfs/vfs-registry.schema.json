@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://aphrody.com/schemas/vfs/vfs-registry.schema.json",
+  "$id": "https://rosegriffon.fr/schemas/vfs/vfs-registry.schema.json",
   "title": "VfsFormatRegistry",
   "description": "Canonical schema for the Inazuma Eleven: Victory Road VFS format registry and cross-language descriptors.",
   "type": "object",
@@ -12,7 +12,7 @@
     },
     "engine": {
       "type": "string",
-      "enum": ["aphrody-nie-formats", "IECODE.Core.CriFs"]
+      "enum": ["nie-formats", "IECODE.Core.CriFs"]
     },
     "formats": {
       "type": "array",

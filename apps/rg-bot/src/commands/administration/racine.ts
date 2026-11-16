@@ -22,7 +22,7 @@
  *    l'appelle, sans exception : c'est lui qui décide, jamais Discord.
  *
  * ── POURQUOI CE FICHIER EXISTE SÉPARÉMENT ──────────────────────────────────
- * `@aphrody/discordx` exige que la racine d'un sous-groupe soit déclarée sur une
+ * `discordx` exige que la racine d'un sous-groupe soit déclarée sur une
  * classe `@Discord()` avant que `groupSlashes()` ne l'assemble (« A subgroup
  * declared without root » sinon). On la déclare donc ICI, une seule fois, et
  * chaque fichier de groupe importe ce module pour effet de bord : l'ordre des

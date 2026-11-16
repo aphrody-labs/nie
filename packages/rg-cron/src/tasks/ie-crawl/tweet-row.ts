@@ -20,7 +20,7 @@
 // par `url`. Ce code n'est pas superposable à `tweetToRow` (qui produit un tweet
 // isolé, `is_thread: false`) et perdrait sa garde anti-régression.
 
-import type { Tweet } from "@aphrody/x";
+import type { Tweet } from "../../lib/x-types";
 import type { Json } from "@rosegriffon/db";
 
 /**
@@ -43,7 +43,7 @@ export type MediaItem = {
   [key: string]: string | number | boolean | null | undefined;
 };
 
-/** Média brut tel que renvoyé par le parseur de `@aphrody/x`. */
+/** Média brut tel que renvoyé par le parseur de la CLI X. */
 export type MediaBrut = {
   id?: string;
   type?: string;
@@ -115,7 +115,7 @@ export function tweetToRow(t: Tweet): DBTweetRow {
   const media = ((t.media ?? []) as MediaBrut[]).map(mapMedia);
   return {
     id: t.id,
-    // ⚠ PAS de repli sur `t.author.id` : le schéma `Author` de `@aphrody/x` ne
+    // ⚠ PAS de repli sur `t.author.id` : le schéma `Author` de la CLI X ne
     // porte QUE `username` et `name`. Le repli qui figurait ici lisait un champ
     // inexistant — toujours `undefined`, donc toujours la chaîne vide au bout,
     // en donnant l'illusion d'un second chemin. Le pseudo n'est pas un

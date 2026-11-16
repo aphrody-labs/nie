@@ -6,7 +6,7 @@
 /**
  * `feed:sync` — INSTANTANÉS DES SOURCES NON TEMPS RÉEL DU FEED (YouTube, TikTok, Instagram).
  *
- * X reste lu en direct par le site (CLI `aphrody x`, cache de 45 s). Les trois autres réseaux
+ * X reste lu en direct par le site (CLI la CLI X, cache de 45 s). Les trois autres réseaux
  * ne changent pas à la seconde, et deux d'entre eux exigent des ressources que le site n'a pas
  * (navigateur, ré-hébergement d'images) : cette tâche les lit, normalise les vignettes, et écrit
  * un instantané JSON par réseau dans le bucket `assets` (`feed/snapshots/<réseau>.json`). Le site

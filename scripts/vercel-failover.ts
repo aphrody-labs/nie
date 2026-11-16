@@ -10,7 +10,7 @@ import { join, resolve } from "node:path";
 
 // RG lives in the IECODE monorepo root unless RG_ROOT says otherwise.
 const root = resolve(process.env.RG_ROOT ?? resolve(import.meta.dir, ".."));
-const configDir = join(homedir(), ".config", "aphrody", "vercel");
+const configDir = join(homedir(), ".config", "rosegriffon", "vercel");
 const authFile = join(configDir, "auth.json");
 const mode = process.argv[2] ?? "preflight";
 

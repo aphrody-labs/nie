@@ -5,8 +5,8 @@ set -Eeuo pipefail
 # systemd units and nginx routes; this script verifies both before switching.
 release_arg="${1:?usage: atomic-deploy-rg.sh /srv/rg/releases/ID}"
 root="${RG_RELEASE_ROOT:-/srv/rg}"
-catalog="${RG_SERVICE_CATALOG:-/usr/local/share/aphrody-infra/service-catalog.json}"
-routes="${RG_NGINX_ROUTES:-/usr/local/share/aphrody-infra/nginx-routes.json}"
+catalog="${RG_SERVICE_CATALOG:-/usr/local/share/rosegriffon/service-catalog.json}"
+routes="${RG_NGINX_ROUTES:-/usr/local/share/rosegriffon/nginx-routes.json}"
 systemd_dir="${RG_SYSTEMD_DIR:-/etc/systemd/system}"
 env_root="${RG_ENV_ROOT:-/etc}"
 nginx_conf="${RG_NGINX_CONF:-/etc/nginx/conf.d/rg.conf}"
@@ -36,14 +36,14 @@ catalog = json.loads(pathlib.Path(sys.argv[1]).read_text())
 release = pathlib.Path(sys.argv[2])
 env_root = pathlib.Path(sys.argv[3]).resolve()
 manifest = json.loads((release / 'release.json').read_text())
-# Timers (backups, monitor) are host-owned by aphrody-infra, not shipped in the RG release;
+# Timers (backups, monitor) are host-owned by the host infra repository, not shipped in the RG release;
 # retired services keep their catalog entry and unit template but are never started.
 services = [item for item in catalog['services']
             if item['id'].startswith('rg-') and item['unit'].endswith('.service')
             and item.get('status') != 'retired']
 ids = [item['id'] for item in services]
 # Retained pre-monorepo artifacts remain valid explicit rollback targets.
-if (manifest.get('schemaVersion') != 1 or manifest.get('repository') not in {'rg', 'aphrody-labs/aphrody'}
+if (manifest.get('schemaVersion') != 1 or manifest.get('repository') not in {'rg', 'aphrody-labs/rosegriffon'}
         or manifest.get('services') != ids):
     raise SystemExit('release.json does not match the installed RG service catalog')
 commit = manifest.get('commit', '')

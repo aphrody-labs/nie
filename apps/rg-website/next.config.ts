@@ -1,6 +1,7 @@
 import withBundleAnalyzer from "@next/bundle-analyzer";
-import { withBun } from "@aphrody/next-bun";
+import { PHASE_PRODUCTION_SERVER } from "next/constants";
 import type { NextConfig } from "next";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 
 const bundleAnalyzer = withBundleAnalyzer({
@@ -11,7 +12,7 @@ const bundleAnalyzer = withBundleAnalyzer({
 const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL?.trim() || "";
 const CDN_LOADER = CDN_URL && process.env.NEXT_PUBLIC_CDN_LOADER === "1";
 
-// Producer archives are installed inside this workspace; tracing stays in Aphrody.
+// Les paquets du monorepo vivent dans cet espace de travail : le tracing reste ici.
 const buildRoot = path.resolve(process.cwd(), "../../");
 
 const nextConfig: NextConfig = {
@@ -78,9 +79,9 @@ const nextConfig: NextConfig = {
     "@rosegriffon/achillea-types",
     "@rosegriffon/achillea-core",
     "@rosegriffon/achillea-client",
-    // Mécanique SQL/Redis/env partagée sous @rosegriffon/db (ADR sql-convergence D7).
-    "@aphrody/sql",
-    "@aphrody/paths",
+    "@rosegriffon/i18n",
+    "@rosegriffon/nie-ui",
+    "@rosegriffon/filmcraft",
   ],
 
   typescript: {
@@ -723,7 +724,33 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withBun(bundleAnalyzer(nextConfig), {
-  projectDir: process.cwd(),
-  bundler: "turbopack",
-});
+/** Asset prefix et deployment id figés par le build : `next start` doit les réutiliser. */
+function builtClientConfig(distDir: string) {
+  try {
+    const { config } = JSON.parse(
+      readFileSync(path.join(process.cwd(), distDir, "required-server-files.json"), "utf8"),
+    );
+    return {
+      assetPrefix: typeof config?.assetPrefix === "string" ? config.assetPrefix : "",
+      deploymentId:
+        typeof config?.deploymentId === "string" && config.deploymentId
+          ? config.deploymentId
+          : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export default function config(phase: string, _context?: unknown): NextConfig {
+  const resolved = bundleAnalyzer(nextConfig);
+  if (phase !== PHASE_PRODUCTION_SERVER) return resolved;
+  const built = builtClientConfig(resolved.distDir ?? ".next");
+  return built
+    ? {
+        ...resolved,
+        assetPrefix: built.assetPrefix || undefined,
+        deploymentId: built.deploymentId,
+      }
+    : resolved;
+}

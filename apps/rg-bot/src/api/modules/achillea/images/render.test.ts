@@ -7,7 +7,7 @@
  * font l'identité visuelle.
  */
 import { describe, expect, test } from "bun:test";
-import type { SKRSContext2D } from "@aphrody/canvas";
+import type { SKRSContext2D } from "@napi-rs/canvas";
 
 import { iconeDeMarque } from "../../../../lib/ui/theme";
 import { LOGO_PLACEHOLDER_FONT_SIZE } from "./clan-poster";

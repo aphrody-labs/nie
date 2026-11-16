@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Steam install index driver. Runs the Rust `steam-index` binary (bun-steam parsers) and stores
+ * Steam install index driver. Runs the Rust `steam-index` binary (rg-steam parsers) and stores
  * the result in SQLite with bun:sqlite. File hashing is resumable: rows whose size and mtime are
  * unchanged keep their blake3, so an interrupted run continues where it stopped.
  *
@@ -10,7 +10,14 @@
  * account) to the env-kit vault. Values are never printed.
  */
 import { Database } from "bun:sqlite";
-import { mkdirSync, readdirSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -244,15 +251,24 @@ async function hashPending(db: Database) {
   console.log(`hash: ${done}/${pending.length} done`);
 }
 
+/** Sets `KEY=value` in a dotenv file (replaces the line, else appends). */
+function upsertEnvFileKey(path: string, key: string, value: string) {
+  const text = existsSync(path) ? readFileSync(path, "utf8") : "";
+  const line = `${key}=${value}`;
+  const re = new RegExp(`^${key}=.*$`, "m");
+  const next = re.test(text)
+    ? text.replace(re, () => line)
+    : `${text}${text && !text.endsWith("\n") ? "\n" : ""}${line}\n`;
+  writeFileSync(path, next);
+}
+
 async function vault() {
-  const { upsertEnvFileKey, DEFAULT_MONOREPO_ENV_PATH } =
-    await import("C:/aphrody/packages/env-kit/src/index.ts");
   const acct = JSON.parse(await run([BIN, "account", STEAM]));
   if (!acct?.account_name || !acct?.steam_id) {
     console.log("vault: no account found in loginusers.vdf");
     return;
   }
-  const envPath = DEFAULT_MONOREPO_ENV_PATH;
+  const envPath = process.env.RG_ENV_FILE ?? join(import.meta.dir, "..", "..", ".env");
   upsertEnvFileKey(envPath, "STEAM_ACCOUNT_NAME", acct.account_name);
   upsertEnvFileKey(envPath, "STEAM_ID", acct.steam_id);
   console.log("vault: set STEAM_ACCOUNT_NAME, STEAM_ID");

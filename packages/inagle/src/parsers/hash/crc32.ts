@@ -1,7 +1,7 @@
 /**
  * @file crc32.ts
  * @description CRC32 hash computation for cfg.bin key tables.
- * Grounded in aphrody-nie-formats and unified through nie-bridge.
+ * Grounded in nie-formats and unified through nie-bridge.
  *
  * Uses the standard CRC32 polynomial (0xEDB88320).
  */

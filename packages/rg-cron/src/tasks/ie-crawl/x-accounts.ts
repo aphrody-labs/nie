@@ -9,7 +9,7 @@ import { XSession } from "../../lib/x-natif";
 // Config centralisée des comptes X/Twitter officiels Inazuma Eleven / LEVEL-5.
 // Multi-comptes pour ingestion cron + RAG (cf. UNIFIED-RAG-PLAN §4.1 + §8).
 //
-// Validés via Aphrody X profile + tweets (2026-06) + Aphrody X search discovery:
+// Validés X X profile + tweets (2026-06) + X discovery:
 // - inazuma_project : イナズマイレブン公式 (JP, ~260k) — principal
 // - inazuma_cross   : イナズマイレブン クロス 公式 (JP, ~46k) — officiel jeu mobile Cross
 // - AkihiroHino : 日野晃博 CEO LEVEL-5 (~228k)
@@ -18,7 +18,7 @@ import { XSession } from "../../lib/x-natif";
 // - InazumaSeries : Inazuma Eleven Series — officiel global EN (~34k)
 // - Level5Hub : Level-5 Hub — news/leaks ES très actif (~3k, fort engagement)
 //
-// Comptes communauté/news haut-signal découverts via Aphrody X search (2026-06),
+// Comptes communauté/news haut-signal découverts X X search (2026-06),
 // vérifiés réels, centrés Inazuma Eleven (≠ news jeux généralistes bruyantes) :
 // - DartsEnthusiast : EN news/analyse IE (~3.4k, stats DL, INA-DAI, leaks)
 // - InazumaNational : EN clips/comparatifs IE (~11k)
@@ -26,7 +26,7 @@ import { XSession } from "../../lib/x-natif";
 // - Braco_Frost     : ES news/leaks IE (~? , annonces DLC/mundial)
 //
 // Round 2 — découverte Grok (OIDC auth.x.ai, modèle grok-4.3) puis VÉRIFICATION
-// individuelle via Aphrody X client (profil + tweets), 2026-06. Ajoutés uniquement les
+// individuelle X X client (profil + tweets), 2026-06. Ajoutés uniquement les
 // comptes RÉELS, centrés IE et à signal suffisant :
 // - inazumaSD_L5   : イナズマイレブン SD 公式 (JP officiel, ~24.5k)
 // - mutugame       : ムツゲーム — ambassadeur officiel LEVEL-5 公認 (JP, ~2k)
@@ -40,7 +40,7 @@ import { XSession } from "../../lib/x-natif";
 // - Inazuma_JuuuN  : ジューーン — JA streamer/analyse VR+Cross (~2.4k, vues 100k+ sur hissatsu)
 // - Koume_no_Inaire: コウメ大福 — JA compétitif/meta VR (~1.5k)
 //
-// Round 2 — ÉCARTÉS bien que RÉELS (vérifiés via Aphrody, mais signal insuffisant ou
+// Round 2 — ÉCARTÉS bien que RÉELS (vérifiés X, mais signal insuffisant ou
 // timeline trop bruyante pour un RAG informatif ; leur contenu IE reste capté par
 // les requêtes de recherche dans harvest-search.ts) :
 // - Suumash (~516) timeline multi-jeux (Sonic/Pokémon/SF6), trop de bruit
@@ -78,12 +78,12 @@ export const OFFICIAL_X_ACCOUNTS = [
   "rose_griffon", // FR — Rose Griffon
   "InazumaSeries", // Series / officiel global EN
   "Level5Hub", // news/leaks ES actif
-  // communauté / news haut-signal centrés IE (découverte search Aphrody 2026-06)
+  // communauté / news haut-signal centrés IE (découverte X 2026-06)
   "DartsEnthusiast", // EN news/analyse
   "InazumaNational", // EN clips/comparatifs
   "ShinAngelico", // ES leaker/news
   "Braco_Frost", // ES news/leaks
-  // round 2 — officiels + communauté vérifiés (Grok OIDC discovery + Aphrody verify)
+  // round 2 — officiels + communauté vérifiés (Grok OIDC discovery + X)
   "inazumaSD_L5", // 公式 JP — Inazuma Eleven SD
   "mutugame", // ambassadeur officiel LEVEL-5 公認
   "inazo__", // FR news/analyse
@@ -118,7 +118,7 @@ export function getOfficialXAccounts(primaryOnly = false): readonly string[] {
   return primaryOnly ? PRIMARY_X_ACCOUNTS : OFFICIAL_X_ACCOUNTS;
 }
 
-/** Helper: charge cookie Aphrody Xcom.json (si présent) et renvoie "auth_token=..; ct0=.." pour XSession.fromCookieString. */
+/** Helper: charge cookie Xcom.json (si présent) et renvoie "auth_token=..; ct0=.." pour XSession.fromCookieString. */
 export function loadXCookieHeader(): string | null {
   try {
     return XSession.loadOrEnv().cookieHeader();
@@ -127,8 +127,8 @@ export function loadXCookieHeader(): string | null {
   }
 }
 
-/** Load the shared Aphrody X session as cookies for the x.com CDP page. */
-export function loadAphrodyXCookies(): Array<{
+/** Load the shared X session as cookies for the x.com CDP page. */
+export function loadXCookies(): Array<{
   name: string;
   value: string;
   domain: string;

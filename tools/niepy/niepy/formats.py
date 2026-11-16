@@ -5,7 +5,7 @@ G4SK, G4PK, G4RA, AGI, OBJB, PXCL, RDBN, MEVS, G4CM, CPK, AFS2, @UTF, DDS, PNG,
 RIFF, XPCK, XFSA, CRILAYLA, @ACB, CRID, G4NV, COL, COLS, LIVE).
 
 Fonctionne de manière hybride :
-- Utilise en priorité `aphrody-nie-ffi` (Rust) pour la vitesse native.
+- Utilise en priorité `nie-ffi` (Rust) pour la vitesse native.
 - Dispose d'un moteur autonome 100 % pur Python pour la détection et les métadonnées
   lorsque la bibliothèque native n'est pas chargée.
 """

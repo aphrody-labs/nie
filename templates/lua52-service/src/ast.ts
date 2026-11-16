@@ -25,10 +25,8 @@ export interface LuaAstReport {
   line_count: number;
 }
 
-const DLL_PATHS = [
-  "C:/Users/aphro/.local/bin/depot_ffi.dll",
-  "C:/aphrody/crates/depot/target/release/depot_ffi.dll",
-];
+/** Bibliothèque native désignée par RG_DEPOT_FFI ; sans elle, le repli JavaScript s’applique. */
+const DLL_PATHS = [process.env.RG_DEPOT_FFI].filter((p): p is string => !!p);
 
 function findDll(): string | null {
   for (const p of DLL_PATHS) {

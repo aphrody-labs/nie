@@ -24,7 +24,7 @@ import {
   addFilmClip,
   formatTimecodeSMPTE,
   type FilmProject,
-} from "@aphrody/filmcraft/timeline";
+} from "@rosegriffon/filmcraft/timeline";
 
 interface JsonRpcRequest {
   jsonrpc: "2.0";
@@ -239,13 +239,13 @@ function sendResponse(response: JsonRpcResponse) {
 function findHeadlessBinary(): { command: string; prefixArgs: string[] } {
   const cwd = process.cwd();
   const candidates = [
-    resolve(cwd, "target/debug/aphrody-nie-headless.exe"),
-    resolve(cwd, "target/release/aphrody-nie-headless.exe"),
-    resolve(cwd, "../../target/debug/aphrody-nie-headless.exe"),
-    resolve(cwd, "../../target/release/aphrody-nie-headless.exe"),
+    resolve(cwd, "target/debug/nie-headless.exe"),
+    resolve(cwd, "target/release/nie-headless.exe"),
+    resolve(cwd, "../../target/debug/nie-headless.exe"),
+    resolve(cwd, "../../target/release/nie-headless.exe"),
     resolve(
       process.env.USERPROFILE || "",
-      ".local/bin/aphrody-nie-headless.exe",
+      ".local/bin/nie-headless.exe",
     ),
   ];
 
@@ -257,7 +257,7 @@ function findHeadlessBinary(): { command: string; prefixArgs: string[] } {
 
   return {
     command: "cargo",
-    prefixArgs: ["run", "-q", "-p", "aphrody-nie-headless", "--"],
+    prefixArgs: ["run", "-q", "-p", "nie-headless", "--"],
   };
 }
 
@@ -344,7 +344,7 @@ async function handleToolCall(
     case "rg_identify_format": {
       const filePath = String(args.path || "");
       try {
-        const { BinaryImage } = await import("@aphrody/bun-engine");
+        const { BinaryImage } = await import("@rosegriffon/engine-formats");
         const image = await BinaryImage.open(filePath);
         return {
           content: [

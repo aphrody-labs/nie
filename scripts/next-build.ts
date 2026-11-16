@@ -1,5 +1,5 @@
 import { stat } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { checkBunRuntime } from "./bun-runtime";
 
 export function assertWorkspaceMember(root: string, app: string): void {
@@ -44,20 +44,36 @@ export async function buildNext(
   const syncExit = await sync.exited;
   if (syncExit !== 0) return syncExit;
   const startedAt = Date.now();
-  const runner = (await import(
-    Bun.resolveSync("@aphrody/next-bun/run", app)
-  )) as {
-    runNext(args: string[], cwd: string): Promise<number>;
-  };
   const selectedBundler = args.some((arg) =>
     ["--webpack", "--turbopack", "--turbo"].includes(arg),
   )
     ? []
     : ["--webpack"];
-  const exitCode = await runner.runNext(
-    ["build", ...selectedBundler, ...args],
-    app,
+  // Next sur Bun : `bun --bun next` (aucun Node requis sur la machine).
+  const nextBin = join(
+    dirname(Bun.resolveSync("next/package.json", app)),
+    "dist",
+    "bin",
+    "next",
   );
+  const next = Bun.spawn(
+    [
+      process.execPath,
+      "--bun",
+      nextBin,
+      "build",
+      ...selectedBundler,
+      ...args,
+    ],
+    {
+      cwd: app,
+      env: { ...process.env, NEXT_TELEMETRY_DISABLED: process.env.NEXT_TELEMETRY_DISABLED ?? "1" },
+      stdout: "inherit",
+      stderr: "inherit",
+      stdin: "inherit",
+    },
+  );
+  const exitCode = await next.exited;
   if (exitCode !== 0) return exitCode;
   await assertFreshBuild(app, startedAt);
   return 0;

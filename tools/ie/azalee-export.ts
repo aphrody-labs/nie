@@ -13,7 +13,7 @@ import { basename, join, resolve } from "node:path";
 const mirror = resolve(
   process.argv[2] ??
     process.env.NIE_WIKI_DB ??
-    "C:/aphrody/apps/rosegriffon/var/inagle-mirror.sqlite",
+    join(import.meta.dir, "..", "..", "var", "inagle-mirror.sqlite"),
 );
 const outDir = resolve(
   process.argv[3] ??

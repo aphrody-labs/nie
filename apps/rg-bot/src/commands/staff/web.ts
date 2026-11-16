@@ -176,7 +176,7 @@ export class StaffWebCommand {
           },
           {
             name: "Rendu",
-            value: "Aphrody Web CDP",
+            value: "WebView CDP",
             inline: true,
           },
         )

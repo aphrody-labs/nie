@@ -9,7 +9,7 @@
  */
 
 import { resolve } from "node:path";
-import { GlobalFonts } from "@aphrody/canvas";
+import { GlobalFonts } from "@napi-rs/canvas";
 import { FORMES, MARQUE, THEMES } from "@rosegriffon/ui/tokens";
 
 import { profilActif } from "../profil";

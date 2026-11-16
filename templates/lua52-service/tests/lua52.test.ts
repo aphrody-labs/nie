@@ -75,7 +75,7 @@ end
     expect(diags.length).toBe(0);
   });
 
-  test("auditLuaBytecode audits Lua 5.2 compiled bytecode via depot_ffi.dll", async () => {
+  test.skipIf(!process.env.RG_DEPOT_FFI)("auditLuaBytecode audits Lua 5.2 compiled bytecode through the native depot library (RG_DEPOT_FFI)", async () => {
     const fixturePath = `${import.meta.dir}/fixture.luac`;
     const chunk = new Uint8Array([
       0x1b, 0x4c, 0x75, 0x61, 0x52, 0x00, 0x01, 0x04, 0x08, 0x04, 0x08, 0x00,

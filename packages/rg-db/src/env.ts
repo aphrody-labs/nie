@@ -4,7 +4,7 @@
 // Repli quand aucune URL n'est configurée : l'origine courante côté navigateur
 // (URL relatives `/storage/v1/…` relayées par l'app vers Supabase), la pile
 // Supabase locale (`supabase start`) côté serveur.
-import { isUsableEnvValue } from "@aphrody/sql/env";
+import { isUsableEnvValue } from "./sql-core";
 
 const LOCAL_SUPABASE_URL = "http://127.0.0.1:54321";
 
@@ -16,7 +16,7 @@ function origineDeRepli(): string {
     : LOCAL_SUPABASE_URL;
 }
 // Valeurs vides, littéraux "undefined"/"null" et blobs dotenvx scellés (`eyJ2Ijo…`)
-// sont rejetés par le prédicat partagé `@aphrody/sql/env` (ADR sql-convergence D7).
+// sont rejetés par le prédicat partagé `./sql-core` (ADR sql-convergence D7).
 function isValidHttpUrl(value: string | undefined | null): value is string {
   return isUsableEnvValue(value) && value.startsWith("http");
 }

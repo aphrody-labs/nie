@@ -5,8 +5,7 @@
  */
 
 import { STACK_CONTRACT } from "@rosegriffon/config/contract";
-import { redactUrl } from "@aphrody/sql/env";
-import { createRedisClient } from "@aphrody/sql/redis";
+import { createRedisClient, redactUrl } from "./sql-core";
 import type { RedisClient } from "bun";
 
 const CACHE_CONTRACT = STACK_CONTRACT.database.cache;

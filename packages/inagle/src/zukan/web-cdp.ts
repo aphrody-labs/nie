@@ -3,11 +3,8 @@
  * Headless browser page used by the zukan crawlers (`zukan/order.ts`,
  * `zukan/scripts/scrape-skills-pages.ts`).
  *
- * The production transport is Aphrody Web's Chrome DevTools Protocol client
- * (`@aphrody/agent-browser/cdp`). It is an optional peer dependency: it is
- * linked when this package is installed as a member of the Aphrody Bun
- * workspace, and absent from a standalone IECODE install. Hosts may also inject
- * another transport with `setWebCdpPageFactory`. Without a transport,
+ * The default transport is patchright (optional dependency). Hosts may also inject
+ * another transport with `setWebCdpPageFactory` (rg-cron plugs in Bun.WebView). Without a transport,
  * `connect()` fails explicitly instead of returning an empty page, so a crawl
  * never reports success on content it did not load.
  */
@@ -20,7 +17,7 @@ export interface NavigationResponse {
 
 export type WaitUntil = "load" | "domcontentloaded" | "commit" | "networkidle";
 
-/** Minimal page contract shared with `@aphrody/agent-browser/cdp`. */
+/** Minimal page contract implemented by every transport. */
 export interface CdpPageLike {
   goto(url: string, waitUntil?: WaitUntil): Promise<NavigationResponse>;
   evaluate<T>(script: string): Promise<T>;
@@ -29,8 +26,6 @@ export interface CdpPageLike {
 }
 
 export type CdpPageFactory = (endpoint?: string) => Promise<CdpPageLike>;
-
-const APHRODY_CDP_MODULE = "@aphrody/agent-browser/cdp";
 
 let pageFactory: CdpPageFactory | null = null;
 
@@ -93,29 +88,8 @@ async function createPatchrightPage(endpoint?: string): Promise<CdpPageLike> {
   };
 }
 
-async function defaultFactory(): Promise<CdpPageFactory> {
-  try {
-    return (endpoint) => createPatchrightPage(endpoint);
-  } catch {
-    // Fallback to optional workspace CDP peer if patchright is unavailable.
-  }
-  let module: {
-    WebCdpPage?: { connect(endpoint?: string): Promise<CdpPageLike> };
-  };
-  try {
-    const specifier = APHRODY_CDP_MODULE;
-    module = await import(specifier);
-  } catch (error) {
-    throw new Error(
-      `No CDP transport: install patchright or ${APHRODY_CDP_MODULE}, or call setWebCdpPageFactory().`,
-      { cause: error },
-    );
-  }
-  const page = module.WebCdpPage;
-  if (!page || typeof page.connect !== "function") {
-    throw new Error(`${APHRODY_CDP_MODULE} does not export WebCdpPage.connect`);
-  }
-  return (endpoint) => page.connect(endpoint);
+function defaultFactory(): CdpPageFactory {
+  return (endpoint) => createPatchrightPage(endpoint);
 }
 
 export class WebCdpPage implements CdpPageLike {
@@ -125,9 +99,9 @@ export class WebCdpPage implements CdpPageLike {
     this.#page = page;
   }
 
-  /** Connect to the configured CDP endpoint (`APHRODY_BROWSER_CDP_URL` by default). */
+  /** Connect to the configured CDP endpoint (optional). */
   static async connect(endpoint?: string): Promise<WebCdpPage> {
-    const factory = pageFactory ?? (await defaultFactory());
+    const factory = pageFactory ?? defaultFactory();
     return new WebCdpPage(await factory(endpoint));
   }
 

@@ -65,7 +65,7 @@ def crc32_level5(data: bytes | bytearray | memoryview) -> int:
 def crc32_nie(data: bytes | bytearray | memoryview) -> int:
     """Calcule l'accumulateur brut CRC32 sans le XOR final ~crc.
 
-    Identique à `aphrody_nie_formats::cpk::crc32_nie`.
+    Identique à `nie_formats::cpk::crc32_nie`.
     """
     if len(data) == 0:
         return 0xFFFFFFFF
@@ -257,7 +257,7 @@ class _CrilaylaBitReader:
 def decompress_crilayla(data: bytes | bytearray | memoryview) -> bytes:
     """Décompresse un conteneur CRILAYLA et rend les octets décompressés.
 
-    Byte-exacte avec aphrody-nie-formats::crilayla et CriLayla.cs.
+    Byte-exacte avec nie-formats::crilayla et CriLayla.cs.
     """
     input_bytes = bytes(data)
     if len(input_bytes) < CRILAYLA_MIN_FILE_SIZE:
@@ -354,7 +354,7 @@ def compress_crilayla(data: bytes | bytearray | memoryview) -> bytes:
     except Exception:
         pass
 
-    # Essai 2 : pont Rust aphrody-nie-ffi
+    # Essai 2 : pont Rust nie-ffi
     try:
         from ._ffi import NieBytes, bibliotheque
         from .formats import prendre_octets

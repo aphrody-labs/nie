@@ -1,6 +1,6 @@
 /**
  * Licence Achilléa imprimable : PDF A6 paysage, recto / verso, rendu par
- * Skia (`PDFDocument` de `@aphrody/canvas`). Le QR code est tracé en vecteurs
+ * Skia (`PDFDocument` de `@napi-rs/canvas`). Le QR code est tracé en vecteurs
  * (modules de `qrcode-generator`), il reste net à toute échelle d'impression.
  *
  * Contrairement au legacy, le PDF n'est plus écrit sur le disque du bot à
@@ -8,7 +8,7 @@
  * licence révoquée ou expirée l'affiche immédiatement.
  */
 
-import { PDFDocument, type SKRSContext2D } from "@aphrody/canvas";
+import { PDFDocument, type SKRSContext2D } from "@napi-rs/canvas";
 import qrcode from "qrcode-generator";
 import {
   fetchImage,

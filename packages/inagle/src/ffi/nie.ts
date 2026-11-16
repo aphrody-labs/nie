@@ -23,7 +23,7 @@ import {
   readOwnedJson,
   readOwnedString,
   toCString,
-} from "@aphrody/runtime-sdk/ffi";
+} from "./runtime.js";
 import { resolveFormat } from "../docs/vfs-catalog.js";
 import { iecodeDataRoot, iecodePath } from "../core/roots.js";
 import {
@@ -462,7 +462,7 @@ const nativeLib = nativeLibrary({
     iecodePath("target", "release"),
     iecodePath("target", "debug"),
   ],
-  buildHint: "Compile with `cargo build -p aphrody-nie-ffi`.",
+  buildHint: "Compile with `cargo build -p nie-ffi`.",
 });
 
 /**

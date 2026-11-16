@@ -1,7 +1,7 @@
 /**
  * @file crand.ts
  * @description Authoritative pure-TypeScript port of lives::CRand PRNG from nie.exe (MT19937).
- * Byte-exact cross-language parity with Rust aphrody-nie-core, .NET 10 IECODE.Core,
+ * Byte-exact cross-language parity with Rust nie-core, .NET 10 IECODE.Core,
  * C++ iecode_core, and Python niepy.
  */
 

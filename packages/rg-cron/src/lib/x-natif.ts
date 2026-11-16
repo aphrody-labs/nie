@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-// Client X du cron : pilote la CLI native `aphrody x` du fork de Bun (crate `bun_x`) en
+// Client X du cron : pilote une CLI X native (`RG_X_BIN`) en
 // sous-processus. Aucune bibliothèque FFI à installer ; la session reste dans l'environnement du
 // processus fils (`X_COOKIE_STRING`), jamais sur la ligne de commande.
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-import type { Tweet } from "@aphrody/x";
+import { statePath } from "@rosegriffon/config/paths";
+import type { Tweet } from "./x-types";
 
 export type { Tweet };
 
@@ -45,10 +46,7 @@ export class XSession {
   static loadOrEnv(): XSession {
     const chaine = process.env.X_COOKIE_STRING;
     if (chaine) return XSession.fromCookieString(chaine);
-    const fichier = join(
-      process.env.APHRODY_HOME ?? join(homedir(), ".aphrody"),
-      "x-session.json",
-    );
+    const fichier = statePath("x-session.json");
     if (existsSync(fichier)) {
       const brut = JSON.parse(readFileSync(fichier, "utf8")) as {
         auth_token?: string;
@@ -60,7 +58,7 @@ export class XSession {
     if (process.env.X_AUTH_TOKEN && process.env.X_CT0)
       return new XSession(process.env.X_AUTH_TOKEN, process.env.X_CT0);
     throw new Error(
-      "aucune session X : X_COOKIE_STRING, ~/.aphrody/x-session.json ou X_AUTH_TOKEN + X_CT0",
+      "aucune session X : X_COOKIE_STRING, ~/.rosegriffon/x-session.json (RG_HOME) ou X_AUTH_TOKEN + X_CT0",
     );
   }
 
@@ -69,11 +67,12 @@ export class XSession {
   }
 }
 
-function binaireAphrody(): string {
+/** CLI X : `RG_X_BIN`, sinon `rg-x` du PATH, sinon `~/.local/bin/rg-x`. */
+function binaireX(): string {
   return (
-    process.env.APHRODY_BIN ||
-    Bun.which("aphrody") ||
-    join(homedir(), ".local", "bin", "aphrody")
+    process.env.RG_X_BIN ||
+    Bun.which("rg-x") ||
+    join(homedir(), ".local", "bin", "rg-x")
   );
 }
 
@@ -84,7 +83,7 @@ export class XClient {
   constructor(private readonly session: XSession = XSession.loadOrEnv()) {}
 
   private async lancer<T>(args: string[]): Promise<T> {
-    const proc = Bun.spawn([binaireAphrody(), "x", ...args], {
+    const proc = Bun.spawn([binaireX(), ...args], {
       env: { ...process.env, X_COOKIE_STRING: this.session.cookieHeader() },
       stdout: "pipe",
       stderr: "pipe",
@@ -96,7 +95,7 @@ export class XClient {
     ]);
     if (code !== 0) {
       throw new Error(
-        `aphrody x ${args[0]} : ${(erreur || sortie).trim().split("\n").slice(-3).join(" ").slice(0, 300)}`,
+        `rg-x ${args[0]} :${(erreur || sortie).trim().split("\n").slice(-3).join(" ").slice(0, 300)}`,
       );
     }
     return JSON.parse(sortie) as T;

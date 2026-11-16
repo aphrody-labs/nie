@@ -8,7 +8,7 @@
  * Aucune conversion à la volée ici : le décodage BC1/BC3/BC7 coûte trop cher pour être fait à
  * chaque requête, et la sortie est immuable — elle ne change que si le jeu est mis à jour.
  */
-import { iecodeDataPath } from "@aphrody/paths";
+import { iecodeDataPath } from "@rosegriffon/config/paths";
 import fs from "node:fs/promises";
 import path from "node:path";
 

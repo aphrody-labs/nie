@@ -14,7 +14,7 @@
  *   achillea ...       headless Achilléa API: any `AchilleaClient` method, as a player or anonymous
  *
  * Environment: `--env-file <path>` (repeatable) or `./.env`; the process
- * environment wins. `aphrody-nie-model-serve` is reached through its URL or
+ * environment wins. `nie-model-serve` is reached through its URL or
  * binary path (NIE_MODEL_SERVE_*), never embedded.
  */
 // Macro : la table des docs est calculée au bundle, le binaire n'embarque que le résultat.

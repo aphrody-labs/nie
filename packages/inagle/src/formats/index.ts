@@ -19,7 +19,7 @@ export interface HeaderValidationResult {
 
 /**
  * Universal VFS Format Consumer.
- * High-performance format inspection backed by native Rust `aphrody-nie-formats` and fallback JS catalog.
+ * High-performance format inspection backed by native Rust `nie-formats` and fallback JS catalog.
  */
 export class VfsFormatConsumer {
   /**

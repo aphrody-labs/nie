@@ -1,4 +1,4 @@
-import { checkoutRoot } from "@aphrody/paths";
+import { checkoutRoot } from "@rosegriffon/config/paths";
 import { $ } from "bun";
 import { existsSync } from "node:fs";
 import { join } from "node:path";

@@ -10,9 +10,8 @@ test("route collection does not access an absent protected workspace and runtime
 		import {join} from "node:path";
 		import {tmpdir} from "node:os";
 		const absent=join(tmpdir(),"iecode-mode-tex-missing-"+crypto.randomUUID());
-		process.env.APHRODY_ROOT=absent;
-		delete process.env.APHRODY_WORKSPACE_ROOT;
-		delete process.env.APHRODY_IECODE_ROOT;
+		process.env.RG_REPO_ROOT=absent;
+		delete process.env.RG_IECODE_ROOT;
 		delete process.env.IECODE_ROOT;
 		delete process.env.NIE_ROOT;
 		delete process.env.DATA_PATH;

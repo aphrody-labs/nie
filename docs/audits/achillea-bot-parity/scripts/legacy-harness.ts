@@ -14,7 +14,7 @@ const REPO = resolve(import.meta.dir, "../../../..");
 const LEGACY = join(REPO, "legacy/achillea-bot").replaceAll("\\", "/");
 
 const HEADER = `
-import { createCanvas, loadImage, GlobalFonts, type SKRSContext2D } from "@aphrody/canvas";
+import { createCanvas, loadImage, GlobalFonts, type SKRSContext2D } from "@napi-rs/canvas";
 const urlsConfig = { websiteHost: "rosegriffon.fr" };
 const FONTS = [
   ["InterVariable.woff2", "Achillea Sans"],

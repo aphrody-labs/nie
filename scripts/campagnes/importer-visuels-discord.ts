@@ -23,7 +23,7 @@
 // Le script est idempotent : un visuel déjà présent dans `storage.objects` ET
 // servi par le service Storage n'est ni re-téléchargé ni ré-encodé (`--force`
 // pour l'y contraindre).
-import { checkoutRoot } from "@aphrody/paths";
+import { checkoutRoot } from "@rosegriffon/config/paths";
 import { createBunSql } from "@rosegriffon/db/bun-sql";
 
 // ───────────────────────── Table de description ─────────────────────────

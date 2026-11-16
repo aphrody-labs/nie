@@ -26,7 +26,7 @@ interface OrderConfirmationData {
 const transporter = nodemailer.createTransport({
   auth: {
     pass: process.env.SMTP_PASSWORD,
-    user: process.env.SMTP_USER || "contact@aphrody.com",
+    user: process.env.SMTP_USER || "contact@rosegriffon.fr",
   },
   host: process.env.SMTP_HOST || "ssl0.ovh.net",
   port: parseInt(process.env.SMTP_PORT || "465", 10),
@@ -94,14 +94,12 @@ export async function sendEmail({
     const defaultFrom =
       process.env.SMTP_FROM ||
       process.env.MAIL_FROM ||
-      (process.env.NEXT_PUBLIC_APP_NAME === "Rose Griffon"
-        ? '"Rose Griffon" <contact@rosegriffon.fr>'
-        : '"Aphrody" <contact@aphrody.com>');
+      '"Rose Griffon" <contact@rosegriffon.fr>';
     const defaultReplyTo =
       replyTo ||
       process.env.SMTP_REPLY_TO ||
       process.env.MAIL_REPLY_TO ||
-      "contact@aphrody.com";
+      "contact@rosegriffon.fr";
     const info = await transporter.sendMail({
       from: from || defaultFrom,
       html,

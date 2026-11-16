@@ -78,7 +78,7 @@ UNIT
 first="$fixture/rg/releases/first"
 second="$fixture/rg/releases/second"
 build_release "$first" first rg
-build_release "$second" second aphrody-labs/aphrody
+build_release "$second" second aphrody-labs/rosegriffon
 unknown="$fixture/rg/releases/unknown"
 build_release "$unknown" unknown unrelated/repository
 if bash "$script" "$unknown" >"$fixture/out" 2>&1; then echo 'accepted unknown repository' >&2; exit 1; fi

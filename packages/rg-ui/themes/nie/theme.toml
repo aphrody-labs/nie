@@ -1,5 +1,5 @@
-# NIE Pixel-Perfect theme pack (crates/aphrody-nie-ui color & surface tokens).
-# Source hexes verified in crates/aphrody-nie-ui/src/color.rs (#131420 abysse, #97c0fc cyan, #e6c961 ambre).
+# NIE Pixel-Perfect theme pack (crates/nie-ui color & surface tokens).
+# Source hexes verified in crates/nie-ui/src/color.rs (#131420 abysse, #97c0fc cyan, #e6c961 ambre).
 id = "nie"
 name = "NIE Studio"
 

@@ -13,7 +13,7 @@
  * The "before" case renders the current poster as it was at 3c36d153, before
  * the 96px placeholder fix (8599f6ed).
  */
-import { createCanvas, loadImage, type Image } from "@aphrody/canvas";
+import { createCanvas, loadImage, type Image } from "@napi-rs/canvas";
 import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 

@@ -14,7 +14,6 @@ COPY --chown=10001:10001 product/ /opt/iecode/
 ENV PATH="/opt/iecode/bin:/usr/share/dotnet:$PATH" \
     DOTNET_ROOT=/usr/share/dotnet \
     DOTNET_CLI_TELEMETRY_OPTOUT=1 \
-    APHRODY_PROFILE=ie \
     NIE_WIKI_DB=/var/lib/iecode/mirror.sqlite
 WORKDIR /opt/iecode
 USER 10001:10001

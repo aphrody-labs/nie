@@ -11,7 +11,7 @@
 // langue (JA/EN/FR/ES). On filtre le bruit (RT purs, trop court), on dédoublonne
 // par id et on upsert dans la table `tweets` (idempotent par id).
 //
-// Requêtes validées via Aphrody X search (2026-06, compte yoyo) — voir x-accounts.ts.
+// Requêtes validées X X search (2026-06, compte yoyo) — voir x-accounts.ts.
 // Lecture/recherche seule : on ne publie RIEN.
 
 import { XClient, XSession, type Tweet } from "../../lib/x-natif";

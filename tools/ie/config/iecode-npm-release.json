@@ -253,7 +253,7 @@
       "verified": true
     }
   ],
-  "pending": ["@aphrody/iecode-web", "@aphrody/nie-ui"],
+  "pending": ["@aphrody/iecode-web", "@rosegriffon/nie-ui"],
   "qualification": "canonical registry metadata and downloaded tarball SHA512; package publication does not qualify every product runtime",
   "sourceCommitQualification": "Initial 30-package snapshot; per-package sourceCommit identifies later qualified patches.",
   "cleanConsumer": {

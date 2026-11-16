@@ -1,5 +1,5 @@
 import { ptr } from "bun:ffi";
-import { readOwnedJson } from "@aphrody/runtime-sdk/ffi";
+import { readOwnedJson } from "../ffi/runtime.js";
 import {
   NieVfsHandle,
   freeNieBytes,

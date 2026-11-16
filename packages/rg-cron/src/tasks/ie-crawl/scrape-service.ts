@@ -8,7 +8,7 @@
  * Service de scraping exposé au bot Discord par le pont IPC UNIX du cron.
  *
  * ── POURQUOI CE MODULE EXISTE ───────────────────────────────────────────────
- * Les moteurs de scraping (`@aphrody/agent-browser` (Aphrody Web CDP), `@aphrody/x`) sont
+ * Les moteurs de scraping (WebView/CDP, CLI X) sont
  * installés dans `packages/cron`, PAS dans `apps/bot`, et ils n'y seront pas
  * installés : toucher au fichier de verrouillage casserait la CI (`bun.lock`
  * doit rester en version 1, or le Bun local est un canari 1.4 qui écrit en
@@ -68,7 +68,7 @@
  *              d'infrastructure (aucun `set-cookie`, aucune valeur
  *              d'authentification). `technologies` vient d'une détection maison
  *              par signatures d'en-têtes et de balises : le binaire
- *              `wappalyzergo-cli` du navigateur CDP Aphrody Web n'est PAS installé sur cet hôte
+ *              `wappalyzergo-cli` du navigateur CDP n’est PAS installé sur cet hôte
  *              (`resolveBinary()` lève), donc `detectFrameworks` n'est pas
  *              utilisable ici.
  *    Délai   : 30 s. Débit : 1 en vol, 6 par minute.
@@ -117,7 +117,7 @@
  */
 
 import type { XClient } from "../../lib/x-natif";
-import { WebService } from "@aphrody/agent-browser/service";
+import { fetchHtml, fetchResponse } from "../../lib/http-fetch";
 import { WebCdpPage } from "../../lib/web-cdp";
 import { obscuraFetch } from "../../lib/obscura";
 import { loadXCookieHeader } from "./x-accounts";
@@ -648,7 +648,7 @@ interface SignatureTechno {
  * Signatures de détection.
  *
  * Détection maison assumée : le binaire `wappalyzergo-cli` dont dépend
- * `detectFrameworks` du navigateur CDP Aphrody Web n'est pas installé sur cet hôte (`resolveBinary()`
+ * `detectFrameworks` du navigateur CDP n’est pas installé sur cet hôte (`resolveBinary()`
  * lève « wappalyzergo-cli binary not found »). Ces signatures ne couvrent que
  * ce qui se lit sans ambiguïté dans les en-têtes ou le HTML servi.
  */
@@ -958,10 +958,7 @@ export function dateXVersIso(brut: unknown): string | null {
  * Construit une fiche depuis `data.user.result` de l'opération GraphQL
  * `UserByScreenName`.
  *
- * Écrit ici plutôt qu'emprunté à `parseUserResult` du paquet : ce symbole n'est
- * pas déclaré dans le shim de types `packages/cron/types/x-shim.d.ts`, seul
- * contrat visible de tsc pour `@aphrody/x`. Les champs lus sont ceux
- * qu'utilise le paquet (`core` d'abord, `legacy` en repli).
+ * Les champs lus sont ceux de la réponse GraphQL (`core` d'abord, `legacy` en repli).
  */
 export function ficheDepuisResultatX(
   resultat: unknown,
@@ -1074,7 +1071,7 @@ export function bornerPostX(
 // ─── Moteurs (chargement paresseux) ──────────────────────────────────────────
 
 /**
- * Ouvre un client X à partir des cookies de la session Aphrody X.
+ * Ouvre un client X à partir des cookies de la session X.
  *
  * Même source que `twitter.ts` et `harvest-search.ts` : un seul endroit détient
  * la session, et la valeur du cookie ne quitte jamais cette fonction.
@@ -1108,7 +1105,7 @@ async function verbeScrapePage(
   if (requete.profil !== undefined) {
     throw new ErreurScrape(
       "requete_invalide",
-      "Browser profile selection is unsupported; use the shared Aphrody Web endpoint.",
+      "Browser profile selection is unsupported; use the shared CDP endpoint.",
     );
   }
   const debut = Bun.nanoseconds();
@@ -1144,7 +1141,7 @@ async function verbeScrapePage(
       markdown: bornerTexte(markdownComplet, LIMITE_MARKDOWN),
       tronque: markdownComplet.length > LIMITE_MARKDOWN,
       octets: tailleOctets(html),
-      rendu: "aphrody-web-cdp",
+      rendu: "webview-cdp",
       ms: Math.round((Bun.nanoseconds() - debut) / 1e6),
     };
   } finally {
@@ -1156,7 +1153,7 @@ async function verbeScrapePage(
   }
 }
 
-/** DuckDuckGo result parsing; Aphrody Web owns page acquisition and rendering. */
+/** DuckDuckGo result parsing over a direct HTTP fetch. */
 async function chercherDuckDuckGo(
   requete: string,
   limite: number,
@@ -1165,8 +1162,7 @@ async function chercherDuckDuckGo(
   url.searchParams.set("q", requete);
   url.searchParams.set("kl", "fr-fr");
   try {
-    const html = await new WebService().fetch(url.toString(), {
-      dump: "html",
+    const html = await fetchHtml(url.toString(), {
       timeoutSecs: 20,
       userAgent: AGENT_UTILISATEUR,
     });
@@ -1174,7 +1170,7 @@ async function chercherDuckDuckGo(
   } catch (error) {
     throw new ErreurScrape(
       "moteur_indisponible",
-      `Aphrody Web search unavailable: ${nettoyerMessage(error instanceof Error ? error.message : String(error))}`,
+      `Web search unavailable: ${nettoyerMessage(error instanceof Error ? error.message : String(error))}`,
     );
   }
 }
@@ -1212,7 +1208,7 @@ async function verbeScrapeRecon(
 
   let reponse;
   try {
-    reponse = await new WebService().response(url.toString(), {
+    reponse = await fetchResponse(url.toString(), {
       maxBytes: LIMITE_HTML_OCTETS,
       timeoutSecs: 20,
     });

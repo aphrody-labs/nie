@@ -2,7 +2,7 @@ import { Glob } from "bun";
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { brotliCompressSync, gzipSync, constants } from "node:zlib";
-import { workspacePath } from "@aphrody/paths";
+import { workspacePath } from "@rosegriffon/config/paths";
 import { SHARED_ASSETS_PATH } from "@rosegriffon/assets";
 
 const CDN_STATIC_ROOT = process.env.CDN_STATIC_ROOT ?? "/var/www/cdn/static";
@@ -28,7 +28,7 @@ export async function syncCdnAssets(): Promise<{
 }> {
   console.log("[Cron CDN] Démarrage de la synchronisation des assets CDN...");
   try {
-    // Resolved at call time from the workspace root (cwd or APHRODY_WORKSPACE_ROOT), so the compiled binary
+    // Resolved at call time from the workspace root (cwd or RG_REPO_ROOT), so the compiled binary
     // never depends on its own bundled location.
     const sourceDir =
       process.env.RG_ASSETS_SOURCE_DIR ??

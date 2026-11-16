@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-// Lecture X en direct côté serveur : la CLI native `aphrody x` du fork de Bun interroge les
+// Lecture X en direct côté serveur : une CLI X native interroge les
 // vrais endpoints X avec la session du serveur (cookies, variables d'environnement du serveur ;
-// `APHRODY_BIN` pour changer le binaire). Rien n'est lu en base ; un cache court (par requête)
+// `RG_X_BIN` pour changer le binaire). Rien n'est lu en base ; un cache court (par requête)
 // protège le quota de la session, et les appels identiques simultanés n'en font qu'un.
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -51,14 +51,14 @@ const DELAI_MS = 25_000;
 
 function binaire(): string {
   return (
-    process.env.APHRODY_BIN ||
-    Bun.which("aphrody") ||
-    join(homedir(), ".local", "bin", "aphrody")
+    process.env.RG_X_BIN ||
+    Bun.which("rg-x") ||
+    join(homedir(), ".local", "bin", "rg-x")
   );
 }
 
 async function lancer<T>(args: string[]): Promise<T> {
-  const proc = Bun.spawn([binaire(), "x", ...args], {
+  const proc = Bun.spawn([binaire(), ...args], {
     stdout: "pipe",
     stderr: "pipe",
     env: process.env,
@@ -72,7 +72,7 @@ async function lancer<T>(args: string[]): Promise<T> {
   ]);
   if (code !== 0)
     throw new Error(
-      `aphrody x ${args[0]} : ${(erreur || sortie).trim().slice(-200)}`,
+      `rg-x ${args[0]} : ${(erreur || sortie).trim().slice(-200)}`,
     );
   return JSON.parse(sortie) as T;
 }
