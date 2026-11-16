@@ -203,7 +203,7 @@ pub fn game(g: &crate::i18n::Game, t: &Theme, lang: &str) -> UiNode {
         series_nav(t, lang),
         link(14.0, t.primary, format!("/series?lang={lang}"), tr(lang, "game.back")),
         heading,
-        badge(status, bg, fg),
+        UiNode::boxed(UiStyle { axis: nie_ui_dioxus::Axis::Row, ..UiStyle::default() }, vec![badge(status, bg, fg)]),
         label(18.0, t.text, tr(lang, "game.platforms")),
         chips(&g.platforms, t, lang),
         link(16.0, t.primary, g.official.clone(), tr(lang, "series.official")),
