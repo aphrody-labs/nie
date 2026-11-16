@@ -203,8 +203,27 @@ async fn asset(State(s): State<Shared>, Path(raw): Path<String>) -> Response {
 }
 
 /// Value of `key` in a raw query string.
-fn query_value<'a>(q: Option<&'a str>, key: &str) -> Option<&'a str> {
-    q?.split('&').find_map(|kv| kv.split_once('=').filter(|(k, _)| *k == key).map(|(_, v)| v))
+fn query_value(q: Option<&str>, key: &str) -> Option<String> {
+    q?.split('&').find_map(|kv| kv.split_once('=').filter(|(k, _)| *k == key).map(|(_, v)| percent_decode(&v.replace('+', " "))))
+}
+
+/// Decodes `%XX` escapes (UTF-8); invalid escapes are kept as written.
+fn percent_decode(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == b'%' && i + 2 < b.len() && s.is_char_boundary(i + 1) && s.is_char_boundary(i + 3) {
+            if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
+                out.push(v);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(b[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
 }
 
 /// `/series?lang=..&theme=..`: the series hub, language from the query or `Accept-Language`,
@@ -212,8 +231,8 @@ fn query_value<'a>(q: Option<&'a str>, key: &str) -> Option<&'a str> {
 fn lang_theme(s: &AppState, uri: &axum::http::Uri, headers: &axum::http::HeaderMap) -> (&'static str, Theme) {
     let q = uri.query();
     let accept = headers.get(header::ACCEPT_LANGUAGE).and_then(|v| v.to_str().ok());
-    let lang = crate::i18n::negotiate(query_value(q, "lang"), accept);
-    let theme = query_value(q, "theme").and_then(Theme::from_tokens).unwrap_or(s.theme);
+    let lang = crate::i18n::negotiate(query_value(q, "lang").as_deref(), accept);
+    let theme = query_value(q, "theme").as_deref().and_then(Theme::from_tokens).unwrap_or(s.theme);
     (lang, theme)
 }
 
@@ -248,7 +267,7 @@ async fn chara_list(State(s): State<Shared>, uri: axum::http::Uri, headers: axum
     let z = crate::i18n::zukan();
     let q = uri.query();
     let page_no = query_value(q, "page").and_then(|p| p.parse::<i64>().ok()).unwrap_or(1).max(1);
-    let search = query_value(q, "q").map(|v| v.replace('+', " ")).unwrap_or_default();
+    let search = query_value(q, "q").unwrap_or_default();
     match s.db.nouns(&z.names_path(lang), &z.noun_entry, z.full_name_kind, &search, (page_no - 1) * z.page_size, z.page_size).await {
         Ok((total, rows)) => {
             let pages = ((total + z.page_size - 1) / z.page_size).max(1);
