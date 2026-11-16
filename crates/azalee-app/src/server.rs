@@ -68,6 +68,8 @@ pub fn router(state: Shared) -> Router {
         .route("/", get(home))
         .route("/series", get(series_page))
         .route("/series/{slug}", get(game_page))
+        .route("/zukan/chara", get(chara_list))
+        .route("/zukan/chara/{id}", get(chara_page))
         .route("/wiki/files", get(root_dir))
         .route("/wiki/files/", get(root_dir))
         .route("/wiki/files/{*path}", get(files))
@@ -231,5 +233,51 @@ async fn game_page(State(s): State<Shared>, Path(slug): Path<String>, uri: axum:
     match crate::i18n::game(&slug) {
         Some(g) => localized(StatusCode::OK, &pages::game(&g, &theme, lang), &crate::i18n::t(lang, &format!("game.{slug}")), lang, &theme),
         None => localized(StatusCode::NOT_FOUND, &pages::not_found(&slug, &theme), &crate::i18n::t(lang, "notfound.title"), lang, &theme),
+    }
+}
+
+/// Game text languages present in the VFS (folders of `text_dir`).
+async fn game_langs(s: &AppState) -> Vec<String> {
+    let z = crate::i18n::zukan();
+    let (prefix, _) = z.text_dir.split_once("{lang}").unwrap_or((&z.text_dir, ""));
+    s.db.list_dir(prefix.trim_end_matches('/'), 0).await.map(|d| d.dirs).unwrap_or_default()
+}
+
+async fn chara_list(State(s): State<Shared>, uri: axum::http::Uri, headers: axum::http::HeaderMap) -> Response {
+    let (lang, theme) = lang_theme(&s, &uri, &headers);
+    let z = crate::i18n::zukan();
+    let q = uri.query();
+    let page_no = query_value(q, "page").and_then(|p| p.parse::<i64>().ok()).unwrap_or(1).max(1);
+    let search = query_value(q, "q").map(|v| v.replace('+', " ")).unwrap_or_default();
+    match s.db.nouns(&z.names_path(lang), &z.noun_entry, z.full_name_kind, &search, (page_no - 1) * z.page_size, z.page_size).await {
+        Ok((total, rows)) => {
+            let pages = ((total + z.page_size - 1) / z.page_size).max(1);
+            let ui = pages::chara_list(&rows, total, page_no, pages, &search, &theme, lang);
+            localized(StatusCode::OK, &ui, &crate::i18n::t(lang, "zukan.chara.title"), lang, &theme)
+        }
+        Err(e) => fail(&e),
+    }
+}
+
+async fn chara_page(State(s): State<Shared>, Path(id): Path<i32>, uri: axum::http::Uri, headers: axum::http::HeaderMap) -> Response {
+    let (lang, theme) = lang_theme(&s, &uri, &headers);
+    let z = crate::i18n::zukan();
+    let mut names = Vec::new();
+    let mut title = None;
+    for gl in game_langs(&s).await {
+        match s.db.noun(&z.names_path(&gl), &z.noun_entry, id).await {
+            Ok(v) if !v.is_empty() => {
+                if gl == lang || title.is_none() {
+                    title = v.iter().find(|(k, _)| *k == z.full_name_kind).map(|(_, s)| s.clone()).or(title);
+                }
+                names.push((gl, v));
+            }
+            Ok(_) => {}
+            Err(e) => return fail(&e),
+        }
+    }
+    match title {
+        Some(tt) => localized(StatusCode::OK, &pages::chara(&tt, &names, &theme, lang), &tt, lang, &theme),
+        None => localized(StatusCode::NOT_FOUND, &pages::not_found(&id.to_string(), &theme), &crate::i18n::t(lang, "notfound.title"), lang, &theme),
     }
 }

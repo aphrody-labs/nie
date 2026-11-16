@@ -157,3 +157,40 @@ mod tests {
 pub fn game(slug: &str) -> Option<Game> {
     series().into_iter().find(|g| g.slug == slug)
 }
+
+/// Paths and entry names of the game text tables (`data/zukan.json`).
+#[derive(Debug, Clone)]
+pub struct Zukan {
+    /// Text folder with a `{lang}` placeholder.
+    pub text_dir: String,
+    /// Character names file.
+    pub chara_names: String,
+    /// T2B entry name of a noun row.
+    pub noun_entry: String,
+    /// Kind of the full-name row.
+    pub full_name_kind: i32,
+    /// Rows per page.
+    pub page_size: i64,
+}
+
+/// Zukan configuration.
+#[must_use]
+pub fn zukan() -> Zukan {
+    let v: Value = serde_json::from_str(include_str!("../data/zukan.json")).unwrap_or(Value::Null);
+    let s = |k: &str| v.get(k).and_then(Value::as_str).unwrap_or_default().to_owned();
+    Zukan {
+        text_dir: s("text_dir"),
+        chara_names: s("chara_names"),
+        noun_entry: s("noun_entry"),
+        full_name_kind: v.get("full_name_kind").and_then(Value::as_i64).and_then(|n| i32::try_from(n).ok()).unwrap_or(0),
+        page_size: v.get("page_size").and_then(Value::as_i64).unwrap_or(100),
+    }
+}
+
+impl Zukan {
+    /// Path of the character names file for a game language.
+    #[must_use]
+    pub fn names_path(&self, lang: &str) -> String {
+        format!("{}/{}", self.text_dir.replace("{lang}", lang), self.chara_names)
+    }
+}

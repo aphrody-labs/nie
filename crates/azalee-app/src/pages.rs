@@ -163,6 +163,7 @@ fn series_nav(t: &Theme, lang: &str) -> UiNode {
             label(18.0, t.text, "Azalee"),
             link(14.0, t.muted, format!("/{q}"), tr(lang, "nav.home")),
             link(14.0, t.muted, format!("/series{q}"), tr(lang, "nav.series")),
+            link(14.0, t.muted, format!("/zukan/chara{q}"), tr(lang, "nav.zukan")),
             link(14.0, t.muted, page_url("", true), tr(lang, "nav.files")),
             link(14.0, t.muted, "/sitemap.xml", tr(lang, "nav.sitemap")),
             UiNode::boxed(
@@ -244,4 +245,55 @@ pub fn series(t: &Theme, lang: &str) -> UiNode {
     let grid = UiNode::boxed(UiStyle { axis: nie_ui_dioxus::Axis::Row, gap: 20.0, wrap: true, ..UiStyle::default() }, cards);
     let heading = UiNode::Text { style: UiStyle { font_px: 36.0, weight: 700, color: Some(t.text), ..UiStyle::default() }, text: tr(lang, "series.title") };
     page(t, vec![series_nav(t, lang), heading, label(16.0, t.muted, tr(lang, "series.lead")), grid])
+}
+
+/// `/zukan/chara`: character names from the game text of `lang`.
+#[must_use]
+pub fn chara_list(rows: &[crate::db::Named], total: i64, page_no: i64, pages: i64, search: &str, t: &Theme, lang: &str) -> UiNode {
+    use crate::i18n::{t as tr, tf};
+    let heading = UiNode::Text { style: UiStyle { font_px: 36.0, weight: 700, color: Some(t.text), ..UiStyle::default() }, text: tr(lang, "zukan.chara.title") };
+    let mut grid = Vec::new();
+    for r in rows {
+        grid.push(UiNode::boxed(
+            UiStyle { padding: 14.0, width: Some(220.0), radius: 12.0, background: Some(t.card), border: Some(t.outline), ..UiStyle::default() },
+            vec![link(16.0, t.text, format!("/zukan/chara/{}?lang={lang}", r.id), r.text.clone())],
+        ));
+    }
+    let q = |p: i64| format!("/zukan/chara?lang={lang}&page={p}&q={}", nie_sitemap::encode_segment(search));
+    let mut pager = Vec::new();
+    if page_no > 1 {
+        pager.push(link(15.0, t.primary, q(page_no - 1), tr(lang, "zukan.prev")));
+    }
+    pager.push(label(15.0, t.muted, format!("{page_no} / {pages}")));
+    if page_no < pages {
+        pager.push(link(15.0, t.primary, q(page_no + 1), tr(lang, "zukan.next")));
+    }
+    page(
+        t,
+        vec![
+            series_nav(t, lang),
+            heading,
+            label(16.0, t.muted, tf(lang, "zukan.chara.lead", &[("n", total.to_string())])),
+            UiNode::boxed(UiStyle { axis: nie_ui_dioxus::Axis::Row, gap: 12.0, wrap: true, ..UiStyle::default() }, grid),
+            UiNode::boxed(UiStyle { axis: nie_ui_dioxus::Axis::Row, gap: 16.0, ..UiStyle::default() }, pager),
+        ],
+    )
+}
+
+/// `/zukan/chara/{id}`: one character, its names in every language of the game.
+#[must_use]
+pub fn chara(title: &str, names: &[(String, Vec<(i32, String)>)], t: &Theme, lang: &str) -> UiNode {
+    use crate::i18n::t as tr;
+    let heading = UiNode::Text { style: UiStyle { font_px: 36.0, weight: 700, color: Some(t.text), ..UiStyle::default() }, text: title.to_owned() };
+    let rows: Vec<Vec<String>> = names.iter().map(|(l, v)| vec![l.clone(), v.iter().map(|(_, s)| s.as_str()).collect::<Vec<_>>().join(" · ")]).collect();
+    page(
+        t,
+        vec![
+            series_nav(t, lang),
+            link(14.0, t.primary, format!("/zukan/chara?lang={lang}"), tr(lang, "zukan.chara.title")),
+            heading,
+            label(18.0, t.text, tr(lang, "zukan.chara.names")),
+            simple_table(&["lang".into(), "text".into()], &rows, 160.0, t),
+        ],
+    )
 }

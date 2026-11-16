@@ -34,5 +34,12 @@
   "platform.ps5": "PlayStation 5",
   "platform.xbox": "Xbox Series X|S",
   "platform.steam": "Steam",
-  "series.more": "詳細"
+  "series.more": "詳細",
+  "zukan.chara.title": "キャラクター",
+  "zukan.chara.lead": "{n} 人。名前はこの言語のゲーム内テキストから読み込んでいます。",
+  "zukan.search": "検索",
+  "zukan.prev": "前へ",
+  "zukan.next": "次へ",
+  "zukan.chara.names": "各言語の名前",
+  "nav.zukan": "キャラクター"
 }

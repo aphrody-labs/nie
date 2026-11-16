@@ -238,3 +238,52 @@ impl Db {
         Ok((cols, rows))
     }
 }
+
+/// One character name row: hash id and text.
+#[derive(Debug, Clone)]
+pub struct Named {
+    /// Name hash (`NOUN_INFO` first variable).
+    pub id: i32,
+    /// Text in the requested language.
+    pub text: String,
+}
+
+impl Db {
+    /// `NOUN_INFO` rows of the text file at `path` whose kind is `kind`, ordered by text, with paging.
+    /// Variables: 0 = hash id, 1 = kind, 5 = text.
+    ///
+    /// # Errors
+    /// Query errors.
+    pub async fn nouns(&self, path: &str, entry: &str, kind: i32, search: &str, offset: i64, limit: i64) -> Result<(i64, Vec<Named>), DbError> {
+        let sql = "WITH f AS (SELECT id FROM vfs_file WHERE path = $1), n AS ( \
+              SELECT max(v.int_value) FILTER (WHERE v.ord = 0) AS hid, \
+                     max(v.int_value) FILTER (WHERE v.ord = 1) AS kind, \
+                     max(v.text_value) FILTER (WHERE v.ord = 5) AS txt \
+              FROM t2b_entry e JOIN f ON e.file_id = f.id \
+              JOIN t2b_var v ON v.file_id = e.file_id AND v.entry = e.row_index \
+              WHERE e.name = $2 GROUP BY e.row_index) \
+            SELECT hid, txt, count(*) OVER () FROM n \
+            WHERE kind = $3 AND txt <> '' AND txt ILIKE '%' || $4 || '%' \
+            ORDER BY txt, hid OFFSET $5 LIMIT $6";
+        let rows = self.client.query(sql, &[&path, &entry, &kind, &search, &offset, &limit]).await?;
+        let total = rows.first().map_or(0, |r| r.get::<_, i64>(2));
+        Ok((total, rows.iter().map(|r| Named { id: r.get(0), text: r.get(1) }).collect()))
+    }
+
+    /// Every text of hash `id` in the `NOUN_INFO` file at `path`: `(kind, text)`.
+    ///
+    /// # Errors
+    /// Query errors.
+    pub async fn noun(&self, path: &str, entry: &str, id: i32) -> Result<Vec<(i32, String)>, DbError> {
+        let sql = "WITH f AS (SELECT id FROM vfs_file WHERE path = $1), n AS ( \
+              SELECT max(v.int_value) FILTER (WHERE v.ord = 0) AS hid, \
+                     max(v.int_value) FILTER (WHERE v.ord = 1) AS kind, \
+                     max(v.text_value) FILTER (WHERE v.ord = 5) AS txt \
+              FROM t2b_entry e JOIN f ON e.file_id = f.id \
+              JOIN t2b_var v ON v.file_id = e.file_id AND v.entry = e.row_index \
+              WHERE e.name = $2 GROUP BY e.row_index) \
+            SELECT kind, txt FROM n WHERE hid = $3 AND txt <> '' ORDER BY kind";
+        let rows = self.client.query(sql, &[&path, &entry, &id]).await?;
+        Ok(rows.iter().map(|r| (r.get(0), r.get(1))).collect())
+    }
+}
