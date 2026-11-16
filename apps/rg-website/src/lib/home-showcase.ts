@@ -207,7 +207,7 @@ export const COMMON_SPRITE_SHORTCUTS: SpriteShortcutItem[] = [
     href: "/wiki/chara",
     key: "chara",
     label: "Joueurs",
-    subtitle: "Base & profils",
+    subtitle: "Fiches et profils",
   },
   {
     href: "/wiki/skill",
@@ -260,7 +260,7 @@ export const CATEGORY_ICON_SHORTCUTS: CategoryShortcutItem[] = [
     href: "/wiki/equipe",
     key: "emblem",
     label: "Équipes",
-    subtitle: "Clubs & écoles",
+    subtitle: "Clubs et écoles",
   },
   {
     href: "/wiki/stade",
@@ -352,7 +352,7 @@ export const BENTO_COPY = {
       "Données extraites du jeu : personnages, techniques, statistiques et textures.",
     title: "Wiki Azalée",
   },
-  heading: "Trois pôles complémentaires",
+  heading: "Wiki, e-sport et Web TV",
   rgtv: {
     artworkAlt: "Roy et Gaëlle manettes en main pour Rose Griffon TV",
     artworkSrc: "/rgtv/affiche.webp",
@@ -362,22 +362,22 @@ export const BENTO_COPY = {
     liveBadge: "En direct",
     logoAlt: "Logo Rose Griffon TV",
     logoSrc: "/rgtv/rgtv.webp",
-    nextStreamFallback: "Casts tournois & soirées communauté sur Twitch.",
+    nextStreamFallback: "Casts de tournois et soirées communautaires sur Twitch.",
     offlineBadge: "Programme TV",
     subtitle:
       "Retransmissions de tournois, interviews et soirées création communautaire.",
     title: "Rose Griffon TV",
   },
   subHeading:
-    "Encyclopédie technique, circuit compétitif et diffusion en direct reliés au même compte.",
+    "Un seul compte Rose Griffon pour le wiki, le classement et la Web TV.",
 } as const;
 
 export const ASSET_SHOWCASE_COPY = {
   ariaLabel: "Explorateur de ressources et studio 3D",
-  badge: "Ressources authentiques du jeu",
-  heading: "Sprites, textures et modèles 3D en temps réel",
+  badge: "Extraites du jeu",
+  heading: "Sprites, textures et modèles 3D",
   subHeading:
-    "Chaque icône, poste, palier et maillage provient directement des archives décodées d'Inazuma Eleven Victory Road.",
+    "Icônes, postes, paliers et maillages lus dans les archives d'Inazuma Eleven Victory Road.",
   tabs: [
     { id: "atlas", label: "Atlas & Postes" },
     { id: "elements", label: "Éléments & Raretés" },
@@ -404,7 +404,7 @@ export const ASSET_SHOWCASE_COPY = {
       "https://cdn.rosegriffon.fr/dx11/menu/200_icon/10_icon_chr/face/c01001900_l.png?w=256&format=webp",
     posterBgSrc: "/inazuma-cross/home-keyvisual.webp",
     subtitle:
-      "Orbit, zoom et inspection directe du maillage sur le navigateur.",
+      "Faites tourner, zoomez et inspectez le maillage dans le navigateur.",
     title: "Aperçu cut-in Waza 3D",
   },
 } as const;
