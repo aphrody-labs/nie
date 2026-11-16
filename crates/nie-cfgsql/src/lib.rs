@@ -148,6 +148,11 @@ pub fn sanitize_ident(raw: &str) -> String {
     if out.is_empty() {
         out.push('x');
     }
+    // PostgreSQL truncates identifiers at 63 bytes; stay below it so suffixes still fit.
+    out.truncate(56);
+    while out.ends_with('_') {
+        out.pop();
+    }
     if out.as_bytes()[0].is_ascii_digit() {
         out.insert(0, 'x');
     }
@@ -198,6 +203,23 @@ fn components(value: &RdbnValue) -> Vec<(Option<usize>, Option<ColumnType>, Cell
     }
 }
 
+/// Text form of a value, used when a column mixes value kinds.
+fn value_text(value: &RdbnValue) -> String {
+    match value {
+        RdbnValue::Bool(v) => v.to_string(),
+        RdbnValue::Byte(v) => v.to_string(),
+        RdbnValue::Short(v) | RdbnValue::ActType(v) => v.to_string(),
+        RdbnValue::Int(v) | RdbnValue::Flag(v) => v.to_string(),
+        RdbnValue::Float(v) => format!("{v:?}"),
+        RdbnValue::Hash(v) => v.to_string(),
+        RdbnValue::Rates(v) | RdbnValue::Position(v) => format!("{:?},{:?},{:?},{:?}", v[0], v[1], v[2], v[3]),
+        RdbnValue::Condition(s) => s.clone(),
+        RdbnValue::ShortTuple(v) => format!("{},{}", v[0], v[1]),
+        RdbnValue::Blob(b) => b.iter().map(|x| format!("{x:02x}")).collect(),
+        RdbnValue::Invalid => String::new(),
+    }
+}
+
 /// Number of SQL columns a value occupies, `None` for `Invalid` (width unknown).
 fn width(value: &RdbnValue) -> Option<usize> {
     match value {
@@ -220,6 +242,7 @@ pub fn from_rdbn_lists(lists: &[RdbnList]) -> Dataset {
         // field position -> (field name, component types)
         let nfields = list.rows.iter().map(|r| r.fields.len()).max().unwrap_or(0);
         let mut layout: Vec<(String, Vec<(Option<usize>, ColumnType)>)> = Vec::new();
+        let mut mixed: Vec<bool> = Vec::new();
         for pos in 0..nfields {
             let mut chosen: Option<(String, Vec<(Option<usize>, ColumnType)>)> = None;
             let mut name = String::new();
@@ -234,6 +257,18 @@ pub fn from_rdbn_lists(lists: &[RdbnList]) -> Dataset {
                     chosen = Some((n.clone(), comps));
                     break;
                 }
+            }
+            // A field whose value kind changes between rows (the reader can yield a different
+            // variant for the same field) becomes TEXT so no row is rejected or altered.
+            let is_mixed = chosen.as_ref().is_some_and(|(_, comps)| {
+                list.rows.iter().filter_map(|r| r.fields.get(pos)).filter(|(_, v)| width(v).is_some()).any(|(_, v)| {
+                    let sig: Vec<(Option<usize>, ColumnType)> = components(v).into_iter().filter_map(|(s, t, _)| t.map(|t| (s, t))).collect();
+                    &sig != comps
+                })
+            });
+            mixed.push(is_mixed);
+            if is_mixed {
+                chosen = Some((name.clone(), vec![(None, ColumnType::Text)]));
             }
             // Field invalid in every row: keep one nullable TEXT column so the field is not lost.
             layout.push(chosen.unwrap_or((name, vec![(None, ColumnType::Text)])));
@@ -257,6 +292,7 @@ pub fn from_rdbn_lists(lists: &[RdbnList]) -> Dataset {
             let mut cells = Vec::with_capacity(columns.len());
             for (pos, (_, comps)) in layout.iter().enumerate() {
                 match row.fields.get(pos) {
+                    Some((_, v)) if mixed[pos] && width(v).is_some() => cells.push(Cell::Text(value_text(v))),
                     Some((_, v)) if width(v) == Some(comps.len()) => {
                         cells.extend(components(v).into_iter().map(|(_, _, c)| c));
                     }
@@ -375,7 +411,11 @@ pub fn has_empty_string_table(bytes: &[u8]) -> bool {
         && usize::try_from(off).is_ok_and(|o| o <= bytes.len())
 }
 
-fn quote_ident(name: &str) -> String {
+pub(crate) fn qualified(schema: Option<&str>, name: &str) -> String {
+    schema.map_or_else(|| quote_ident(name), |s| format!("{}.{}", quote_ident(s), quote_ident(name)))
+}
+
+pub(crate) fn quote_ident(name: &str) -> String {
     format!("\"{}\"", name.replace('"', "\"\""))
 }
 
@@ -423,8 +463,13 @@ impl Table {
     /// `CREATE TABLE` statement.
     #[must_use]
     pub fn create_sql(&self, dialect: Dialect) -> String {
-        let mut s = format!("CREATE TABLE IF NOT EXISTS {} (\n  \"row_index\" {} PRIMARY KEY", quote_ident(&self.name),
-            match dialect { Dialect::Postgres => "INTEGER", Dialect::Sqlite => "INTEGER" });
+        self.create_sql_in(dialect, None)
+    }
+
+    /// `CREATE TABLE` statement, optionally qualified with a schema.
+    #[must_use]
+    pub fn create_sql_in(&self, dialect: Dialect, schema: Option<&str>) -> String {
+        let mut s = format!("CREATE TABLE {} (\n  \"row_index\" INTEGER PRIMARY KEY", qualified(schema, &self.name));
         for c in &self.columns {
             let _ = write!(s, ",\n  {} {}", quote_ident(&c.name), c.ty.sql(dialect));
         }
@@ -590,6 +635,20 @@ mod tests {
     }
 
     #[test]
+    fn mixed_kinds_become_text_without_losing_rows() {
+        let rows = vec![
+            RdbnRow { fields: vec![("Condition".into(), RdbnValue::Hash(7))] },
+            RdbnRow { fields: vec![("Condition".into(), RdbnValue::Condition("AAAAAAkC=".into()))] },
+        ];
+        let d = from_rdbn_lists(&[RdbnList { name: "L".into(), type_name: "T".into(), rows }]);
+        assert_eq!(d.tables[0].columns[0].ty, ColumnType::Text);
+        assert_eq!(d.rows[0][0][0], Cell::Text("7".into()));
+        assert_eq!(d.rows[0][1][0], Cell::Text("AAAAAAkC=".into()));
+        let db = rusqlite::Connection::open_in_memory().unwrap();
+        db.execute_batch(&d.to_sql(Dialect::Sqlite)).unwrap();
+    }
+
+    #[test]
     fn empty_string_table_header() {
         let mut h = vec![0u8; 32];
         h[0] = 3; // entries
@@ -605,3 +664,5 @@ mod tests {
         assert!(matches!(from_bytes(b"nope"), Err(Error::UnknownFormat)));
     }
 }
+
+pub mod pg;
