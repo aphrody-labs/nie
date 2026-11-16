@@ -1,0 +1,18 @@
+[package]
+name = "nie-render"
+description = "Bevy 3D rendering of a nie match: pitch, goals, players, ball, camera and scoreboard"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+bevy.workspace = true
+nie-craft.workspace = true
+nie-model.workspace = true
+nie-sim.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,15 @@
+[package]
+name = "nie-physics"
+description = "Fixed-step ball and player kinematics for the nie football games"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+bevy_math = { workspace = true, features = ["std"] }
+
+[lints]
+workspace = true

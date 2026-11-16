@@ -1,0 +1,30 @@
+# Harbor Series: three matches on consecutive seeds, managed from the native studio.
+schema = 1
+
+[game]
+id = "harbor-series"
+name = "Harbor Series"
+version = "0.1.0"
+mode = "series"
+frontend = "studio"
+
+[series]
+matches = 3
+
+[rules]
+players_per_side = 5
+match_seconds = 45
+seed = 100
+
+[art]
+style = "flat"
+camera = "top_down"
+pitch_color = [38, 110, 90]
+
+[teams.home]
+name = "Harbor Otters"
+seed = 4
+
+[teams.away]
+name = "Granite Foxes"
+seed = 9

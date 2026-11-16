@@ -1,0 +1,53 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.100"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/aphrody-labs/nie"
+authors = ["nie contributors"]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+
+[workspace.dependencies]
+# Engine: Bevy ECS/app only for the simulation, the full renderer lives in nie-render.
+bevy_app = { version = "0.20.1", default-features = false }
+bevy_ecs = { version = "0.20.1", default-features = false }
+bevy_math = { version = "0.20.1", default-features = false }
+# Full Bevy (rendering, windowing, UI) for the 3D frontend only.
+bevy = { version = "0.20.1", default-features = false, features = ["3d", "ui"] }
+# Frontends.
+dioxus = { version = "0.7.10", default-features = false }
+eframe = { version = "0.37.0", default-features = false }
+# Shared.
+clap = { version = "4.6.7", features = ["derive"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+thiserror = "2.0.21"
+toml = "1.2.1"
+
+nie-ai = { path = "crates/nie-ai" }
+nie-craft = { path = "crates/nie-craft" }
+nie-input = { path = "crates/nie-input" }
+nie-model = { path = "crates/nie-model" }
+nie-net = { path = "crates/nie-net" }
+nie-physics = { path = "crates/nie-physics" }
+nie-render = { path = "crates/nie-render" }
+nie-sim = { path = "crates/nie-sim" }
+
+[profile.dev]
+debug = 1
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

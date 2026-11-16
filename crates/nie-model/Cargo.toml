@@ -1,0 +1,16 @@
+[package]
+name = "nie-model"
+description = "Football data model: teams, players, formations, rules and a deterministic generator of original content"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

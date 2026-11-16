@@ -1,64 +1,8 @@
-# Dependencies and build output
-node_modules/
-.turbo/
-dist/
-.next/
-out/
 target/
-native/c/build/
-native/go/rclone-core/build/
-infra/cloudflare/edge/pkg/
-*.tsbuildinfo
-next-env.d.ts.bak
-
-# Local state and credentials
+dist/
 .env
 .env.*
 !.env.example
-.vercel/
-.local/
-.secrets/
-secrets/
-*.pem
-*.p12
-*.pfx
-
-# Editors and OS
 .DS_Store
 *~
 *.swp
-__pycache__/
-
-# Local tool state, never versioned
-.claude/*
-!.claude/settings.json
-.codex/
-.cursor/
-.gemini/
-.coordkit-bus/
-.fleet-tick
-
-# Sorties locales des exécutions
-var/
-**/var/
-
-# Save editor binaries and upstream checkouts
-tools/ie/save-editor/*.exe
-tools/ie/save-editor/*.zip
-tools/ie/save-editor/extracted/
-tools/ie/save-editor/upstream-src/
-tools/ie/save-editor/alsobeta-src/
-tools/ie/save-editor/rsrc-dump/
-
-# Temporary memory dumps and test save artifacts
-*-USERDATALIVE
-*.dmp
-*.dump
-nie_memory_dump_*.bin
-
-
-*.tar.gz
-
-graphify-out/
-docs/proofs/recon/sitemap-shots/
-docs/proofs/recon/sbom.syft.json
