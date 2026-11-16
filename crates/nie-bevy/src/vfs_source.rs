@@ -25,7 +25,7 @@ use std::sync::Arc;
 
 use nie_formats::vfs::Vfs;
 use bevy_app::App;
-use bevy_asset::AssetApp;
+use bevy_asset::{AssetApp, CowArc};
 use bevy_asset::io::{
     AssetReader, AssetReaderError, AssetSourceBuilder, AssetSourceId, PathStream, Reader, VecReader,
 };
@@ -63,7 +63,8 @@ impl VfsAssetReader {
 }
 
 impl AssetReader for VfsAssetReader {
-    async fn read<'a>(&'a self, path: &'a Path) -> Result<impl Reader + 'a, AssetReaderError> {
+    async fn read<'a>(&'a self, path: CowArc<'a, Path>) -> Result<impl Reader + 'a, AssetReaderError> {
+        let path: &Path = &path;
         let logical = Self::logical(path);
         self.vfs
             .read(&logical)
@@ -71,7 +72,8 @@ impl AssetReader for VfsAssetReader {
             .map_err(|_| AssetReaderError::NotFound(path.to_path_buf()))
     }
 
-    async fn read_meta<'a>(&'a self, path: &'a Path) -> Result<impl Reader + 'a, AssetReaderError> {
+    async fn read_meta<'a>(&'a self, path: CowArc<'a, Path>) -> Result<impl Reader + 'a, AssetReaderError> {
+        let path: &Path = &path;
         // Jamais de `.meta` dans un CPK : l'annoncer plutôt que de fabriquer un lecteur vide.
         Err::<VecReader, _>(AssetReaderError::NotFound(path.to_path_buf()))
     }
