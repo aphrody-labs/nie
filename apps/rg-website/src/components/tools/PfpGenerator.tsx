@@ -19,7 +19,7 @@ import { updateAvatarUrl } from "@/app/settings/actions";
 
 import { useSidebarAuth } from "@/hooks/useSidebarAuth";
 import { getBrowserStorage } from "@/lib/storage/browser";
-import { InstagramIcon as Instagram } from "@/shared/icons/instagram";
+import { InstagramIcon as Instagram } from "@rosegriffon/ui";
 
 // Icons
 const XIcon = (props: React.SVGProps<SVGSVGElement>) => (

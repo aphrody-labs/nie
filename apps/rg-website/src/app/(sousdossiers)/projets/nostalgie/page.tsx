@@ -45,7 +45,7 @@ import { BreadcrumbSchema } from "@/components/shared/StructuredData";
 import { useNostalgieCollage } from "@/hooks/use-nostalgie-collage";
 import { useNostalgieUpload } from "@/hooks/use-nostalgie-upload";
 import { cn } from "@/lib/utils";
-import { InstagramIcon as Instagram } from "@/shared/icons/instagram";
+import { InstagramIcon as Instagram } from "@rosegriffon/ui";
 
 const IE1Image = "/IE1_EN.webp";
 const VRImage = "/vr.webp";

@@ -2,7 +2,7 @@ import { Button } from "@rosegriffon/ui";
 import { Edit, ExternalLink } from "lucide-react";
 import Link from "@/components/shared/Link";
 
-import TwitterIcon from "@/shared/icons/twitter";
+import { XIcon as TwitterIcon } from "@rosegriffon/ui";
 
 interface ProfileIdentityProps {
   website: string | null;

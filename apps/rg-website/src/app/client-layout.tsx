@@ -24,7 +24,7 @@ import { WebsiteNavigationRail } from "@/components/layout/WebsiteNavigationRail
 const SIDEBAR_WIDTH = "14rem";
 
 import { SkipToContent } from "@/components/accessibility/SkipToContent";
-import { AppSidebar } from "@/components/app-sidebar";
+import { AppSidebar } from "@rosegriffon/app-shell";
 import { PiedDePage } from "@/components/layout/PiedDePage";
 import { Header } from "@/components/layout/Header";
 import { isAdminRole } from "@/lib/auth-roles";

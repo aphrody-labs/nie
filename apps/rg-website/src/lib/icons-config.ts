@@ -130,10 +130,10 @@ import {
   Zap,
 } from "lucide-react";
 
-import { InstagramIcon as Instagram } from "@/shared/icons/instagram";
-import { TwitchIcon as Twitch } from "@/shared/icons/twitch";
-import TwitterIcon from "@/shared/icons/twitter";
-import { YoutubeIcon as Youtube } from "@/shared/icons/youtube";
+import { InstagramIcon as Instagram } from "@rosegriffon/ui";
+import { TwitchIcon as Twitch } from "@rosegriffon/ui";
+import { XIcon as TwitterIcon } from "@rosegriffon/ui";
+import { YouTubeIcon as Youtube } from "@rosegriffon/ui";
 
 const Twitter = TwitterIcon;
 
