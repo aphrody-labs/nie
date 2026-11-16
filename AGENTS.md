@@ -1,18 +1,27 @@
-# rosegriffon — Agent Operating Directives
+# Rose Griffon: agent contract
 
-> **Doctrine**: No Human In The Loop (NHITL) | 100% Upstream Bun v1.4.5+ & Rust 2024
+Read by every agent CLI (Claude Code, Codex, Gemini, OpenCode, Zed). `CLAUDE.md` and `GEMINI.md` import this file.
 
-## Autonomous NHITL Agent & Context / Token Optimization Best Practices (24/7 Operations)
+## What this repo is
 
-### 1. Context Window & Token Optimization
+Standalone product of the Rose Griffon community (rosegriffon.fr): Next.js site, Discord gateways (`rg`, `achillea`, `azalee`), unified Elysia API, Achillea ranked (Colyseus), Azalee wiki and CLI, and `nie`, the Inazuma Eleven: Victory Road engine and studio (Rust, Bevy, Taffy, WebGPU). It depends on no other monorepo: everything it needs lives here or comes from public npm, crates.io, PyPI and GitHub upstreams.
 
-- **High-Precision Targeting**: Never dump large raw files into the model context. Use exact byte/line range reads or AST/symbol lookups.
-- **Zero-Polling Reactive Wakeup**: When launching background tasks or subagents, do not poll in loops. Yield execution immediately and wait for reactive system events.
-- **Compact & High Information Density**: Output concise, fact-based reports with clickable markdown file links (`[file.ext](file:///path/to/file)`). Do not narrate obvious actions.
-- **Strict Zero-Emoji Policy**: Zero emojis in all code, comments, commit messages, PRs, logs, and agent communications.
+## Layout (check with `fd -d 1`)
 
-### 2. Autonomous Execution (NHITL - No Human In The Loop)
+- `apps/`: `rg-website`, `rg-bot`, `rosegriffon` (server binary), `cli` (`ie`/`rg`), `mcp`, `iecode-dotnet`.
+- `packages/`: `achillea-*`, `azalee`, `inagle`, `nie-ui`, `rg-*` shared platform.
+- `crates/`: Rust 2024 workspace (`nie-*`, `yolo-re-core`), UI with Dioxus/Blitz/Taffy where Rust UI fits.
+- `infra/`, `compose.yaml`, `justfile`: deploy; hosts and services come from `infra/hosts.toml` and `infra/services.toml`, nothing hardcoded.
+- `.agents/skills/`: single source of skills; `plugins/steam`: Steam plugin and MCP; `.mcp.json`: MCP servers.
 
-- **Continuous Grind & Auto-Goal**: Independently identify objectives, resolve compile errors, apply fixes, format (`bun fmt`), lint (`bun lint`), typecheck (`bun check`), test (`bun test` / `cargo test`), commit, and push.
-- **Pure Tech Stack**: 100% Upstream Bun v1.4.5+, Rust 2024, Python uv v0.13.7+, Go 1.27+. Zero Node.js, npm, yarn, or pnpm.
-- **Strict Isolation & Safe Execution**: Heavy Rust builds run on vps (12 cores) with sccache under shared lock; web and fast tests run on bunos or local Bun.
+## Rules
+
+- Stack: Bun 1.4.5 upstream release (never a fork), Rust 2024, uv for Python, Go for native tooling. No Node, npm, yarn or pnpm commands; `bun`, `bunx`, `cargo`, `uv`.
+- Dependencies come from public registries at their newest version, read live (`bun pm view`, crates.io API, PyPI JSON). No `aphrody*` package, crate, env var, path or URL. Config names are `RG_*`; state lives under `/srv/rosegriffon`.
+- Never run bare `bun test` at root: `bun test <package path>`. Heavy Rust builds run on the build host (fr1) or CI, not the workstation.
+- Hosts: prd runs production (shenron and rosegriffon only), fr1 and fr2 build, preview and CI. Anything deleted on a host is listed with its size first and checked for live dependents.
+- Secrets: never print, log or commit `.env` values (only `.env.example`); run gitleaks before every push.
+- Proof is a screenshot of the rendered page or a real API response checked by content, never an HTTP status alone.
+- No emoji and no AI attribution in code, docs or commits. UI text goes through `rg-i18n`; source language is English, `fr` is a catalogue.
+- Work happens directly on `main` in logical commits; no branches, no worktrees. Say plainly what is done and what is not.
+- Game assets of Inazuma Eleven (Level-5) are not redistributed: `nie` reads the user's own install.

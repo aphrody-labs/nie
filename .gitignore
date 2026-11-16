@@ -32,11 +32,9 @@ __pycache__/
 # Local tool state, never versioned
 .claude/*
 !.claude/settings.json
-.agents/
 .codex/
 .cursor/
 .gemini/
-.mcp.json
 .coordkit-bus/
 .fleet-tick
 

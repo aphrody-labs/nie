@@ -3,9 +3,9 @@
 ## Text KeyValues (VDF, ACF)
 
 - Tokens: quoted string, unquoted token, `{`, `}`. A key followed by a string is a leaf; a key followed by `{` opens an object.
-- `//` starts a line comment. Escapes inside quotes: `\\`, `\"`, `\n`, `\r`, `\t`; any other escaped character is kept as is (tokenizer in `src/steam/src/vdf.rs`: quoted-string escape match and `//` line-comment skip).
-- Keys may repeat. bun-steam keeps duplicates in order as an ordered entry list (`src/steam/src/vdf.rs` `VdfValue`); its JSON view (`VdfValue::to_json`, used by `ay steam vdf` and `read_vdf`) keeps only the last value, so the JSON shows one value per key.
-- Parser: `parse_vdf` in `src/steam/src/vdf.rs`; Rust alternative `keyvalues-parser (vdf-rs, crates.io)`; .NET `ValveResourceFormat/ValveKeyValue`.
+- `//` starts a line comment. Escapes inside quotes: `\\`, `\"`, `\n`, `\r`, `\t`; any other escaped character is kept as is (tokenizer in the upstream source: quoted-string escape match and `//` line-comment skip).
+- Keys may repeat. bun-steam keeps duplicates in order as an ordered entry list ; its JSON view (`VdfValue::to_json`, used by the `steam` plugin MCP tools and `read_vdf`) keeps only the last value, so the JSON shows one value per key.
+- Parser: `parse_vdf` in the upstream source; Rust alternative `keyvalues-parser (vdf-rs, crates.io)`; .NET `ValveResourceFormat/ValveKeyValue`.
 
 ## Binary KeyValues
 
@@ -26,7 +26,7 @@ Each node: one type byte, NUL-terminated key (or a u32 string-table index in app
 | 0x0A | int64         | 8 bytes LE                                                   |
 | 0x0B | alternate end | none                                                         |
 
-Sources: `src/steam/src/vdf.rs` (`bin_type`), `ValveResourceFormat/ValveKeyValue:ValveKeyValue/ValveKeyValue/KeyValues1/KV1BinaryNodeType.cs`. ValveKeyValue also detects an optional `VBKV` header (`0x564B4256`, `ValveResourceFormat/ValveKeyValue:ValveKeyValue/ValveKeyValue/Deserialization/KeyValues1/KV1BinaryReader.cs`).
+Sources: the upstream source (`bin_type`), `ValveResourceFormat/ValveKeyValue:ValveKeyValue/ValveKeyValue/KeyValues1/KV1BinaryNodeType.cs`. ValveKeyValue also detects an optional `VBKV` header (`0x564B4256`, `ValveResourceFormat/ValveKeyValue:ValveKeyValue/ValveKeyValue/Deserialization/KeyValues1/KV1BinaryReader.cs`).
 
 ## appcache/appinfo.vdf
 
@@ -52,4 +52,4 @@ Header: u32 magic (`0x065655` << 8 | version), u32 universe. v39 `0x06565527`, v
 
 Record (repeat until package id `0xFFFFFFFF`): u32 package id, 20-byte SHA-1, u32 change number, u64 PICS token (v40+), binary KV blob.
 
-Sources: `xPaw/SteamAppInfo:README.md`, `xPaw/SteamAppInfo:SteamAppInfoParser/AppInfo.cs`, `xPaw/SteamAppInfo:SteamAppInfoParser/PackageInfo.cs`; `src/steam/src/vdf.rs` (`appinfo_magic`, `packageinfo_magic`, `parse_appinfo`, `parse_packageinfo`).
+Sources: `xPaw/SteamAppInfo:README.md`, `xPaw/SteamAppInfo:SteamAppInfoParser/AppInfo.cs`, `xPaw/SteamAppInfo:SteamAppInfoParser/PackageInfo.cs`; the upstream source (`appinfo_magic`, `packageinfo_magic`, `parse_appinfo`, `parse_packageinfo`).

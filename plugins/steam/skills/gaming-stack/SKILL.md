@@ -1,54 +1,26 @@
 ---
 name: gaming-stack
-description: This skill should be used when the user asks about "the gaming stack of src", "ay gaming", "which Proton, Wine, DXVK or vkd3d-proton source do we use", "Vulkan layers or ICDs on this host", "DirectX 12 / Agility SDK of a game", "install Proton or steamcmd headless on prd or fr1", "run a Windows exe with Proton outside Steam", or "Bazzite, SteamOS or CachyOS images". For Steam client layout, steam-client-windows and steam-local-inspect apply; for Proton troubleshooting, steam-linux-proton.
-argument-hint: "[status|proton|layers|dx|forks|steamcmd|run] [appid|exe]"
+description: Use when asked how to run a Windows game through Proton or Wine on Linux, Vulkan or DirectX layers of a host, headless steamcmd on a build host, or the launch environment of a Steam app (Inazuma Eleven: Victory Road for nie).
+argument-hint: "[proton|layers|dx|steamcmd|run] [appid|exe]"
 allowed-tools: Bash, Read
 ---
 
-# Gaming stack of the monorepo
+# Gaming stack
 
-One owner per function (map: `docs/gaming/OWNERSHIP.md`):
-
-- Rust, low level: `src/steam` (package `steam-depot`; VDF text and binary, appinfo.vdf, ACF, libraryfolders,
-  compat tools, Proton launch env, depot client). CLI: `ay steam <root|libraries|apps|vdf|compat|host|env>`, JSON.
-- Bun: `packages/gaming` (`@aphrody/gaming`): SteamID, links, path map, Vulkan, DirectX, steamcmd,
-  Proton runner. CLI: `ay gaming`. The `steam` plugin MCP imports it.
-- Sources (`third_party/<name>`, forks in aphrody-labs, pins in `src.lock.json`): Proton, wine,
-  dxvk, vkd3d-proton, gamescope, mesa, Vulkan-Headers, Vulkan-Loader, Vulkan-ValidationLayers,
-  Vulkan-Tools, SPIRV-*, DirectX-Headers, DirectXShaderCompiler, bazzite, steamos-manager,
-  steam-runtime-tools, steam-devices, GameNetworkingSockets, umu-launcher, MangoHud, gamemode.
-  One Wine, one Proton, one DXVK: variants are remotes and fork branches
-  (`ay gaming forks` lists them).
-- Image infra: `infra/gaming/` (downloads manifest of the proprietary pieces, image sources).
+Local Steam data comes from the `steam` plugin MCP (`plugins/steam/servers/steam.ts`, pure TypeScript): `local_apps`, `compat_tools`, `launch_env`, `app_paths`, `read_vdf`.
 
 ## Procedure
 
-1. Host view: `ay gaming status` (Steam root, apps, compat tools, Vulkan, DirectX, steamcmd).
-2. Proton builds and their DXVK / vkd3d-proton DLLs: `ay gaming proton`.
-3. Vulkan: `ay gaming layers` (ICD and layer manifests from the loader search paths;
-   `--info` adds `vulkaninfo --summary`, which is the driver view on Windows).
-4. DirectX: `ay gaming dx` (DXGI adapters and D3D12 runtime files on Windows, Agility SDK
-   `D3D12/D3D12Core.dll` per installed game).
-5. Headless Proton on Linux (prd, fr1), reproducible:
-   - `ay gaming steamcmd install` (official bootstrap from `packages/gaming/src/downloads.toml`, size and sha256 checked);
-   - `ay gaming steamcmd app-update proton-experimental --dir /srv/steam/proton-exp` (`--user <account>`
-     uses steamcmd's cached login; no password on the command line; `--dry-run` prints the script);
-   - `ay gaming run <exe> --prefix /srv/pfx/<app> --tool-path /srv/steam/proton-exp [--app <id>] [-- args]`:
-     umu-run when installed, else `<proton>/proton waitforexitandrun` with `ay steam env`; `--dry-run`.
-     On Windows `ay gaming run` starts the exe natively.
-6. Upstream updates of the forks: `ay upstream status` (stacks in `infra/upstream/stacks.toml`).
+1. Host view: call `local_apps` and `compat_tools`; Vulkan with `vulkaninfo --summary`.
+2. Headless Proton on Linux (build host): official `steamcmd` bootstrap, `+app_update <proton app> validate`, then `<proton>/proton waitforexitandrun <exe>` with the env from `launch_env` (`umu-run` when installed).
+3. On Windows the game starts natively.
 
 ## Rules
 
-- Valve binaries (Steam client, steamcmd, Steam Runtime images, Proton from Steam, Steamworks SDK) are
-  downloaded at run time from the official source, never committed. The repo holds wrappers, the
-  download manifest, docs and skills.
-- Credential files (`config.vdf`, `loginusers.vdf`, `local.vdf`, `ssfn*`) are refused by `ay steam vdf`.
-- Never build on the workstation or on prd: CI, or fr1 with `nice -n 19` (`infra/agents/fleet.toml`: heavy roles run on fr1 only).
+- Valve binaries (Steam client, steamcmd, Proton, Steamworks SDK) are downloaded at run time from the official source, never committed.
+- Credential files (`config.vdf`, `loginusers.vdf`, `local.vdf`, `ssfn*`) are never read.
+- Builds run on the build host (fr1), not on prd.
 
 ## Sources
 
-- `third_party/umu-launcher/README.md` (WINEPREFIX, GAMEID, STORE, PROTONPATH)
-- `third_party/Proton/proton` (`waitforexitandrun`), `third_party/Proton/Makefile` (files/lib/wine/dxvk, vkd3d-proton)
-- `third_party/Vulkan-Loader/docs/LoaderLayerInterface.md`, `LoaderDriverInterface.md` (manifest search paths)
-- `src/steam/src/proton.rs` (VALVE_PROTON_APPS, launch plan), `packages/gaming/src/downloads.toml`
+Upstream: `ValveSoftware/Proton`, `ValveSoftware/steam-runtime`, `Open-Wine-Components/umu-launcher`, `KhronosGroup/Vulkan-Loader` docs.

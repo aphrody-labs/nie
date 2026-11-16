@@ -1,8 +1,8 @@
 # steam plugin
 
 Knowledge and tools for the Steam ecosystem. It works from Claude Code (as a plugin), from
-agy/Gemini and Codex (the skills are mirrored to `C:/aphrody/.agents/skills/steam-*`, see the
-monorepo `AGENTS.md`), and from any MCP client.
+agy/Gemini and Codex (the skills are mirrored to `.agents/skills/steam`, see the
+repository `AGENTS.md`), and from any MCP client.
 
 ## Components
 
@@ -13,9 +13,7 @@ monorepo `AGENTS.md`), and from any MCP client.
 - `servers/steam-mcp.ts`: MCP stdio server without npm dependencies started with `bun run`. Tools:
   `web_api_call`, `store_appdetails`, `resolve_steamid`, `local_apps`, `read_vdf`,
   `compat_tools`, `launch_env`, `app_paths`, `openid_login_url`, `openid_verify`, `steamdb_link`.
-- CLI: `ay steam` (Steam data as JSON, Rust parsers of `crates/steam-depot`) and `ay gaming`
-  (status, Proton, Vulkan layers, DirectX, steamcmd and Proton wrappers), both from aphrody-labs/src.
-  The server imports its helpers from `packages/gaming/src/steam.ts` of the same checkout.
+- Parsers (text and binary KeyValues, ACF, appinfo.vdf v39 to v41, libraries, Proton) are in `servers/steam.ts`, pure TypeScript.
 
 ## Environment
 
@@ -60,6 +58,3 @@ Everything except the key-only Web API methods keeps working:
 ```
 
 Requires Bun 1.4 or newer. No npm dependencies. License: Apache-2.0 (see the repository `LICENSE-APACHE`).
-
-Source paths in the skills (`third_party/...`, `apps/rosegriffon/...`) are relative to the
-C:/aphrody monorepo root, where the upstream mirrors live.

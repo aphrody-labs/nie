@@ -24,4 +24,4 @@
 | Warm a lancache                                             | steam-lancache-prefill                        |                                                          |                                                                |
 | Card idling                                                 | none for this repo                            |                                                          | ArchiSteamFarm, steamctl idle (Steam Subscriber Agreement 4.C) |
 
-What `src/steam` takes from each upstream project: `src/steam/UPSTREAM.md`. Whether to run ArchiSteamFarm at all is covered by the ArchiSteamFarm caveat in [`../SKILL.md`](../SKILL.md).
+What the upstream source takes from each upstream project: the upstream source. Whether to run ArchiSteamFarm at all is covered by the ArchiSteamFarm caveat in [`../SKILL.md`](../SKILL.md).

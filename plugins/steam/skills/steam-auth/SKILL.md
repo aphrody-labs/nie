@@ -56,7 +56,7 @@ Details: [`references/tickets.md`](references/tickets.md).
 ### Account login (IAuthenticationService)
 
 Account login uses the `Authentication` service (credentials or QR, Steam Guard, refresh and
-access tokens); the RPC sequence and what `src/steam` implements:
+access tokens); the RPC sequence and what the upstream source implements:
 [`references/sessions.md`](references/sessions.md).
 
 ## Additional Resources
@@ -80,4 +80,3 @@ access tokens); the RPC sequence and what `src/steam` implements:
 - https://openid.net/specs/openid-authentication-2_0.html
 - `SteamTracking/Protobufs:steam/steammessages_auth.steamclient.proto`
 - `DoctorMcKay/node-steam-session` (README and src)
-- `src/steam/src/depot/auth.rs`, `src/steam/src/depot/token_store.rs`

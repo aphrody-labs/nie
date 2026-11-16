@@ -27,7 +27,7 @@ Servers come from `GetServersForSteamPipe`, manifest downloads need a code from 
 
 ## Tools
 
-DepotDownloader, steamctl (offline manifest reads) and steamroom (the Rust library `src/steam` depends on; see `src/steam/src/depot/`). Commands and the tools installed on vps: [`../steam-community-tools/references/tools.md`](../steam-community-tools/references/tools.md).
+DepotDownloader, steamctl (offline manifest reads) and steamroom (the Rust library the upstream source depends on; see the upstream source). Commands and the tools installed on vps: [`../steam-community-tools/references/tools.md`](../steam-community-tools/references/tools.md).
 
 ## Steam Cloud
 
@@ -63,7 +63,6 @@ DNS, cache key, trigger domain, and prefill rules: [`references/lancache.md`](re
 - `SteamRE/SteamKit:SteamKit2/SteamKit2/Steam/CDN/Client.cs`, `DepotChunk.cs`, `ClientLancache.cs`
 - `lancachenet/monolithic:overlay/`, `lancachenet/lancache-dns:Dockerfile`
 - `tpill90/steam-lancache-prefill:SteamPrefill/Settings/AppConfig.cs`
-- `src/steam/UPSTREAM.md`, `src/steam/src/depot/`
 - https://partner.steamgames.com/doc/sdk/uploading
 - https://partner.steamgames.com/doc/store/application/depots
 - https://partner.steamgames.com/doc/features/cloud (fetched 2026-11-12)

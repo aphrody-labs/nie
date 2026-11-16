@@ -13,7 +13,7 @@ Tools covered: SteamDB, SteamCMD, DepotDownloader, steamctl, steamroom, SteamKit
 
 1. Treat SteamDB as a read-only human reference: never fetch its pages programmatically, build links only (its FAQ restrictions are in [`references/tools.md`](references/tools.md)).
 2. Get data from Steam itself: anonymous PICS and CDN access through steamroom, DepotDownloader, steamctl or a CM client library.
-3. The Rust implementation in this repository is `src/steam` (package `steam-depot`); the upstream projects it follows and what it takes from each are listed in `src/steam/UPSTREAM.md`.
+3. The Rust implementation in this repository is the upstream source (package `steam-depot`); the upstream projects it follows and what it takes from each are listed in the upstream source.
 4. Run heavy downloads on `vps` (fr1), not on the local Windows host; installed tools are listed in [`references/tools.md`](references/tools.md).
 5. Prefer anonymous login. Content of a paid app needs an account that owns a license (`-manifest-only` resolves AppInfo anonymously, content needs a license).
 
@@ -59,7 +59,6 @@ ArchiSteamFarm describes itself as an application "with primary purpose of farmi
 
 ## Sources
 
-- `src/steam/UPSTREAM.md`
 - https://github.com/SteamRE/DepotDownloader, https://github.com/landaire/steamroom, https://github.com/ValvePython/steamctl, https://github.com/SteamRE/SteamKit
 - https://steamdb.info/faq/
 - https://developer.valvesoftware.com/wiki/SteamCMD

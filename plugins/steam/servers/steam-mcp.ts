@@ -2,9 +2,6 @@
 // Minimal MCP stdio server (JSON-RPC 2.0, newline-delimited) for the steam plugin.
 // No npm dependencies: implements initialize, tools/list, tools/call and ping per the
 // MCP specification (https://modelcontextprotocol.io/specification). Logs go to stderr.
-// Steam helpers come from the monorepo's single owner, packages/gaming (@aphrody/gaming), whose
-// local-install readers run the Rust parsers of crates/steam-depot through `ay steam`
-// (docs/gaming/OWNERSHIP.md). The plugin is used from the aphrody-labs/src checkout.
 
 import {
   appPaths,
@@ -20,7 +17,7 @@ import {
   steamdbLinks,
   vanityOf,
   type VdfFormat,
-} from "../../../../../packages/gaming/src/steam.ts";
+} from "./steam.ts";
 
 const PROTOCOL = "2025-06-18";
 const SUPPORTED_PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];

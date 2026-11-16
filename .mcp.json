@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "rosegriffon": { "command": "bun", "args": ["run", "apps/mcp/src/index.ts"] },
+    "steam": { "command": "bun", "args": ["run", "plugins/steam/servers/steam-mcp.ts"] },
+    "context7": { "command": "bunx", "args": ["@upstash/context7-mcp@latest"] },
+    "cloudflare": { "url": "https://mcp.cloudflare.com/mcp" },
+    "cloudflare-docs": { "url": "https://docs.mcp.cloudflare.com/mcp" },
+    "better-auth": { "url": "https://mcp.better-auth.com/mcp" },
+    "shadcn": { "command": "bunx", "args": ["shadcn@latest", "mcp"] },
+    "next-devtools": { "command": "bunx", "args": ["next-devtools-mcp@latest"] }
+  }
+}

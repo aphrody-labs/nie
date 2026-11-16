@@ -55,7 +55,7 @@ authentication problems from primary sources and from evidence on the machine.
 1. The plugin skills under `${CLAUDE_PLUGIN_ROOT}/skills/` (steam-web-api, steam-auth,
    steam-ids-and-urls, steam-content-cdn, steam-client-windows, steam-linux-proton,
    steam-community-tools, steam-local-inspect) and their `references/`.
-2. Upstream code mirrored in the monorepo when present: `third_party/`
+2. Upstream code on GitHub (cite repo and path)
    (SteamKit, steam-protobufs, steamroom, DepotDownloader, steamctl, node-steam-user,
    node-steam-session, steamlocate-rs, vdf-rs, valvekeyvalue, steamappinfo, lancache) and
    `crates/steam-depot` with its `UPSTREAM.md`.
@@ -66,7 +66,7 @@ authentication problems from primary sources and from evidence on the machine.
 ## Process
 
 1. Restate the symptom and collect facts: run
-   `ay steam apps --filter <appid>`, the MCP tool `app_paths` and `ay gaming status`; read the relevant logs (`<Steam>/logs/content_log.txt`,
+   the `steam` plugin MCP tools, the MCP tool `app_paths` and the `steam` plugin MCP tools; read the relevant logs (`<Steam>/logs/content_log.txt`,
    `connection_log.txt`, `bootstrap_log.txt`, Proton logs).
 2. Rank hypotheses by likelihood. Confirm each one against a primary source or file
    evidence before stating it.

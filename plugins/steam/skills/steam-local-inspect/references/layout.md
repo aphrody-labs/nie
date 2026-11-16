@@ -1,15 +1,15 @@
-# Files read by ay steam
+# Files read by the steam plugin
 
 ## Steam root lookup order
 
-As implemented by `ay steam root` (`--root`, then `$STEAM_PATH`, then `find_steam_installations` in `src/steam/src/install.rs`; the first candidate that contains `steamapps/` wins):
+As implemented by the `steam` plugin MCP tools (`--root`, then `$STEAM_PATH`, then `find_steam_installations` in the upstream source; the first candidate that contains `steamapps/` wins):
 
 1. `$STEAM_PATH`
 2. Windows `HKCU\Software\Valve\Steam` value `SteamPath`
 3. Windows `HKLM\SOFTWARE\WOW6432Node\Valve\Steam` value `InstallPath`
 4. `C:\Program Files (x86)\Steam`
 
-Items 2 to 4 run on Windows only; items 5 to 10 run on every other platform (`src/steam/src/install.rs` `find_steam_installations`).
+Items 2 to 4 run on Windows only; items 5 to 10 run on every other platform .
 
 5. `~/.steam/steam`
 6. `~/.local/share/Steam`
@@ -27,7 +27,7 @@ Items 2 to 4 run on Windows only; items 5 to 10 run on every other platform (`sr
 | `depotcache/<depotid>_<manifestid>.manifest`          | binary depot manifest | Listed by `paths`; decode with steamctl or steamroom                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `appcache/appinfo.vdf`                                | binary (v39 to v41)   | PICS app metadata; format in [`vdf-formats.md`](../../steam-client-windows/references/vdf-formats.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `userdata/<accountid>/<appid>/remote`                 | files                 | Steam Cloud working copy: the app's `remote/` files plus `remotecache.vdf` beside it (observed in the worked example below); Cloud concepts in [`cloud.md`](../../steam-content-cdn/references/cloud.md)                                                                                                                                                                                                                                                                                                                                                          |
-| `userdata/<accountid>/<n>/remote/<appid>/screenshots` | files                 | `<n>` is any app directory under `userdata/<accountid>/`: `findScreenshots` in `packages/gaming/src/steam.ts` scans all of them; `steamclient64.dll` strings show `<gameid>/screenshots/` and `thumbnails/`                                                                                                                                                                                                                                                                                                                                                       |
+| `userdata/<accountid>/<n>/remote/<appid>/screenshots` | files                 | `<n>` is any app directory under `userdata/<accountid>/`: `findScreenshots` in the upstream source scans all of them; `steamclient64.dll` strings show `<gameid>/screenshots/` and `thumbnails/`                                                                                                                                                                                                                                                                                                                                                       |
 | `steamapps/compatdata/<appid>/pfx`                    | Wine prefix           | Proton prefix (Linux)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `steamapps/shadercache/<appid>`                       | Fossilize caches      | Shader pre-caching                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `steamapps/workshop/`                                 | directory             | Workshop items; install path in [`steam-content-cdn`](../../steam-content-cdn/SKILL.md) (Workshop)                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
@@ -37,7 +37,7 @@ The `<accountid>` directory name is the 32-bit account id; see
 
 ## StateFlags bits
 
-Per `third_party/steamlocate-rs/src/app.rs` (`StateFlag::from_bit_offset`):
+Per the upstream source (`StateFlag::from_bit_offset`):
 
 | Bit | Value   | Name           |
 | --- | ------- | -------------- |
