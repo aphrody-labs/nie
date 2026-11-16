@@ -262,9 +262,9 @@ impl Db {
               FROM t2b_entry e JOIN f ON e.file_id = f.id \
               JOIN t2b_var v ON v.file_id = e.file_id AND v.entry = e.row_index \
               WHERE e.name = $2 GROUP BY e.row_index) \
-            SELECT hid, txt, count(*) OVER () FROM n \
-            WHERE kind = $3 AND txt <> '' AND txt ILIKE '%' || $4 || '%' \
-            ORDER BY txt, hid OFFSET $5 LIMIT $6";
+            , d AS (SELECT DISTINCT ON (txt) hid, txt FROM n \
+              WHERE kind = $3 AND txt ~ '[[:alpha:]]{2}' AND txt ILIKE '%' || $4 || '%' ORDER BY txt, hid) \
+            SELECT hid, txt, count(*) OVER () FROM d ORDER BY txt OFFSET $5 LIMIT $6";
         let rows = self.client.query(sql, &[&path, &entry, &kind, &search, &offset, &limit]).await?;
         let total = rows.first().map_or(0, |r| r.get::<_, i64>(2));
         Ok((total, rows.iter().map(|r| Named { id: r.get(0), text: r.get(1) }).collect()))
