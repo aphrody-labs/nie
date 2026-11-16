@@ -67,6 +67,7 @@ pub fn router(state: Shared) -> Router {
     Router::new()
         .route("/", get(home))
         .route("/series", get(series_page))
+        .route("/series/{slug}", get(game_page))
         .route("/wiki/files", get(root_dir))
         .route("/wiki/files/", get(root_dir))
         .route("/wiki/files/{*path}", get(files))
@@ -206,12 +207,29 @@ fn query_value<'a>(q: Option<&'a str>, key: &str) -> Option<&'a str> {
 
 /// `/series?lang=..&theme=..`: the series hub, language from the query or `Accept-Language`,
 /// colours from the named token theme.
-async fn series_page(State(s): State<Shared>, uri: axum::http::Uri, headers: axum::http::HeaderMap) -> Response {
+fn lang_theme(s: &AppState, uri: &axum::http::Uri, headers: &axum::http::HeaderMap) -> (&'static str, Theme) {
     let q = uri.query();
     let accept = headers.get(header::ACCEPT_LANGUAGE).and_then(|v| v.to_str().ok());
     let lang = crate::i18n::negotiate(query_value(q, "lang"), accept);
     let theme = query_value(q, "theme").and_then(Theme::from_tokens).unwrap_or(s.theme);
-    let ui = pages::series(&theme, lang);
-    let doc = nie_ui_dioxus::render_document(&ui, &crate::i18n::t(lang, "series.title"), lang, &theme);
-    ([(header::CONTENT_LANGUAGE, lang), (header::VARY, "Accept-Language")], Html(doc)).into_response()
+    (lang, theme)
+}
+
+fn localized(status: StatusCode, ui: &UiNode, title: &str, lang: &'static str, theme: &Theme) -> Response {
+    let doc = nie_ui_dioxus::render_document(ui, title, lang, theme);
+    (status, [(header::CONTENT_LANGUAGE, lang), (header::VARY, "Accept-Language")], Html(doc)).into_response()
+}
+
+async fn series_page(State(s): State<Shared>, uri: axum::http::Uri, headers: axum::http::HeaderMap) -> Response {
+    let (lang, theme) = lang_theme(&s, &uri, &headers);
+    localized(StatusCode::OK, &pages::series(&theme, lang), &crate::i18n::t(lang, "series.title"), lang, &theme)
+}
+
+/// `/series/{slug}`: one game of the catalogue.
+async fn game_page(State(s): State<Shared>, Path(slug): Path<String>, uri: axum::http::Uri, headers: axum::http::HeaderMap) -> Response {
+    let (lang, theme) = lang_theme(&s, &uri, &headers);
+    match crate::i18n::game(&slug) {
+        Some(g) => localized(StatusCode::OK, &pages::game(&g, &theme, lang), &crate::i18n::t(lang, &format!("game.{slug}")), lang, &theme),
+        None => localized(StatusCode::NOT_FOUND, &pages::not_found(&slug, &theme), &crate::i18n::t(lang, "notfound.title"), lang, &theme),
+    }
 }

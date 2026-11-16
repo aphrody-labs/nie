@@ -83,6 +83,8 @@ pub struct Game {
     pub official: String,
     /// Whether nie reads this game.
     pub nie: bool,
+    /// Platform codes, locale keys `platform.<code>`.
+    pub platforms: Vec<String>,
 }
 
 /// Games of the series, in catalogue order.
@@ -99,6 +101,11 @@ pub fn series() -> Vec<Game> {
                         slug: g.get("slug")?.as_str()?.to_owned(),
                         official: format!("{base}{}", g.get("official")?.as_str()?),
                         nie: g.get("nie").and_then(Value::as_bool).unwrap_or(false),
+                        platforms: g
+                            .get("platforms")
+                            .and_then(Value::as_array)
+                            .map(|a| a.iter().filter_map(|p| p.as_str().map(str::to_owned)).collect())
+                            .unwrap_or_default(),
                     })
                 })
                 .collect()
@@ -128,6 +135,11 @@ mod tests {
         for g in &games {
             for l in languages() {
                 assert_ne!(t(l, &format!("game.{}", g.slug)), format!("game.{}", g.slug), "{l} {}", g.slug);
+                assert!(!g.platforms.is_empty(), "{}", g.slug);
+                for p in &g.platforms {
+                    let k = format!("platform.{p}");
+                    assert_ne!(t(l, &k), k, "{l} {k}");
+                }
             }
         }
     }
@@ -138,4 +150,10 @@ mod tests {
         assert_eq!(negotiate(None, Some("ja-JP,ja;q=0.9")), "ja");
         assert_eq!(negotiate(Some("xx"), Some("de")), "en");
     }
+}
+
+/// Game by slug.
+#[must_use]
+pub fn game(slug: &str) -> Option<Game> {
+    series().into_iter().find(|g| g.slug == slug)
 }

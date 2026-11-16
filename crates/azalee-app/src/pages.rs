@@ -184,6 +184,36 @@ fn badge(text: String, bg: nie_ui_dioxus::Rgba, fg: nie_ui_dioxus::Rgba) -> UiNo
     )
 }
 
+/// Platform chips.
+fn chips(platforms: &[String], t: &Theme, lang: &str) -> UiNode {
+    UiNode::boxed(
+        UiStyle { axis: nie_ui_dioxus::Axis::Row, gap: 6.0, wrap: true, ..UiStyle::default() },
+        platforms.iter().map(|p| badge(crate::i18n::t(lang, &format!("platform.{p}")), t.header, t.text)).collect(),
+    )
+}
+
+/// `/series/{slug}`: one game.
+#[must_use]
+pub fn game(g: &crate::i18n::Game, t: &Theme, lang: &str) -> UiNode {
+    use crate::i18n::t as tr;
+    let heading = UiNode::Text { style: UiStyle { font_px: 36.0, weight: 700, color: Some(t.text), ..UiStyle::default() }, text: tr(lang, &format!("game.{}", g.slug)) };
+    let status = tr(lang, if g.nie { "series.nie.yes" } else { "series.nie.no" });
+    let (bg, fg) = if g.nie { (t.primary, t.on_primary) } else { (t.header, t.muted) };
+    let mut kids = vec![
+        series_nav(t, lang),
+        link(14.0, t.primary, format!("/series?lang={lang}"), tr(lang, "game.back")),
+        heading,
+        badge(status, bg, fg),
+        label(18.0, t.text, tr(lang, "game.platforms")),
+        chips(&g.platforms, t, lang),
+        link(16.0, t.primary, g.official.clone(), tr(lang, "series.official")),
+    ];
+    if g.nie {
+        kids.push(link(16.0, t.primary, page_url("", true), tr(lang, "game.data")));
+    }
+    page(t, kids)
+}
+
 /// `/series`: every game of the series from `data/series.json`, titles from the locale files.
 #[must_use]
 pub fn series(t: &Theme, lang: &str) -> UiNode {
@@ -193,9 +223,10 @@ pub fn series(t: &Theme, lang: &str) -> UiNode {
         let status = tr(lang, if g.nie { "series.nie.yes" } else { "series.nie.no" });
         let (bg, fg) = if g.nie { (t.primary, t.on_primary) } else { (t.header, t.muted) };
         let title = UiNode::Text { style: UiStyle { font_px: 18.0, weight: 700, color: Some(t.text), ..UiStyle::default() }, text: tr(lang, &format!("game.{}", g.slug)) };
+        let chips = chips(&g.platforms, t, lang);
         let foot = UiNode::boxed(
             UiStyle { axis: nie_ui_dioxus::Axis::Row, gap: 12.0, wrap: true, ..UiStyle::default() },
-            vec![badge(status, bg, fg), link(14.0, t.primary, g.official, tr(lang, "series.official"))],
+            vec![badge(status, bg, fg), link(14.0, t.primary, format!("/series/{}?lang={lang}", g.slug), tr(lang, "series.more"))],
         );
         cards.push(UiNode::boxed(
             UiStyle {
@@ -207,7 +238,7 @@ pub fn series(t: &Theme, lang: &str) -> UiNode {
                 border: Some(if g.nie { t.primary } else { t.outline }),
                 ..UiStyle::default()
             },
-            vec![title, foot],
+            vec![title, chips, foot],
         ));
     }
     let grid = UiNode::boxed(UiStyle { axis: nie_ui_dioxus::Axis::Row, gap: 20.0, wrap: true, ..UiStyle::default() }, cards);

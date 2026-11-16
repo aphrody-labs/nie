@@ -1,19 +1,27 @@
-id,area,feature,priority,data_source,status
-F01,portal,Series hub listing every game,must,data/series.json,done (/series)
-F02,portal,"Per-game page (synopsis, platforms, official link)",must,data/series.json + locales,todo
-F03,portal,News feed with topics,must,postgres news,todo
-F04,portal,Key visual carousel,could,theme tokens + nie textures,todo
-F05,vr,Patch notes per platform and version,should,postgres patchnote,todo
-F06,vr,"Tournaments (online, competition, beta)",must,achillea-store,partial (Rust rules)
-F07,vr,Character showcase,should,cfg.bin chara tables,todo
-F08,vr,FAQ and guide,should,postgres pages,todo
-F09,zukan,Character list with filters,must,cfg.bin chara_param,todo
-F10,zukan,Character stats page,must,cfg.bin chara_param,todo
-F11,zukan,Skills (hissatsu) list and page,must,cfg.bin skill_config,todo
-F12,zukan,Items,must,cfg.bin item_config,todo
-F13,zukan,Teams,must,cfg.bin team tables,todo
-F14,zukan,Formations,should,cfg.bin formation tables,todo
-F15,zukan,My team builder,should,achillea-store ut_squad,partial (Figma 5:28)
-F16,all,en/fr/ja catalogues and language negotiation,must,locales/*.json,done
-F17,all,Theme from rg-ui tokens,must,tokens.json,done
-F18,all,Sitemap and robots from the VFS,must,nie-sitemap,done
+feature,area,priority,original,clone,notes
+Series hub listing every game,portal,must,yes,yes,/series (S01 title grid)
+Platform chips per game,portal,must,yes,no,data/series.json platforms
+Topics ticker on the home page,portal,must,yes,no,portal_news
+Per-game page,portal,must,yes,no,S02-S11
+Banner tiles for campaigns,portal,could,yes,no,
+Victory Road hub with section tiles,vr,must,yes,no,S11
+Menu drawer and footer nav,vr,must,yes,no,
+Language toggle,all,must,yes,yes,en fr ja (original: ja and en on patch notes only)
+Characters by school,vr,must,yes,no,cfg.bin team tables (S12)
+Character page with stats and skills,zukan,must,yes,no,cfg.bin chara_param
+Skills list and page,zukan,must,yes,no,cfg.bin skill tables
+Items,zukan,must,yes,no,
+Teams,zukan,must,yes,no,
+Formations,zukan,should,yes,no,
+My team builder,zukan,should,yes,no,Figma 5:28
+Patch notes per platform with NEW badge,vr,should,yes,no,portal_patchnote (S14)
+Online tournament rules and tiers,vr,must,yes,no,achillea-core (S15)
+Competition modes,vr,should,yes,no,S16
+FAQ with collapsible answers,vr,should,yes,no,S18
+Specials and campaigns,vr,could,yes,no,S19
+Movies grid with player,vr,could,yes,no,links to official videos only (S13)
+Films and events,portal,could,yes,no,S20-S22
+Theme from tokens,all,must,no,yes,tokens.json
+Sitemap from the VFS,all,must,no,yes,nie-sitemap
+Key art and illustrations,all,skip,yes,no,Level-5 assets: not copied
+Store and sign-up links,all,skip,yes,no,external
