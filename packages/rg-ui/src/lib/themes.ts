@@ -220,3 +220,18 @@ export function sectionTheme(
   if (section === "wiki") return "azalee-dark";
   return undefined;
 }
+
+/** Clé `localStorage` où `ThemeProvider` enregistre le thème choisi. */
+export const THEME_STORAGE_KEY = "rg-theme";
+
+/**
+ * Thème d'une section compte tenu du choix de l'utilisateur : un thème
+ * choisi explicitement s'applique partout, wiki et e-sport compris ; sans
+ * choix, la section garde son thème par défaut (`sectionTheme`).
+ */
+export function sectionThemeSelonChoix(
+  section: "association" | "wiki" | "esport",
+  themeChoisi: boolean,
+): ThemeId | undefined {
+  return themeChoisi ? undefined : sectionTheme(section);
+}

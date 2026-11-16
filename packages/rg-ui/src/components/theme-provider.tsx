@@ -7,7 +7,12 @@ import {
 } from "next-themes";
 import * as React from "react";
 import { applyThemeTune } from "../lib/theme-tune";
-import { THEME_PACKS, THEMES, type ThemeType } from "../lib/themes";
+import {
+  THEME_PACKS,
+  THEME_STORAGE_KEY,
+  THEMES,
+  type ThemeType,
+} from "../lib/themes";
 
 export interface RGThemeProviderProps extends ThemeProviderProps {
   children: React.ReactNode;
@@ -32,7 +37,7 @@ export function ThemeProvider({
   children,
   attribute = "class",
   defaultTheme = "roy",
-  storageKey = "rg-theme",
+  storageKey = THEME_STORAGE_KEY,
   themes = CHROME_THEMES,
   enableSystem = false,
   disableTransitionOnChange = true,

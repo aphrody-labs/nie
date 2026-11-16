@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 
 import { domaineDeLaRoute } from "@rosegriffon/app-shell";
 import {
-  sectionTheme,
+  sectionThemeSelonChoix,
+  useThemeChoisi,
   THEME_PACKS,
   type ThemeType,
   useTheme,
@@ -50,6 +51,7 @@ function planifierEnArrierePlan(tache: () => void) {
 export function ThemeBackdrop() {
   const chemin = usePathname() || "/";
   const { theme } = useTheme();
+  const themeChoisi = useThemeChoisi();
   const [pret, setPret] = useState(false);
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export function ThemeBackdrop() {
 
   const pack =
     THEME_PACKS[
-      sectionTheme(domaineDeLaRoute(chemin)) ?? (theme as ThemeType)
+      sectionThemeSelonChoix(domaineDeLaRoute(chemin), themeChoisi) ?? (theme as ThemeType)
     ] ?? THEME_PACKS.roy;
 
   // Une règle rendue par React plutôt qu'un style posé à la main sur <html> :

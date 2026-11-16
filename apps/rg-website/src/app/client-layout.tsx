@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
-  sectionTheme,
+  sectionThemeSelonChoix,
+  useThemeChoisi,
   SidebarInset,
   SidebarProvider,
   THEME_PACKS,
@@ -103,8 +104,11 @@ function SidebarWrapper({
  * à `localStorage`, sans effet de bord au retour, et sans le scintillement
  * d'un changement de thème après hydratation.
  */
-function classeThemeDuDomaine(pathname: string): string | undefined {
-  const impose = sectionTheme(domaineDeLaRoute(pathname));
+function classeThemeDuDomaine(
+  pathname: string,
+  themeChoisi: boolean,
+): string | undefined {
+  const impose = sectionThemeSelonChoix(domaineDeLaRoute(pathname), themeChoisi);
   return impose ? `theme-${impose}` : undefined;
 }
 
@@ -124,8 +128,11 @@ function RoutedHeader({
   // Thème effectif : celui imposé par la section, sinon celui de l’utilisateur.
   // Son pack fournit le nom et le logo du chrome.
   const { theme } = useTheme();
+  const themeChoisi = useThemeChoisi();
   const pack =
-    THEME_PACKS[sectionTheme(activeDomaine) ?? (theme as ThemeType)] ??
+    THEME_PACKS[
+      sectionThemeSelonChoix(activeDomaine, themeChoisi) ?? (theme as ThemeType)
+    ] ??
     THEME_PACKS.roy;
 
   // L'identité affichée dans le chrome est toujours celle de la session RG.
@@ -280,7 +287,8 @@ export default function ClientLayout({
   const isMedium = breakpoint === "medium";
 
   const pathname = usePathname();
-  const themeSection = classeThemeDuDomaine(pathname || "/");
+  const themeChoisi = useThemeChoisi();
+  const themeSection = classeThemeDuDomaine(pathname || "/", themeChoisi);
   const isAdminPage = pathname?.startsWith("/admin");
   const isShopPage = pathname?.startsWith("/shop");
   const isAuthPage =
