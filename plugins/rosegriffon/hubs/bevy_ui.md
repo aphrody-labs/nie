@@ -1,1 +1,0 @@
-Bevy UI nodes are laid out with Taffy (`taffy` dependency in `third_party/bevy/crates/bevy_ui/Cargo.toml`), the same Taffy checkout Blitz and Dioxus native use here (`third_party/taffy`), so one layout engine serves Bevy scenes and Dioxus views.

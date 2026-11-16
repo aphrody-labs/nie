@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: rosegriffon-nie
-  labels:
-    app.kubernetes.io/part-of: rosegriffon
-    app.kubernetes.io/component: nie

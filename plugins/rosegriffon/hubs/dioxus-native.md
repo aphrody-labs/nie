@@ -1,1 +1,0 @@
-Dioxus renderer that draws through Blitz instead of a WebView (`third_party/dioxus/packages/native`, DOM bridge in `packages/native-dom`). Status in the plan files: experimental; the desktop and mobile stable path still uses a WebView.

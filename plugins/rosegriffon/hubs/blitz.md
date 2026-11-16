@@ -1,3 +1,0 @@
-Modular HTML and CSS engine: `blitz-dom` (DOM and Stylo/Taffy layout), `blitz-html` (parsing), `blitz-paint` and the AnyRender backends (Vello, Vello CPU, Vello hybrid, Skia, tiny-skia), `blitz-shell` (winit windows), `blitz-net` (fetching), `blitz-traits` (shared types), and the `blitz` wrapper. See `third_party/blitz/README.md` (status, goals, architecture), `docs/architecture.mmd`, and `examples/` (browser, wgpu_texture, todomvc).
-
-Monorepo rules: Blitz pins Taffy by git rev; the root `Cargo.toml` redirects that source with `[patch."https://github.com/DioxusLabs/taffy"]` to `third_party/taffy`. The fork adds a `rg-wasm` profile (`tiny` plus fat LTO); upstream `production`, `small` and `tiny` profiles are kept.

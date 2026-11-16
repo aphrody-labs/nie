@@ -1,3 +1,0 @@
-Layout engine shared by Bevy UI, Blitz and Dioxus native: flexbox, grid, block, absolute positioning, with the high-level `TaffyTree` and the low-level traits for custom trees (`third_party/taffy/README.md`, `src/`, `examples/`, `benches/`).
-
-Monorepo rules: the fork carries version `0.15.1` (the registry release) so `[patch.crates-io]` replaces it everywhere and every consumer compiles one copy; the root `Cargo.toml` requires `taffy = "0.15.1"`. The fork adds `[profile.rg-wasm]` (`opt-level = "z"`, fat LTO). A `taffy` bug found while porting UI belongs upstream in DioxusLabs/taffy (one issue or PR per change).

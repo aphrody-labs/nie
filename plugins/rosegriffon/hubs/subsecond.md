@@ -1,1 +1,0 @@
-Hot patching for Rust (`third_party/dioxus/packages/subsecond`): `subsecond` is the runtime that applies patches, `subsecond-types` the shared wire types, and the Dioxus CLI (`dx`) produces the patches. Read `packages/subsecond/subsecond/src/lib.rs` for the entry points (`call`, `register_handler`) at the vendored commit before relying on them.
