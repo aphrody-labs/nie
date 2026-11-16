@@ -26,6 +26,9 @@ jobs:
         with:
           # [patch] and path dependencies point into third_party/* submodules.
           submodules: true
+      - name: System libraries
+        # Bevy and winit link against ALSA, udev, Wayland and xkbcommon through pkg-config.
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev
       - name: Toolchain
         # rust-toolchain.toml pins the nightly, its components and the wasm32 target.
         run: rustup show active-toolchain || rustup toolchain install
