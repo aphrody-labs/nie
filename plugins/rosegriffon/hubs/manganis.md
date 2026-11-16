@@ -1,0 +1,1 @@
+Asset bundling for Dioxus: the `asset!` macro (`manganis-macro`) records assets at compile time (`manganis-core` types) and the Dioxus CLI optimises and hashes them. Read `third_party/dioxus/packages/manganis/manganis/README.md` and the `assets/` folder next to it. Game assets of Inazuma Eleven are never bundled this way; they are read from the user's install through the VFS.

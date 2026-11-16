@@ -12,7 +12,7 @@ Standalone product of the Rose Griffon community (rosegriffon.fr): Next.js site,
 - `packages/`: `achillea-*`, `azalee`, `inagle`, `nie-ui`, `rg-*` shared platform.
 - `crates/`: Rust 2024 workspace (`nie-*`, `yolo-re-core`), UI with Dioxus/Blitz/Taffy where Rust UI fits.
 - `infra/`, `compose.yaml`, `justfile`: deploy; hosts and services come from `infra/hosts.toml` and `infra/services.toml`, nothing hardcoded.
-- `.agents/skills/`: single source of skills; `plugins/steam`: Steam plugin and MCP; `.mcp.json`: MCP servers.
+- `.agents/skills/`: single source of skills; `plugins/rosegriffon`: the one Claude Code plugin (Bevy/Dioxus ecosystem skills generated from `third_party/`, index of `.agents/skills`, Steam MCP server and agent); `.mcp.json`: MCP servers.
 
 ## Rules
 

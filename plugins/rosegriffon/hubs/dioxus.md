@@ -1,0 +1,5 @@
+The `dioxus` crate is a facade over `dioxus-core` (virtual DOM), `dioxus-rsx`/`dioxus-core-macro` (the `rsx!` macro), `dioxus-hooks` and `dioxus-signals` (state), `dioxus-html` (typed elements and events), plus renderer crates (`dioxus-web`, `dioxus-desktop`, `dioxus-native` on Blitz, `dioxus-ssr`, `dioxus-liveview`, fullstack crates) selected by features in `third_party/dioxus/packages/dioxus/Cargo.toml`.
+
+Reading order at the vendored commit: `third_party/dioxus/README.md`, `packages/dioxus/src/lib.rs` (prelude and feature gates), `packages/signals/README.md` and `packages/signals/docs`, `packages/router`, then `examples/`. The CLI is `packages/cli` (package `dioxus-cli`, binary `dx`); build tooling runs in the prd container, not on the workstation.
+
+Monorepo rules: `dioxus` and `dioxus-ssr` are in `[workspace.dependencies]` at `0.8.0-alpha.3` and patched to `third_party/dioxus`; crates use `dioxus = { workspace = true, features = [...] }`, never a registry version, so Bevy, Dioxus and Blitz share one Taffy. The fork adds `[profile.rg-release]` and `[profile.rg-wasm]` (fat LTO, `codegen-units = 1`, size-optimised WASM).
