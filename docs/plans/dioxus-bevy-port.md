@@ -106,3 +106,14 @@ One binary per product, run by systemd, Pingora edge with in-code ACME, no Docke
 | 5 | nie multiplayer | two headless clients complete a match; recorded session |
 | 6 | Achillea (ranked, clans, tournaments, leagues, Ultimate Team, bot) | API responses checked by content, UI screenshots |
 | 7 | `rg-ffi` contract and `rgui` | generated headers/OpenAPI/JSON Schema diffed against the TS side; one rg-ui component migrated and screenshotted |
+
+## Status 2026-11-16
+
+- Phase 1 done: `nie-cfgsql`; Postgres 18 and SQLite row counts identical on 4 real cfg.bin files
+  (T2B with an empty string table, as in `chara_param_*.cfg.bin`, is now decoded).
+- Phase 2 done: `nie-sitemap`, 255,628 files, 6 sitemap files.
+- Phase 3 first slice done: `nie-ui-dioxus` (UI tree built from a cfg.bin dataset, Dioxus SSR
+  renderer, taffy layout of the same tree). Proof: `docs/proofs/ui/chara_table.png`, a page rendered
+  from `chara_param_table_config_0.00.00.00.cfg.bin` read through the VFS. Not done in phase 3:
+  the Bevy renderer of the same tree, and the interpretation of the game's compiled Lua menus
+  (`nie-lua` menu runtime still marks the native structures as unresolved).
