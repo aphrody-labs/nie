@@ -32,6 +32,7 @@ members = [
   "crates/nie-sql",
   "crates/nie-trace",
   "crates/nie-ui",
+  "crates/nie-ui-dioxus",
   "crates/nie-viola",
   "crates/nie-wasm",
   "crates/nie-wiki",
