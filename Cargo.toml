@@ -2,6 +2,9 @@
 resolver = "2"
 exclude = ["third_party"]
 members = [
+  "crates/achillea-bot",
+  "crates/achillea-core",
+  "crates/achillea-store",
   "crates/azalee-app",
   "crates/nie-app",
   "crates/nie-bevy",
@@ -34,6 +37,8 @@ members = [
   "crates/nie-trace",
   "crates/nie-ui",
   "crates/nie-ui-dioxus",
+  "crates/rg-ffi",
+  "crates/rg-ffi-contract",
   "crates/nie-viola",
   "crates/nie-wasm",
   "crates/nie-wiki",
