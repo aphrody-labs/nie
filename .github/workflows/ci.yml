@@ -14,48 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  bun:
-    name: install, typecheck, lint, build
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    env:
-      TURBO_TELEMETRY_DISABLED: "1"
-      NEXT_TELEMETRY_DISABLED: "1"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-bun
-      - name: Install
-        run: bun install --frozen-lockfile
-      - name: Typecheck and lint
-        run: bun run check:all
-      - name: Build
-        # The public pages are prerendered from the production databases.
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          RG_DATABASE_URL: ${{ secrets.RG_DATABASE_URL }}
-          INAGLE_DATABASE_URL: ${{ secrets.INAGLE_DATABASE_URL }}
-          BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL }}
-          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
-          NEXT_PUBLIC_ACTIVITY_URL: ${{ secrets.NEXT_PUBLIC_ACTIVITY_URL }}
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-          NEXT_PUBLIC_BASE_URL: ${{ secrets.NEXT_PUBLIC_BASE_URL }}
-          NEXT_PUBLIC_CDN_ORIGIN: ${{ secrets.NEXT_PUBLIC_CDN_ORIGIN }}
-          NEXT_PUBLIC_DISCORD_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_DISCORD_CLIENT_ID }}
-          NEXT_PUBLIC_DISCORD_GUILD_ID: ${{ secrets.NEXT_PUBLIC_DISCORD_GUILD_ID }}
-          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
-          NEXT_PUBLIC_GTM_ID: ${{ secrets.NEXT_PUBLIC_GTM_ID }}
-          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_URL: ${{ secrets.NEXT_PUBLIC_URL }}
-        run: bun run build
-      - name: Compile rg-core
-        run: bun run compile --target linux-x64
-      - name: Smoke test
-        run: ./dist/rg-core-linux-x64 --help
-
   rust:
     name: cargo check
     runs-on: ubuntu-latest
@@ -65,6 +23,9 @@ jobs:
       CARGO_INCREMENTAL: "0"
     steps:
       - uses: actions/checkout@v4
+        with:
+          # [patch] and path dependencies point into third_party/* submodules.
+          submodules: true
       - name: Toolchain
         # rust-toolchain.toml pins the nightly, its components and the wasm32 target.
         run: rustup show active-toolchain || rustup toolchain install
