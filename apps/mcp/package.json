@@ -17,8 +17,8 @@
   "dependencies": {
     "@rosegriffon/inagle": "workspace:*",
     "@rosegriffon/azalee": "workspace:*",
-    "@aphrody/bun-engine": "workspace:*",
-    "@aphrody/filmcraft": "workspace:*"
+    "@rosegriffon/engine-formats": "workspace:*",
+    "@rosegriffon/filmcraft": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest"

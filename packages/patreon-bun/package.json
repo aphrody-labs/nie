@@ -12,9 +12,9 @@
     "typescript",
     "webhook-server"
   ],
-  "homepage": "https://github.com/aphrody-dev/rosegriffon/tree/main/packages/patreon-bun#readme",
+  "homepage": "https://github.com/aphrody-labs/rosegriffon/tree/main/packages/patreon-bun#readme",
   "bugs": {
-    "url": "https://github.com/aphrody-dev/rosegriffon/issues"
+    "url": "https://github.com/aphrody-labs/rosegriffon/issues"
   },
   "license": "MIT",
   "author": "Rose Griffon <contact@rose-griffon.fr>",

@@ -1,55 +1,16 @@
-name: Setup Aphrody Bun
+name: Setup Bun
 description: >-
-  Installs Bun from aphrody-labs/bun release or falls back to official oven-sh/bun release (v1.4.4).
+  Installs upstream Bun (oven-sh/bun) with the official oven-sh/setup-bun action.
+  The 1.4.5 line is only published as canary (latest stable: 1.4.4), hence the default.
 inputs:
-  tag:
-    description: bun release tag
-    default: bun-v1.4.4
+  bun-version:
+    description: Bun version, tag or channel (canary, latest)
+    default: canary
 runs:
   using: composite
   steps:
-    - name: Install Bun (${{ inputs.tag }})
-      shell: bash
-      env:
-        TAG: ${{ inputs.tag }}
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        set -euo pipefail
-        case "${RUNNER_OS}" in
-          Linux) asset=bun-linux-x64.zip ;;
-          Windows) asset=bun-windows-x64.zip ;;
-          *) echo "unsupported runner ${RUNNER_OS}" >&2; exit 1 ;;
-        esac
-        dir="${RUNNER_TEMP}/aphrody-bun"
-        mkdir -p "$dir" && cd "$dir"
-
-        # Try aphrody-labs first; if 404, fallback to oven-sh/bun official
-        base="https://github.com/aphrody-labs/bun/releases/download/${TAG}"
-        if ! curl -fsSL -o "$asset" "$base/$asset" 2>/dev/null; then
-          echo "Notice: $base/$asset not found, falling back to oven-sh/bun"
-          base="https://github.com/oven-sh/bun/releases/download/bun-v1.4.4"
-          curl -fsSL --retry 3 -o "$asset" "$base/$asset"
-          curl -fsSL --retry 3 -o SHA256SUMS "$base/SHASUMS256.txt"
-        else
-          curl -fsSL --retry 3 -o SHA256SUMS "$base/SHA256SUMS" || true
-        fi
-
-        if [ -f SHA256SUMS ]; then
-          expected="$(grep -E "[ *]${asset}\$" SHA256SUMS | awk '{print $1}')"
-          if [ -n "$expected" ]; then
-            actual="$(sha256sum "$asset" | awk '{print $1}')"
-            [ "$expected" = "$actual" ] || { echo "checksum mismatch for $asset" >&2; exit 1; }
-          fi
-        fi
-
-        unzip -q -o "$asset"
-        if [ "${RUNNER_OS}" = Linux ]; then
-          bindir="$dir/bun-linux-x64"
-        else
-          bindir="$dir/bun-windows-x64"
-        fi
-
-        echo "$bindir" >> "$GITHUB_PATH"
-        echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
-        chmod +x "$bindir/bun" 2>/dev/null || true
-        "$bindir/bun" --revision || "$bindir/bun" --version
+    - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      with:
+        bun-version: ${{ inputs.bun-version }}
+    - shell: bash
+      run: bun --revision

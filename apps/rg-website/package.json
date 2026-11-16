@@ -35,11 +35,11 @@
   },
   "scripts": {
     "predev": "bun ../../packages/rg-assets/scripts/sync-website-public.ts --to public",
-    "dev": "next-bun dev --webpack",
+    "dev": "bun --bun next dev --webpack",
     "test": "bun test src",
     "build": "bun ../../scripts/next-build.ts",
     "qa:browser": "bun ../../packages/rg-cron/src/index.ts --run website:qa",
-    "start": "next-bun start",
+    "start": "bun --bun next start",
     "lint": "oxlint -c .oxlintrc.json .",
     "lint:fix": "oxlint -c .oxlintrc.json --fix .",
     "format": "bun fmt .",
@@ -50,9 +50,6 @@
     "typecheck": "bun check --noEmit"
   },
   "dependencies": {
-    "@aphrody/next-bun": "catalog:",
-    "@aphrody/nie-ui": "workspace:*",
-    "@aphrody/paths": "catalog:",
     "@base-ui/react": "catalog:",
     "@better-auth/passkey": "catalog:",
     "@colyseus/sdk": "catalog:",
@@ -83,14 +80,14 @@
     "@rosegriffon/assets": "workspace:*",
     "@rosegriffon/auth": "workspace:*",
     "@rosegriffon/azalee": "workspace:*",
+    "@rosegriffon/config": "workspace:*",
     "@rosegriffon/db": "workspace:*",
     "@rosegriffon/i18n": "workspace:*",
     "@rosegriffon/inagle": "workspace:*",
+    "@rosegriffon/nie-ui": "workspace:*",
     "@rosegriffon/patreon-bun": "catalog:",
     "@rosegriffon/types": "workspace:*",
     "@rosegriffon/ui": "workspace:*",
-    "budoux": "catalog:",
-    "intl-messageformat": "catalog:",
     "@sentry/nextjs": "catalog:",
     "@tanstack/query-sync-storage-persister": "catalog:",
     "@tanstack/react-query": "catalog:",
@@ -102,6 +99,7 @@
     "@types/pica": "catalog:",
     "better-auth": "catalog:",
     "browser-image-compression": "catalog:",
+    "budoux": "catalog:",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "cmdk": "catalog:",
@@ -113,6 +111,7 @@
     "graphql-yoga": "catalog:",
     "html-to-image": "catalog:",
     "input-otp": "catalog:",
+    "intl-messageformat": "catalog:",
     "jsonwebtoken": "catalog:",
     "kysely": "catalog:",
     "leaflet": "1.9.4",
@@ -151,10 +150,9 @@
     "zustand": "catalog:"
   },
   "devDependencies": {
-    "@aphrody/bun-plugin-tailwind": "catalog:",
     "@happy-dom/global-registrator": "catalog:",
     "@next/bundle-analyzer": "catalog:",
-    "@rosegriffon/config": "workspace:*",
+    "@tailwindcss/postcss": "catalog:",
     "@tailwindcss/typography": "catalog:",
     "@testing-library/react": "catalog:",
     "@theatre/studio": "catalog:",
@@ -180,8 +178,8 @@
     "url": "git+https://github.com/aphrody-labs/rosegriffon.git",
     "directory": "apps/rg-website"
   },
-  "homepage": "https://github.com/aphrody-dev/rosegriffon/tree/main/apps/rg-website#readme",
+  "homepage": "https://github.com/aphrody-labs/rosegriffon/tree/main/apps/rg-website#readme",
   "bugs": {
-    "url": "https://github.com/aphrody-dev/rosegriffon/issues"
+    "url": "https://github.com/aphrody-labs/rosegriffon/issues"
   }
 }

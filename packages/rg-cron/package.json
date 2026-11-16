@@ -22,9 +22,7 @@
     "typecheck": "bun check -p tsconfig.typecheck.json --noEmit"
   },
   "dependencies": {
-    "@aphrody/agent-browser": "catalog:",
-    "@aphrody/paths": "catalog:",
-    "@aphrody/x": "catalog:",
+    "@rosegriffon/config": "workspace:*",
     "@crawlee/cheerio": "catalog:",
     "@crawlee/core": "catalog:",
     "@crawlee/impit-client": "catalog:",
@@ -52,16 +50,15 @@
     ".npmignore",
     "src",
     "tsconfig.json",
-    "tsconfig.typecheck.json",
-    "types"
+    "tsconfig.typecheck.json"
   ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/aphrody-labs/rosegriffon.git",
     "directory": "packages/rg-cron"
   },
-  "homepage": "https://github.com/aphrody-dev/rosegriffon/tree/main/packages/rg-cron#readme",
+  "homepage": "https://github.com/aphrody-labs/rosegriffon/tree/main/packages/rg-cron#readme",
   "bugs": {
-    "url": "https://github.com/aphrody-dev/rosegriffon/issues"
+    "url": "https://github.com/aphrody-labs/rosegriffon/issues"
   }
 }

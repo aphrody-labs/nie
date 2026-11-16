@@ -78,8 +78,8 @@
     "url": "git+https://github.com/aphrody-labs/rosegriffon.git",
     "directory": "packages/achillea-core"
   },
-  "homepage": "https://github.com/aphrody-dev/rosegriffon/tree/main/packages/achillea-core#readme",
+  "homepage": "https://github.com/aphrody-labs/rosegriffon/tree/main/packages/achillea-core#readme",
   "bugs": {
-    "url": "https://github.com/aphrody-dev/rosegriffon/issues"
+    "url": "https://github.com/aphrody-labs/rosegriffon/issues"
   }
 }

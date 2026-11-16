@@ -44,15 +44,13 @@
     "typecheck": "bun check --noEmit"
   },
   "dependencies": {
-    "@aphrody/canvas": "catalog:",
-    "@aphrody/discord-kit": "catalog:",
-    "@aphrody/paths": "catalog:",
     "@colyseus/bun-websockets": "catalog:",
     "@colyseus/core": "catalog:",
     "@colyseus/schema": "catalog:",
     "@elysia/eden": "catalog:",
     "@elysiajs/cors": "catalog:",
     "@elysiajs/swagger": "catalog:",
+    "@napi-rs/canvas": "catalog:",
     "@rosegriffon/achillea-client": "workspace:*",
     "@rosegriffon/achillea-core": "workspace:*",
     "@rosegriffon/achillea-types": "workspace:*",
@@ -88,8 +86,8 @@
     "url": "git+https://github.com/aphrody-labs/rosegriffon.git",
     "directory": "apps/rg-bot"
   },
-  "homepage": "https://github.com/aphrody-dev/rosegriffon/tree/main/apps/rg-bot#readme",
+  "homepage": "https://github.com/aphrody-labs/rosegriffon/tree/main/apps/rg-bot#readme",
   "bugs": {
-    "url": "https://github.com/aphrody-dev/rosegriffon/issues"
+    "url": "https://github.com/aphrody-labs/rosegriffon/issues"
   }
 }

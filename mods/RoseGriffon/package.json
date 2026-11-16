@@ -1,5 +1,5 @@
 {
-  "name": "@aphrody/rosegriffon-mod",
+  "name": "@rosegriffon/mod",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,8 +9,8 @@
     "build": "bash scripts/build.sh"
   },
   "dependencies": {
-    "@material/material-color-utilities": "latest",
-    "@rosegriffon/assets": "^1.4.4",
-    "@rosegriffon/ui": "latest"
+    "@material/material-color-utilities": "catalog:",
+    "@rosegriffon/assets": "workspace:*",
+    "@rosegriffon/ui": "workspace:*"
   }
 }
