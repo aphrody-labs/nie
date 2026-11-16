@@ -1,6 +1,6 @@
 # Rose Griffon and Azalee Design System (`DESIGN.md`)
 
-Canonical visual and token specification shared across Web (`apps/rg-website`), Native GUI (`nie.exe`, `crates/aphrody-nie-ui`), Terminal (`ie` CLI / TUI), Mobile, and OpenAPI (`/api/design/tokens`).
+Canonical visual and token specification shared across Web (`apps/rg-website`), Native GUI (`nie.exe`, `crates/nie-ui`), Terminal (`ie` CLI / TUI), Mobile, and OpenAPI (`/api/design/tokens`).
 
 ## 1. Unified Theme Packs
 
@@ -28,7 +28,7 @@ Measured directly from upstream `shared.css`, `base.css`, `colorbox.css`, and `t
 
 ## 3. Native `nie.exe` Pixel-Perfect Tokens (`nie`)
 
-Sourced from `crates/aphrody-nie-ui/src/color.rs`, `surfaces.rs`, and `tokens.rs` (`--jeu-*` tokens):
+Sourced from `crates/nie-ui/src/color.rs`, `surfaces.rs`, and `tokens.rs` (`--jeu-*` tokens):
 
 - **Surfaces**: `#131420` (`--jeu-fond-abysse`), `#152d52` (`--jeu-fond-nuit`), `#224271` (`--jeu-fond-profond`), `#e0ecff` (`--jeu-surface-glace`)
 - **Accents**: `#97c0fc` (`--jeu-accent-cyan`), `#5f9efc` (`--jeu-accent-turquoise`), `#e6c961` (`--jeu-accent-ambre`), `#c74955` (`--jeu-accent-brique`), `#0874ff` (`--screen-header-blue`), `#fcfaf8` (`--jeu-texte-vif`)

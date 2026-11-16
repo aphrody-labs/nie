@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// Build aphrody-nie-wasm (web-craft profile, wasm32-unknown-unknown) and generate
+// Build nie-wasm (web-craft profile, wasm32-unknown-unknown) and generate
 // wasm-bindgen --target web bindings into infra/cloudflare/edge/pkg for Wrangler & tests.
 
 import { existsSync } from "node:fs";
@@ -12,11 +12,11 @@ const repoRoot = resolve(edgeDir, "../../..");
 const pkgDir = resolve(edgeDir, "pkg");
 const wasmOut = resolve(
   repoRoot,
-  "target/wasm32-unknown-unknown/web-craft/aphrody_nie_wasm.wasm",
+  "target/wasm32-unknown-unknown/web-craft/nie_wasm.wasm",
 );
 const force = process.argv.includes("--force");
 
-if (!force && existsSync(resolve(pkgDir, "aphrody_nie_wasm_bg.wasm"))) {
+if (!force && existsSync(resolve(pkgDir, "nie_wasm_bg.wasm"))) {
   console.log(
     "[nie-edge] wasm bindings already present in pkg/ (pass --force to rebuild)",
   );
@@ -31,7 +31,7 @@ const cargo = Bun.spawnSync(
     "build",
     "--locked",
     "-p",
-    "aphrody-nie-wasm",
+    "nie-wasm",
     "--target",
     "wasm32-unknown-unknown",
     "--profile",

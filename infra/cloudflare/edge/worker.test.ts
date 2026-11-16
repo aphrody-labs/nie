@@ -52,7 +52,7 @@ function makeEnv(files: Record<string, Uint8Array> = {}, token?: string): Env {
   };
 }
 
-describe("rosegriffon-edge Cloudflare Worker + aphrody-nie-wasm", () => {
+describe("rosegriffon-edge Cloudflare Worker + nie-wasm", () => {
   test("GET /health reports nieWasm capability", async () => {
     const res = await worker.fetch(
       new Request("https://edge.test/health"),
@@ -64,7 +64,7 @@ describe("rosegriffon-edge Cloudflare Worker + aphrody-nie-wasm", () => {
     expect(body.nieWasm).toBe(true);
   });
 
-  test("GET /nie/health initializes real aphrody-nie-wasm engine", async () => {
+  test("GET /nie/health initializes real nie-wasm engine", async () => {
     const res = await worker.fetch(
       new Request("https://edge.test/nie/health"),
       makeEnv(),
@@ -76,7 +76,7 @@ describe("rosegriffon-edge Cloudflare Worker + aphrody-nie-wasm", () => {
       features: string[];
     };
     expect(body.ok).toBe(true);
-    expect(body.engine).toBe("aphrody-nie-wasm");
+    expect(body.engine).toBe("nie-wasm");
     expect(body.features).toContain("detect_format");
     expect(body.features).toContain("r2_range_vfs");
   });
@@ -101,7 +101,7 @@ describe("rosegriffon-edge Cloudflare Worker + aphrody-nie-wasm", () => {
     expect(body.bytes).toBe(8);
   });
 
-  test("GET /nie/core/stats computes level 99 stats via aphrody-nie-wasm", async () => {
+  test("GET /nie/core/stats computes level 99 stats via nie-wasm", async () => {
     const res = await worker.fetch(
       new Request(
         "https://edge.test/nie/core/stats?mainPosition=4&rank=5&level=99",

@@ -29,9 +29,9 @@ Pure **Bun v1.4.5+** workspaces (25 packages, 6 apps) + **Rust 2024** workspace 
 
 ### Rust Workspace (`crates/`, 42 crates)
 
-- **Engine & UI**: `aphrody-nie-bevy` (`bevy 0.20.1`), `aphrody-nie-ui` (`taffy 0.15.1`), `aphrody-nie-wasm` (`wasm32` WebGPU/WebGL), `aphrody-nie-render3d`, `aphrody-nie-camera`, `aphrody-nie-game`, `aphrody-nie-app`, `aphrody-nie-launcher`, `aphrody-nie-editor`
-- **Core, Formats & Simulation**: `aphrody-nie-core`, `aphrody-nie-formats`, `aphrody-nie-data`, `aphrody-nie-save`, `aphrody-nie-headless`, `aphrody-nie-viola`, `aphrody-nie-zukan`, `aphrody-nie-wiki`, `aphrody-nie-inventory`, `aphrody-nie-ocgen`
-- **Services, CLI, MCP & RE**: `aphrody-nie-model-serve` (CDN assets & catalogs), `aphrody-nie-cli`, `aphrody-nie-mcp`, `aphrody-nie-ffi`, `aphrody-nie-computer-use`, `aphrody-nie-lua`, `aphrody-nie-lua-web`, `aphrody-nie-net`, `aphrody-nie-pe`, `aphrody-nie-pg`, `aphrody-nie-sql`, `aphrody-nie-queue`, `aphrody-nie-tasks`, `aphrody-nie-trace`, `aphrody-nie-index`, `aphrody-nie-seed`, `aphrody-nie-forge`, `aphrody-nie-explore`, `aphrody-nie-bench`, `aphrody-nie-identity-source`, `nie-pkg`, `re`, `yolo-re-core`
+- **Engine & UI**: `nie-bevy` (`bevy 0.20.1`), `nie-ui` (`taffy 0.15.1`), `nie-wasm` (`wasm32` WebGPU/WebGL), `nie-render3d`, `nie-camera`, `nie-game`, `nie-app`, `nie-launcher`
+- **Core, Formats & Simulation**: `nie-core`, `nie-formats`, `nie-data`, `nie-save`, `nie-headless`, `nie-viola`, `nie-zukan`, `nie-wiki`, `nie-ocgen`
+- **Services, CLI & RE**: `nie-model-serve` (CDN assets & catalogs), `nie-cli`, `nie-ffi`, `nie-computer-use`, `nie-lua`, `nie-net`, `nie-pe`, `nie-sql`, `nie-queue`, `nie-trace`, `nie-index`, `nie-seed`, `nie-forge`, `nie-explore`, `nie-pkg`, `rg-re`, `rg-steam`, `yolo-re-core`
 
 ## Unified CLI
 
@@ -42,7 +42,7 @@ bun apps/cli/src/index.ts --help
 bun apps/cli/src/index.ts inagle <args...>        # IEVR data & Zukan CLI
 bun apps/cli/src/index.ts azalee <args...>        # Azalee DB, sync, audit
 bun apps/cli/src/index.ts achillea <args...>      # Full 19-resource Achilléa v1 API CLI
-bun apps/cli/src/index.ts nie <args...>           # Rust aphrody-nie-cli
+bun apps/cli/src/index.ts nie <args...>           # Rust nie-cli
 bun apps/cli/src/index.ts contract <args...>      # Achilléa schema/contract generator
 bun apps/cli/src/index.ts formats <args...>       # Console ROM/binary formats
 bun apps/cli/src/index.ts homebrew <args...>      # DS/3DS homebrew toolchain
@@ -110,7 +110,7 @@ Production runs Docker Compose (`compose.yaml`) behind Nginx/Cloudflare on `prd`
 - **Website**: `https://rosegriffon.fr` (`apps/rg-website`)
 - **API & Bots**: `https://api.rosegriffon.fr` (`apps/rg-bot` — separated Discord gateways `rg`, `achillea`, `azalee` and Better Auth providers `discord`, `discord-achillea`, `discord-azalee`)
 - **Ranked**: `https://ranked.rosegriffon.fr` (Colyseus + Achilléa API)
-- **CDN**: `https://cdn.rosegriffon.fr` (`aphrody-nie-model-serve`)
+- **CDN**: `https://cdn.rosegriffon.fr` (`nie-model-serve`)
 
 ## AI Agents, Skills & MCP Plugin
 

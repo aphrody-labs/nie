@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-// Rose Griffon Cloudflare Edge Worker: R2 CDN gateway + aphrody-nie-wasm edge engine.
+// Rose Griffon Cloudflare Edge Worker: R2 CDN gateway + nie-wasm edge engine.
 
-import wasmModule from "./pkg/aphrody_nie_wasm_bg.wasm";
+import wasmModule from "./pkg/nie_wasm_bg.wasm";
 import {
   calculate_stats,
   cfgbin_parse_json,
@@ -15,7 +15,7 @@ import {
   initSync,
   utf_table_json,
   vfs_content_summary,
-} from "./pkg/aphrody_nie_wasm.js";
+} from "./pkg/nie_wasm.js";
 
 export interface EdgeR2Object {
   body: ReadableStream | Uint8Array | null;
@@ -60,7 +60,7 @@ async function ensureWasm(): Promise<void> {
       const wasmPath =
         typeof wasmModule === "string"
           ? wasmModule
-          : new URL("./pkg/aphrody_nie_wasm_bg.wasm", import.meta.url);
+          : new URL("./pkg/nie_wasm_bg.wasm", import.meta.url);
       let bytes: ArrayBuffer;
       if (typeof Bun !== "undefined" && typeof wasmPath === "string") {
         bytes = await Bun.file(wasmPath).arrayBuffer();
@@ -251,7 +251,7 @@ async function handleNieRoute(
         ok: true,
         service: "rosegriffon-edge",
         runtime: "cloudflare-workers",
-        engine: "aphrody-nie-wasm",
+        engine: "nie-wasm",
         features: [
           "detect_format",
           "vfs_content_summary",
