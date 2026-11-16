@@ -1,3 +1,0 @@
-# Folded into yolo-re: keep checkout bytes identical to the source repo blobs
-# (no eol normalization; Gui/StrikersTools keeps its own text=auto).
-* -text

@@ -12,7 +12,7 @@ use tokio::net::{TcpListener, TcpStream};
 const MAX_HEADER_BYTES: usize = 16 * 1024;
 const MAX_BODY_BYTES: usize = 32 * 1024 * 1024;
 const MAX_FIND_LIMIT: usize = 500;
-const RG_M3_TOKENS_JSON: &str = include_str!("../../../packages/rg-config/rg-m3.json");
+const RG_M3_TOKENS_JSON: &str = include_str!("../../../design/rg-m3.json");
 
 #[derive(Debug, Args)]
 pub struct ServeArgs {

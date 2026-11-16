@@ -1,5 +1,5 @@
 // Builds replica/design/tokens.<theme>.json from packages/rg-ui/src/tokens.json (single source of colour).
-const src = await Bun.file(new URL("../../packages/rg-ui/src/tokens.json", import.meta.url)).json();
+const src = await Bun.file(new URL("../../design/tokens.json", import.meta.url)).json();
 const tpl = await Bun.file(process.argv[2]).json();
 const out: string[] = [];
 for (const [name, t] of Object.entries<any>(src.themes)) {
