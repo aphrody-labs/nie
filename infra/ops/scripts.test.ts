@@ -20,6 +20,16 @@ import {
 const infra = loadInfra();
 const prod = resolveHost(infra, "prod");
 
+// Multi-host fixture: production runs on one host, but the ops verbs must still handle a
+// separate build host and multi-candidate roles.
+const fleet = {
+  ...infra,
+  hosts: {
+    ...infra.hosts,
+    roles: { ...infra.hosts.roles, build: ["vps", "cdn"], cdn: ["cdn", "vps"] },
+  },
+};
+
 test("the committed upstreams match the registry", () => {
   const file = readFileSync(
     resolve(REPO_ROOT, "infra/docker/nginx/conf.d/00-upstreams.conf"),
@@ -79,11 +89,11 @@ test("rollback pins RG_TAG without building", () => {
 });
 
 test("migrate: build on target, stop, sync state, start, verify", () => {
-  const to = resolveHost(infra, "build");
+  const to = resolveHost(fleet, "build");
   const plan = migratePlan(
-    infra,
+    fleet,
     {},
-    service(infra, "core"),
+    service(fleet, "core"),
     prod,
     to,
     "origin/main",
@@ -99,7 +109,7 @@ test("migrate: build on target, stop, sync state, start, verify", () => {
   expect(plan[2]!.script).toContain(`rsync -aH --delete`);
   expect(plan[2]!.script).toContain(`${to.srv_root}/state/`);
   expect(() =>
-    migratePlan(infra, {}, service(infra, "core"), prod, prod, "x"),
+    migratePlan(fleet, {}, service(fleet, "core"), prod, prod, "x"),
   ).toThrow();
 });
 
@@ -115,12 +125,12 @@ test("every compose service is in the registry", () => {
 });
 
 test("deploy ships images from the build role instead of building on prod", () => {
-  const build = resolveHost(infra, "build");
+  const build = resolveHost(fleet, "build");
   const s = deployScript(
     prod,
-    infra,
+    fleet,
     {},
-    select(infra, "all"),
+    select(fleet, "all"),
     "origin/main",
     true,
     build,
@@ -133,9 +143,9 @@ test("deploy ships images from the build role instead of building on prod", () =
   expect(s).not.toContain("compose build");
   const local = deployScript(
     prod,
-    infra,
+    fleet,
     {},
-    select(infra, "all"),
+    select(fleet, "all"),
     "origin/main",
     true,
     prod,
@@ -150,8 +160,8 @@ import {
 } from "../../packages/rg-config/infra.ts";
 
 test("multi-candidate roles resolve statically to the first candidate", () => {
-  expect(candidates(infra, "build")).toEqual(["vps", "cdn"]);
-  expect(resolveHost(infra, "build").key).toBe("vps");
+  expect(candidates(fleet, "build")).toEqual(["vps", "cdn"]);
+  expect(resolveHost(fleet, "build").key).toBe("vps");
 });
 
 test("rankHosts prefers the least loaded live candidate and drops dead or full hosts", () => {
@@ -159,22 +169,22 @@ test("rankHosts prefers the least loaded live candidate and drops dead or full h
     parseProbe("vps", "24.0 0.9 0.5"),
     parseProbe("cdn", "0.5 0.2 0.4"),
   ];
-  expect(rankHosts(infra, "build", busy)).toEqual(["cdn", "vps"]);
+  expect(rankHosts(fleet, "build", busy)).toEqual(["cdn", "vps"]);
   expect(
-    rankHosts(infra, "build", [
+    rankHosts(fleet, "build", [
       parseProbe("vps", null),
       parseProbe("cdn", "0.1 0.1 0.1"),
     ]),
   ).toEqual(["cdn"]);
   expect(
-    rankHosts(infra, "build", [
+    rankHosts(fleet, "build", [
       parseProbe("vps", "0 0 0.95"),
       parseProbe("cdn", "1 0.5 0.2"),
     ]),
   ).toEqual(["cdn"]);
   expect(
     rankHosts(
-      infra,
+      fleet,
       "build",
       [parseProbe("vps", "1 0.1 0.1"), parseProbe("cdn", "1 0.1 0.1")],
       ["sccache"],

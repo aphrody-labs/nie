@@ -18,8 +18,8 @@ Standalone product of the Rose Griffon community (rosegriffon.fr): Next.js site,
 
 - Stack: Bun 1.4.5 upstream release (never a fork), Rust 2024, uv for Python, Go for native tooling. No Node, npm, yarn or pnpm commands; `bun`, `bunx`, `cargo`, `uv`.
 - Dependencies come from public registries at their newest version, read live (`bun pm view`, crates.io API, PyPI JSON). No `aphrody*` package, crate, env var, path or URL. Config names are `RG_*`; state lives under `/srv/rosegriffon`.
-- Never run bare `bun test` at root: `bun test <package path>`. Heavy Rust builds run on the build host (fr1) or CI, not the workstation.
-- Hosts: prd runs production (shenron and rosegriffon only), fr1 and fr2 build, preview and CI. Anything deleted on a host is listed with its size first and checked for live dependents.
+- Never run bare `bun test` at root: `bun test <package path>`. Heavy Rust builds run on prd (the build role) or CI, not the workstation.
+- Hosts: everything Rose Griffon runs on prd (build, storage, cdn-sync, prod, fleet crawl worker), Cloudflare (R2, tunnel) and Google Drive; fr1 and fr2 hold no Rose Griffon state. Anything deleted on a host is listed with its size first and checked for live dependents.
 - Secrets: never print, log or commit `.env` values (only `.env.example`); run gitleaks before every push.
 - Proof is a screenshot of the rendered page or a real API response checked by content, never an HTTP status alone.
 - No emoji and no AI attribution in code, docs or commits. UI text goes through `rg-i18n`; source language is English, `fr` is a catalogue.

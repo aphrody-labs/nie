@@ -15,9 +15,9 @@
 # candidates by load and availability; `--auto` (or RG_PLACE=auto) pins each verb to the best one.
 # Stateful roles (prod, storage) list a second host only once its state is replicated (ops migrate).
 [roles]
-build = ["vps", "cdn"] # image and Rust/WASM builds (sccache on vps, 6 cores on cdn)
+build = "prd" # every Rose Griffon build, image and asset step runs on prd
 storage = "prd" # game install, Steam home, archives, backups (moved off fr1)
-cdn = ["cdn", "vps"] # static/derived assets, R2 sync origin (stateless: R2 is the source)
+cdn = "prd" # cdn-sync (prod -> R2) runs on prd; R2 is the source
 prod = "prd" # the compose stack (website, core, cron, model-serve, nginx)
 
 [hosts.vps]
