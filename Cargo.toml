@@ -98,16 +98,16 @@ tracing-subscriber = { version = "0.3.23", default-features = false }
 # Vendored crates carried by PdfCraft (patch notes in apps/pdfcraft/vendor/README.md).
 # DesignCraft's former winit git patch (skylartaylor/winit 3d51077) is superseded by this vendored copy.
 # Dependencies absorbed from iecode.
-bevy = { version = "0.20.0-dev", default-features = false, features = ["std"] }
-bevy_app = { version = "0.20.0-dev", default-features = false, features = ["std"] }
-bevy_asset = { version = "0.20.0-dev", default-features = false }
-bevy_ecs = { version = "0.20.0-dev", default-features = false, features = ["std"] }
-bevy_image = { version = "0.20.0-dev", default-features = false, features = [
+bevy = { version = "=0.20.0-dev", default-features = false, features = ["std"] }
+bevy_app = { version = "=0.20.0-dev", default-features = false, features = ["std"] }
+bevy_asset = { version = "=0.20.0-dev", default-features = false }
+bevy_ecs = { version = "=0.20.0-dev", default-features = false, features = ["std"] }
+bevy_image = { version = "=0.20.0-dev", default-features = false, features = [
   "bevy_reflect",
 ] }
-bevy_math = { version = "0.20.0-dev", default-features = false }
-bevy_mesh = { version = "0.20.0-dev", default-features = false }
-bevy_reflect = { version = "0.20.0-dev", default-features = false }
+bevy_math = { version = "=0.20.0-dev", default-features = false }
+bevy_mesh = { version = "=0.20.0-dev", default-features = false }
+bevy_reflect = { version = "=0.20.0-dev", default-features = false }
 bevy-wgpu-types = { package = "wgpu-types", version = "30.0.2", default-features = false }
 rg-steam = { path = "crates/rg-steam", version = "1.4.8", default-features = false }
 nie-gpu = { path = "crates/nie-gpu", version = "1.4.8" }
@@ -152,7 +152,7 @@ nie-wiki = { path = "crates/nie-wiki", version = "1.4.7" }
 nie-zukan = { default-features = false, path = "crates/nie-zukan", version = "1.4.7" }
 nie-ui = { path = "crates/nie-ui", version = "1.4.7" }
 lz4_flex = "0.14"
-taffy = "0.15.0"
+taffy = "0.15.1"
 dioxus = { version = "0.8.0-alpha.3", default-features = false }
 dioxus-ssr = { version = "0.8.0-alpha.3" }
 dioxus-native = { version = "0.8.0-alpha.3", default-features = false }
