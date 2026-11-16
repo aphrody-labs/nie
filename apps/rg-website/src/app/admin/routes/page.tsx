@@ -25,7 +25,7 @@ import {
 } from "@/lib/admin/routes";
 import { inventaireRoutes } from "@/lib/admin/routes-systeme";
 import { estSain, sonder, type ResultatSonde } from "@/lib/admin/sondes";
-import { ROUTES_SITEMAP } from "@/lib/site-routes";
+import { estIndexable } from "@/lib/seo-routes";
 import { SITE_URL } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
@@ -201,7 +201,7 @@ async function SectionApi() {
 async function SectionPages() {
   const inventaire = await inventaireRoutes();
   const chemins = pagesPubliques(inventaire.pages);
-  const dansSitemap = new Set(ROUTES_SITEMAP.map((r) => r.path));
+  const dansSitemap = new Set(chemins.filter(estIndexable));
   const resultats = await sonder(
     chemins.map((c) => `${SITE_URL}${c === "/" ? "" : c}`),
   );

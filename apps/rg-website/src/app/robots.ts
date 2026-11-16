@@ -1,33 +1,10 @@
 import type { MetadataRoute } from "next";
 
+import { ROBOTS_INTERDITS } from "@/lib/seo-routes";
 import { SITE_URL } from "@/lib/site-url";
 
-/**
- * Chemins sans valeur d'index, communs à tous les robots :
- * espaces d'administration, espace membre, parcours d'authentification,
- * tunnel d'achat et fiches de profil (biographie d'un membre, publiée sans
- * qu'aucune indexation ait été demandée — même politique que le wiki Azalée).
- *
- * `/_next/` n'y figure PAS et ne doit pas y revenir : ce préfixe sert les
- * feuilles de style, le JavaScript et les images optimisées. Le bloquer
- * empêchait Google de rendre les pages telles qu'un visiteur les voit, et
- * mettait toutes les images passées par `next/image` hors de portée de
- * l'indexation d'images.
- */
-const PRIVE = [
-  "/api/",
-  "/admin/",
-  "/dashboard/",
-  "/login",
-  "/forgot-password",
-  "/reset-password",
-  "/auth/",
-  "/profil/",
-  "/shop/panier",
-  "/shop/merci",
-  "/shop/commandes",
-  "/maintenance",
-];
+// Liste partagée avec les plans de site : voir `lib/seo-routes.ts`.
+const PRIVE = [...ROBOTS_INTERDITS];
 
 export default function robots(): MetadataRoute.Robots {
   // Host canonique (apex, sans www) — cohérent avec le `metadataBase` du layout et

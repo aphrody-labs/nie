@@ -2,6 +2,9 @@ import type { MetadataRoute } from "next";
 
 import { getInaglePgPool } from "@rosegriffon/db/pg";
 import { INAZUMA_GAMES } from "@rosegriffon/inagle/games";
+import { pagesPubliques } from "@/lib/admin/routes";
+import { inventaireRoutes } from "@/lib/admin/routes-systeme";
+import { routesPlanWiki } from "@/lib/seo-routes";
 import { SITE_URL } from "@/lib/site-url";
 import { wikiService } from "@/lib/wiki-service";
 
@@ -65,44 +68,19 @@ const AURA_CATEGORIES = [
  *   d'assets et outils internes, jamais listés par l'ancien plan de site
  *   (`apps/azalee/app/sitemap.ts`) et sans intérêt pour l'indexation.
  */
-const STATIC_PAGES: Array<{
-  path: string;
-  priority: number;
-  changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"];
-}> = [
-  { changeFrequency: "weekly", path: "", priority: 0.8 },
-  { changeFrequency: "weekly", path: "/jeux", priority: 0.9 },
-  { changeFrequency: "weekly", path: "/mods", priority: 0.85 },
-  ...INAZUMA_GAMES.map((game) => ({
-    changeFrequency: "monthly" as const,
-    path: `/jeux/${game.slug}`,
-    priority:
-      game.status === "in-development" || game.era === "modern" ? 0.8 : 0.7,
-  })),
-  { changeFrequency: "weekly", path: "/chara", priority: 0.9 },
-  { changeFrequency: "weekly", path: "/skill", priority: 0.9 },
-  { changeFrequency: "weekly", path: "/item", priority: 0.8 },
-  { changeFrequency: "weekly", path: "/aura", priority: 0.8 },
-  { changeFrequency: "weekly", path: "/passive", priority: 0.7 },
-  { changeFrequency: "weekly", path: "/tactic", priority: 0.7 },
-  { changeFrequency: "weekly", path: "/patch-notes", priority: 0.7 },
-  { changeFrequency: "weekly", path: "/equipe", priority: 0.7 },
-  { changeFrequency: "weekly", path: "/quete", priority: 0.7 },
-  { changeFrequency: "weekly", path: "/boutique", priority: 0.6 },
-  { changeFrequency: "weekly", path: "/entraineur", priority: 0.6 },
-  { changeFrequency: "weekly", path: "/stade", priority: 0.6 },
-  { changeFrequency: "weekly", path: "/succes", priority: 0.6 },
-  { changeFrequency: "weekly", path: "/capsule", priority: 0.6 },
-  { changeFrequency: "weekly", path: "/drops", priority: 0.6 },
-  { changeFrequency: "weekly", path: "/invocation", priority: 0.6 },
-  { changeFrequency: "monthly", path: "/niveau", priority: 0.6 },
-  { changeFrequency: "monthly", path: "/cross", priority: 0.5 },
-  ...AURA_CATEGORIES.map((categorie) => ({
-    changeFrequency: "weekly" as const,
-    path: `/aura/${categorie}`,
-    priority: 0.7,
-  })),
-];
+/**
+ * Pages fixes du wiki : toutes les pages statiques de `app/wiki` (lues par
+ * `inventaireRoutes`) moins `WIKI_HORS_PLAN`, plus les fiches de jeux et les
+ * catégories d'aura, dont la liste est connue sans base.
+ */
+async function pagesFixes(): Promise<string[]> {
+  const { pages } = await inventaireRoutes();
+  return [
+    ...routesPlanWiki(pagesPubliques(pages)),
+    ...INAZUMA_GAMES.map((game) => `/jeux/${game.slug}`),
+    ...AURA_CATEGORIES.map((categorie) => `/aura/${categorie}`),
+  ];
+}
 
 /** Exécute une requête `SELECT ... AS id` et renvoie la liste d'identifiants (non vides). */
 async function idsDepuisSql(sql: string): Promise<string[]> {
@@ -415,10 +393,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]);
 
   return [
-    ...STATIC_PAGES.map(({ path, priority, changeFrequency }) => ({
-      changeFrequency,
+    ...(await pagesFixes()).map((path) => ({
       lastModified,
-      priority,
       url: `${baseUrl}/wiki${path}`,
     })),
     ...personnagesUrls,
