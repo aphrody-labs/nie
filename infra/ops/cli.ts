@@ -62,6 +62,8 @@ export const RENDERED: Record<string, string | null> = {
   "infra/docker/nginx/conf.d/00-upstreams.conf": null,
   "infra/docker/nginx/conf.d/rosegriffon.fr.conf":
     "infra/docker/nginx/templates/rosegriffon.fr.conf",
+  "infra/docker/nginx/conf.d/rg-apps.conf":
+    "infra/docker/nginx/templates/rg-apps.conf",
   "infra/docker/nginx/conf.d/rg-core.conf":
     "infra/docker/nginx/templates/rg-core.conf",
   "infra/docker/host-nginx/rosegriffon-stack.conf":

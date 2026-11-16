@@ -199,3 +199,23 @@ env = [
   "CDN_SYNC_DRY_RUN",
   "CDN_SYNC_CONCURRENCY",
 ]
+
+# Rust/Bevy WASM apps: static bundles built on fr1 and published to ${RG_SRV_ROOT}/cdn/static/apps/<name>
+# (index.html + hashed assets). Names are reserved: nginx answers 503 until the bundle exists.
+[services.achillea-rs]
+entry = "static WASM bundle (Rust/Bevy), served by the stack nginx from /data/cdn/apps/achillea-rs"
+profile = "static"
+role = "prod"
+platforms = ["vps"]
+requires = ["static"]
+state = ["cdn/static/apps/achillea-rs"]
+vhosts = ["achillea-rs"]
+
+[services.azalee-rs]
+entry = "static WASM bundle (Rust/Bevy), served by the stack nginx from /data/cdn/apps/azalee-rs"
+profile = "static"
+role = "prod"
+platforms = ["vps"]
+requires = ["static"]
+state = ["cdn/static/apps/azalee-rs"]
+vhosts = ["azalee-rs"]
