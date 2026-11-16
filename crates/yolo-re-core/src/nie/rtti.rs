@@ -50,7 +50,7 @@
 //! Le comptage final reflète exactement ce qui a été ingéré.
 
 use anyhow::{Context, Result};
-use aphrody_nie_index::{Db, ingest};
+use nie_index::{Db, ingest};
 use goblin::pe::PE;
 use tracing::{debug, warn};
 
@@ -266,7 +266,7 @@ pub fn parse_and_ingest(db: &mut Db, binary_id: i64, bytes: &[u8]) -> Result<Rtt
                 if cls.vtable_vaddr.is_some() || cls.type_desc_vaddr.is_some() {
                     let _ = tx.execute(
                         "UPDATE rtti_class SET vtable_vaddr=COALESCE(?1, vtable_vaddr), type_desc_vaddr=COALESCE(?2, type_desc_vaddr) WHERE id=?3",
-                        aphrody_nie_index::rusqlite::params![
+                        nie_index::rusqlite::params![
                             cls.vtable_vaddr.map(|v| v as i64),
                             cls.type_desc_vaddr.map(|v| v as i64),
                             id
@@ -305,7 +305,7 @@ pub fn parse_and_ingest(db: &mut Db, binary_id: i64, bytes: &[u8]) -> Result<Rtt
             // Cherche l'id de la classe de base.
             let base_id_result: rusqlite::Result<i64> = tx.query_row(
                 "SELECT id FROM rtti_class WHERE binary_id=?1 AND name=?2",
-                aphrody_nie_index::rusqlite::params![binary_id, base_class_name],
+                nie_index::rusqlite::params![binary_id, base_class_name],
                 |r| r.get(0),
             );
 
@@ -313,7 +313,7 @@ pub fn parse_and_ingest(db: &mut Db, binary_id: i64, bytes: &[u8]) -> Result<Rtt
                 Ok(base_id) if base_id != class_id => {
                     let _ = tx.execute(
                         "INSERT OR IGNORE INTO rtti_base(class_id, base_class_id, offset) VALUES(?1,?2,0)",
-                        aphrody_nie_index::rusqlite::params![class_id, base_id],
+                        nie_index::rusqlite::params![class_id, base_id],
                     );
                     stats.bases_ingested += 1;
                 }
@@ -473,7 +473,7 @@ fn parse_chd(
 }
 
 // Ré-exporte pour les tests.
-use aphrody_nie_index::rusqlite;
+use nie_index::rusqlite;
 
 #[cfg(test)]
 mod tests {

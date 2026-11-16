@@ -12,7 +12,7 @@ use crate::game::formats::{
 use crate::game::live::aob::AobPattern;
 use crate::game::text::extract_msg_text;
 use crate::game::world::xenoverse3::xenoverse3_prototype_map;
-use aphrody_nie_formats::cpk::{CpkEntry, CpkReader};
+use nie_formats::cpk::{CpkEntry, CpkReader};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
@@ -40,7 +40,7 @@ fn plain_cpk(bytes: &[u8]) -> Result<CpkReader, JsValue> {
 }
 
 /// Analyze a CRIWARE CPK archive in-memory and return its file table and metadata
-/// (canonical `aphrody-nie-formats` reader).
+/// (canonical `nie-formats` reader).
 #[wasm_bindgen]
 pub fn wasm_triage_cpk(bytes: &[u8]) -> Result<JsValue, JsValue> {
     let archive = plain_cpk(bytes)?;
@@ -74,7 +74,7 @@ pub fn wasm_extract_cpk_file(archive_bytes: &[u8], filename: &str) -> Result<Vec
 /// Decompress a `CRILAYLA` buffer (the magic-prefixed form stored in CPK entries).
 #[wasm_bindgen]
 pub fn wasm_decompress_crilayla(compressed: &[u8]) -> Result<Vec<u8>, JsValue> {
-    aphrody_nie_formats::crilayla::decompress(compressed).map_err(to_js_err)
+    nie_formats::crilayla::decompress(compressed).map_err(to_js_err)
 }
 
 /// Parse a DBXV2 CUS (Character Ultimate Skill) binary file and return all skills.
@@ -188,9 +188,9 @@ pub fn wasm_cpk_read(
 
 fn js_reader(
     read: &js_sys::Function,
-) -> impl FnMut(u64, usize) -> Result<Vec<u8>, aphrody_nie_formats::FormatError> + '_ {
+) -> impl FnMut(u64, usize) -> Result<Vec<u8>, nie_formats::FormatError> + '_ {
     move |offset, size| {
-        let short = || aphrody_nie_formats::FormatError::TooShort { got: 0, need: size };
+        let short = || nie_formats::FormatError::TooShort { got: 0, need: size };
         let value = read
             .call2(
                 &JsValue::NULL,

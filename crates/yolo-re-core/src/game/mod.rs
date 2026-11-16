@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Game RE façade over [`aphrody_re_core::game`] plus Rose Griffon asset/VFS/glTF pipelines.
+//! Game RE façade over [`rg_re::game`] plus Rose Griffon asset/VFS/glTF pipelines.
 
 #[cfg(any(feature = "wasm", feature = "dbxv2"))]
 pub mod api;
@@ -9,6 +9,9 @@ pub mod convert;
 /// Export a DBXV2 `.emd` object to GLB so it renders through the nie 3D pipeline.
 #[cfg(feature = "dbxv2")]
 pub mod emd_gltf;
+/// Batch CPK extraction of `bunre dbxv2` (positioned reads, multi-threaded writes).
+#[cfg(feature = "dbxv2")]
+pub mod extract;
 #[cfg(feature = "dbxv2")]
 pub mod index;
 /// Engine-facing asset runtime: streams and format-decodes assets from the merged games.
@@ -20,7 +23,7 @@ pub mod unified_vfs;
 #[cfg(feature = "wasm")]
 pub mod wasm;
 
-pub use aphrody_re_core::game::{
+pub use rg_re::game::{
     catalog, error, formats, fs, gameplay, inventory, live, reverse, steam, text, unified, world,
 };
 

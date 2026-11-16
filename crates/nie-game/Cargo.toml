@@ -39,7 +39,7 @@ nie-bevy = { path = "../nie-bevy", version = "1.4.7", features = ["bevy"] }
 anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive", "color", "env"] }
 tracing = { workspace = true }
-tracing-subscriber = { version = "0.3.20", default-features = false, features = ["fmt", "env-filter", "ansi", "tracing-log"] }
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "env-filter", "ansi", "tracing-log"] }
 nie-gpu = { workspace = true }
 # The feature set of the former root `bevy` pin; the root `bevy` pin is minimal ("std").
 bevy = { workspace = true, features = [

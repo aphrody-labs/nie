@@ -36,7 +36,7 @@
 //! (RTTI, vtable, héritage de thunk).
 
 use anyhow::Result;
-use aphrody_nie_index::{Db, rusqlite};
+use nie_index::{Db, rusqlite};
 use tracing::info;
 
 /// Distance maximale, **en nombre de fonctions**, à laquelle un voisin classé

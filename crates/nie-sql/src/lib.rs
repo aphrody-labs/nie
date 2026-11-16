@@ -315,7 +315,6 @@ impl ReadOnlyDatabase for SqliteReadOnly {
         let mut statement = self.connection.prepare(query.as_str())?;
         let columns = statement
             .column_names()
-            .iter()
             .map(ToString::to_string)
             .collect::<Vec<_>>();
         let mut rows = statement.query(params_from_iter(values.iter()))?;

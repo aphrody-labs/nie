@@ -49,3 +49,10 @@ Shenron (`C:\shenron`, dragonballfr.com) and Rose Griffon (`C:\rosegriffon`, ros
 | Deploy on prd: compose per product, `/srv/deploy.lock` (flock) before any prd change, nginx and tunnel routes in each product's own files | each product for its own units | never touch the other product's units |
 
 Coordination goes through files (this table, `docs/SHARED.md`, `docs/` notes, commits on `main`), not through live edits of the other repository.
+
+## Acceptance (after each deploy)
+
+- agent-browser on every site and subdomain: real navigation, snapshots, interactions inside the Bevy canvas (WebGPU or WASM); the TS APIs checked through their pages.
+- agent-desktop on the Bevy desktop builds: launch and one real in-game action.
+- modern-web-guidance audit (skill and wck) on every site; fix what it reports.
+- Screenshots and reports are archived in `docs/proofs/`.

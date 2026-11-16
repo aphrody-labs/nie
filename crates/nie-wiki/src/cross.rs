@@ -333,7 +333,7 @@ pub fn verify_mirror_preserved(
         let mut original_statement = source.prepare(&sql)?;
         let mut candidate_statement = candidate.prepare(&sql)?;
         ensure!(
-            original_statement.column_names() == candidate_statement.column_names(),
+            original_statement.column_names().eq(candidate_statement.column_names()),
             "base mirror columns changed: {name}"
         );
         let mut original_rows = original_statement.query([])?;

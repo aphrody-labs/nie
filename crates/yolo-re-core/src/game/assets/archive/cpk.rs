@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-//! CRI Middleware `CPK ` archives over the canonical `aphrody-nie-formats` reader (`@UTF` header
+//! CRI Middleware `CPK ` archives over the canonical `nie-formats` reader (`@UTF` header
 //! and TOC, table descrambling, CRILAYLA). Only plain `CPK ` headers are mounted here: the
 //! generic layer never tries a title's key derivation on another title's archive.
 
 use std::path::Path;
 
-use aphrody_nie_formats::{
+use nie_formats::{
     FormatError,
     cpk::{CpkEntry, CpkReader},
 };
@@ -123,7 +123,7 @@ impl Archive for CpkArchive {
 
 #[cfg(test)]
 mod tests {
-    use aphrody_nie_formats::cpk_encode::{CpkWriteEntry, encode_cpk};
+    use nie_formats::cpk_encode::{CpkWriteEntry, encode_cpk};
 
     use super::*;
 

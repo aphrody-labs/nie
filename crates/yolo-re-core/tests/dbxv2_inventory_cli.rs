@@ -192,7 +192,7 @@ fn emb_cli_extracts_entries_to_a_new_directory_without_overwriting() {
 #[cfg(feature = "dbxv2")]
 #[test]
 fn cpk_cli_extracts_to_a_new_directory_and_rejects_traversal() {
-    use aphrody_nie_formats::cpk_encode::{CpkWriteEntry, encode_cpk};
+    use nie_formats::cpk_encode::{CpkWriteEntry, encode_cpk};
     let cpk = |name: &str, data: &[u8]| {
         encode_cpk(&[CpkWriteEntry {
             filename: name.to_string(),

@@ -84,14 +84,14 @@ impl Args {
     }
 }
 
-/// Resolve `<appid|path>`: a number is looked up in the local Steam libraries (`bun-steam`).
+/// Resolve `<appid|path>`: a number is looked up in the local Steam libraries (`rg-steam`).
 fn resolve(target: &str) -> Result<PathBuf, String> {
     if !target.is_empty() && target.bytes().all(|b| b.is_ascii_digit()) {
         let app_id: u32 = target
             .parse()
             .map_err(|_| "app id out of range".to_string())?;
-        for installation in bun_steam::find_steam_installations() {
-            let Ok(games) = bun_steam::list_installed_games(&installation.root_path) else {
+        for installation in rg_steam::find_steam_installations() {
+            let Ok(games) = rg_steam::list_installed_games(&installation.root_path) else {
                 continue;
             };
             if let Some(game) = games

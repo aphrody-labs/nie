@@ -1,28 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
-//! `yolo-re-core` (`bun_re`) — thin façade re-exporting [`aphrody_re_core`].
+//! `yolo-re-core` (`bun_re`) — thin façade re-exporting [`rg_re`].
 //!
 //! All generic RE primitives (PE/ELF/Mach-O triage, strings, x86-64 disassembly,
 //! headers, minidump, `.pdata`, pipeline, Ghidra decompile, Magika, LevelDB, YARA,
 //! DBXV2 formats, CRI CPK/CRILAYLA/EAC, live process/AOB, catalog, unified overview)
-//! live canonically in [`aphrody_re_core`] (`C:\aphrody\crates\re`).
+//! live canonically in [`rg_re`] (`crates/rg-re`).
 
 #![forbid(unsafe_code)]
 #![allow(non_ascii_idents)]
 
 #[cfg(feature = "decompile")]
-pub use aphrody_re_core::decompile;
+pub use rg_re::decompile;
 #[cfg(feature = "leveldb")]
-pub use aphrody_re_core::leveldb;
+pub use rg_re::leveldb;
 #[cfg(feature = "magika")]
-pub use aphrody_re_core::magika;
+pub use rg_re::magika;
 #[cfg(feature = "pipeline")]
-pub use aphrody_re_core::pipeline;
+pub use rg_re::pipeline;
 #[cfg(feature = "wasm")]
-pub use aphrody_re_core::wasm;
+pub use rg_re::wasm;
 #[cfg(feature = "yara")]
-pub use aphrody_re_core::yara;
+pub use rg_re::yara;
 
-pub use aphrody_re_core::{
+pub use rg_re::{
     AesCtrResult, AobScanResult, ArchitectureSlice, BinaryString, DISASM_LIMIT, DisasmInsn,
     EntropyMap, ExtractedStrings, Format, MultiHash, PeAnalysis, PeAnalysisImport,
     PeAnalysisSection, PeAnalysisSymbol, PeHeader, PeSection, ReError, STRINGS_MIN_LEN,

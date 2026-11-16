@@ -213,7 +213,7 @@ pub(crate) fn walk(
 }
 
 /// Read the Steam app id of an install: `steam_appid.txt`, else the enclosing library's
-/// `appmanifest_*.acf` whose `installdir` matches (through `bun-steam`).
+/// `appmanifest_*.acf` whose `installdir` matches (through `rg-steam`).
 #[must_use]
 pub fn steam_app_id(root: &Path) -> Option<u32> {
     if let Ok(text) = std::fs::read_to_string(root.join("steam_appid.txt"))
@@ -231,7 +231,7 @@ pub fn steam_app_id(root: &Path) -> Option<u32> {
         return None;
     }
     let steamapps = common.parent()?;
-    bun_steam::scan_manifests_in_steamapps(steamapps)
+    rg_steam::scan_manifests_in_steamapps(steamapps)
         .into_iter()
         .find(|manifest| manifest.install_dir.eq_ignore_ascii_case(&name))
         .map(|manifest| manifest.app_id)

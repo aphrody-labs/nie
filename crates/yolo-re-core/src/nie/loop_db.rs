@@ -15,7 +15,7 @@
 //! 6. Écriture en base + hypothèses.
 
 use anyhow::{Context, Result};
-use aphrody_nie_index::{Db, ingest, rusqlite};
+use nie_index::{Db, ingest, rusqlite};
 use hashbrown::HashMap;
 use tracing::{debug, info};
 
@@ -54,7 +54,7 @@ pub struct Stats {
 /// sous une transaction unique. Insère une `hypothesis` par changement.
 pub fn propagate_db(db: &mut Db, binary_id: i64, rounds: usize) -> Result<Stats> {
     // --- Étape 0 : couverture initiale ------------------------------------------
-    let cov_before = aphrody_nie_index::query::coverage(db.conn(), binary_id)?;
+    let cov_before = nie_index::query::coverage(db.conn(), binary_id)?;
     info!(
         "propagate_db: couverture initiale {}/{} ({:.2}%)",
         cov_before.classified, cov_before.total, cov_before.pct
@@ -238,7 +238,7 @@ pub fn propagate_db(db: &mut Db, binary_id: i64, rounds: usize) -> Result<Stats>
     info!("propagate_db: {} fonctions mises à jour en DB", updated);
 
     // --- Étape 8 : couverture finale -------------------------------------------
-    let cov_after = aphrody_nie_index::query::coverage(db.conn(), binary_id)?;
+    let cov_after = nie_index::query::coverage(db.conn(), binary_id)?;
     info!(
         "propagate_db: couverture finale {}/{} ({:.2}%)",
         cov_after.classified, cov_after.total, cov_after.pct
@@ -275,7 +275,7 @@ fn count_classified(conn: &rusqlite::Connection, binary_id: i64) -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aphrody_nie_index::{Db, ingest};
+    use nie_index::{Db, ingest};
 
     /// Construit une mini-base avec 3 fonctions : 2 ancres + 1 inconnue reliée
     /// par call, et vérifie que la propagation classifie l'inconnue.

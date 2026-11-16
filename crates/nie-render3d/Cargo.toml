@@ -34,9 +34,9 @@ bevy = [
 
 [dependencies]
 nie-core = { workspace = true }
-glam = { version = "0.33.9", default-features = false, features = ["std"] }
+glam = { version = "0.33.12", default-features = false, features = ["std"] } # same family as bevy_math 0.20 (one glam in Cargo.lock)
 anyhow = { workspace = true }
-clap = { version = "4.5.58", features = ["derive", "color", "env"], optional = true }
+clap = { version = "4.6.7", features = ["derive", "color", "env"], optional = true }
 serde_json = { workspace = true }
 serde = { workspace = true }
 png = { version = "0.18.1", default-features = false }
@@ -44,7 +44,7 @@ thiserror = { workspace = true, optional = true }
 # Shared wgpu instance/adapter/device boundary (crates.io, Apache-2.0, wgpu 30).
 nie-gpu = { workspace = true, optional = true }
 pollster = { version = "1.0.1", optional = true }
-bytemuck = { version = "1.0", features = ["derive"], optional = true }
+bytemuck = { version = "1.25", features = ["derive"], optional = true }
 bevy_app = { workspace = true, optional = true }
 bevy_ecs = { workspace = true, optional = true }
 bevy_asset = { workspace = true, optional = true }
@@ -52,10 +52,10 @@ bevy_mesh = { workspace = true, optional = true }
 bevy-wgpu-types = { workspace = true, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-web-sys = { version = "0.3.104", default-features = false, optional = true, features = ["HtmlCanvasElement"] }
+web-sys = { version = "0.3.107", default-features = false, optional = true, features = ["HtmlCanvasElement"] }
 
 [dev-dependencies]
-bcdec_rs = "0.2.0"
+bcdec_rs = "0.2.1"
 nie-formats = { path = "../nie-formats", version = "1.4.8" }
 
 [[bin]]

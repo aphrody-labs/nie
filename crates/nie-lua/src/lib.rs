@@ -25,7 +25,7 @@
 /// Mode de chargement d'un chunk, réexporté de `mlua` : les consommateurs (nie-explorer) n'ont
 /// pas à déclarer `mlua` en dépendance directe juste pour nommer `Binary`/`Text`.
 #[cfg(all(feature = "vm", not(all(target_arch = "wasm32", target_os = "unknown"))))]
-pub use mlua::ChunkMode;
+pub use mlua::chunk::ChunkMode;
 
 pub mod bytecode;
 pub mod inspection;
@@ -171,7 +171,7 @@ pub fn load_bytecode(lua: &mlua::Lua, data: &[u8], name: &str) -> Result<mlua::F
     let func = lua
         .load(data)
         .set_name(name)
-        .set_mode(mlua::ChunkMode::Binary)
+        .set_mode(mlua::chunk::ChunkMode::Binary)
         .into_function()?;
     Ok(func)
 }
@@ -226,9 +226,9 @@ where
                     )));
                 }
             }
-            mlua::ChunkMode::Binary
+            mlua::chunk::ChunkMode::Binary
         } else {
-            mlua::ChunkMode::Text
+            mlua::chunk::ChunkMode::Text
         };
         let func = lua
             .load(&bytes)

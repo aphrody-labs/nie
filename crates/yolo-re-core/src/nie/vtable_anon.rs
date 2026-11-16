@@ -34,7 +34,7 @@
 //!   réellement retenues, pas une estimation.
 
 use anyhow::{Context, Result};
-use aphrody_nie_index::{Db, rusqlite};
+use nie_index::{Db, rusqlite};
 use goblin::pe::PE;
 use hashbrown::HashSet;
 use tracing::info;

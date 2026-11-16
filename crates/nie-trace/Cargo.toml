@@ -15,6 +15,7 @@ default = ["host"]
 host = ["dep:libc", "dep:windows-sys"]
 
 [dependencies]
+rg-steam = { workspace = true }
 thiserror = { workspace = true, features = ["std"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Export parsed DBXV2 `.emd` objects to a binary glTF (GLB), so Xenoverse models go through the
-//! same renderer as the Inazuma Eleven models (`aphrody-nie-render3d` / `nie render glb-png`).
+//! same renderer as the Inazuma Eleven models (`nie-render3d` / `nie render glb-png`).
 //!
 //! Each EMD submesh becomes one glTF mesh primitive with `POSITION`, `NORMAL` and `TEXCOORD_0`
 //! and `UNSIGNED_INT` indices (triangles). [`assemble_glb`] merges several parts (a character's

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! `bunre vfs`: the canonical VFS manifest of an install (feature `assets`). The same
-//! `aphrody_nie_formats::vfs_manifest` code runs on the server (local disk) and on a client
+//! `nie_formats::vfs_manifest` code runs on the server (local disk) and on a client
 //! (a network share such as the SMB drive of the games disk), so equal digests mean equal views.
 //! Only pack TOCs are read, with positioned reads; nothing is written unless `--out` is given.
 
@@ -11,7 +11,7 @@ use std::{
     time::Instant,
 };
 
-use aphrody_nie_formats::{
+use nie_formats::{
     game_source::local_data_dir,
     vfs::Vfs,
     vfs_manifest::{self, Difference, Manifest},

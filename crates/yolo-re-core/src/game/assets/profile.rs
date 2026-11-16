@@ -31,7 +31,7 @@ pub enum KeyPolicy {
 pub enum MountMode {
     /// Discover containers, mount them in [`Profile::order`] order, then loose files.
     Generic,
-    /// Inazuma Eleven: Victory Road through `aphrody-nie-formats::vfs` (`data/cpk_list.cfg.bin`
+    /// Inazuma Eleven: Victory Road through `nie-formats::vfs` (`data/cpk_list.cfg.bin`
     /// and its packs), plus loose files outside `data/`.
     Level5Ievr,
 }
@@ -70,7 +70,7 @@ pub const PROFILES: &[Profile] = &[
         order: &[],
         loose_excludes: &["data/"],
         keys: KeyPolicy::DelegatedOwner {
-            owner: "aphrody-nie-formats",
+            owner: "nie-formats",
             license: "docs/licenses/iecode/nie/LICENSE",
         },
     },

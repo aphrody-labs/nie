@@ -1,5 +1,5 @@
 {
-  "$id": "https://aphrody.com/schema/re/stage-report.json",
+  "$id": "https://rosegriffon.fr/schema/re/stage-report.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {

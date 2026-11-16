@@ -1,16 +1,16 @@
-//! Indexeur de binaire via `aphrody-re` : triage PE → sections + symboles
+//! Indexeur de binaire via `yolo-re-core` : triage PE → sections + symboles
 //! ingérés dans la base de connaissance (`section` + `symbol`).
 //!
 //! Ce module fournit [`triage_into`] qui :
 //! 1. Lit le binaire avec `memmap2` (lecture seule, zero-copy).
 //! 2. Appelle `crate::triage(bytes)` pour extraire le rapport PE.
-//! 3. Insère les sections dans `aphrody_nie_index::ingest::section` (si la table
+//! 3. Insère les sections dans `nie_index::ingest::section` (si la table
 //!    existe — elle est dans le schéma v1).
-//! 4. Insère imports/exports dans `aphrody_nie_index::ingest::symbol`.
+//! 4. Insère imports/exports dans `nie_index::ingest::symbol`.
 //! 5. Renvoie un [`IndexStats`] avec les comptes.
 
 use anyhow::{Context, Result};
-use aphrody_nie_index::{Db, rusqlite};
+use nie_index::{Db, rusqlite};
 use std::path::Path;
 use tracing::info;
 
@@ -118,7 +118,7 @@ pub fn triage_into(db: &mut Db, binary_id: i64, exe_path: &Path) -> Result<Index
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aphrody_nie_index::Db;
+    use nie_index::Db;
     use std::io::Write as _;
 
     #[test]

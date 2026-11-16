@@ -1,40 +1,44 @@
 [workspace]
 resolver = "2"
 members = [
-  "crates/aphrody-nie-app",
-  "crates/aphrody-nie-bevy",
-  "crates/aphrody-nie-camera",
-  "crates/aphrody-nie-cli",
-  "crates/aphrody-nie-computer-use",
-  "crates/aphrody-nie-core",
-  "crates/aphrody-nie-data",
-  "crates/aphrody-nie-explore",
-  "crates/aphrody-nie-ffi",
-  "crates/aphrody-nie-forge",
-  "crates/aphrody-nie-formats",
-  "crates/aphrody-nie-game",
-  "crates/aphrody-nie-headless",
-  "crates/aphrody-nie-index",
-  "crates/aphrody-nie-launcher",
-  "crates/aphrody-nie-lua",
-  "crates/aphrody-nie-model-serve",
-  "crates/aphrody-nie-net",
-  "crates/aphrody-nie-ocgen",
-  "crates/aphrody-nie-pe",
-  "crates/aphrody-nie-queue",
-  "crates/aphrody-nie-render3d",
-  "crates/aphrody-nie-runtime",
-  "crates/aphrody-nie-save",
-  "crates/aphrody-nie-seed",
-  "crates/aphrody-nie-sql",
-  "crates/aphrody-nie-trace",
-  "crates/aphrody-nie-ui",
-  "crates/aphrody-nie-viola",
-  "crates/aphrody-nie-wasm",
-  "crates/aphrody-nie-wiki",
-  "crates/aphrody-nie-zukan",
+  "crates/nie-app",
+  "crates/nie-bevy",
+  "crates/nie-camera",
+  "crates/nie-cli",
+  "crates/nie-computer-use",
+  "crates/nie-core",
+  "crates/nie-data",
+  "crates/nie-explore",
+  "crates/nie-ffi",
+  "crates/nie-forge",
+  "crates/nie-formats",
+  "crates/nie-game",
+  "crates/nie-headless",
+  "crates/nie-index",
+  "crates/nie-launcher",
+  "crates/nie-lua",
+  "crates/nie-model-serve",
+  "crates/nie-net",
+  "crates/nie-ocgen",
+  "crates/nie-pe",
+  "crates/nie-queue",
+  "crates/nie-render3d",
+  "crates/nie-runtime",
+  "crates/nie-save",
+  "crates/nie-seed",
+  "crates/nie-sql",
+  "crates/nie-trace",
+  "crates/nie-ui",
+  "crates/nie-viola",
+  "crates/nie-wasm",
+  "crates/nie-wiki",
+  "crates/nie-zukan",
   "crates/nie-pkg",
+  "crates/nie-gpu",
+  "crates/rg-re",
+  "crates/rg-steam",
   "crates/yolo-re-core",
+  "tools/steam-index",
 ]
 
 [workspace.package]
@@ -42,9 +46,9 @@ version = "1.4.7"
 edition = "2024"
 rust-version = "1.95"
 license = "Apache-2.0"
-repository = "https://github.com/aphrody-dev/rosegriffon"
-homepage = "https://aphrody.com"
-authors = ["aphrody-dev <contact@aphrody.com>"]
+repository = "https://github.com/aphrody-labs/rosegriffon"
+homepage = "https://rosegriffon.fr"
+authors = ["Rose Griffon contributors"]
 
 
 [workspace.lints.rust]
@@ -62,13 +66,13 @@ perf = { level = "warn", priority = -1 }
 [workspace.dependencies]
 
 anyhow = { version = "1.0.104", default-features = false }
-base64 = { version = "0.22.1", default-features = false, features = ["alloc"] }
-libc = { version = "0.2.190", default-features = false }
+base64 = { version = "0.23.1", default-features = false, features = ["alloc"] }
+libc = { version = "0.2.191", default-features = false }
 png = { version = "0.18.1", default-features = false }
 rayon = { version = "1.12.0", default-features = false }
-redis = { version = "0.27.6", default-features = false }
+redis = { version = "1.8.2", default-features = false }
 reqwest = { version = "0.13.5", default-features = false }
-serde = { version = "1.0.228", default-features = false, features = [
+serde = { version = "1.0.229", default-features = false, features = [
   "derive",
   "std",
 ] }
@@ -77,14 +81,15 @@ serde_json = { version = "1.0.154", default-features = false, features = [
 ] }
 sha1 = { version = "0.11.0", default-features = false }
 sha2 = { version = "0.11.1", default-features = false }
-steamroom = { git = "https://github.com/aphrody-dev/steamroom", tag = "v0.2.0" }
+steamroom = "0.3.0"
+steamroom-client = "0.3.0"
 tempfile = { version = "3.27.0", default-features = false, features = [
   "getrandom",
 ] }
 thiserror = { version = "2.0.21", default-features = false }
 tokio = { version = "1.54.1", default-features = false }
 tracing = { version = "0.1.44", default-features = false }
-tracing-subscriber = { version = "0.3.20", default-features = false }
+tracing-subscriber = { version = "0.3.23", default-features = false }
 
 # Vendored crates carried by PdfCraft (patch notes in apps/pdfcraft/vendor/README.md).
 # DesignCraft's former winit git patch (skylartaylor/winit 3d51077) is superseded by this vendored copy.
@@ -99,48 +104,49 @@ bevy_image = { version = "0.20.1", default-features = false, features = [
 bevy_math = { version = "0.20.1", default-features = false }
 bevy_mesh = { version = "0.20.1", default-features = false }
 bevy_reflect = { version = "0.20.1", default-features = false }
-bevy-wgpu-types = { package = "wgpu-types", version = "30.0.1", default-features = false }
-bun-steam = { git = "https://github.com/aphrody-dev/steam-depot", rev = "d098b41687a63767ee5eee3a351b2936a1d902e6", package = "steam-depot", default-features = false }
-bytemuck = { version = "1.0", features = [
+bevy-wgpu-types = { package = "wgpu-types", version = "30.0.2", default-features = false }
+rg-steam = { path = "crates/rg-steam", version = "1.4.8", default-features = false }
+nie-gpu = { path = "crates/nie-gpu", version = "1.4.8" }
+bytemuck = { version = "1.25", features = [
   "derive",
   "extern_crate_alloc",
   "min_const_generics",
 ] }
 clap = { version = "4", features = ["derive", "env"] }
-console_error_panic_hook = "0.1.5"
+console_error_panic_hook = "0.1.7"
 futures-lite = "2"
-js-sys = { version = "0.3.106", default-features = false }
+js-sys = { version = "0.3.107", default-features = false }
 pollster = "1.0"
-rusqlite = { version = "0.40" }
-wasm-bindgen = { version = "0.2.129", default-features = false }
+rusqlite = { version = "0.43" }
+wasm-bindgen = { version = "0.2.130", default-features = false }
 wasm-bindgen-futures = "0.4"
-web-sys = { version = "0.3.104", default-features = false }
+web-sys = { version = "0.3.107", default-features = false }
 crc32fast = { version = "1.5", default-features = false }
-cridecoder = { version = "0.2.3", default-features = false }
-aphrody-re = { package = "yolo-re-core", path = "crates/yolo-re-core", version = "1.4.8" }
+cridecoder = { version = "0.3.7", default-features = false }
+yolo-re-core = { path = "crates/yolo-re-core", version = "1.4.8" }
 image_dds = { version = "0.7", default-features = false }
 memmap2 = { version = "0.9" }
-aphrody-nie-app = { default-features = false, path = "crates/aphrody-nie-app", version = "1.4.7" }
-aphrody-nie-camera = { default-features = false, path = "crates/aphrody-nie-camera", version = "1.4.7" }
-aphrody-nie-computer-use = { default-features = false, path = "crates/aphrody-nie-computer-use", version = "1.4.7" }
-aphrody-nie-core = { default-features = false, path = "crates/aphrody-nie-core", version = "1.4.7" }
-aphrody-nie-data = { path = "crates/aphrody-nie-data", version = "1.4.7" }
-aphrody-nie-explore = { default-features = false, path = "crates/aphrody-nie-explore", version = "1.4.7" }
-aphrody-nie-forge = { default-features = false, path = "crates/aphrody-nie-forge", version = "1.4.7" }
-aphrody-nie-formats = { default-features = false, path = "crates/aphrody-nie-formats", version = "1.4.7" }
-aphrody-nie-index = { default-features = false, path = "crates/aphrody-nie-index", version = "1.4.7" }
-aphrody-nie-lua = { default-features = false, path = "crates/aphrody-nie-lua", version = "1.4.7" }
-aphrody-nie-model-serve = { default-features = false, path = "crates/aphrody-nie-model-serve", version = "1.4.7" }
-aphrody-nie-net = { default-features = false, path = "crates/aphrody-nie-net", version = "1.4.7" }
-aphrody-nie-pe = { default-features = false, path = "crates/aphrody-nie-pe", version = "1.4.7" }
-aphrody-nie-render3d = { default-features = false, path = "crates/aphrody-nie-render3d", version = "1.4.7" }
-aphrody-nie-runtime = { default-features = false, path = "crates/aphrody-nie-runtime", version = "1.4.7" }
-aphrody-nie-save = { default-features = false, path = "crates/aphrody-nie-save", version = "1.4.7" }
-aphrody-nie-seed = { default-features = false, path = "crates/aphrody-nie-seed", version = "1.4.7" }
-aphrody-nie-trace = { default-features = false, path = "crates/aphrody-nie-trace", version = "1.4.7" }
-aphrody-nie-wiki = { path = "crates/aphrody-nie-wiki", version = "1.4.7" }
-aphrody-nie-zukan = { default-features = false, path = "crates/aphrody-nie-zukan", version = "1.4.7" }
-aphrody-nie-ui = { path = "crates/aphrody-nie-ui", version = "1.4.7" }
+nie-app = { default-features = false, path = "crates/nie-app", version = "1.4.7" }
+nie-camera = { default-features = false, path = "crates/nie-camera", version = "1.4.7" }
+nie-computer-use = { default-features = false, path = "crates/nie-computer-use", version = "1.4.7" }
+nie-core = { default-features = false, path = "crates/nie-core", version = "1.4.7" }
+nie-data = { path = "crates/nie-data", version = "1.4.7" }
+nie-explore = { default-features = false, path = "crates/nie-explore", version = "1.4.7" }
+nie-forge = { default-features = false, path = "crates/nie-forge", version = "1.4.7" }
+nie-formats = { default-features = false, path = "crates/nie-formats", version = "1.4.7" }
+nie-index = { default-features = false, path = "crates/nie-index", version = "1.4.7" }
+nie-lua = { default-features = false, path = "crates/nie-lua", version = "1.4.7" }
+nie-model-serve = { default-features = false, path = "crates/nie-model-serve", version = "1.4.7" }
+nie-net = { default-features = false, path = "crates/nie-net", version = "1.4.7" }
+nie-pe = { default-features = false, path = "crates/nie-pe", version = "1.4.7" }
+nie-render3d = { default-features = false, path = "crates/nie-render3d", version = "1.4.7" }
+nie-runtime = { default-features = false, path = "crates/nie-runtime", version = "1.4.7" }
+nie-save = { default-features = false, path = "crates/nie-save", version = "1.4.7" }
+nie-seed = { default-features = false, path = "crates/nie-seed", version = "1.4.7" }
+nie-trace = { default-features = false, path = "crates/nie-trace", version = "1.4.7" }
+nie-wiki = { path = "crates/nie-wiki", version = "1.4.7" }
+nie-zukan = { default-features = false, path = "crates/nie-zukan", version = "1.4.7" }
+nie-ui = { path = "crates/nie-ui", version = "1.4.7" }
 lz4_flex = "0.14"
 taffy = "0.15.1"
 winnow = { version = "1.0.5", default-features = false, features = [
@@ -149,9 +155,6 @@ winnow = { version = "1.0.5", default-features = false, features = [
 ] }
 wana_kana = "5.0.0"
 aho-corasick = "1.1.5"
-
-[patch.crates-io]
-zip = { git = "https://github.com/zip-rs/zip2", tag = "v8.6.0" }
 
 # Workspace development profile: line tables for backtraces without heavy DWARF debuginfo bloat.
 # Accelerates compilation and linking by ~2x and reduces target directory volume by ~60%.

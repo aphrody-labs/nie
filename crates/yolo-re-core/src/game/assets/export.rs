@@ -15,7 +15,7 @@
 //!
 //! CRI audio follows the profile key policy: unencrypted and statically scrambled HCA decode
 //! without a key, `ciph_type` 56 needs a user-provided key, and IEVR audio goes through its
-//! owner (`aphrody-nie-formats::cri_audio`).
+//! owner (`nie-formats::cri_audio`).
 
 use std::{
     collections::BTreeMap,
@@ -141,12 +141,12 @@ fn mime(ext: &str) -> &'static str {
 }
 
 fn png_from_rgba(width: u32, height: u32, rgba: &[u8]) -> AssetResult<Vec<u8>> {
-    aphrody_nie_formats::g4tx_decode::encode_rgba_to_png(rgba, width as usize, height as usize)
+    nie_formats::g4tx_decode::encode_rgba_to_png(rgba, width as usize, height as usize)
         .ok_or_else(|| format_err("png", "encoder refused the image"))
 }
 
 fn dds_to_png(data: &[u8]) -> AssetResult<Vec<u8>> {
-    let (width, height, rgba) = aphrody_nie_formats::g4tx_decode::decode_dds_to_rgba(data)
+    let (width, height, rgba) = nie_formats::g4tx_decode::decode_dds_to_rgba(data)
         .ok_or_else(|| format_err("dds", "unsupported DDS pixel format"))?;
     png_from_rgba(width, height, &rgba)
 }
@@ -157,7 +157,7 @@ fn dds_to_png(data: &[u8]) -> AssetResult<Vec<u8>> {
 /// # Errors
 /// Keyed stream without key, malformed stream.
 pub fn hca_to_wav(raw: &[u8], key: Option<u64>, subkey: u16) -> AssetResult<Vec<u8>> {
-    use aphrody_nie_formats::cri_audio::encode_pcm16_wav;
+    use nie_formats::cri_audio::encode_pcm16_wav;
     use cridecoder::{HcaDecoder, HcaDecoderError};
     let mut decoder = HcaDecoder::from_reader(std::io::Cursor::new(raw))
         .map_err(|e| format_err("hca", e.to_string()))?;
@@ -185,7 +185,7 @@ pub fn hca_to_wav(raw: &[u8], key: Option<u64>, subkey: u16) -> AssetResult<Vec<
 /// # Errors
 /// Encrypted streams without key, malformed banks, streamed ACB without its AWB.
 pub fn cri_audio_to_wav(data: &[u8], hca_key: Option<u64>) -> AssetResult<Vec<u8>> {
-    use aphrody_nie_formats::cri_audio::{
+    use nie_formats::cri_audio::{
         Awb, acb_parse, adx_decode, encode_pcm16_wav, is_adx, is_hca,
     };
 
@@ -257,11 +257,11 @@ fn table_json(entry: &VfsEntry, data: &[u8]) -> AssetResult<Vec<u8>> {
         _ => {}
     }
     if head(data, b"@UTF") {
-        let table = aphrody_nie_formats::cpk::parse_utf(data)
+        let table = nie_formats::cpk::parse_utf(data)
             .map_err(|e| format_err("cri-utf", e.to_string()))?;
         return to_json(&table);
     }
-    aphrody_nie_formats::decode::to_json(data)
+    nie_formats::decode::to_json(data)
         .ok_or_else(|| format_err("json", format!("no structured decoder for {}", entry.path)))
 }
 
@@ -292,7 +292,7 @@ fn model_glb(vfs: &GameVfs, entry: &VfsEntry, data: &[u8]) -> AssetResult<Vec<u8
         return model.to_glb().map_err(dimps);
     }
     if head(data, b"G4MD") {
-        use aphrody_nie_formats::assemble::{
+        use nie_formats::assemble::{
             GenericModelInput, MeshComponent, assemble_generic_model,
         };
         let g4mg = vfs
@@ -330,8 +330,8 @@ fn texture_png(entry: &VfsEntry, data: &[u8]) -> AssetResult<Vec<u8>> {
         return dds_to_png(data);
     }
     if head(data, b"G4TX") {
-        let name = aphrody_nie_formats::g4tx_decode::basename_of(&entry.path);
-        return aphrody_nie_formats::g4tx_decode::decode_best_to_png(data, name)
+        let name = nie_formats::g4tx_decode::basename_of(&entry.path);
+        return nie_formats::g4tx_decode::decode_best_to_png(data, name)
             .ok_or_else(|| format_err("g4tx", "no decodable surface"));
     }
     if head(data, b"#EMB") {
@@ -381,10 +381,10 @@ pub fn convert(
             } else if ievr {
                 // IEVR audio through its owner: same decoder as the NIE `/export?format=wav`.
                 let decoded =
-                    aphrody_nie_formats::cri_audio::decode_to_wav(&data).or_else(|first| {
+                    nie_formats::cri_audio::decode_to_wav(&data).or_else(|first| {
                         let awb = vfs.sibling(&entry.path, "awb").ok_or(first)?;
                         let bank = vfs.read_entry(awb).map_err(|e| e.to_string())?;
-                        aphrody_nie_formats::cri_audio::decode_awb_entry(&bank, None)
+                        nie_formats::cri_audio::decode_awb_entry(&bank, None)
                     });
                 (
                     decoded.map_err(|e| format_err("cri-audio", e))?,
@@ -402,7 +402,7 @@ pub fn convert(
             }
         }
         "mp4" | "webm" => {
-            use aphrody_nie_formats::usm;
+            use nie_formats::usm;
             let demuxed = if ievr {
                 usm::demuxer_nomme(&data, usm::nom_fichier_de(&entry.path))
             } else {

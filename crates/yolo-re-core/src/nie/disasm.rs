@@ -1,6 +1,6 @@
 //! Récupération des arêtes d'appel manquantes par désassemblage indépendant de `.text`.
 //!
-//! L'index Ghidra (`aphrody-nie-index.json`) fournit le call-graph `ce`, mais son
+//! L'index Ghidra (`nie-index.json`) fournit le call-graph `ce`, mais son
 //! export est lacunaire : ~6 000 fonctions n'ont **aucune** arête `call` et
 //! restent des îlots inatteignables par la propagation de labels. Ce module
 //! désassemble la section `.text` du binaire avec `iced-x86` (pur Rust),
@@ -33,7 +33,7 @@
 //!   propagation).
 
 use anyhow::{Context, Result};
-use aphrody_nie_index::{Db, rusqlite};
+use nie_index::{Db, rusqlite};
 use goblin::pe::PE;
 use hashbrown::HashSet;
 use iced_x86::{Decoder, DecoderOptions, FlowControl, Instruction, Mnemonic, OpKind};

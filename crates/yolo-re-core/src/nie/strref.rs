@@ -37,7 +37,7 @@
 //! existant.
 
 use anyhow::{Context, Result};
-use aphrody_nie_index::{Db, rusqlite};
+use nie_index::{Db, rusqlite};
 use goblin::pe::PE;
 use hashbrown::{HashMap, HashSet};
 use iced_x86::{Decoder, DecoderOptions, Instruction, Register};

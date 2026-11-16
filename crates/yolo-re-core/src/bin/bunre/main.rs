@@ -4,7 +4,7 @@
 //! console BIOS/ROM images to native executables and WebAssembly over the pipeline), `game`
 //! (game-agnostic asset pipeline: detect, mount, index, export and serve any installed game,
 //! feature `assets`) and `dbxv2` (Dragon Ball Xenoverse 2 inventory and archives). Steam depot
-//! acquisition is `bun-steam-depot` (crate `bun-steam`).
+//! acquisition is `rg-steam-depot` (crate `rg-steam`).
 
 mod dbxv2;
 #[cfg(feature = "decompile")]

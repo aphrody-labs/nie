@@ -2,7 +2,7 @@
 //!
 //! The generic reader lives in [`crate::minidump`] and is re-exported unchanged; this module adds
 //! what is specific to the game: its PE image base and the [`NieStatic`] translation of a hit to
-//! a static `nie.exe` address. Absorbed from `aphrody-nie-dump`.
+//! a static `nie.exe` address. Absorbed from `nie-dump`.
 
 pub use crate::minidump::*;
 

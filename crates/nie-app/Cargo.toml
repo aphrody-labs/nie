@@ -21,8 +21,8 @@ nie-data = { workspace = true, features = ["serde", "std"] }
 nie-runtime = { path = "../nie-runtime", version = "1.4.8", default-features = false }
 nie-ui = { workspace = true }
 nie-explore = { path = "../nie-explore", version = "1.4.8", default-features = false }
-specta = { version = "2.0.0-rc.25", features = ["derive", "serde_json"] }
-bcdec_rs = "0.2.0"
+specta = { version = "2.0.0-rc.28", features = ["derive", "serde_json"] }
+bcdec_rs = "0.2.1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 nie-explore = { path = "../nie-explore", version = "1.4.8", default-features = false, features = ["host"] }

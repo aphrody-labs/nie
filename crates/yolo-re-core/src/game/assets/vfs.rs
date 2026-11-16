@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! [`GameVfs`]: one mounted view over an install. Containers and loose files are mounted in
 //! profile rank order and the first mounted path wins; later duplicates are counted as
-//! shadowed. Inazuma Eleven: Victory Road delegates to its owner, `aphrody-nie-formats::vfs`,
+//! shadowed. Inazuma Eleven: Victory Road delegates to its owner, `nie-formats::vfs`,
 //! so its listing and bytes are those of the NIE readers.
 
 use std::{
@@ -117,7 +117,7 @@ enum Unit {
     Archive(Box<dyn Archive>),
     Loose(PathBuf),
     #[cfg(not(target_arch = "wasm32"))]
-    Level5(Box<aphrody_nie_formats::vfs::Vfs>),
+    Level5(Box<nie_formats::vfs::Vfs>),
 }
 
 /// The mounted view of one install.
@@ -332,7 +332,7 @@ impl GameVfs {
     fn mount_level5(&mut self) -> AssetResult<()> {
         let started = Instant::now();
         let data = self.root.join("data");
-        let mut owner = aphrody_nie_formats::vfs::Vfs::new();
+        let mut owner = nie_formats::vfs::Vfs::new();
         owner.init(&data).map_err(|error| AssetError::Format {
             format: "level5-ievr",
             details: format!("{}: {error}", data.display()),
@@ -356,7 +356,7 @@ impl GameVfs {
             self.insert(path, *size, container, unit, index);
         }
         self.report.owner = serde_json::json!({
-            "owner": "aphrody-nie-formats::vfs",
+            "owner": "nie-formats::vfs",
             "assetCount": owner.asset_count(),
             "cpkCount": owner.cpk_count(),
             "extraCount": owner.extra_count(),
@@ -496,7 +496,7 @@ impl GameVfs {
 
 #[cfg(test)]
 mod tests {
-    use aphrody_nie_formats::cpk_encode::{CpkWriteEntry, encode_cpk};
+    use nie_formats::cpk_encode::{CpkWriteEntry, encode_cpk};
 
     use super::*;
 

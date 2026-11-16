@@ -233,7 +233,6 @@ impl DatabaseRegistry {
         let mut statement = connection.prepare(query).map_err(error)?;
         let columns: Vec<_> = statement
             .columns()
-            .iter()
             .map(|column| {
                 (
                     column.name().to_owned(),

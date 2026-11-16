@@ -91,7 +91,7 @@ impl AssetRuntime {
 /// Decode `bytes` of a known extension into a structured value, or `None` when unsupported.
 ///
 /// DBXV2 Dimps formats are read by this crate's own parsers; everything else falls back to the
-/// canonical `aphrody-nie-formats` dispatch table — the same byte→JSON decoder the `nie decode`
+/// canonical `nie-formats` dispatch table — the same byte→JSON decoder the `nie decode`
 /// CLI and the nie FFI use (IEVR `g4tx`/`g4md`/`g4pk`, `cfg.bin`/`objbin`, `lip`, Lua bytecode,
 /// CPK, CRI audio …). So one engine decodes both games through one path, reusing the nie crate.
 fn decode(ext: &str, bytes: &[u8]) -> Option<Result<Value, String>> {
@@ -123,8 +123,8 @@ fn decode(ext: &str, bytes: &[u8]) -> Option<Result<Value, String>> {
     dimps.or_else(|| decode_with_nie(bytes))
 }
 
-/// Fall back to the shared `aphrody-nie-formats` decoder (auto-detected by magic).
+/// Fall back to the shared `nie-formats` decoder (auto-detected by magic).
 fn decode_with_nie(bytes: &[u8]) -> Option<Result<Value, String>> {
-    let decoded = aphrody_nie_formats::decode::decode(bytes)?;
+    let decoded = nie_formats::decode::decode(bytes)?;
     Some(serde_json::from_slice::<Value>(&decoded.json).map_err(|error| error.to_string()))
 }

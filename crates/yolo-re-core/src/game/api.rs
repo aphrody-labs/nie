@@ -4,7 +4,7 @@
 //! container or gameplay file as JSON, and decode CRI audio to WAV. Nothing here touches the
 //! file system, so a host (browser, Bun, C) only ever hands over bytes it already owns.
 
-use aphrody_nie_formats::cpk::{CpkEntry, CpkReader};
+use nie_formats::cpk::{CpkEntry, CpkReader};
 use serde::Serialize;
 use serde_json::{Value, json};
 
@@ -65,7 +65,7 @@ const KNOWN: [&str; 47] = [
 
 #[cfg(feature = "dbxv2")]
 fn bare_audio(bytes: &[u8]) -> Option<&'static str> {
-    use aphrody_nie_formats::cri_audio::{is_adx, is_hca};
+    use nie_formats::cri_audio::{is_adx, is_hca};
     if is_hca(bytes) {
         Some("hca")
     } else if is_adx(bytes) {
@@ -275,7 +275,7 @@ pub fn msg_read(bytes: &[u8]) -> Result<Value> {
 #[cfg(feature = "dbxv2")]
 pub fn acb_info(bytes: &[u8]) -> Result<Value> {
     let info =
-        aphrody_nie_formats::cri_audio::acb_parse(bytes).map_err(|error| ReError::ParseError {
+        nie_formats::cri_audio::acb_parse(bytes).map_err(|error| ReError::ParseError {
             context: "acb",
             details: error.to_string(),
         })?;
@@ -448,7 +448,7 @@ pub fn read_asset(root: &std::path::Path, kind: &str, cpk: &str, path: &str) -> 
 // On-demand CPK service: range-read index, find and read (never the whole archive).
 // ---------------------------------------------------------------------------
 
-use aphrody_nie_formats::FormatError;
+use nie_formats::FormatError;
 
 /// Stable index row of one CPK entry.
 #[derive(Debug, Clone, Serialize)]
@@ -605,7 +605,7 @@ fn glob(pattern: &[u8], text: &[u8]) -> bool {
 /// Decode entry `index` of a `#EMB` container (DDS payload) to PNG.
 #[cfg(feature = "dbxv2")]
 pub fn emb_to_png(bytes: &[u8], index: usize) -> Result<Vec<u8>> {
-    use aphrody_nie_formats::g4tx_decode::{decode_dds_to_rgba, encode_rgba_to_png};
+    use nie_formats::g4tx_decode::{decode_dds_to_rgba, encode_rgba_to_png};
     let archive = EmbArchive::parse(bytes)?;
     let data = archive.entry_bytes(bytes, index)?;
     let fail = |details: &str| ReError::ParseError {
@@ -672,8 +672,8 @@ pub fn model_json(name: &str, emd: &[u8], emb: Option<&[u8]>, esk: Option<&[u8]>
     }))
 }
 
-/// The model in the field layout of `aphrody_nie_formats::assemble::AssembledModel` (the type
-/// `aphrody-nie-model-serve` exports to GLB), snake_case names as in that struct.
+/// The model in the field layout of `nie_formats::assemble::AssembledModel` (the type
+/// `nie-model-serve` exports to GLB), snake_case names as in that struct.
 ///
 /// Faithful: `primitives[].positions/normals/uv0/colors/indices/material_name/piece`, skeleton
 /// bone `name/parent/local(scale,quat,translation)/inverse_bind`, `hash` = CRC32 (IEEE) of the
@@ -838,9 +838,9 @@ fn usm_error(error: FormatError) -> ReError {
 /// DBXV2 movies use). Returns the bytes and the extension.
 #[cfg(feature = "dbxv2")]
 pub fn usm_to_video(bytes: &[u8]) -> Result<(Vec<u8>, &'static str)> {
-    use aphrody_nie_formats::usm;
+    use nie_formats::usm;
     let usm = usm::demuxer(bytes).map_err(usm_error)?;
-    use aphrody_nie_formats::usm::CodecVideo;
+    use nie_formats::usm::CodecVideo;
     match usm.codec {
         CodecVideo::H264 => usm.en_mp4().map(|(out, _)| (out, "mp4")).map_err(usm_error),
         CodecVideo::Vp9 => usm

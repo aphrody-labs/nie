@@ -3,7 +3,7 @@
 use std::path::Path;
 use std::process::ExitCode;
 
-use aphrody_nie_index::{Db, query};
+use nie_index::{Db, query};
 use sha2::{Digest, Sha256};
 
 const IMAGE_BASE: i64 = 0x1_4000_0000;

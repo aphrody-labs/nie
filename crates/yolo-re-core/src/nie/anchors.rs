@@ -11,7 +11,7 @@
 //! 3. [`anchor_by_const`]  — constantes magiques de formats connus.
 
 use anyhow::Result;
-use aphrody_nie_index::rusqlite::Connection;
+use nie_index::rusqlite::Connection;
 use tracing::debug;
 
 // ---------------------------------------------------------------------------
@@ -716,7 +716,7 @@ pub fn anchor_by_strings(conn: &Connection, binary_id: i64) -> Result<usize> {
         conn.execute(
             "UPDATE function SET subsystem=?1, subsys_src='str', confidence=0.8
              WHERE id=?2",
-            aphrody_nie_index::rusqlite::params![sub, fid],
+            nie_index::rusqlite::params![sub, fid],
         )?;
         debug!(fid, sub, "ancre str posée");
         anchored += 1;
@@ -1000,7 +1000,7 @@ pub fn anchor_by_rtti(conn: &Connection, binary_id: i64) -> Result<usize> {
         conn.execute(
             "UPDATE function SET subsystem=?1, subsys_src='rtti', confidence=0.75
              WHERE id=?2",
-            aphrody_nie_index::rusqlite::params![sub, fid],
+            nie_index::rusqlite::params![sub, fid],
         )?;
         debug!(fid, sub, "ancre rtti posée");
         anchored += 1;
@@ -1062,7 +1062,7 @@ pub fn anchor_by_const(conn: &Connection, binary_id: i64) -> Result<usize> {
         conn.execute(
             "UPDATE function SET subsystem=?1, subsys_src='magic', confidence=0.85
              WHERE id=?2",
-            aphrody_nie_index::rusqlite::params![sub, fid],
+            nie_index::rusqlite::params![sub, fid],
         )?;
         debug!(fid, sub, "ancre magic posée");
         anchored += 1;

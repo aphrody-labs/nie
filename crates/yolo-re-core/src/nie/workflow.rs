@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use aphrody_nie_index::{Db, query::Coverage};
+use nie_index::{Db, query::Coverage};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkflowStep {

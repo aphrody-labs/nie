@@ -5,11 +5,11 @@ version = "1.4.8"
 edition = "2024"
 rust-version = "1.97"
 license = "Apache-2.0"
-homepage = "https://aphrody.com"
-repository = "https://github.com/aphrody-labs/yolo-re"
-keywords = ["reverse-engineering", "pe64", "disassembly", "dbxv2", "aphrody"]
+homepage = "https://rosegriffon.fr"
+repository = "https://github.com/aphrody-labs/rosegriffon"
+keywords = ["reverse-engineering", "pe64", "disassembly", "dbxv2", "rosegriffon"]
 categories = ["development-tools::debugging", "parser-implementations"]
-description = "Consolidated reverse engineering core (façade over aphrody-re): PE/ELF/Mach-O triage, strings, x86-64 disassembly, ASAR/Electron/Go/Adobe/Android/SteamStub/minidump inspection, AOB scanning, live memory recovery."
+description = "Consolidated reverse engineering core (façade over rg-re): PE/ELF/Mach-O triage, strings, x86-64 disassembly, ASAR/Electron/Go/Adobe/Android/SteamStub/minidump inspection, AOB scanning, live memory recovery."
 
 [lib]
 name = "bun_re"
@@ -25,44 +25,44 @@ assets = [
   "dep:rusqlite",
   "dep:lz4_flex",
   "dep:cridecoder",
-  "aphrody-nie-formats/textures",
-  "aphrody-nie-formats/images",
+  "nie-formats/textures",
+  "nie-formats/images",
 ]
-dbxv2 = ["game-formats", "dep:rusqlite"]
+dbxv2 = ["assets", "dep:rusqlite"]
 nie = [
-  "dep:aphrody-nie-index",
-  "aphrody-nie-index/host",
+  "dep:nie-index",
+  "nie-index/host",
   "dep:anyhow",
   "dep:tracing",
 ]
-decompile = ["aphrody-re-core/decompile"]
+decompile = ["rg-re/decompile"]
 game-formats = [
-  "dep:aphrody-nie-formats",
-  "aphrody-nie-formats/std",
-  "aphrody-nie-formats/serde",
-  "aphrody-nie-formats/audio-decode",
-  "aphrody-nie-formats/lua",
+  "dep:nie-formats",
+  "nie-formats/std",
+  "nie-formats/serde",
+  "nie-formats/audio-decode",
+  "nie-formats/lua",
 ]
 wasm = [
   "game-formats",
-  "aphrody-re-core/wasm",
+  "rg-re/wasm",
   "dep:wasm-bindgen",
   "dep:serde-wasm-bindgen",
   "dep:js-sys",
-  "aphrody-nie-formats/textures",
-  "aphrody-nie-formats/images",
+  "nie-formats/textures",
+  "nie-formats/images",
 ]
-pipeline = ["aphrody-re-core/pipeline", "dep:tempfile", "dep:process-wrap"]
-magika = ["aphrody-re-core/magika"]
-leveldb = ["aphrody-re-core/leveldb", "dep:tempfile"]
-yara = ["aphrody-re-core/yara"]
+pipeline = ["rg-re/pipeline", "dep:tempfile", "dep:process-wrap"]
+magika = ["rg-re/magika"]
+leveldb = ["rg-re/leveldb", "dep:tempfile"]
+yara = ["rg-re/yara"]
 worker = ["dep:anyhow", "dep:redis"]
 
 [dependencies]
-aphrody-re-core = { package = "aphrody-re", version = "0.4.0", path = "../../../../crates/re", default-features = false, features = ["game"] }
-bun-steam = { workspace = true }
-aphrody-nie-index = { workspace = true, optional = true }
-aphrody-nie-formats = { workspace = true, optional = true }
+rg-re = { path = "../rg-re", version = "1.4.8", default-features = false, features = ["game"] }
+rg-steam = { workspace = true }
+nie-index = { workspace = true, optional = true }
+nie-formats = { workspace = true, optional = true }
 rusqlite = { workspace = true, optional = true }
 lz4_flex = { workspace = true, optional = true }
 cridecoder = { workspace = true, optional = true }
@@ -76,19 +76,19 @@ goblin = { version = "0.10", default-features = false, features = [
   "mach32",
   "mach64",
 ] }
-sha2 = "0.11.0"
-aes = "0.9.3"
-flate2 = "1.1.10"
+sha2 = "0.11.1"
+aes = "0.9.4"
+flate2 = "1.1.11"
 lzma-rs = "0.3"
 crc32fast = { workspace = true }
 hex = "0.4"
-serde = { version = "1.0.228", default-features = false, features = [
+serde = { version = "1.0.229", default-features = false, features = [
   "derive",
   "std",
 ] }
-serde_json = "1.0.150"
-thiserror = "2.0.20"
-iced-x86 = "1.21"
+serde_json = "1.0.154"
+thiserror = "2.0.21"
+iced-x86 = "1.22"
 tempfile = { version = "3.27.0", optional = true }
 walkdir = "2.5.0"
 hashbrown = { version = "0.17", default-features = false, features = [
@@ -101,10 +101,10 @@ process-wrap = { version = "10.0.1", optional = true, default-features = false, 
 wasm-bindgen = { workspace = true, optional = true }
 serde-wasm-bindgen = { version = "0.6.5", optional = true }
 js-sys = { workspace = true, optional = true }
-redis = { version = "0.27.6", features = ["streams"], optional = true }
+redis = { version = "1.8.2", features = ["streams"], optional = true }
 
 [dev-dependencies]
-serde_json = "1.0.150"
+serde_json = "1.0.154"
 tempfile = "3.27.0"
 criterion = { version = "0.8.2", features = ["html_reports"] }
 

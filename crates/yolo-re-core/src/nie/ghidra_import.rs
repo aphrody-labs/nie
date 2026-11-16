@@ -25,7 +25,7 @@
 //! (`FUN_<hex>`) sont rejetés — ils n'apprennent rien.
 
 use anyhow::{Context, Result};
-use aphrody_nie_index::{Db, rusqlite};
+use nie_index::{Db, rusqlite};
 use tracing::info;
 
 /// Statistiques de l'ingestion.
@@ -171,9 +171,9 @@ mod tests {
         {
             let tx = db.conn_mut().transaction().unwrap();
             // sans nom / nom structurel / nom sémantique
-            aphrody_nie_index::ingest::function(&tx, bin, 0x1000, None, None, "menu", "", 0.0)
+            nie_index::ingest::function(&tx, bin, 0x1000, None, None, "menu", "", 0.0)
                 .unwrap();
-            aphrody_nie_index::ingest::function(
+            nie_index::ingest::function(
                 &tx,
                 bin,
                 0x2000,
@@ -184,7 +184,7 @@ mod tests {
                 0.0,
             )
             .unwrap();
-            aphrody_nie_index::ingest::function(
+            nie_index::ingest::function(
                 &tx,
                 bin,
                 0x3000,

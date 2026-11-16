@@ -380,9 +380,9 @@ fn execute_inner(
     }
 
     let mode = if is_lua52_bytecode(data) {
-        mlua::ChunkMode::Binary
+        mlua::chunk::ChunkMode::Binary
     } else {
-        mlua::ChunkMode::Text
+        mlua::chunk::ChunkMode::Text
     };
     let result = lua
         .load(data)

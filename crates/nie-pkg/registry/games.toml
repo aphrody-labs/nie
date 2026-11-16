@@ -1,5 +1,5 @@
 # NIE unified game registry: single source of truth for all Inazuma Eleven titles.
-# Consumed natively by Rust (nie-pkg, aphrody-nie-cli), C23 ABI (rg_contract),
+# Consumed natively by Rust (nie-pkg, nie-cli), C23 ABI (rg_contract),
 # OpenAPI 3.2.1 (contract/openapi.yml), and TypeScript (@rosegriffon/inagle/games).
 # NIE never ships game content: `install` registers and hashes a dump the user owns.
 
@@ -625,7 +625,7 @@ releases = [
 ecosystem = [
   { kind = "data", name = "inagle (in-repo IEVR data API)", url = "packages/inagle" },
   { kind = "wiki", name = "Azalee (in-repo wiki library)", url = "packages/azalee" },
-  { kind = "tool", name = "aphrody-nie-save", url = "crates/aphrody-nie-save" },
+  { kind = "tool", name = "nie-save", url = "crates/nie-save" },
   { kind = "store", name = "Steam", url = "https://store.steampowered.com/app/2799860" },
 ]
 internal_links = [

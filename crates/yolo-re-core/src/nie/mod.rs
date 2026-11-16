@@ -13,10 +13,10 @@
 //! - `loop_db` : câblage DB → `PropagationGraph` → écriture des résultats.
 //! - `dump` : recherche de motifs (AOB, wildcards) dans un minidump live de `nie.exe`,
 //!   avec traduction `module + RVA` (oracle de lecture/validation runtime ; complète le
-//!   scanner *process live* de `aphrody-nie-trace` pour le cas dump `.dmp` hors-ligne).
+//!   scanner *process live* de `nie-trace` pour le cas dump `.dmp` hors-ligne).
 //!   Pure (no SQLite), so it stays available without the `nie` feature and on wasm.
 //!
-//! Absorbed from `aphrody-nie-re` and `aphrody-nie-dump`. [`dump`] and the [`pdata`] byte
+//! Absorbed from `nie-re` and `nie-dump`. [`dump`] and the [`pdata`] byte
 //! parser are pure; SQLite indexing, recovery and the remaining analysis modules need the
 //! `nie` feature. Label propagation is [`crate::propagate`].
 #![allow(clippy::pedantic)]

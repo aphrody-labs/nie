@@ -550,7 +550,7 @@ mod media {
             audio_in_place, global_report, models_manifest, parse_in_place, tex_in_place,
             text_in_place,
         },
-        fs::cpk_stream::{ExtractOptions, extract_cpk, extract_install, merge_extracted},
+        extract::{ExtractOptions, extract_cpk, extract_install, merge_extracted},
         index::{build_index, reclassify, search, stats},
         inventory::inventory_install,
         reverse::reverse_install,

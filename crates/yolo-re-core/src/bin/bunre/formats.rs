@@ -9,7 +9,7 @@ fn usage() -> ExitCode {
     ExitCode::from(2)
 }
 
-fn safe_member_path(entry: &aphrody_nie_formats::cpk::CpkEntry) -> Option<PathBuf> {
+fn safe_member_path(entry: &nie_formats::cpk::CpkEntry) -> Option<PathBuf> {
     let mut path = PathBuf::new();
     let directory = if entry.directory.is_empty() {
         Vec::new()
@@ -37,25 +37,25 @@ fn read_range(
     path: &std::path::Path,
     offset: u64,
     size: usize,
-) -> Result<Vec<u8>, aphrody_nie_formats::FormatError> {
+) -> Result<Vec<u8>, nie_formats::FormatError> {
     let mut file = std::fs::File::open(path).map_err(|e| {
-        aphrody_nie_formats::FormatError::Malformed(format!("cannot open {}: {e}", path.display()))
+        nie_formats::FormatError::Malformed(format!("cannot open {}: {e}", path.display()))
     })?;
     file.seek(SeekFrom::Start(offset)).map_err(|e| {
-        aphrody_nie_formats::FormatError::Malformed(format!("cannot seek {}: {e}", path.display()))
+        nie_formats::FormatError::Malformed(format!("cannot seek {}: {e}", path.display()))
     })?;
     let mut bytes = vec![0; size];
     file.read_exact(&mut bytes).map_err(|e| {
-        aphrody_nie_formats::FormatError::Malformed(format!("cannot read {}: {e}", path.display()))
+        nie_formats::FormatError::Malformed(format!("cannot read {}: {e}", path.display()))
     })?;
     Ok(bytes)
 }
 
 fn open_cpk(
     path: &std::path::Path,
-) -> Result<aphrody_nie_formats::cpk::CpkReader, aphrody_nie_formats::FormatError> {
+) -> Result<nie_formats::cpk::CpkReader, nie_formats::FormatError> {
     let name = archive_name(path);
-    aphrody_nie_formats::cpk::CpkReader::from_reader(&name, |offset, size| {
+    nie_formats::cpk::CpkReader::from_reader(&name, |offset, size| {
         read_range(path, offset, size)
     })
 }
@@ -64,7 +64,7 @@ fn pack_directory(root: &std::path::Path) -> Result<Vec<u8>, String> {
     fn visit(
         root: &std::path::Path,
         current: &std::path::Path,
-        entries: &mut Vec<aphrody_nie_formats::cpk_encode::CpkWriteEntry>,
+        entries: &mut Vec<nie_formats::cpk_encode::CpkWriteEntry>,
     ) -> Result<(), String> {
         for item in std::fs::read_dir(current).map_err(|e| e.to_string())? {
             let item = item.map_err(|e| e.to_string())?;
@@ -91,7 +91,7 @@ fn pack_directory(root: &std::path::Path) -> Result<Vec<u8>, String> {
                 .and_then(|p| p.to_str())
                 .unwrap_or("")
                 .replace('\\', "/");
-            entries.push(aphrody_nie_formats::cpk_encode::CpkWriteEntry {
+            entries.push(nie_formats::cpk_encode::CpkWriteEntry {
                 filename,
                 directory,
                 data: std::fs::read(item_path).map_err(|e| e.to_string())?,
@@ -101,7 +101,7 @@ fn pack_directory(root: &std::path::Path) -> Result<Vec<u8>, String> {
     }
     let mut entries = Vec::new();
     visit(root, root, &mut entries)?;
-    aphrody_nie_formats::cpk_encode::encode_cpk(&entries)
+    nie_formats::cpk_encode::encode_cpk(&entries)
 }
 
 pub fn main(mut args: impl Iterator<Item = std::ffi::OsString>) -> ExitCode {
@@ -120,7 +120,7 @@ pub fn main(mut args: impl Iterator<Item = std::ffi::OsString>) -> ExitCode {
                     return ExitCode::FAILURE;
                 }
             };
-            match aphrody_nie_formats::decode::decode(&bytes) {
+            match nie_formats::decode::decode(&bytes) {
                 Some(decoded) => {
                     println!(
                         "{{\"format\":{},\"data\":{}}}",
@@ -179,7 +179,7 @@ pub fn main(mut args: impl Iterator<Item = std::ffi::OsString>) -> ExitCode {
                 .extract_from_reader(entry, |offset, size| read_range(&input, offset, size))
                 .and_then(|data| {
                     std::fs::write(&output, data).map_err(|_| {
-                        aphrody_nie_formats::FormatError::Corrupt("cannot write extraction output")
+                        nie_formats::FormatError::Corrupt("cannot write extraction output")
                     })
                 }) {
                 Ok(()) => {
@@ -339,7 +339,7 @@ pub fn main(mut args: impl Iterator<Item = std::ffi::OsString>) -> ExitCode {
                     return ExitCode::FAILURE;
                 }
             };
-            match aphrody_nie_formats::cri_audio::decode_to_wav(&bytes)
+            match nie_formats::cri_audio::decode_to_wav(&bytes)
                 .and_then(|wav| std::fs::write(&output, wav).map_err(|e| e.to_string()))
             {
                 Ok(()) => {

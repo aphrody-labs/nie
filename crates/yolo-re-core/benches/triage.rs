@@ -3,10 +3,10 @@
 // Criterion throughput benchmarks for the reverse-engineering triage pillar
 // (PLAN.md R5 / R5.x). They quantify the headline metric:
 //
-//   "aphrody re triage p50 on a 5 MiB PE < 1 s"
+//   "bunre triage p50 on a 5 MiB PE < 1 s"
 //
 // which was previously UNMEASURED. The benches exercise the real public API
-// of `aphrody-re`:
+// of `yolo-re-core`:
 //
 //   1. triage(&[u8])                 — full pipeline: magic detect + goblin PE parse + per-section
 //      Shannon entropy + SHA-256 of the whole input + ASCII / UTF-16LE strings sample. Run at 64

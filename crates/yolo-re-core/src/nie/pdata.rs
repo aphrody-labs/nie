@@ -3,7 +3,7 @@
 //!
 //! ## Pourquoi
 //!
-//! L'index `aphrody-nie-index.json` fournit ~60 000 adresses `FUN_<hex>` supposées être
+//! L'index `nie-index.json` fournit ~60 000 adresses `FUN_<hex>` supposées être
 //! des débuts de fonction. La vérification byte-à-byte contre `.pdata` (la table
 //! d'unwind générée par le compilateur, vérité terrain incontestable) montre que
 //! ces adresses sont **massivement désalignées** : ~96 % ne sont pas des débuts
@@ -28,7 +28,7 @@
 #[cfg(feature = "nie")]
 use anyhow::{Context, Result as AnyResult};
 #[cfg(feature = "nie")]
-use aphrody_nie_index::{Db, rusqlite};
+use nie_index::{Db, rusqlite};
 #[cfg(feature = "nie")]
 use goblin::pe::PE;
 #[cfg(feature = "nie")]

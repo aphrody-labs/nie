@@ -147,7 +147,7 @@ pub fn parse_in_place(root: &Path) -> Result<Value> {
 /// `tex`: unpack every `#EMB` into `<file>.emb.unpacked/` and decode its DDS entries to PNG.
 #[cfg(feature = "dbxv2")]
 pub fn tex_in_place(root: &Path) -> Result<Value> {
-    use aphrody_nie_formats::g4tx_decode::{decode_dds_to_rgba, encode_rgba_to_png};
+    use nie_formats::g4tx_decode::{decode_dds_to_rgba, encode_rgba_to_png};
 
     use crate::game::formats::emb_archive::EmbArchive;
 
@@ -200,7 +200,7 @@ pub const AUDIO_EXTENSIONS: [&str; 7] = ["hca", "adx", "acb", "awb", "afs2", "cs
 /// Decode every subsong of one CRI audio file to PCM16 WAV images, in bank order.
 #[cfg(feature = "dbxv2")]
 pub fn decode_audio_subsongs(bytes: &[u8]) -> std::result::Result<Vec<Vec<u8>>, String> {
-    use aphrody_nie_formats::cri_audio::{
+    use nie_formats::cri_audio::{
         Awb, acb_parse, adx_decode, encode_pcm16_wav, is_adx, is_hca,
     };
 

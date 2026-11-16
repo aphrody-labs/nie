@@ -10,8 +10,8 @@ use std::{
 };
 
 #[cfg(feature = "game-formats")]
-use aphrody_nie_formats::{FormatError, cpk::CpkReader};
-use bun_steam::{
+use nie_formats::{FormatError, cpk::CpkReader};
+use rg_steam::{
     AppManifest, InstalledGame, SteamInstallation, SteamPlatform, find_steam_installations,
     list_installed_games, probe_steam_installation,
 };
@@ -109,7 +109,7 @@ fn default_map_path() -> Result<PathBuf, String> {
             .or_else(|| std::env::var_os("HOME"))
             .map(PathBuf::from)
             .ok_or("set NIE_CONFIG_DIR or LOCALAPPDATA to choose a local Steam map location")?
-            .join("Aphrody")
+            .join("RoseGriffon")
             .join("NIE")
     };
     Ok(base.join("steam").join("ievr-install-map.json"))

@@ -37,7 +37,7 @@
 //!   ancre codée en dur sur une adresse, donc valable pour n'importe quel build.
 
 use anyhow::{Context, Result};
-use aphrody_nie_index::{Db, rusqlite};
+use nie_index::{Db, rusqlite};
 use goblin::pe::PE;
 use hashbrown::HashSet;
 use tracing::info;

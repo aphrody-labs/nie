@@ -21,7 +21,7 @@
 //!    diffuse alors le sous-système de classe à toutes les co-méthodes.
 
 use anyhow::{Context, Result};
-use aphrody_nie_index::{Db, rusqlite};
+use nie_index::{Db, rusqlite};
 use goblin::pe::PE;
 use hashbrown::{HashMap, HashSet};
 use tracing::info;

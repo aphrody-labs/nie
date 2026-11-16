@@ -7,7 +7,7 @@
 //! Layers, from bytes to files:
 //!
 //! - [`source`]: positioned reads over a local file;
-//! - [`archive`]: one reader per container family — CRI CPK (canonical `aphrody-nie-formats`
+//! - [`archive`]: one reader per container family — CRI CPK (canonical `nie-formats`
 //!   reader), Unreal `.pak` and IoStore `.utoc`/`.ucas`, UnityFS bundles, Godot `.pck`,
 //!   Ren'Py `.rpa`, ZIP;
 //! - [`engine`]: bounded, evidence-based engine detection over an install directory;
@@ -19,7 +19,7 @@
 //!
 //! Key policy: the generic layer never embeds a key. Encrypted containers are listed and
 //! refused unless the user supplies the key at run time. Inazuma Eleven: Victory Road is
-//! mounted through its own owner (`aphrody-nie-formats`, IEVR profile only); no other title
+//! mounted through its own owner (`nie-formats`, IEVR profile only); no other title
 //! reaches that owner's key material.
 //!
 //! Out of scope by design: anti-cheat files are reported by [`engine`] but never mounted or

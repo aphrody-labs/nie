@@ -292,8 +292,7 @@ pub fn cpk_list_key_iv() -> ([u8; 32], [u8; 16]) {
 /// que l'entrée n'est pas un `cpk_list.cfg.bin` AES-CBC de ce build.
 pub fn decrypt_cpk_list(data: &[u8]) -> Result<Vec<u8>, FormatError> {
     use aes::Aes256;
-    use aes::cipher::generic_array::GenericArray;
-    use aes::cipher::{BlockDecrypt, KeyInit};
+    use aes::cipher::{Block, BlockCipherDecrypt, KeyInit};
 
     if data.is_empty() || !data.len().is_multiple_of(16) {
         return Err(FormatError::Corrupt(
@@ -301,12 +300,12 @@ pub fn decrypt_cpk_list(data: &[u8]) -> Result<Vec<u8>, FormatError> {
         ));
     }
     let (key, iv) = cpk_list_key_iv();
-    let cipher = Aes256::new(GenericArray::from_slice(&key));
+    let cipher = Aes256::new((&key).into());
 
     let mut out = Vec::with_capacity(data.len());
     let mut prev = iv;
     for chunk in data.as_chunks::<16>().0.iter() {
-        let mut block = GenericArray::clone_from_slice(chunk);
+        let mut block = Block::<Aes256>::from(*chunk);
         cipher.decrypt_block(&mut block);
         for j in 0..16 {
             out.push(block[j] ^ prev[j]);
@@ -331,11 +330,10 @@ pub fn decrypt_cpk_list(data: &[u8]) -> Result<Vec<u8>, FormatError> {
 #[must_use]
 pub fn encrypt_cpk_list(data: &[u8]) -> Vec<u8> {
     use aes::Aes256;
-    use aes::cipher::generic_array::GenericArray;
-    use aes::cipher::{BlockEncrypt, KeyInit};
+    use aes::cipher::{Block, BlockCipherEncrypt, KeyInit};
 
     let (key, iv) = cpk_list_key_iv();
-    let cipher = Aes256::new(GenericArray::from_slice(&key));
+    let cipher = Aes256::new((&key).into());
 
     let mut clair = data.to_vec();
     while !clair.len().is_multiple_of(16) {
@@ -349,7 +347,7 @@ pub fn encrypt_cpk_list(data: &[u8]) -> Vec<u8> {
         for j in 0..16 {
             bloc[j] = chunk[j] ^ prev[j]; // CBC : XOR avec le bloc chiffré précédent
         }
-        let mut bloc = GenericArray::clone_from_slice(&bloc);
+        let mut bloc = Block::<Aes256>::from(bloc);
         cipher.encrypt_block(&mut bloc);
         prev.copy_from_slice(&bloc);
         out.extend_from_slice(&bloc);
