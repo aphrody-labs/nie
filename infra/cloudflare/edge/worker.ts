@@ -237,6 +237,35 @@ async function handleR2Get(
   });
 }
 
+/**
+ * Public static assets of cdn.rosegriffon.fr: served from R2 (key = path without the leading
+ * slash), falling back to the prd origin when the object is missing. R2 is the source, prd the
+ * backup.
+ */
+export async function handleStatic(
+  request: Request,
+  env: Env,
+  path: string,
+  origin: (request: Request) => Promise<Response> = (r) => fetch(r),
+): Promise<Response> {
+  const key = sanitizeR2Key(path);
+  const object = key ? await env.CDN_BUCKET.get(key) : null;
+  if (!object) {
+    const fallback = await origin(request);
+    const headers = new Headers(fallback.headers);
+    headers.set("x-rg-edge", "origin");
+    return new Response(fallback.body, { status: fallback.status, headers });
+  }
+  const headers = new Headers(CORS_HEADERS);
+  object.writeHttpMetadata(headers);
+  headers.set("etag", object.httpEtag);
+  headers.set("content-length", String(object.size));
+  headers.set("x-rg-edge", "r2");
+  if (!headers.has("cache-control"))
+    headers.set("cache-control", "public, max-age=86400, stale-while-revalidate=604800");
+  return new Response(request.method === "HEAD" ? null : object.body, { status: 200, headers });
+}
+
 async function handleNieRoute(
   request: Request,
   env: Env,
@@ -462,6 +491,10 @@ export default {
 
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
+
+    if (url.pathname.startsWith("/static/") && (request.method === "GET" || request.method === "HEAD")) {
+      return handleStatic(request, env, url.pathname);
     }
 
     if (url.pathname === "/health" || url.pathname === "/") {

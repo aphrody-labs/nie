@@ -4,6 +4,8 @@
   "main": "worker.ts",
   "compatibility_date": "2026-10-12",
   "workers_dev": true,
+  // R2 serves cdn.rosegriffon.fr/static/*; prd (Origin Rule, port 8443) is the fallback.
+  "routes": [{ "pattern": "cdn.rosegriffon.fr/static/*", "zone_name": "rosegriffon.fr" }],
   "build": {
     "command": "bun build-wasm.ts",
   },

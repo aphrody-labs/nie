@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import worker, {
+  handleStatic,
   parseHttpRange,
   sanitizeR2Key,
   type EdgeR2Bucket,
@@ -162,5 +163,32 @@ describe("rosegriffon-edge Cloudflare Worker + nie-wasm", () => {
     expect(parseHttpRange("bytes=0-15")).toEqual({ offset: 0, length: 16 });
     expect(parseHttpRange("bytes=-8")).toEqual({ suffix: 8 });
     expect(parseHttpRange("bytes=10-2")).toBeNull();
+  });
+});
+
+describe("public static assets", () => {
+  const env = makeEnv({ "static/rg/public/logo.webp": new Uint8Array([1, 2, 3]) });
+  const origin = async () =>
+    new Response("from-prd", { status: 200, headers: { "x-origin": "prd" } });
+
+  test("serves an R2 object without a token", async () => {
+    const req = new Request("https://cdn.rosegriffon.fr/static/rg/public/logo.webp");
+    const res = await handleStatic(req, env, "/static/rg/public/logo.webp", origin);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-rg-edge")).toBe("r2");
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+  });
+
+  test("falls back to the prd origin when R2 has no object", async () => {
+    const req = new Request("https://cdn.rosegriffon.fr/static/rg/public/missing.webp");
+    const res = await handleStatic(req, env, "/static/rg/public/missing.webp", origin);
+    expect(res.headers.get("x-rg-edge")).toBe("origin");
+    expect(await res.text()).toBe("from-prd");
+  });
+
+  test("never serves a traversal key from R2", async () => {
+    const req = new Request("https://cdn.rosegriffon.fr/static/../secret");
+    const res = await handleStatic(req, env, "/static/../secret", origin);
+    expect(res.headers.get("x-rg-edge")).toBe("origin");
   });
 });
