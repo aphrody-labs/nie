@@ -198,7 +198,7 @@ export default async function PageSondage({
             height={sondage.visuel.height ?? 1200}
             sizes="(max-width: 1280px) 100vw, 1280px"
             quality={75}
-            priority
+            preload
             className="h-auto w-full rounded-3xl border border-outline-variant/20 object-cover"
           />
           <figcaption className="text-sm text-on-surface-variant">

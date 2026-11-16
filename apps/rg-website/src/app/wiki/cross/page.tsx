@@ -160,7 +160,7 @@ export default async function CrossPage() {
               src={localImages.keyVisual}
               alt={copy.heroKeyVisualAlt}
               fill
-              priority
+              preload
               sizes="100vw"
               className="object-cover object-top"
             />
@@ -177,7 +177,7 @@ export default async function CrossPage() {
               alt={copy.heroLogoAlt}
               width={460}
               height={176}
-              priority
+              preload
               className="cross-hero-logo mb-5 h-auto w-[min(440px,82vw)]"
             />
           </Reveal>

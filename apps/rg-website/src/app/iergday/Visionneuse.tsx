@@ -440,7 +440,7 @@ export function Visionneuse({
               alt={media.alt}
               fill
               sizes="(max-width: 639px) 96vw, (max-width: 1023px) 896px, 1024px"
-              priority
+              preload
               className="object-contain"
             />
           ) : (

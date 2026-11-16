@@ -117,7 +117,7 @@ export default function DesignSystemShowcase() {
           alt=""
           width={900}
           height={900}
-          priority={false}
+          preload={false}
           sizes="900px"
           className="select-none"
         />
@@ -202,7 +202,7 @@ export default function DesignSystemShowcase() {
                 fill
                 sizes="(max-width: 768px) 200px, 260px"
                 className="object-contain drop-shadow-[6px_6px_0_rgba(0,0,0,0.55)]"
-                priority
+                preload
               />
             </div>
             <p

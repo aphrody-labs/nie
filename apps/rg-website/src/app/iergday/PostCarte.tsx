@@ -193,7 +193,7 @@ export function PostCarte({
               fill
               sizes={TAILLES_VIGNETTE}
               quality={70}
-              priority={priorite}
+              preload={priorite}
               className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105"
             />
           ) : (

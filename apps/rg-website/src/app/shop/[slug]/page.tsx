@@ -189,7 +189,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 fill
                 sizes="(max-width: 768px) 100vw, 60vw"
                 className="object-cover"
-                priority
+                preload
               />
               <div
                 aria-hidden

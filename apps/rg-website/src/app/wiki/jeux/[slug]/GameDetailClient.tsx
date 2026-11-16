@@ -92,7 +92,7 @@ export function GameDetailClient({
               src={game.cover || game.thumbnail}
               alt={loc.title}
               fill
-              priority
+              preload
               sizes="(max-width: 1024px) 100vw, 42vw"
               className="object-cover"
             />

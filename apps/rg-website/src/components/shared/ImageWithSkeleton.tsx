@@ -35,7 +35,7 @@ const ImageWithSkeleton = React.memo(
           fill
           className="object-cover"
           onLoad={() => setIsLoading(false)}
-          priority={priority}
+          preload={priority}
           loading={priority ? "eager" : "lazy"}
           sizes="(max-width: 768px) 100px, 144px"
           unoptimized

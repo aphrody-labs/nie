@@ -215,7 +215,7 @@ export function GalleryLightbox({
               sizes="100vw"
               className="object-contain"
               unoptimized
-              priority
+              preload
             />
           </div>
         ) : (

@@ -341,7 +341,7 @@ export default function RankedHubPage() {
                     width={96}
                     height={96}
                     className="object-contain drop-shadow-md"
-                    priority
+                    preload
                   />
                 </div>
               ) : (

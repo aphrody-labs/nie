@@ -24,7 +24,7 @@ export default function NotFound() {
           width={200}
           height={200}
           className="relative rounded-full border-4 border-background shadow-xl transition-transform hover:scale-105"
-          priority
+          preload
         />
       </div>
 

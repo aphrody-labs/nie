@@ -75,7 +75,7 @@ export default function RgEmote({
         alt={emote.alt}
         fill
         className="object-contain"
-        priority={priority}
+        preload={priority}
         sizes={`${size}px`}
         onError={handleError}
         unoptimized // Emotes are small, optimization might be overkill or cause issues with some formats

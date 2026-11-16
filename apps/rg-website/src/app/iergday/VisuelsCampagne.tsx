@@ -138,7 +138,7 @@ function Vignette({
           width={taille.largeur}
           height={taille.hauteur}
           sizes={grand ? TAILLES_GRAND : TAILLES_VIGNETTE}
-          priority={grand}
+          preload={grand}
           onError={() => setEchec(true)}
           className="h-auto w-full"
         />
@@ -149,7 +149,7 @@ function Vignette({
             alt={image.alt}
             fill
             sizes={grand ? TAILLES_GRAND : TAILLES_VIGNETTE}
-            priority={grand}
+            preload={grand}
             onError={() => setEchec(true)}
             className="object-contain"
           />

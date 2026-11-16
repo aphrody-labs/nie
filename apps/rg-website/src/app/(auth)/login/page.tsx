@@ -76,7 +76,7 @@ function LoginPageContent() {
                   fill
                   sizes="80px"
                   className="object-contain drop-shadow-md"
-                  priority
+                  preload
                 />
               </Link>
               <h1 className="text-2xl font-bold">Rose Griffon</h1>

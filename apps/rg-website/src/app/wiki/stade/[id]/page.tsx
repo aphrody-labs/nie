@@ -99,7 +99,7 @@ export default async function StadiumDetailPage({
             sizes="(max-width: 1024px) 100vw, 1024px"
             className="object-cover"
             unoptimized
-            priority
+            preload
           />
         ) : null}
       </div>

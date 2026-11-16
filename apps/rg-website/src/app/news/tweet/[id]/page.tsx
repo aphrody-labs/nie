@@ -391,7 +391,7 @@ export default async function TweetPage({
               alt={title}
               fill
               className="object-cover scale-[1.01] blur-xs brightness-[0.95]"
-              priority
+              preload
               sizes="100vw"
             />
           ) : (
