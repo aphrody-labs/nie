@@ -350,7 +350,7 @@ function getLightpandaLib(): LightpandaLib | null {
   if (cachedLpLib !== undefined) return cachedLpLib;
   const candidate =
     Bun.env.LIGHTPANDA_DLL_PATH ||
-    "C:\\src\\packages\\browser\\native\\zig-out\\bin\\browser_capi.dll";
+    "C:\\aphrody\\packages\\browser\\native\\zig-out\\bin\\browser_capi.dll";
   if (!existsSync(candidate)) {
     cachedLpLib = null;
     return null;

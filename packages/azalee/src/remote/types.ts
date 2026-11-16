@@ -16,7 +16,10 @@
 import type { categoryStats, searchText } from "../game-text/index";
 import type { fileMeta, listDirPaged, searchFiles } from "../cpk/index";
 import type { STACK_CONTRACT } from "@rosegriffon/config/contract";
-import type { queryGameDetail, queryGamesCatalog } from "@rosegriffon/inagle/games";
+import type {
+  queryGameDetail,
+  queryGamesCatalog,
+} from "@rosegriffon/inagle/games";
 import type {
   getDesignThemesManifest,
   loadWebsiteLocaleDictionary,

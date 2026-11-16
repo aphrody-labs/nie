@@ -32,7 +32,7 @@ export interface LuaBytecodeAuditReport {
 
 const DLL_PATHS = [
   "C:/Users/aphro/.local/bin/depot_ffi.dll",
-  "C:/src/crates/depot/target/release/depot_ffi.dll",
+  "C:/aphrody/crates/depot/target/release/depot_ffi.dll",
 ];
 
 function findDll(): string | null {

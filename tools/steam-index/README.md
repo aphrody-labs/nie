@@ -12,7 +12,7 @@ blake3 hashes. The Bun half (`index.ts`) writes the database with `bun:sqlite`.
 # Rust half: build on vps/prd only, never on the Windows box (remote-hash.sh does it)
 bun tools/steam-index/index.ts                 # local: metadata + file paths/sizes (no hashing)
 sh tools/steam-index/remote-hash.sh prd <synced_steam_root>   # blake3 on prd (builds there)
-bun tools/steam-index/index.ts --vault         # also set STEAM_ACCOUNT_NAME, STEAM_ID in C:\src\.env
+bun tools/steam-index/index.ts --vault         # also set STEAM_ACCOUNT_NAME, STEAM_ID in C:\aphrody\.env
 # options: --steam <root> (default C:/Program Files (x86)/Steam), --db <path>, --bin <steam-index exe>
 ```
 

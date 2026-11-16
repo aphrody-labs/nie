@@ -65,9 +65,9 @@ The vtable validation report is `tools/ie/forge/verif_vtables.py`.
 
 ## Provenance
 
-Source: `C:\src\bun-os\packages\iecode-scripts\{re,forge,ghidra,audit}`. The migrated scripts retain their upstream notices. IEVR Ultimate Team tooling lives under this directory's `re/` folder.
+Source: `C:\aphrody\bun-os\packages\iecode-scripts\{re,forge,ghidra,audit}`. The migrated scripts retain their upstream notices. IEVR Ultimate Team tooling lives under this directory's `re/` folder.
 
 ## Blender format workbench
 
 `blender/` is the upstream Blender add-on and command-line tooling for Level-5 G4 model, skeleton, animation, event, camera, lip-sync, and texture inspection/export. It requires Blender's Python runtime for add-on operations; standalone probes and round-trip helpers run with Python where noted by their source. The add-on patches legally obtained source assets and does not include game content. Upstream tests and lookup data are kept beside the tools.
-Additional sources: `C:\src\bun-os\packages\niepy` and `C:\src\bun-os\packages\nie-blender`. `niepy` requires the Rust FFI library; the Blender add-on uses the Blender Python host.
+Additional sources: `C:\aphrody\bun-os\packages\niepy` and `C:\aphrody\bun-os\packages\nie-blender`. `niepy` requires the Rust FFI library; the Blender add-on uses the Blender Python host.

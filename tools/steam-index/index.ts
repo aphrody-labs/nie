@@ -246,7 +246,7 @@ async function hashPending(db: Database) {
 
 async function vault() {
   const { upsertEnvFileKey, DEFAULT_MONOREPO_ENV_PATH } =
-    await import("C:/src/packages/env-kit/src/index.ts");
+    await import("C:/aphrody/packages/env-kit/src/index.ts");
   const acct = JSON.parse(await run([BIN, "account", STEAM]));
   if (!acct?.account_name || !acct?.steam_id) {
     console.log("vault: no account found in loginusers.vdf");

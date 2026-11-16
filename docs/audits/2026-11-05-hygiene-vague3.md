@@ -1,6 +1,6 @@
 # 2026-11-05 — Hygiène, vague 3 (OG, titres, doublons, U+FFFD, security.txt, stockage)
 
-Sources : `C:\src\yolo-web\docs\audit\rosegriffon-before.{md,json}` (constats 4, 9, 10 et
+Sources : `C:\aphrody\yolo-web\docs\audit\rosegriffon-before.{md,json}` (constats 4, 9, 10 et
 sonde `/.well-known/security.txt`) et `docs/audits/2026-11-05-crawl.md`.
 Preuve : tests unitaires (aucun `next dev` lancé, un autre agent construit dans ce dossier)
 et `curl` sur la production pour l'état « avant ». La production n'était pas encore

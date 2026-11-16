@@ -1,7 +1,7 @@
 # steam plugin
 
 Knowledge and tools for the Steam ecosystem. It works from Claude Code (as a plugin), from
-agy/Gemini and Codex (the skills are mirrored to `C:/src/.agents/skills/steam-*`, see the
+agy/Gemini and Codex (the skills are mirrored to `C:/aphrody/.agents/skills/steam-*`, see the
 monorepo `AGENTS.md`), and from any MCP client.
 
 ## Components
@@ -62,4 +62,4 @@ Everything except the key-only Web API methods keeps working:
 Requires Bun 1.4 or newer. No npm dependencies. License: Apache-2.0 (see the repository `LICENSE-APACHE`).
 
 Source paths in the skills (`third_party/...`, `apps/rosegriffon/...`) are relative to the
-C:/src monorepo root, where the upstream mirrors live.
+C:/aphrody monorepo root, where the upstream mirrors live.

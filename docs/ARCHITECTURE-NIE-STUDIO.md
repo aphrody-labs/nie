@@ -27,7 +27,7 @@ La suite logicielle unifie les outils de reverse-engineering, l'émulation, l'é
 
 ## 2. Ingestion et Formats Binaires Level-5
 
-Les décodeurs natifs de [`crates/aphrody-nie-formats`](file:///C:/src/apps/rosegriffon/crates/aphrody-nie-formats) lisent sans allocation intermédiaire les formats du conteneur Criware et du moteur Level-5 :
+Les décodeurs natifs de [`crates/aphrody-nie-formats`](file:///C:/aphrody/apps/rosegriffon/crates/aphrody-nie-formats) lisent sans allocation intermédiaire les formats du conteneur Criware et du moteur Level-5 :
 
 1. **Textures G4TX** :
    - Formats supportés : `BC7` (blocs compressés 4x4) et `BGRA8` (non compressé avec inversion de canaux).
@@ -43,7 +43,7 @@ Les décodeurs natifs de [`crates/aphrody-nie-formats`](file:///C:/src/apps/rose
 
 ## 3. Éditeur de Sauvegarde & Cartographie Mémoire
 
-Le runner headless [`crates/aphrody-nie-headless`](file:///C:/src/apps/rosegriffon/crates/aphrody-nie-headless) fournit l'automatisation complète de la persistance :
+Le runner headless [`crates/aphrody-nie-headless`](file:///C:/aphrody/apps/rosegriffon/crates/aphrody-nie-headless) fournit l'automatisation complète de la persistance :
 
 - **Chiffrement Stream XOR** : Calcul dynamique de clé à partir du nom d'entrée (`key_from_filename`).
 - **Contrôle d'Intégrité CRC32** : Recalcul du mot de vérification `0x9DCE66C3` sur l'en-tête de conteneur.

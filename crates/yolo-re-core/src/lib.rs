@@ -4,7 +4,7 @@
 //! All generic RE primitives (PE/ELF/Mach-O triage, strings, x86-64 disassembly,
 //! headers, minidump, `.pdata`, pipeline, Ghidra decompile, Magika, LevelDB, YARA,
 //! DBXV2 formats, CRI CPK/CRILAYLA/EAC, live process/AOB, catalog, unified overview)
-//! live canonically in [`aphrody_re_core`] (`C:\src\crates\re`).
+//! live canonically in [`aphrody_re_core`] (`C:\aphrody\crates\re`).
 
 #![forbid(unsafe_code)]
 #![allow(non_ascii_idents)]

@@ -49,18 +49,18 @@ Upstream repositories are cited by GitHub name; only steamlocate-rs is cloned un
 
 ## Libraries
 
-| Library                | Lang | Repository                                   | Notes                                                |
-| ---------------------- | ---- | -------------------------------------------- | ---------------------------------------------------- |
-| SteamKit2              | C#   | `SteamRE/SteamKit`                           | EMsg, manifest format reference                      |
-| node-steam-user        | JS   | `DoctorMcKay/node-steam-user`                | CM client; runs under Bun                            |
-| node-steam-session     | JS   | `DoctorMcKay/node-steam-session`             | IAuthenticationService login                         |
-| ValvePython steam      | Py   | `ValvePython/steam`                          | CM client and CDN                                    |
-| steam-vent             | Rust | crates.io `steam-vent` (repository on Codeberg) | CM client                                            |
-| steamworks-rs          | Rust | `Noxime/steamworks-rs`                       | needs running Steam client                           |
-| steam-rs               | Rust | `garhow/steam-rs`                            | Web API                                              |
-| keyvalues-parser       | Rust | crates.io `keyvalues-parser` (vdf-rs)          | text VDF parser                                      |
-| steamlocate-rs         | Rust | `WilliamVenner/steamlocate-rs`               | library discovery, StateFlags (`third_party/steamlocate-rs`) |
-| steam-lancache-prefill | C#   | `tpill90/steam-lancache-prefill`             | lancache prefill                                     |
+| Library                | Lang | Repository                                      | Notes                                                        |
+| ---------------------- | ---- | ----------------------------------------------- | ------------------------------------------------------------ |
+| SteamKit2              | C#   | `SteamRE/SteamKit`                              | EMsg, manifest format reference                              |
+| node-steam-user        | JS   | `DoctorMcKay/node-steam-user`                   | CM client; runs under Bun                                    |
+| node-steam-session     | JS   | `DoctorMcKay/node-steam-session`                | IAuthenticationService login                                 |
+| ValvePython steam      | Py   | `ValvePython/steam`                             | CM client and CDN                                            |
+| steam-vent             | Rust | crates.io `steam-vent` (repository on Codeberg) | CM client                                                    |
+| steamworks-rs          | Rust | `Noxime/steamworks-rs`                          | needs running Steam client                                   |
+| steam-rs               | Rust | `garhow/steam-rs`                               | Web API                                                      |
+| keyvalues-parser       | Rust | crates.io `keyvalues-parser` (vdf-rs)           | text VDF parser                                              |
+| steamlocate-rs         | Rust | `WilliamVenner/steamlocate-rs`                  | library discovery, StateFlags (`third_party/steamlocate-rs`) |
+| steam-lancache-prefill | C#   | `tpill90/steam-lancache-prefill`                | lancache prefill                                             |
 
 ## Ecosystem applications
 

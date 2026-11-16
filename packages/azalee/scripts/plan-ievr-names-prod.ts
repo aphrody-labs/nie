@@ -23,7 +23,7 @@ const { values: options } = parseArgs({
     prod: { type: "string", default: "var/prod-inagle-characters.jsonl" },
     names: {
       type: "string",
-      default: "C:/src/yolo-re/var/ie-export/azalee/names.jsonl",
+      default: "C:/aphrody/yolo-re/var/ie-export/azalee/names.jsonl",
     },
     out: { type: "string", default: "var/ievr-names-prod.sql" },
   },

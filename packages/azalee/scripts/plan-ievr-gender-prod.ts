@@ -19,7 +19,7 @@ const { values: options } = parseArgs({
     prod: { type: "string", default: "var/prod-inagle-characters.jsonl" },
     genres: {
       type: "string",
-      default: "C:/src/yolo-re/var/ie-export/azalee/chara_gender.jsonl",
+      default: "C:/aphrody/yolo-re/var/ie-export/azalee/chara_gender.jsonl",
     },
     out: { type: "string", default: "var/ievr-gender-prod.sql" },
   },

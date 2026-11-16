@@ -14,7 +14,7 @@ root [`../AGENTS.md`](../AGENTS.md) and [`../CLAUDE.md`](../CLAUDE.md).
 
 This file consolidates what used to be four overlapping documents —
 `AGENTS.md`, `IDENTITY.md`, `SOUL.md` and `llm.txt` — all of which described
-the same agent and linked to the `C:\src\aphrody-py` sibling repo that was
+the same agent and linked to the `C:\aphrody\aphrody-py` sibling repo that was
 reunified into this monorepo on 2026-05-27.
 
 ## 1. Identity — the Collector

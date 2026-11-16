@@ -13,7 +13,7 @@
  *
  * Usage :
  *   bun packages/azalee/scripts/import-ievr-names.ts \
- *     [--names C:/src/yolo-re/var/ie-export/azalee/names.jsonl] \
+ *     [--names C:/aphrody/yolo-re/var/ie-export/azalee/names.jsonl] \
  *     [--mirror var/inagle-mirror.sqlite] [--out var/ievr-names-report.json]
  *
  * Objets et passifs ne sont pas traités : le miroir n’a pas de clé commune
@@ -28,7 +28,7 @@ const { values: options } = parseArgs({
   options: {
     names: {
       type: "string",
-      default: "C:/src/yolo-re/var/ie-export/azalee/names.jsonl",
+      default: "C:/aphrody/yolo-re/var/ie-export/azalee/names.jsonl",
     },
     mirror: { type: "string", default: "var/inagle-mirror.sqlite" },
     out: { type: "string", default: "var/ievr-names-report.json" },

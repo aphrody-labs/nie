@@ -7,12 +7,7 @@
     "domain": "rosegriffon.fr",
     "cookieDomain": ".rosegriffon.fr",
     "repoUrl": "https://github.com/aphrody-labs/rosegriffon.git",
-    "locales": [
-      "fr",
-      "en",
-      "ja",
-      "es"
-    ]
+    "locales": ["fr", "en", "ja", "es"]
   },
   "http": {
     "healthPath": "/health",
@@ -64,14 +59,7 @@
       }
     },
     "cors": {
-      "methods": [
-        "GET",
-        "POST",
-        "PUT",
-        "PATCH",
-        "DELETE",
-        "OPTIONS"
-      ],
+      "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       "allowedHeaders": [
         "Content-Type",
         "Authorization",
@@ -92,10 +80,7 @@
         "https://cdn.rosegriffon.fr",
         "https://bot.rosegriffon.fr"
       ],
-      "native": [
-        "tauri://localhost",
-        "http://tauri.localhost"
-      ],
+      "native": ["tauri://localhost", "http://tauri.localhost"],
       "dev": [
         "http://localhost:3000",
         "http://localhost:3001",
@@ -141,29 +126,11 @@
         "user",
         "banned"
       ],
-      "admin": [
-        "admin",
-        "superadmin",
-        "editor",
-        "moderator"
-      ],
-      "userManagement": [
-        "admin",
-        "superadmin"
-      ],
-      "botAdmin": [
-        "admin",
-        "staff"
-      ],
-      "moderator": [
-        "admin",
-        "superadmin",
-        "moderator"
-      ],
-      "staff": [
-        "admin",
-        "staff"
-      ]
+      "admin": ["admin", "superadmin", "editor", "moderator"],
+      "userManagement": ["admin", "superadmin"],
+      "botAdmin": ["admin", "staff"],
+      "moderator": ["admin", "superadmin", "moderator"],
+      "staff": ["admin", "staff"]
     }
   },
   "database": {
@@ -172,15 +139,8 @@
       "schema": "public",
       "achilleaSchema": "achillea",
       "orm": "kysely",
-      "pgSchemes": [
-        "postgres://",
-        "postgresql://"
-      ],
-      "drivers": [
-        "bun-sql",
-        "pg",
-        "tokio-postgres"
-      ],
+      "pgSchemes": ["postgres://", "postgresql://"],
+      "drivers": ["bun-sql", "pg", "tokio-postgres"],
       "envVars": [
         "RG_DATABASE_URL",
         "DATABASE_URL",
@@ -199,23 +159,13 @@
       "engine": "postgresql",
       "schema": "public",
       "orm": "kysely|drizzle",
-      "drivers": [
-        "bun-sql",
-        "pg",
-        "tokio-postgres"
-      ],
-      "envVars": [
-        "INAGLE_DATABASE_URL",
-        "NIE_PG_URL"
-      ]
+      "drivers": ["bun-sql", "pg", "tokio-postgres"],
+      "envVars": ["INAGLE_DATABASE_URL", "NIE_PG_URL"]
     },
     "mirror": {
       "engine": "sqlite",
       "orm": "drizzle",
-      "drivers": [
-        "bun:sqlite",
-        "rusqlite"
-      ],
+      "drivers": ["bun:sqlite", "rusqlite"],
       "defaultRelPath": "var/mirror.sqlite",
       "envVars": [
         "NIE_WIKI_DB",
@@ -223,10 +173,7 @@
         "SQLITE_DB_PATH",
         "NIERS_MIRROR"
       ],
-      "snapshotDirs": [
-        "var/miroir",
-        "data/backups"
-      ]
+      "snapshotDirs": ["var/miroir", "data/backups"]
     },
     "cache": {
       "engine": "redis",

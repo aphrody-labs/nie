@@ -155,7 +155,7 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 [[package]]
 name = "steam-depot"
 version = "1.4.8"
-source = "git+https://github.com/aphrody-dev/steam-depot?rev=a79da1ab5c3611ea23f0bc16f197a8bc4a9cf92c#a79da1ab5c3611ea23f0bc16f197a8bc4a9cf92c"
+source = "git+https://github.com/aphrody-dev/steam-depot?rev=d098b41687a63767ee5eee3a351b2936a1d902e6#d098b41687a63767ee5eee3a351b2936a1d902e6"
 dependencies = [
  "crc32fast",
  "serde",
