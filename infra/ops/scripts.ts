@@ -152,7 +152,9 @@ export function deployScript(
     );
   // Whole stack on the prod host: systemd keeps it up across reboots (unit + RG_TAG recorded).
   if (all && longRunning.length && host.capabilities?.includes("prod"))
-    lines.push(`sh infra/scripts/install-stack-unit.sh "$RG_TAG"`);
+    lines.push(
+      `sh infra/scripts/install-stack-unit.sh "$RG_TAG" ${q(host.key)}`,
+    );
   for (const t of tools)
     lines.push(
       `echo "${t.name}: image ready, run with: docker compose --profile tools run --rm ${t.name}"`,
