@@ -25,3 +25,23 @@ Standalone product of the Rose Griffon community (rosegriffon.fr): Next.js site,
 - No emoji and no AI attribution in code, docs or commits. UI text goes through `rg-i18n`; source language is English, `fr` is a catalogue.
 - Work happens directly on `main` in logical commits; no branches, no worktrees. Say plainly what is done and what is not.
 - Game assets of Inazuma Eleven (Level-5) are not redistributed: `nie` reads the user's own install.
+
+## Architecture
+
+- Stays in TypeScript on Bun, untouched: APIs, auth, server, the current site and the legacy achillea and azalee.
+- Achillea and Azalee are rewritten fully in Rust around Bevy (WASM and WebGPU), each on its own new subdomain; the legacy keeps serving its current hostnames until the Rust versions are proven.
+- Scope is every Inazuma Eleven game and platform (inazuma.jp, the whole series), not only Victory Road; code stays game-agnostic.
+- UI in Rust: Dioxus on the same base as GPUI (taffy, wgpu, winit, text and layout crates deduplicated, same versions).
+
+## Shared with shenron (`C:\shenron`, `aphrody-labs/shenron`)
+
+Shared code lives once, in the product that owns it; the other depends on it through git (pinned rev) or a published package. No copies. Table of current consumers: `docs/SHARED.md`.
+
+| Domain | Owner | Notes |
+| --- | --- | --- |
+| OCR, translation, manga pipeline (Koharu) | shenron | `koharu-*`, `shenron-ocr-core` crates |
+| Video | shenron | `shenron-video` crate |
+| Media and asset pipelines | shenron | images, compression, filmcraft |
+| Databooks and wiki | shenron | editorial pipeline, lexicon |
+| Rust admin dashboard, auth and SSO | to be decided with shenron | one SSO for both products |
+| CDN and deploy | per `infra/`, deploy lock `/srv/deploy.lock` on prd | |

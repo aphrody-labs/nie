@@ -1,0 +1,63 @@
+[package]
+name = "nie-model-serve"
+version = "1.4.8"
+edition = "2024"
+rust-version = "1.97"
+license-file = "LICENSE.upstream"
+publish = false
+description = "Inazuma Eleven Victory Road model asset inspector and optional local HTTP service"
+
+[lints]
+workspace = true
+
+[features]
+default = []
+host = [
+  "dep:anyhow",
+  "dep:clap",
+  "dep:nie-core",
+  "dep:nie-data",
+  "dep:nie-explore",
+  "dep:nie-sql",
+  "dep:tokio",
+  "dep:serde_json",
+  "dep:sha2",
+  "dep:tracing",
+  "dep:tracing-subscriber",
+  "nie-formats/audio-decode",
+  "nie-formats/images",
+]
+real-audio = ["host"]
+
+[dependencies]
+nie-core = { path = "../nie-core", version = "1.4.8", default-features = false, optional = true }
+nie-formats = { path = "../nie-formats", version = "1.4.8", default-features = false, features = ["std", "serde", "textures", "remote-vfs"] }
+nie-data = { path = "../nie-data", version = "1.4.8", default-features = false, optional = true, features = ["serde", "std"] }
+nie-explore = { path = "../nie-explore", version = "1.4.8", optional = true }
+nie-sql = { path = "../nie-sql", version = "1.4.8", optional = true }
+anyhow = { workspace = true, features = ["std"], optional = true }
+clap = { version = "4.5", default-features = false, features = ["derive", "color", "env", "std"], optional = true }
+serde_json = { workspace = true, features = ["std"], optional = true }
+serde = { workspace = true, features = ["std", "derive"] }
+tokio = { workspace = true, features = ["rt", "net", "time", "sync"], optional = true }
+sha2 = { workspace = true, optional = true }
+tracing = { workspace = true, optional = true }
+tracing-subscriber = { workspace = true, features = ["fmt", "env-filter", "ansi", "tracing-log"], optional = true }
+
+[[bin]]
+name = "nie-model-serve"
+path = "src/main.rs"
+required-features = ["host"]
+
+# Diagnostics run against a local game install (NIE_GAME_DIR); no game data is shipped.
+[[example]]
+name = "diag_g4pkm_transforms"
+required-features = ["host"]
+
+[[example]]
+name = "probe_g4tx_dds"
+required-features = ["host"]
+
+[dev-dependencies]
+# `probe_g4tx_dds` names `image_dds::ImageFormat` directly.
+image_dds = { version = "0.7", default-features = false }
