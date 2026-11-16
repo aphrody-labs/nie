@@ -1,4 +1,5 @@
 {
+  "lang.name": "English",
   "nav.home": "Home", "nav.series": "Series", "nav.files": "Game data", "nav.sitemap": "Sitemap",
   "series.title": "Inazuma Eleven series",
   "series.lead": "Every game of the series. Data is read by nie from the player's own install.",

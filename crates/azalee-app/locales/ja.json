@@ -1,4 +1,5 @@
 {
+  "lang.name": "日本語",
   "nav.home": "ホーム", "nav.series": "シリーズ", "nav.files": "ゲームデータ", "nav.sitemap": "サイトマップ",
   "series.title": "イナズマイレブンシリーズ",
   "series.lead": "シリーズの全タイトル。データはプレイヤー自身のゲームから nie が読み込みます。",

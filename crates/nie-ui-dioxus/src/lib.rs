@@ -48,6 +48,19 @@ pub struct UiStyle {
     pub font_px: f32,
     /// Wrap children onto several lines.
     pub wrap: bool,
+    /// Corner radius, px.
+    #[serde(default)]
+    pub radius: f32,
+    /// 1 px border colour.
+    #[serde(default)]
+    pub border: Option<Rgba>,
+    /// Font weight (400 normal, 700 bold).
+    #[serde(default = "default_weight")]
+    pub weight: u16,
+}
+
+fn default_weight() -> u16 {
+    400
 }
 
 impl Default for UiStyle {
@@ -63,6 +76,9 @@ impl Default for UiStyle {
             color: None,
             font_px: 14.0,
             wrap: false,
+            radius: 0.0,
+            border: None,
+            weight: 400,
         }
     }
 }
@@ -99,6 +115,15 @@ impl UiStyle {
         }
         if let Some(c) = self.color {
             s.push_str(&format!("color:{};", rgba_css(c)));
+        }
+        if self.radius > 0.0 {
+            s.push_str(&format!("border-radius:{}px;", self.radius));
+        }
+        if let Some(c) = self.border {
+            s.push_str(&format!("border:1px solid {};", rgba_css(c)));
+        }
+        if self.weight != 400 {
+            s.push_str(&format!("font-weight:{};", self.weight));
         }
         s
     }
@@ -196,6 +221,14 @@ pub struct Theme {
     pub text: Rgba,
     /// Muted text.
     pub muted: Rgba,
+    /// Brand colour (links, highlights).
+    pub primary: Rgba,
+    /// Text on `primary`.
+    pub on_primary: Rgba,
+    /// Card surface.
+    pub card: Rgba,
+    /// Borders.
+    pub outline: Rgba,
 }
 
 impl Default for Theme {
@@ -240,6 +273,10 @@ impl Theme {
             row_alt: c("surfaceContainer")?,
             text: c("onSurface")?,
             muted: c("onSurfaceVariant")?,
+            primary: c("primary")?,
+            on_primary: c("onPrimary")?,
+            card: c("surfaceContainerLow")?,
+            outline: c("outlineVariant")?,
         })
     }
 }

@@ -165,7 +165,22 @@ fn series_nav(t: &Theme, lang: &str) -> UiNode {
             link(14.0, t.muted, format!("/series{q}"), tr(lang, "nav.series")),
             link(14.0, t.muted, page_url("", true), tr(lang, "nav.files")),
             link(14.0, t.muted, "/sitemap.xml", tr(lang, "nav.sitemap")),
+            UiNode::boxed(
+                UiStyle { axis: nie_ui_dioxus::Axis::Row, gap: 10.0, ..UiStyle::default() },
+                crate::i18n::languages()
+                    .into_iter()
+                    .map(|l| link(14.0, if l == lang { t.primary } else { t.muted }, format!("?lang={l}"), tr(l, "lang.name")))
+                    .collect(),
+            ),
         ],
+    )
+}
+
+/// Small pill label.
+fn badge(text: String, bg: nie_ui_dioxus::Rgba, fg: nie_ui_dioxus::Rgba) -> UiNode {
+    UiNode::boxed(
+        UiStyle { axis: nie_ui_dioxus::Axis::Row, padding: 4.0, radius: 6.0, background: Some(bg), ..UiStyle::default() },
+        vec![UiNode::Text { style: UiStyle { font_px: 13.0, weight: 600, color: Some(fg), ..UiStyle::default() }, text }],
     )
 }
 
@@ -173,19 +188,29 @@ fn series_nav(t: &Theme, lang: &str) -> UiNode {
 #[must_use]
 pub fn series(t: &Theme, lang: &str) -> UiNode {
     use crate::i18n::{self, t as tr};
-    let mut kids = vec![series_nav(t, lang), label(28.0, t.text, tr(lang, "series.title")), label(15.0, t.muted, tr(lang, "series.lead"))];
+    let mut cards = Vec::new();
     for g in i18n::series() {
         let status = tr(lang, if g.nie { "series.nie.yes" } else { "series.nie.no" });
-        kids.push(UiNode::boxed(
-            UiStyle { axis: nie_ui_dioxus::Axis::Column, gap: 4.0, ..UiStyle::default() },
-            vec![
-                label(18.0, t.text, tr(lang, &format!("game.{}", g.slug))),
-                UiNode::boxed(
-                    UiStyle { axis: nie_ui_dioxus::Axis::Row, gap: 12.0, wrap: true, ..UiStyle::default() },
-                    vec![label(13.0, t.muted, status), link(13.0, t.muted, g.official, tr(lang, "series.official"))],
-                ),
-            ],
+        let (bg, fg) = if g.nie { (t.primary, t.on_primary) } else { (t.header, t.muted) };
+        let title = UiNode::Text { style: UiStyle { font_px: 18.0, weight: 700, color: Some(t.text), ..UiStyle::default() }, text: tr(lang, &format!("game.{}", g.slug)) };
+        let foot = UiNode::boxed(
+            UiStyle { axis: nie_ui_dioxus::Axis::Row, gap: 12.0, wrap: true, ..UiStyle::default() },
+            vec![badge(status, bg, fg), link(14.0, t.primary, g.official, tr(lang, "series.official"))],
+        );
+        cards.push(UiNode::boxed(
+            UiStyle {
+                gap: 16.0,
+                padding: 20.0,
+                width: Some(300.0),
+                radius: 16.0,
+                background: Some(t.card),
+                border: Some(if g.nie { t.primary } else { t.outline }),
+                ..UiStyle::default()
+            },
+            vec![title, foot],
         ));
     }
-    page(t, kids)
+    let grid = UiNode::boxed(UiStyle { axis: nie_ui_dioxus::Axis::Row, gap: 20.0, wrap: true, ..UiStyle::default() }, cards);
+    let heading = UiNode::Text { style: UiStyle { font_px: 36.0, weight: 700, color: Some(t.text), ..UiStyle::default() }, text: tr(lang, "series.title") };
+    page(t, vec![series_nav(t, lang), heading, label(16.0, t.muted, tr(lang, "series.lead")), grid])
 }
