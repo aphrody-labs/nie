@@ -1,0 +1,19 @@
+id,area,feature,priority,data_source,status
+F01,portal,Series hub listing every game,must,data/series.json,done (/series)
+F02,portal,"Per-game page (synopsis, platforms, official link)",must,data/series.json + locales,todo
+F03,portal,News feed with topics,must,postgres news,todo
+F04,portal,Key visual carousel,could,theme tokens + nie textures,todo
+F05,vr,Patch notes per platform and version,should,postgres patchnote,todo
+F06,vr,"Tournaments (online, competition, beta)",must,achillea-store,partial (Rust rules)
+F07,vr,Character showcase,should,cfg.bin chara tables,todo
+F08,vr,FAQ and guide,should,postgres pages,todo
+F09,zukan,Character list with filters,must,cfg.bin chara_param,todo
+F10,zukan,Character stats page,must,cfg.bin chara_param,todo
+F11,zukan,Skills (hissatsu) list and page,must,cfg.bin skill_config,todo
+F12,zukan,Items,must,cfg.bin item_config,todo
+F13,zukan,Teams,must,cfg.bin team tables,todo
+F14,zukan,Formations,should,cfg.bin formation tables,todo
+F15,zukan,My team builder,should,achillea-store ut_squad,partial (Figma 5:28)
+F16,all,en/fr/ja catalogues and language negotiation,must,locales/*.json,done
+F17,all,Theme from rg-ui tokens,must,tokens.json,done
+F18,all,Sitemap and robots from the VFS,must,nie-sitemap,done
