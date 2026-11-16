@@ -33,19 +33,6 @@ Standalone product of the Rose Griffon community (rosegriffon.fr): Next.js site,
 - Scope is every Inazuma Eleven game and platform (inazuma.jp, the whole series), not only Victory Road; code stays game-agnostic.
 - UI in Rust: Dioxus on the same base as GPUI (taffy, wgpu, winit, text and layout crates deduplicated, same versions).
 
-## Shared with shenron (`C:\shenron`, `aphrody-labs/shenron`)
-
-Shared code lives once, in the product that owns it; the other depends on it through git (pinned rev) or a published package. No copies. Table of current consumers: `docs/SHARED.md`.
-
-| Domain | Owner | Notes |
-| --- | --- | --- |
-| OCR, translation, manga pipeline (Koharu) | shenron | `koharu-*`, `shenron-ocr-core` crates |
-| Video | shenron | `shenron-video` crate |
-| Media and asset pipelines | shenron | images, compression, filmcraft |
-| Databooks and wiki | shenron | editorial pipeline, lexicon |
-| Rust admin dashboard, auth and SSO | to be decided with shenron | one SSO for both products |
-| CDN and deploy | per `infra/`, deploy lock `/srv/deploy.lock` on prd | |
-
 ## Shared with the sibling product
 
 Shenron (`C:\shenron`, dragonballfr.com) and Rose Griffon (`C:\rosegriffon`, rosegriffon.fr) share prd and part of their needs. Shared code exists once: a published crate or package, or a git dependency on the product that owns it; never a copy. The owner column is proposed; either agent may change it by editing this table in both files in the same step, and the other agent's work is never overwritten.
@@ -61,4 +48,4 @@ Shenron (`C:\shenron`, dragonballfr.com) and Rose Griffon (`C:\rosegriffon`, ros
 | CDN (R2 origin, cdn-sync) | rosegriffon (`infra/docker/cdn-sync`) | shenron |
 | Deploy on prd: compose per product, `/srv/deploy.lock` (flock) before any prd change, nginx and tunnel routes in each product's own files | each product for its own units | never touch the other product's units |
 
-Coordination goes through files (this table, `docs/` notes, commits on `main`), not through live edits of the other repository.
+Coordination goes through files (this table, `docs/SHARED.md`, `docs/` notes, commits on `main`), not through live edits of the other repository.
