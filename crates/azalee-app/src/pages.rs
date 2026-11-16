@@ -256,7 +256,7 @@ pub fn chara_list(rows: &[crate::db::Named], total: i64, page_no: i64, pages: i6
     for r in rows {
         grid.push(UiNode::boxed(
             UiStyle { padding: 14.0, width: Some(220.0), radius: 12.0, background: Some(t.card), border: Some(t.outline), ..UiStyle::default() },
-            vec![link(16.0, t.text, format!("/zukan/chara/{}?lang={lang}", r.id), r.text.clone())],
+            vec![link(16.0, t.text, format!("/zukan/chara/{}?lang={lang}", r.id), crate::i18n::strip_ruby(&r.text))],
         ));
     }
     let q = |p: i64| format!("/zukan/chara?lang={lang}&page={p}&q={}", nie_sitemap::encode_segment(search));
@@ -285,7 +285,8 @@ pub fn chara_list(rows: &[crate::db::Named], total: i64, page_no: i64, pages: i6
 pub fn chara(title: &str, names: &[(String, Vec<(i32, String)>)], t: &Theme, lang: &str) -> UiNode {
     use crate::i18n::t as tr;
     let heading = UiNode::Text { style: UiStyle { font_px: 36.0, weight: 700, color: Some(t.text), ..UiStyle::default() }, text: title.to_owned() };
-    let rows: Vec<Vec<String>> = names.iter().map(|(l, v)| vec![l.clone(), v.iter().map(|(_, s)| s.as_str()).collect::<Vec<_>>().join(" · ")]).collect();
+    let rows: Vec<Vec<String>> =
+        names.iter().map(|(l, v)| vec![l.clone(), v.iter().map(|(_, s)| crate::i18n::strip_ruby(s)).collect::<Vec<_>>().join(" · ")]).collect();
     page(
         t,
         vec![
@@ -293,7 +294,7 @@ pub fn chara(title: &str, names: &[(String, Vec<(i32, String)>)], t: &Theme, lan
             link(14.0, t.primary, format!("/zukan/chara?lang={lang}"), tr(lang, "zukan.chara.title")),
             heading,
             label(18.0, t.text, tr(lang, "zukan.chara.names")),
-            simple_table(&["lang".into(), "text".into()], &rows, 160.0, t),
+            simple_table(&[tr(lang, "zukan.col.lang"), tr(lang, "zukan.col.name")], &rows, 160.0, t),
         ],
     )
 }

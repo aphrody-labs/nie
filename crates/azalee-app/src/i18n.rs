@@ -113,8 +113,37 @@ pub fn series() -> Vec<Game> {
         .unwrap_or_default()
 }
 
+/// Game text marks furigana as `[base/reading]`; keeps the base text.
+#[must_use]
+pub fn strip_ruby(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(i) = rest.find('[') {
+        out.push_str(&rest[..i]);
+        let tail = &rest[i + 1..];
+        match (tail.find('/'), tail.find(']')) {
+            (Some(sl), Some(end)) if sl < end => {
+                out.push_str(&tail[..sl]);
+                rest = &tail[end + 1..];
+            }
+            _ => {
+                out.push('[');
+                rest = tail;
+            }
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn ruby() {
+        assert_eq!(super::strip_ruby("[円堂/えんどう] [守/まもる]"), "円堂 守");
+        assert_eq!(super::strip_ruby("Mark [x"), "Mark [x");
+    }
+
     use super::*;
 
     #[test]

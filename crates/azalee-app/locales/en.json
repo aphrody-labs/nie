@@ -41,5 +41,7 @@
   "zukan.prev": "Previous",
   "zukan.next": "Next",
   "zukan.chara.names": "Names in every language",
-  "nav.zukan": "Characters"
+  "nav.zukan": "Characters",
+  "zukan.col.lang": "Language",
+  "zukan.col.name": "Name"
 }

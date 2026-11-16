@@ -277,7 +277,10 @@ async fn chara_page(State(s): State<Shared>, Path(id): Path<i32>, uri: axum::htt
         }
     }
     match title {
-        Some(tt) => localized(StatusCode::OK, &pages::chara(&tt, &names, &theme, lang), &tt, lang, &theme),
+        Some(tt) => {
+            let tt = crate::i18n::strip_ruby(&tt);
+            localized(StatusCode::OK, &pages::chara(&tt, &names, &theme, lang), &tt, lang, &theme)
+        }
         None => localized(StatusCode::NOT_FOUND, &pages::not_found(&id.to_string(), &theme), &crate::i18n::t(lang, "notfound.title"), lang, &theme),
     }
 }
