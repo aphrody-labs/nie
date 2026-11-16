@@ -1,12 +1,34 @@
 {
   "mcpServers": {
-    "rosegriffon": { "command": "bun", "args": ["run", "apps/mcp/src/index.ts"] },
-    "steam": { "command": "bun", "args": ["run", "plugins/steam/servers/steam-mcp.ts"] },
-    "context7": { "command": "bunx", "args": ["@upstash/context7-mcp@latest"] },
-    "cloudflare": { "type": "http", "url": "https://mcp.cloudflare.com/mcp" },
-    "cloudflare-docs": { "type": "http", "url": "https://docs.mcp.cloudflare.com/mcp" },
-    "better-auth": { "type": "http", "url": "https://mcp.better-auth.com/mcp" },
-    "shadcn": { "command": "bunx", "args": ["shadcn@latest", "mcp"] },
-    "next-devtools": { "command": "bunx", "args": ["next-devtools-mcp@latest"] }
+    "rosegriffon": {
+      "command": "bun",
+      "args": [
+        "run",
+        "apps/mcp/src/index.ts"
+      ]
+    },
+    "context7": {
+      "command": "bunx",
+      "args": [
+        "@upstash/context7-mcp@latest"
+      ]
+    },
+    "better-auth": {
+      "type": "http",
+      "url": "https://mcp.better-auth.com/mcp"
+    },
+    "shadcn": {
+      "command": "bunx",
+      "args": [
+        "shadcn@latest",
+        "mcp"
+      ]
+    },
+    "next-devtools": {
+      "command": "bunx",
+      "args": [
+        "next-devtools-mcp@latest"
+      ]
+    }
   }
 }
