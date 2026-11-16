@@ -66,6 +66,7 @@ fn fail(e: &DbError) -> Response {
 pub fn router(state: Shared) -> Router {
     Router::new()
         .route("/", get(home))
+        .route("/series", get(series_page))
         .route("/wiki/files", get(root_dir))
         .route("/wiki/files/", get(root_dir))
         .route("/wiki/files/{*path}", get(files))
@@ -196,4 +197,21 @@ async fn asset(State(s): State<Shared>, Path(raw): Path<String>) -> Response {
         (if l.ends_with(".webp") { "image/webp" } else if l.ends_with(".jpg") || l.ends_with(".jpeg") { "image/jpeg" } else { "image/png" }, bytes)
     };
     ([(header::CONTENT_TYPE, ctype), (header::CACHE_CONTROL, "public, max-age=31536000, immutable")], body).into_response()
+}
+
+/// Value of `key` in a raw query string.
+fn query_value<'a>(q: Option<&'a str>, key: &str) -> Option<&'a str> {
+    q?.split('&').find_map(|kv| kv.split_once('=').filter(|(k, _)| *k == key).map(|(_, v)| v))
+}
+
+/// `/series?lang=..&theme=..`: the series hub, language from the query or `Accept-Language`,
+/// colours from the named token theme.
+async fn series_page(State(s): State<Shared>, uri: axum::http::Uri, headers: axum::http::HeaderMap) -> Response {
+    let q = uri.query();
+    let accept = headers.get(header::ACCEPT_LANGUAGE).and_then(|v| v.to_str().ok());
+    let lang = crate::i18n::negotiate(query_value(q, "lang"), accept);
+    let theme = query_value(q, "theme").and_then(Theme::from_tokens).unwrap_or(s.theme);
+    let ui = pages::series(&theme, lang);
+    let doc = nie_ui_dioxus::render_document(&ui, &crate::i18n::t(lang, "series.title"), lang, &theme);
+    ([(header::CONTENT_LANGUAGE, lang), (header::VARY, "Accept-Language")], Html(doc)).into_response()
 }

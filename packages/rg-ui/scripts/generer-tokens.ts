@@ -557,6 +557,12 @@ if (import.meta.main) {
   const cheminCss = new URL("../src/styles.css", import.meta.url);
   const cheminSortie = new URL("../src/tokens.ts", import.meta.url);
   const css = await chargerCssAvecImports(cheminCss);
-  await Bun.write(cheminSortie, await rendreModule(extraireTokens(css)));
+  const tokens = extraireTokens(css);
+  await Bun.write(cheminSortie, await rendreModule(tokens));
+  // Same tokens for non-JS consumers: the Rust crates read this file.
+  await Bun.write(
+    new URL("../src/tokens.json", import.meta.url),
+    `${JSON.stringify(tokens, null, 2)}\n`,
+  );
   console.log(`tokens=ok source=${cheminCss} sortie=${cheminSortie}`);
 }

@@ -1,0 +1,18 @@
+{
+  "nav.home": "ホーム", "nav.series": "シリーズ", "nav.files": "ゲームデータ", "nav.sitemap": "サイトマップ",
+  "series.title": "イナズマイレブンシリーズ",
+  "series.lead": "シリーズの全タイトル。データはプレイヤー自身のゲームから nie が読み込みます。",
+  "series.official": "公式サイト", "series.nie.yes": "nie 対応", "series.nie.no": "nie 未対応",
+  "game.inazuma": "イナズマイレブン",
+  "game.inazuma2": "イナズマイレブン2 脅威の侵略者 ファイア／ブリザード",
+  "game.inazuma3": "イナズマイレブン3 世界への挑戦!! スパーク／ボンバー／ジ・オーガ",
+  "game.strikers": "イナズマイレブン ストライカーズ 2012エクストリーム",
+  "game.go": "イナズマイレブンGO シャイン／ダーク",
+  "game.go2": "イナズマイレブンGO2 クロノ・ストーン ネップウ／ライメイ",
+  "game.gogalaxy": "イナズマイレブンGO ギャラクシー ビッグバン／スーパーノヴァ",
+  "game.gostrikers": "イナズマイレブンGO ストライカーズ 2013",
+  "game.re": "イナズマイレブン RE",
+  "game.victory-road": "イナズマイレブン 英雄たちのヴィクトリーロード",
+  "home.title": "イナズマイレブン：ゲームデータ",
+  "home.files": "{n} ファイル（VFS）", "notfound.title": "ページが見つかりません"
+}

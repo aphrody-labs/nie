@@ -1,0 +1,15 @@
+{
+  "source": "https://www.inazuma.jp/",
+  "games": [
+    { "slug": "inazuma", "official": "/inazuma/", "nie": false },
+    { "slug": "inazuma2", "official": "/inazuma2/", "nie": false },
+    { "slug": "inazuma3", "official": "/inazuma3/", "nie": false },
+    { "slug": "strikers", "official": "/strikers/", "nie": false },
+    { "slug": "go", "official": "/go/", "nie": false },
+    { "slug": "go2", "official": "/go2/", "nie": false },
+    { "slug": "gogalaxy", "official": "/gogalaxy/", "nie": false },
+    { "slug": "gostrikers", "official": "/gostrikers/", "nie": false },
+    { "slug": "re", "official": "/re/", "nie": false },
+    { "slug": "victory-road", "official": "/victory-road/", "nie": true }
+  ]
+}

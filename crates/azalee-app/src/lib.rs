@@ -4,5 +4,6 @@
 //! from the VFS through the CDN path `/cdn/static/<vfs path>` (textures are decoded to PNG).
 
 pub mod db;
+pub mod i18n;
 pub mod pages;
 pub mod server;

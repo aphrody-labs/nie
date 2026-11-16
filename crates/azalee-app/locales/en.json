@@ -1,0 +1,18 @@
+{
+  "nav.home": "Home", "nav.series": "Series", "nav.files": "Game data", "nav.sitemap": "Sitemap",
+  "series.title": "Inazuma Eleven series",
+  "series.lead": "Every game of the series. Data is read by nie from the player's own install.",
+  "series.official": "Official site", "series.nie.yes": "Supported by nie", "series.nie.no": "Not yet in nie",
+  "game.inazuma": "Inazuma Eleven",
+  "game.inazuma2": "Inazuma Eleven 2: Firestorm / Blizzard",
+  "game.inazuma3": "Inazuma Eleven 3: Bomb Blast / Lightning Bolt / Team Ogre Attacks!",
+  "game.strikers": "Inazuma Eleven Strikers 2012 Xtreme",
+  "game.go": "Inazuma Eleven GO: Light / Shadow",
+  "game.go2": "Inazuma Eleven GO Chrono Stones: Wildfire / Thunderflash",
+  "game.gogalaxy": "Inazuma Eleven GO Galaxy: Big Bang / Supernova",
+  "game.gostrikers": "Inazuma Eleven GO Strikers 2013",
+  "game.re": "Inazuma Eleven RE",
+  "game.victory-road": "Inazuma Eleven: Victory Road",
+  "home.title": "Inazuma Eleven game data",
+  "home.files": "{n} files in the VFS", "notfound.title": "Page not found"
+}

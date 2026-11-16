@@ -1,0 +1,18 @@
+{
+  "nav.home": "Accueil", "nav.series": "Série", "nav.files": "Données du jeu", "nav.sitemap": "Plan du site",
+  "series.title": "La série Inazuma Eleven",
+  "series.lead": "Tous les jeux de la série. nie lit les données depuis l'installation du joueur.",
+  "series.official": "Site officiel", "series.nie.yes": "Pris en charge par nie", "series.nie.no": "Pas encore dans nie",
+  "game.inazuma": "Inazuma Eleven",
+  "game.inazuma2": "Inazuma Eleven 2 : Tempête de feu / Blizzard éternel",
+  "game.inazuma3": "Inazuma Eleven 3 : Les Ogres attaquent ! / Feu explosif / Foudre céleste",
+  "game.strikers": "Inazuma Eleven Strikers 2012 Xtreme",
+  "game.go": "Inazuma Eleven GO : Lumière / Ombre",
+  "game.go2": "Inazuma Eleven GO Chrono Stones : Brasier / Tonnerre",
+  "game.gogalaxy": "Inazuma Eleven GO Galaxy : Big Bang / Supernova",
+  "game.gostrikers": "Inazuma Eleven GO Strikers 2013",
+  "game.re": "Inazuma Eleven RE",
+  "game.victory-road": "Inazuma Eleven : Victory Road",
+  "home.title": "Données de jeu Inazuma Eleven",
+  "home.files": "{n} fichiers dans le VFS", "notfound.title": "Page introuvable"
+}

@@ -152,3 +152,40 @@ pub fn file(v: &FileView<'_>, t: &Theme) -> UiNode {
     }
     page(t, kids)
 }
+
+/// Series navigation, localised.
+fn series_nav(t: &Theme, lang: &str) -> UiNode {
+    use crate::i18n::t as tr;
+    let q = format!("?lang={lang}");
+    UiNode::boxed(
+        UiStyle { axis: nie_ui_dioxus::Axis::Row, gap: 16.0, wrap: true, ..UiStyle::default() },
+        vec![
+            label(18.0, t.text, "Azalee"),
+            link(14.0, t.muted, format!("/{q}"), tr(lang, "nav.home")),
+            link(14.0, t.muted, format!("/series{q}"), tr(lang, "nav.series")),
+            link(14.0, t.muted, page_url("", true), tr(lang, "nav.files")),
+            link(14.0, t.muted, "/sitemap.xml", tr(lang, "nav.sitemap")),
+        ],
+    )
+}
+
+/// `/series`: every game of the series from `data/series.json`, titles from the locale files.
+#[must_use]
+pub fn series(t: &Theme, lang: &str) -> UiNode {
+    use crate::i18n::{self, t as tr};
+    let mut kids = vec![series_nav(t, lang), label(28.0, t.text, tr(lang, "series.title")), label(15.0, t.muted, tr(lang, "series.lead"))];
+    for g in i18n::series() {
+        let status = tr(lang, if g.nie { "series.nie.yes" } else { "series.nie.no" });
+        kids.push(UiNode::boxed(
+            UiStyle { axis: nie_ui_dioxus::Axis::Column, gap: 4.0, ..UiStyle::default() },
+            vec![
+                label(18.0, t.text, tr(lang, &format!("game.{}", g.slug))),
+                UiNode::boxed(
+                    UiStyle { axis: nie_ui_dioxus::Axis::Row, gap: 12.0, wrap: true, ..UiStyle::default() },
+                    vec![label(13.0, t.muted, status), link(13.0, t.muted, g.official, tr(lang, "series.official"))],
+                ),
+            ],
+        ));
+    }
+    page(t, kids)
+}
