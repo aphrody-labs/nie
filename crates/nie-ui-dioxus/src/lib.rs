@@ -138,6 +138,15 @@ pub enum UiNode {
         /// Content.
         text: String,
     },
+    /// A text hyperlink.
+    Link {
+        /// Style (font size, colour).
+        style: UiStyle,
+        /// Target URL.
+        href: String,
+        /// Visible text.
+        text: String,
+    },
     /// An image served by the CDN or embedded.
     Image {
         /// URL or data URI.
@@ -241,6 +250,40 @@ pub fn screen_from_dataset(data: &Dataset, title: &str, max_rows: usize, theme: 
     UiNode::boxed(UiStyle { gap: 12.0, padding: 24.0, background: Some(theme.page), ..UiStyle::default() }, sections)
 }
 
+/// Text node with a size and colour.
+#[must_use]
+pub fn label(size: f32, color: Rgba, text: impl Into<String>) -> UiNode {
+    UiNode::text(UiStyle { font_px: size, color: Some(color), ..UiStyle::default() }, text)
+}
+
+/// Hyperlink node.
+#[must_use]
+pub fn link(size: f32, color: Rgba, href: impl Into<String>, text: impl Into<String>) -> UiNode {
+    UiNode::Link {
+        style: UiStyle { font_px: size, color: Some(color), ..UiStyle::default() },
+        href: href.into(),
+        text: text.into(),
+    }
+}
+
+/// A header row plus striped data rows, every cell `col_w` px wide.
+#[must_use]
+pub fn simple_table(headers: &[String], rows: &[Vec<String>], col_w: f32, theme: &Theme) -> UiNode {
+    let row_style = |bg: Option<Rgba>| UiStyle { axis: Axis::Row, gap: 4.0, padding: 4.0, background: bg, ..UiStyle::default() };
+    let cell = |t: &str| UiNode::text(UiStyle { width: Some(col_w), font_px: 12.0, color: Some(theme.text), ..UiStyle::default() }, t);
+    let mut lines = vec![UiNode::boxed(row_style(Some(theme.header)), headers.iter().map(|h| cell(h)).collect())];
+    for (i, r) in rows.iter().enumerate() {
+        lines.push(UiNode::boxed(row_style((i % 2 == 1).then_some(theme.row_alt)), r.iter().map(|c| cell(c)).collect()));
+    }
+    UiNode::boxed(UiStyle { gap: 1.0, ..UiStyle::default() }, lines)
+}
+
+/// Page shell: padded column on the page background.
+#[must_use]
+pub fn page(theme: &Theme, children: Vec<UiNode>) -> UiNode {
+    UiNode::boxed(UiStyle { gap: 12.0, padding: 24.0, background: Some(theme.page), ..UiStyle::default() }, children)
+}
+
 /// Dioxus view of a node; the same component serves SSR, web and desktop.
 #[component]
 pub fn NodeView(node: UiNode) -> Element {
@@ -259,8 +302,13 @@ pub fn NodeView(node: UiNode) -> Element {
             let css = style.css();
             rsx! { span { style: "{css}", "{text}" } }
         }
+        UiNode::Link { style, href, text } => {
+            let css = style.css();
+            rsx! { a { style: "{css}", href: "{href}", "{text}" } }
+        }
         UiNode::Image { src, alt, width, height } => {
-            rsx! { img { src: "{src}", alt: "{alt}", width: "{width}", height: "{height}" } }
+            let _ = height; // height follows the image ratio in the browser; taffy uses the box height
+            rsx! { img { src: "{src}", alt: "{alt}", width: "{width}", style: "height:auto;image-rendering:pixelated" } }
         }
     }
 }
@@ -307,7 +355,7 @@ fn build(tree: &mut TaffyTree<()>, node: &UiNode) -> NodeId {
             let kids: Vec<NodeId> = children.iter().map(|c| build(tree, c)).collect();
             tree.new_with_children(style.to_taffy(), &kids).expect("taffy node")
         }
-        UiNode::Text { style, text } => {
+        UiNode::Text { style, text } | UiNode::Link { style, text, .. } => {
             let (w, h) = text_size(style, text);
             tree.new_leaf(Style { size: Size { width: length(w), height: length(h) }, flex_shrink: 0.0, ..Default::default() })
                 .expect("taffy leaf")
@@ -323,7 +371,7 @@ fn collect(tree: &TaffyTree<()>, node: &UiNode, id: NodeId, depth: usize, ox: f3
     let (x, y) = (ox + l.location.x, oy + l.location.y);
     let kind = match node {
         UiNode::Box { .. } => "box",
-        UiNode::Text { .. } => "text",
+        UiNode::Text { .. } | UiNode::Link { .. } => "text",
         UiNode::Image { .. } => "image",
     };
     out.push(Placed { depth, kind, x, y, width: l.size.width, height: l.size.height });

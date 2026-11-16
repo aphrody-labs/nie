@@ -117,3 +117,40 @@ One binary per product, run by systemd, Pingora edge with in-code ACME, no Docke
   from `chara_param_table_config_0.00.00.00.cfg.bin` read through the VFS. Not done in phase 3:
   the Bevy renderer of the same tree, and the interpretation of the game's compiled Lua menus
   (`nie-lua` menu runtime still marks the native structures as unresolved).
+
+## Status 2026-11-16 (phase 1 hardening and phase 4)
+
+Full VFS import, measured in a throwaway postgres:18 container on prd (script written by
+`nie-cfgsql --example import_vfs`, 139.5 s for the 71,103 `*.cfg.bin` plus the 255,628-entry listing,
+1.03 GB of SQL, loaded with `psql` in 97 s into a 2,545 MB database):
+
+| Table | Rows |
+| --- | --- |
+| `vfs_entry` (whole listing) | 255,628 |
+| `vfs_file` (provenance: path, pack, size, SHA-256, format, error) | 71,103 (302 RDBN, 70,763 T2B, 38 "not a cfg.bin") |
+| `vfs_table` | 142,460 |
+| `t2b_entry` / `t2b_var` | 3,733,978 / 23,495,179 |
+| RDBN tables in 302 schemas `rdbn_<id>` | 934 tables, 139,936 rows |
+
+Live `count(*)` equals `vfs_table.row_count` for all 934 RDBN tables and for both T2B tables.
+81 foreign keys: 4 fixed (T2B) and 77 inferred from the data (same column name, referenced column
+unique with at least 4 values, every referencing value present). Columns whose value kind changes
+between rows are stored as TEXT instead of failing the load.
+
+Phase 4: `crates/azalee-app` (axum + the shared Dioxus tree) serves `/`, `/wiki/files/...` (directory
+and file pages, T2B and RDBN previews, provenance), `/sitemap*.xml`, `/robots.txt` and the CDN path
+`/cdn/static/<vfs path>` (g4tx decoded to PNG; set `AZALEE_CDN_BASE` to the CDN origin in
+production). Screenshots taken by Chromium inside a prd container against the running server:
+`docs/proofs/azalee/{home,cfg,t2b,dir,texture}.png`.
+Not done: Dioxus fullstack hydration (server functions, WASM client); pages are server-rendered
+Dioxus. It needs the vendored Dioxus and a wasm build.
+
+## Merge with bun
+
+- `crates/nie-cli/src/serve_cmd.rs:15` includes `packages/rg-config/rg-m3.json`; on `bun` that package
+  is `packages/config`. The token JSON must come from the shared contract output (`rg-ffi`) instead of
+  a package path; until then resolve both names at merge time.
+- Cargo.lock for the new crates could not be regenerated against the full workspace: the vendored
+  `third_party/bevy/Cargo.toml` fails to parse (`duplicate key` for `[profile.wasm-release]`), so the
+  prd build used a reduced workspace (nie-formats, nie-lua, nie-cfgsql, nie-sitemap, nie-ui-dioxus,
+  azalee-app). Regenerate the lock once the fork parses.

@@ -87,6 +87,12 @@ pub fn encode_segment(segment: &str) -> String {
     out
 }
 
+/// Percent-encodes a whole `/`-separated path, segment by segment.
+#[must_use]
+pub fn encode_path(path: &str) -> String {
+    path.split('/').map(encode_segment).collect::<Vec<_>>().join("/")
+}
+
 /// Escapes text for XML element content.
 #[must_use]
 pub fn xml_escape(s: &str) -> String {
