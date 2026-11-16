@@ -155,6 +155,8 @@ RUN apk add --no-cache musl-dev=1.2.6-r3 pkgconf=2.5.1-r0 perl=5.42.3-r0 make=4.
 WORKDIR /src
 COPY rust-toolchain.toml Cargo.toml Cargo.lock ./
 COPY crates ./crates
+# Cargo workspace member outside crates/ (the workspace manifest must load in full).
+COPY tools/steam-index ./tools/steam-index
 
 # ---------------------------------------------------------------------------
 # model-serve: static musl binary on bare Alpine

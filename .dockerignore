@@ -13,7 +13,8 @@ deploy
 supabase
 docs
 templates
-tools
+tools/*
+!tools/steam-index
 apps/iecode-dotnet
 apps/cli
 
