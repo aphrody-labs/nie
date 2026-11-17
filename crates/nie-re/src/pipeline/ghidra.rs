@@ -524,9 +524,11 @@ mod tests {
     #[test]
     #[ignore = "requires GHIDRA_INSTALL_DIR and NIE_GHIDRA_TEST_INPUT"]
     fn real_headless_export() {
-        let input = PathBuf::from(std::env::var_os("NIE_GHIDRA_TEST_INPUT")
+        let input = PathBuf::from(
+            std::env::var_os("NIE_GHIDRA_TEST_INPUT")
                 .or_else(|| std::env::var_os("YOLO_GHIDRA_TEST_INPUT"))
-                .unwrap());
+                .unwrap(),
+        );
         let temp = tempfile::Builder::new()
             .prefix("yolo ghidra ")
             .tempdir()
