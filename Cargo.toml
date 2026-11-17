@@ -239,7 +239,10 @@ dioxus-stores-macro = { path = "vendor/dioxus/packages/stores-macro" }
 dioxus-desktop = { path = "vendor/dioxus/packages/desktop" }
 
 [profile.dev]
-debug = 1
+split-debuginfo = "unpacked"
+incremental = true
+codegen-units = 16
+debug = "limited"
 opt-level = 0
 
 [profile.test]
@@ -271,3 +274,8 @@ panic = "abort"
 debug = false
 strip = true
 incremental = false
+
+[profile.dev.build-override]
+codegen-units = 16
+split-debuginfo = "unpacked"
+debug = "limited"
