@@ -3,33 +3,33 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use crate::cache::DiskCache;
+use crate::files::GameFiles;
 use bevy_app::App;
 use bevy_asset::io::{
     AssetReader, AssetReaderError, AssetSourceBuilder, AssetSourceId, PathStream, Reader, VecReader,
 };
 use bevy_asset::{AssetApp, CowArc};
-use nie_formats::vfs::Vfs;
-
-use crate::cache::DiskCache;
 
 /// The asset source name: `game://data/common/...`.
 pub const GAME_SOURCE: &str = "game";
 
-/// Reads assets from a VFS (local install, SSH, rclone, HTTP) through the CPK index.
+/// Reads assets from game files: a VFS (local install, SSH, rclone, HTTP) through the CPK index,
+/// or a preloaded bundle.
 ///
-/// The VFS is shared by `Arc`: Bevy may build the reader several times and the CPK table cache must
+/// The files are shared by `Arc`: Bevy may build the reader several times and the CPK table cache must
 /// stay unique. With a [`DiskCache`], a file is fetched once and then served from disk.
 #[derive(Clone)]
 pub struct VfsAssetReader {
-    vfs: Arc<Vfs>,
+    files: Arc<dyn GameFiles>,
     cache: Option<Arc<DiskCache>>,
 }
 
 impl VfsAssetReader {
-    /// A reader over an already mounted VFS.
+    /// A reader over mounted game files (a VFS, or a preloaded bundle on the web).
     #[must_use]
-    pub fn new(vfs: Arc<Vfs>) -> Self {
-        Self { vfs, cache: None }
+    pub fn new<F: GameFiles>(files: Arc<F>) -> Self {
+        Self { files, cache: None }
     }
 
     /// Adds a read-through disk cache.
@@ -57,7 +57,7 @@ impl VfsAssetReader {
         if let Some(bytes) = self.cache.as_ref().and_then(|cache| cache.get(logical)) {
             return Some(bytes);
         }
-        let bytes = self.vfs.read(logical).ok()?;
+        let bytes = self.files.read(logical)?;
         if let Some(cache) = &self.cache
             && let Err(error) = cache.put(logical, &bytes)
         {
@@ -97,9 +97,9 @@ impl AssetReader for VfsAssetReader {
         }
         // Direct children only, deduplicated: `ls` semantics, not `find`.
         let mut children: Vec<PathBuf> = self
-            .vfs
-            .iter()
-            .filter_map(|(entry, _)| entry.strip_prefix(prefix.as_str()))
+            .files
+            .paths()
+            .filter_map(|entry| entry.strip_prefix(prefix.as_str()))
             .map(|rest| rest.split('/').next().unwrap_or(rest))
             .map(|child| path.join(child))
             .collect();
@@ -115,9 +115,9 @@ impl AssetReader for VfsAssetReader {
         let mut prefix = Self::logical(path);
         prefix.push('/');
         Ok(self
-            .vfs
-            .iter()
-            .any(|(entry, _)| entry.starts_with(prefix.as_str())))
+            .files
+            .paths()
+            .any(|entry| entry.starts_with(prefix.as_str())))
     }
 }
 

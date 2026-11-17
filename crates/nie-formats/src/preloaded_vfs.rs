@@ -153,6 +153,11 @@ impl PreloadedVfsBundle {
         self.bytes.get(start..end)
     }
 
+    /// Every indexed path, in byte order.
+    pub fn paths(&self) -> impl Iterator<Item = &str> {
+        self.by_path.keys().map(String::as_str)
+    }
+
     /// Serialize the validated index without copying any resource body into JSON.
     pub fn index_json(&self) -> Result<String, String> {
         serde_json::to_string(&self.manifest).map_err(|error| error.to_string())

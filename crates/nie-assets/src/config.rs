@@ -14,8 +14,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use nie_formats::FormatError;
-use nie_formats::vfs::Vfs;
 use serde::{Deserialize, Serialize};
 
 use crate::cache::DiskCache;
@@ -140,10 +138,10 @@ impl AssetsConfig {
     ///
     /// # Errors
     /// Fails when the source cannot be found or mounted.
-    pub fn open_vfs(&self) -> Result<Vfs, ConfigError> {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn open_vfs(&self) -> Result<nie_formats::vfs::Vfs, ConfigError> {
         let hint = (!self.source.is_empty()).then_some(self.source.as_str());
-        nie_formats::vfs::open_source(hint)
-            .map_err(|e: FormatError| ConfigError::Mount(e.to_string()))
+        nie_formats::vfs::open_source(hint).map_err(|e| ConfigError::Mount(e.to_string()))
     }
 
     /// Opens the read-through cache when one is configured.

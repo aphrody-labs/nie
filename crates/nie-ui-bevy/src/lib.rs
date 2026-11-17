@@ -112,7 +112,7 @@ mod tests {
         assert_eq!(root_node.padding, UiRect::all(Val::Px(24.0)));
         assert_eq!(
             world.entity(root).get::<BackgroundColor>().unwrap().0,
-            Color::srgba_u8(18, 20, 28, 255)
+            color(theme.page)
         );
         let texts: Vec<String> = world
             .query::<&Text>()

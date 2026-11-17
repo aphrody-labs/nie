@@ -17,11 +17,13 @@
 mod bytes;
 mod cache;
 mod config;
+mod files;
 mod plugin;
 mod reader;
 
 pub use bytes::{GameBytes, GameBytesLoader};
 pub use cache::DiskCache;
 pub use config::{AssetsConfig, ConfigError};
+pub use files::GameFiles;
 pub use plugin::GameAssetsPlugin;
 pub use reader::{GAME_SOURCE, VfsAssetReader, register_game_source};

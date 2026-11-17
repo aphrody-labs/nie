@@ -22,14 +22,33 @@ fn repo_root() -> PathBuf {
         .expect("racine du dépôt")
 }
 
-/// The decoded game-data root.
-fn dump_root() -> PathBuf {
-    repo_root().join("data")
+/// The decoded game-data root, when a dump exists (`NIE_DUMP_DIR`, or `data/` at the checkout
+/// root). No game file is part of the repository, so the tests that read one skip without it.
+fn dump_root() -> Option<PathBuf> {
+    std::env::var_os("NIE_DUMP_DIR")
+        .map(PathBuf::from)
+        .into_iter()
+        .chain([repo_root().join("data")])
+        .find(|root| root.join("common/gamedata/character").is_dir())
+}
+
+/// The dump root, or skip the test loudly.
+macro_rules! dump_or_skip {
+    () => {
+        match dump_root() {
+            Some(root) => root,
+            None => {
+                eprintln!("SKIP: no game dump (set NIE_DUMP_DIR)");
+                return;
+            }
+        }
+    };
 }
 
 #[test]
 fn le_catalogue_de_morphologies_couvre_les_seize_documents() {
-    let sources = EditorSources::load(&dump_root()).expect("chargement des tables de l'éditeur");
+    let sources =
+        EditorSources::load(&dump_or_skip!()).expect("chargement des tables de l'éditeur");
     assert_eq!(
         sources.morphologies.entries.len(),
         16,
@@ -59,7 +78,7 @@ fn le_catalogue_de_morphologies_couvre_les_seize_documents() {
 
 #[test]
 fn la_selection_par_traits_est_deterministe() {
-    let sources = EditorSources::load(&dump_root()).expect("chargement");
+    let sources = EditorSources::load(&dump_or_skip!()).expect("chargement");
     let query = MorphologyQuery {
         gender: Gender::Male,
         stature: Stature::Tall,
@@ -84,7 +103,7 @@ fn la_selection_par_traits_est_deterministe() {
 
 #[test]
 fn le_releve_des_slots_de_couleur_retrouve_les_trois_slots_mesures() {
-    let sources = EditorSources::load(&dump_root()).expect("chargement");
+    let sources = EditorSources::load(&dump_or_skip!()).expect("chargement");
     let survey = survey_slots(&sources);
     assert_eq!(survey.documents, 17, "16 morphologies plus le gabarit");
     assert_eq!(
@@ -156,10 +175,10 @@ fn parse_hex(hex: &str) -> [u8; 3] {
 }
 
 /// Every recipe Astro Lor carries, one per internal code.
-fn recettes_astro_lor() -> Vec<(String, Recipe)> {
+fn recettes_astro_lor() -> Option<Vec<(String, Recipe)>> {
     let dir = repo_root().join("data/oc/astro-lor/game");
     let mut paths: Vec<PathBuf> = std::fs::read_dir(&dir)
-        .expect("lecture du dossier game")
+        .ok()?
         .filter_map(Result::ok)
         .map(|entry| entry.path())
         .filter(|path| {
@@ -169,26 +188,31 @@ fn recettes_astro_lor() -> Vec<(String, Recipe)> {
         })
         .collect();
     paths.sort();
-    paths
-        .into_iter()
-        .map(|path| {
-            let name = path
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .to_string();
-            let bytes = std::fs::read(&path).expect("lecture de la recette");
-            let recipe = serde_json::from_slice(&bytes).expect("décodage de la recette");
-            (name, recipe)
-        })
-        .collect()
+    Some(
+        paths
+            .into_iter()
+            .map(|path| {
+                let name = path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
+                let bytes = std::fs::read(&path).expect("lecture de la recette");
+                let recipe = serde_json::from_slice(&bytes).expect("décodage de la recette");
+                (name, recipe)
+            })
+            .collect(),
+    )
 }
 
 #[test]
 fn les_deux_variantes_dastro_lor_ont_chacune_leur_recette() {
     // Le personnage existe à deux époques, dessinées dix ans d'écart avec des kits différents :
     // une seule recette produirait la moitié d'Astro Lor sans que rien ne le signale.
-    let recettes = recettes_astro_lor();
+    let Some(recettes) = recettes_astro_lor() else {
+        eprintln!("SKIP: data/oc/astro-lor/game absent");
+        return;
+    };
     assert_eq!(recettes.len(), 2, "une recette par code interne");
 
     let mut codes: Vec<&str> = recettes
@@ -389,7 +413,7 @@ fn le_document_genere_devient_un_cfgbin_que_le_depot_relit() {
     // La moitié du verrou V1 qui ne demande pas le jeu : le dépôt écrit un T2B qu'il relit à
     // l'identique. Ce que ce test n'établit pas, et qu'aucun test d'ici ne peut établir : que le
     // jeu accepte le fichier — son parseur est plus strict que celui du dépôt.
-    let sources = EditorSources::load(&dump_root()).expect("chargement");
+    let sources = EditorSources::load(&dump_or_skip!()).expect("chargement");
     let morphologie = sources
         .morphologies
         .by_stem("mdl_editpreview_avatar_tall01")
@@ -419,7 +443,7 @@ fn la_chaine_complete_tourne_quand_les_originaux_sont_la() {
     .expect("décodage de la recette");
 
     let (report, generated) =
-        nie_ocgen::run(&dump_root(), &oc_root, &recipe).expect("exécution de la chaîne");
+        nie_ocgen::run(&dump_or_skip!(), &oc_root, &recipe).expect("exécution de la chaîne");
 
     assert_eq!(report.slug, "astro-lor");
     assert_eq!(report.swatches.len(), recipe.probes.len());
@@ -436,7 +460,7 @@ fn la_chaine_complete_tourne_quand_les_originaux_sont_la() {
     assert_eq!(reparsed, generated.document);
 
     // And it must differ from its starting point exactly where a measurement said so.
-    let sources = EditorSources::load(&dump_root()).expect("chargement");
+    let sources = EditorSources::load(&dump_or_skip!()).expect("chargement");
     let start = &sources
         .morphologies
         .by_stem(&report.morphology_stem)

@@ -18,7 +18,7 @@ default = ["host"]
 host = ["nie-formats/remote-vfs"]
 
 [dependencies]
-nie-formats = { workspace = true, default-features = false, features = ["std"] }
+nie-formats = { workspace = true, default-features = false, features = ["std", "serde"] }
 bevy_app = { workspace = true }
 bevy_asset = { workspace = true }
 bevy_reflect = { workspace = true }

@@ -11,17 +11,36 @@ use std::path::{Path, PathBuf};
 use nie_ocgen::param::CharaEditParam;
 use serde_json::Value;
 
-/// Directory holding the editor's shipped `CHARA_EDIT_PARAM` documents.
-fn documents_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../data/common/chr/_test/default")
-        .canonicalize()
-        .expect("le dump data/common/chr/_test/default doit être présent")
+/// Directory holding the editor's shipped `CHARA_EDIT_PARAM` documents, when a game dump sits
+/// next to the checkout (`NIE_DUMP_DIR`, or `data/` three levels above this crate). No game file
+/// is part of the repository, so the tests skip, loudly, without one.
+fn documents_dir() -> Option<PathBuf> {
+    let relative = "common/chr/_test/default";
+    let from_env = std::env::var_os("NIE_DUMP_DIR").map(|dump| Path::new(&dump).join(relative));
+    let sibling = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../data")
+        .join(relative);
+    from_env
+        .into_iter()
+        .chain([sibling])
+        .find_map(|dir| dir.canonicalize().ok())
+}
+
+macro_rules! dump_or_skip {
+    () => {
+        match documents_dir() {
+            Some(dir) => dir,
+            None => {
+                eprintln!("SKIP: no game dump with common/chr/_test/default (set NIE_DUMP_DIR)");
+                return;
+            }
+        }
+    };
 }
 
 /// Every `*.cfg.bin.json` of that directory, sorted.
-fn documents() -> Vec<PathBuf> {
-    let mut out: Vec<PathBuf> = std::fs::read_dir(documents_dir())
+fn documents(dir: &Path) -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = std::fs::read_dir(dir)
         .expect("lecture du répertoire des documents")
         .filter_map(Result::ok)
         .map(|entry| entry.path())
@@ -37,7 +56,8 @@ fn documents() -> Vec<PathBuf> {
 
 #[test]
 fn tout_document_edit_param_fait_un_aller_retour_identique() {
-    let paths = documents();
+    let dir = dump_or_skip!();
+    let paths = documents(&dir);
     // 16 presets `mdl_edit_avatar*`, 16 morphologies `mdl_editpreview_avatar*`, 1 gabarit.
     assert_eq!(paths.len(), 33, "33 documents attendus");
     let mut with_settings = 0;
@@ -63,7 +83,7 @@ fn tout_document_edit_param_fait_un_aller_retour_identique() {
 
 #[test]
 fn le_gabarit_de_sauvegarde_porte_ce_que_la_mesure_annonce() {
-    let path = documents_dir().join("edit_parameter.cfg.bin.json");
+    let path = dump_or_skip!().join("edit_parameter.cfg.bin.json");
     let value: Value =
         serde_json::from_slice(&std::fs::read(path).expect("lecture")).expect("JSON");
     let document = CharaEditParam::parse(&value).expect("décodage");
@@ -96,7 +116,7 @@ fn le_gabarit_de_sauvegarde_porte_ce_que_la_mesure_annonce() {
 
 #[test]
 fn une_morphologie_porte_une_liste_setting_et_le_gabarit_non() {
-    let path = documents_dir().join("mdl_editpreview_avatar_tall01.cfg.bin.json");
+    let path = dump_or_skip!().join("mdl_editpreview_avatar_tall01.cfg.bin.json");
     let value: Value =
         serde_json::from_slice(&std::fs::read(path).expect("lecture")).expect("JSON");
     let document = CharaEditParam::parse(&value).expect("décodage");
