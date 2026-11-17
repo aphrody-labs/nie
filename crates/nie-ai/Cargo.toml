@@ -14,5 +14,11 @@ nie-input.workspace = true
 nie-model.workspace = true
 nie-physics.workspace = true
 
-[lints]
-workspace = true
+[lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[lints.clippy]
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"

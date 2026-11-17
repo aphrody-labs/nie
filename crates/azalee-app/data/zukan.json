@@ -1,0 +1,8 @@
+{
+  "text_dir": "data/common/text/{lang}",
+  "chara_names": "chara_text.cfg.bin",
+  "chara_descriptions": "chara_description_text.cfg.bin",
+  "noun_entry": "NOUN_INFO",
+  "full_name_kind": 0,
+  "page_size": 120
+}

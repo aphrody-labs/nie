@@ -18,8 +18,14 @@ nie-model.workspace = true
 nie-physics.workspace = true
 serde.workspace = true
 
-[lints]
-workspace = true
+[lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[lints.clippy]
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
 
 [dev-dependencies]
-nie-net.workspace = true
+nie-lockstep.workspace = true

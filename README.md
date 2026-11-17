@@ -1,31 +1,77 @@
 # nie
 
-An ecosystem of football (soccer) video games built with Rust, Bevy, a native GUI and Dioxus.
+A self-hosted Inazuma Eleven engine and studio, plus the football craft layer, in Rust on the Bevy
+ecosystem. All the Rust of the Rose Griffon ecosystem lives here.
 
-Games are not one-off projects. Each one is a job in the Craft Anything sense: a typed manifest
-that selects reusable engine crates, rules, art and a frontend, and tooling that turns the
-manifest into a playable target. The engine is shared; a new game is a new `games/*.toml`.
-
-All content is original. Teams, players, names, colors and art are generated or authored in this
-repository. No existing commercial game, character, music or level is reproduced.
+nie loads game data directly from the installation the player owns (VFS layers, CRI CPK archives
+and the other containers of the game) and never ships, copies or commits a game asset. The
+football layer is separate: original games built as Craft Anything jobs, one TOML manifest in
+`games/` selecting shared engine crates and a frontend, with all content authored or generated
+in this repository.
 
 ## Layout
 
 ```
 crates/
-  nie-model     data model: teams, players, formations, rules, deterministic generator
-  nie-physics   fixed-step ball and player physics (IEEE-exact operations only)
-  nie-input     device-independent input command, 5 bytes per player and tick
-  nie-ai        role-based AI that emits the same commands as a human
-  nie-net       lockstep netcode: packets, input delay buffer, desync detection
-  nie-sim       match simulation as a Bevy ECS plugin, runnable headless
-  nie-render    Bevy 3D rendering: pitch, goals, players, ball, camera, scoreboard
-  nie-craft     manifest, validation, plan, and the `craft` command line tool
-  nie-game      frontend: native 3D game (Bevy)
-  nie-studio    frontend: native GUI manager and editor (egui)
-  nie-web       frontend: Dioxus app, web (WebAssembly) or desktop
-games/          craft manifests, one TOML file per game
+  nie-formats nie-data nie-core nie-index nie-lua ...   game formats, data, VFS and CPK readers
+  nie-assets    Bevy asset source `game://` over the VFS: local path, SSH, rclone (R2, Google Drive)
+  nie-bevy      G4TX and G4MD/G4MG as Bevy assets
+  nie-render3d nie-gpu nie-runtime nie-game nie-ui*   renderers and the wgpu host
+  nie-cli nie-model-serve nie-explore nie-launcher    command line, services and mod tooling
+  nie-shell     app and launcher contract for the aphrody native GPUI shell
+  rg-re rg-steam yolo-re-core   reverse engineering and Steam libraries (from rosegriffon)
+  achillea-* azalee-app rg-ffi*   site, bot and FFI crates of the ecosystem
+  nie-model nie-physics nie-input nie-ai nie-lockstep nie-sim   football simulation
+  nie-render nie-football nie-studio nie-web nie-craft          football frontends and craft tool
+tools/steam-index
+games/          craft manifests, one TOML file per football game
+contract/       nie-app.json and aphrody-store.toml (generated), openapi.json
+design/         design tokens
+docs/           bevy-ecosystem.toml: Bevy crates and their use in nie
+vendor/         git submodules: aphrody-labs/bevy and aphrody-labs/dioxus forks
 ```
+
+## Bevy base
+
+`vendor/bevy` and `vendor/dioxus` are submodules of the aphrody-labs forks (relative URLs),
+wired through `[patch.crates-io]` in the root `Cargo.toml`. Bevy is pinned `=0.20.0-dev`, the
+fork's version; the crates.io 0.20.1 release is not used. `.github/workflows/vendor-sync.yml`
+runs each fork's `rg-sync`, bumps the submodule pointers and pushes them to `main` only when the
+workspace check and the headless asset test pass. `docs/bevy-ecosystem.toml` maps every Bevy
+crate to its use in nie, with versions read from crates.io. After cloning:
+
+```
+git submodule update --init --depth 1
+```
+
+## Game assets
+
+`nie-assets` registers the asset source `game://`. Point it at the installation with
+`NIE_GAME_SOURCE` (or a TOML file named by `NIE_ASSETS_CONFIG`):
+
+| source                          | transport                                             |
+|---------------------------------|-------------------------------------------------------|
+| `D:\Games\ievr`, `/srv/game`    | local files, CPK ranges read in place                 |
+| `ssh://host/path`, `sftp://...` | `ssh` with your SSH config, range reads with `dd`     |
+| `r2://remote/bucket/path`       | rclone remote, `rclone cat --offset --count`          |
+| `gdrive://remote/path`, `rclone://remote/path` | rclone remote (Google Drive and others)   |
+| `https://host/path`             | HTTP range requests                                   |
+
+Only the CPK tables and the requested ranges are transferred. `NIE_ASSETS_CACHE_DIR` adds a
+size-bounded read-through cache outside the repository. Credentials stay in `~/.ssh` and
+`rclone.conf`, never in a URI. The synthetic-CPK test (`cargo test -p nie-assets`) builds its own
+archive in a temp directory; `NIE_ASSETS_PRD_SOURCE=ssh://prd/srv/rosegriffon/game/ievr cargo test -p nie-assets --test prd_stream`
+lists and reads a CPK of the real installation over SSH.
+
+## Targets
+
+- Native: Windows, Linux and macOS (CI matrix).
+- Web: `wasm32-unknown-unknown` with WebGPU (`bevy/webgpu`).
+- aphrody shell: `cargo run -p nie-shell -- contract` prints `contract/nie-app.json` (commands,
+  game source settings, Bevy Remote port); `-- store` prints the catalog entry the shell merges
+  from `$XDG_CONFIG_HOME/aphrody/awesome_gpui_store.toml`.
+
+## Football layer
 
 The simulation (`nie-sim`) depends only on `bevy_app`, `bevy_ecs` and `bevy_math`. It has no
 window, no renderer and no wall-clock dependency: one run of the `SimTick` schedule is one
@@ -77,7 +123,7 @@ The `frontend` field resolves to a cargo target:
 
 | frontend         | package      | how it starts                         |
 |------------------|--------------|---------------------------------------|
-| `bevy3d`         | `nie-game`   | `cargo run -p nie-game -- --manifest` |
+| `bevy3d`         | `nie-football` | `cargo run -p nie-football -- --manifest` |
 | `studio`         | `nie-studio` | `cargo run -p nie-studio -- --manifest` |
 | `dioxus_desktop` | `nie-web`    | `cargo run -p nie-web --no-default-features --features desktop` |
 | `dioxus_web`     | `nie-web`    | `dx serve --package nie-web --platform web` |
@@ -111,8 +157,8 @@ beyond primitive meshes.
 
 ## Versions
 
-Dependencies come from crates.io at the versions checked on 2026-11-16: Bevy 0.20.1, Dioxus
-0.7.10 (0.8 is alpha), eframe/egui 0.37.0. Rust 1.100.0 (`rust-toolchain.toml`).
+Bevy `=0.20.0-dev` and Dioxus 0.8.0-alpha.3 come from the vendored forks, everything else from
+crates.io. Rust 1.100.0 (`rust-toolchain.toml`).
 
 ## Build
 
@@ -120,8 +166,8 @@ Linux needs the usual Bevy and winit libraries (ALSA, udev, Wayland, xkbcommon, 
 engine crates and `craft` build with nothing but a Rust toolchain.
 
 ```
-cargo test -p nie-model -p nie-physics -p nie-input -p nie-ai -p nie-net -p nie-sim -p nie-craft
-cargo run -p nie-game -- --manifest games/pocket-derby.toml
+cargo test -p nie-model -p nie-physics -p nie-input -p nie-ai -p nie-lockstep -p nie-sim -p nie-craft
+cargo run -p nie-football -- --manifest games/pocket-derby.toml
 ```
 
 Heavy builds belong on a build host or in CI, not on a workstation.

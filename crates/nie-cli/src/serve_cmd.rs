@@ -1,0 +1,1069 @@
+//! Self-hosted cloud-first HTTP server for `nie` (`GET /health`, `/ready`, `/v1/vfs/*`, `/v1/formats/*`, `/v1/game/query`).
+
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use anyhow::Context;
+use clap::Args;
+use serde_json::{Value, json};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpListener, TcpStream};
+
+const MAX_HEADER_BYTES: usize = 16 * 1024;
+const MAX_BODY_BYTES: usize = 32 * 1024 * 1024;
+const MAX_FIND_LIMIT: usize = 500;
+const RG_M3_TOKENS_JSON: &str = include_str!("../../../design/rg-m3.json");
+
+#[derive(Debug, Args)]
+pub struct ServeArgs {
+    /// Address to bind (`127.0.0.1` by default; `0.0.0.0` inside Docker/Kubernetes).
+    #[arg(long, env = "NIE_HOST", default_value = "127.0.0.1")]
+    pub host: String,
+    /// TCP port to listen on.
+    #[arg(long, env = "NIE_PORT", default_value_t = 8790)]
+    pub port: u16,
+    /// Optional local directory or remote URI (`r2://...`, `ievr-vfs:`, `s3://...`, `https://...`).
+    #[arg(long, env = "NIE_GAME_SOURCE")]
+    pub source: Option<String>,
+    /// Fail startup immediately if the VFS source cannot be mounted.
+    #[arg(long)]
+    pub strict: bool,
+    /// Mark `/ready` healthy even without a mounted CPK VFS (stateless format/remote worker mode).
+    #[arg(long)]
+    pub stateless: bool,
+}
+
+#[derive(Clone)]
+struct ServerState {
+    vfs: Option<Arc<nie_formats::vfs::Vfs>>,
+    source_label: Option<String>,
+    vfs_error: Option<String>,
+    stateless: bool,
+    raw_token: Option<String>,
+}
+
+impl ServerState {
+    fn is_ready(&self) -> bool {
+        self.vfs.is_some() || self.stateless
+    }
+}
+
+pub fn run(args: ServeArgs) -> anyhow::Result<()> {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .context("build tokio runtime for `nie serve`")?;
+    runtime.block_on(serve(args))
+}
+
+async fn serve(args: ServeArgs) -> anyhow::Result<()> {
+    let source_arg = args
+        .source
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_owned);
+
+    let (vfs, source_label, vfs_error) = match nie_formats::vfs::open_source(source_arg.as_deref())
+    {
+        Ok(mounted) => {
+            let resolved = nie_formats::game_source::resolve(source_arg.as_deref())
+                .or_else(|_| {
+                    Ok::<String, nie_formats::FormatError>(
+                        source_arg.clone().unwrap_or_else(|| "auto".to_owned()),
+                    )
+                })
+                .ok();
+            tracing::info!(
+                entries = mounted.asset_count(),
+                cpks = mounted.cpk_count(),
+                source = ?resolved,
+                "nie serve: VFS mounted"
+            );
+            (Some(Arc::new(mounted)), resolved, None)
+        }
+        Err(err) => {
+            if args.strict {
+                return Err(anyhow::anyhow!("--strict VFS mount failed: {err}"));
+            }
+            tracing::warn!("nie serve: starting without VFS ({err})");
+            (None, source_arg, Some(err.to_string()))
+        }
+    };
+
+    let raw_token = std::env::var("NIE_RAW_VFS_TOKEN")
+        .ok()
+        .map(|s| s.trim().to_owned())
+        .filter(|s| !s.is_empty());
+
+    let state = Arc::new(ServerState {
+        vfs,
+        source_label,
+        vfs_error,
+        stateless: args.stateless,
+        raw_token,
+    });
+
+    let bind_addr = format!("{}:{}", args.host, args.port);
+    let listener = TcpListener::bind(&bind_addr)
+        .await
+        .with_context(|| format!("bind {bind_addr}"))?;
+    eprintln!(
+        "nie serve listening on http://{bind_addr} (vfs_ready={}, stateless={})",
+        state.vfs.is_some(),
+        state.stateless
+    );
+
+    loop {
+        let (stream, _) = listener.accept().await?;
+        let state = state.clone();
+        tokio::spawn(async move {
+            if let Err(err) = handle_connection(stream, state).await {
+                tracing::debug!("http connection error: {err:#}");
+            }
+        });
+    }
+}
+
+struct HttpResponse {
+    status: u16,
+    reason: &'static str,
+    content_type: &'static str,
+    cache_control: &'static str,
+    body: Vec<u8>,
+}
+
+impl HttpResponse {
+    fn json(status: u16, reason: &'static str, value: &Value) -> Self {
+        Self {
+            status,
+            reason,
+            content_type: "application/json; charset=utf-8",
+            cache_control: "no-store",
+            body: serde_json::to_vec(value).unwrap_or_else(|_| b"{}".to_vec()),
+        }
+    }
+
+    fn bytes(
+        status: u16,
+        reason: &'static str,
+        content_type: &'static str,
+        cache_control: &'static str,
+        body: Vec<u8>,
+    ) -> Self {
+        Self {
+            status,
+            reason,
+            content_type,
+            cache_control,
+            body,
+        }
+    }
+
+    fn into_wire(self, head_only: bool) -> Vec<u8> {
+        let header = format!(
+            "HTTP/1.1 {} {}\r\nContent-Type: {}\r\nContent-Length: {}\r\nCache-Control: {}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: Authorization, Content-Type\r\nAccess-Control-Allow-Methods: GET, HEAD, POST, OPTIONS\r\nX-Content-Type-Options: nosniff\r\nConnection: close\r\n\r\n",
+            self.status,
+            self.reason,
+            self.content_type,
+            self.body.len(),
+            self.cache_control
+        );
+        let mut out =
+            Vec::with_capacity(header.len() + if head_only { 0 } else { self.body.len() });
+        out.extend_from_slice(header.as_bytes());
+        if !head_only {
+            out.extend_from_slice(&self.body);
+        }
+        out
+    }
+}
+
+async fn handle_connection(mut stream: TcpStream, state: Arc<ServerState>) -> anyhow::Result<()> {
+    let mut buf = Vec::with_capacity(4096);
+    let mut chunk = [0_u8; 4096];
+
+    let header_end = loop {
+        if let Some(pos) = find_subslice(&buf, b"\r\n\r\n") {
+            break pos;
+        }
+        if buf.len() >= MAX_HEADER_BYTES {
+            let resp = HttpResponse::json(
+                431,
+                "Request Header Fields Too Large",
+                &json!({ "error": "request headers exceed 16 KiB" }),
+            );
+            stream.write_all(&resp.into_wire(false)).await?;
+            return Ok(());
+        }
+        let n = stream.read(&mut chunk).await?;
+        if n == 0 {
+            return Ok(());
+        }
+        buf.extend_from_slice(&chunk[..n]);
+    };
+
+    let head_bytes = &buf[..header_end];
+    let head_str = String::from_utf8_lossy(head_bytes);
+    let mut lines = head_str.split("\r\n");
+    let request_line = lines.next().unwrap_or("");
+    let mut parts = request_line.split_whitespace();
+    let method = parts.next().unwrap_or("");
+    let target = parts.next().unwrap_or("/");
+
+    let mut headers = HashMap::new();
+    for line in lines {
+        if let Some((name, val)) = line.split_once(':') {
+            headers.insert(name.trim().to_ascii_lowercase(), val.trim().to_owned());
+        }
+    }
+
+    let content_length: usize = headers
+        .get("content-length")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+    if content_length > MAX_BODY_BYTES {
+        let resp = HttpResponse::json(
+            413,
+            "Payload Too Large",
+            &json!({ "error": "request body exceeds 32 MiB" }),
+        );
+        stream.write_all(&resp.into_wire(false)).await?;
+        return Ok(());
+    }
+
+    let body_start = header_end + 4;
+    let mut body = buf[body_start..].to_vec();
+    while body.len() < content_length {
+        let n = stream.read(&mut chunk).await?;
+        if n == 0 {
+            break;
+        }
+        let need = (content_length - body.len()).min(n);
+        body.extend_from_slice(&chunk[..need]);
+    }
+    if body.len() > content_length {
+        body.truncate(content_length);
+    }
+
+    let head_only = method.eq_ignore_ascii_case("HEAD");
+    let response = if method.eq_ignore_ascii_case("OPTIONS") {
+        HttpResponse::bytes(
+            204,
+            "No Content",
+            "text/plain; charset=utf-8",
+            "no-store",
+            Vec::new(),
+        )
+    } else {
+        route_request(method, target, &headers, body, state).await
+    };
+
+    stream.write_all(&response.into_wire(head_only)).await?;
+    Ok(())
+}
+
+async fn route_request(
+    method: &str,
+    target: &str,
+    headers: &HashMap<String, String>,
+    body: Vec<u8>,
+    state: Arc<ServerState>,
+) -> HttpResponse {
+    let (raw_path, raw_query) = target.split_once('?').unwrap_or((target, ""));
+    let query = parse_query(raw_query);
+
+    if (method == "GET" || method == "HEAD") && (raw_path == "/health" || raw_path == "/") {
+        let profile = if cfg!(feature = "host") {
+            "host"
+        } else {
+            "cloud"
+        };
+        let (entries, cpks) = state
+            .vfs
+            .as_ref()
+            .map(|v| (v.asset_count(), v.cpk_count()))
+            .unwrap_or((0, 0));
+        return HttpResponse::json(
+            200,
+            "OK",
+            &json!({
+                "ok": true,
+                "service": "nie",
+                "profile": profile,
+                "vfsReady": state.vfs.is_some(),
+                "stateless": state.stateless,
+                "source": state.source_label,
+                "vfsError": state.vfs_error,
+                "entries": entries,
+                "cpks": cpks,
+            }),
+        );
+    }
+
+    if (method == "GET" || method == "HEAD") && raw_path == "/ready" {
+        if state.is_ready() {
+            return HttpResponse::json(
+                200,
+                "OK",
+                &json!({
+                    "ready": true,
+                    "vfsReady": state.vfs.is_some(),
+                    "stateless": state.stateless,
+                }),
+            );
+        }
+        return HttpResponse::json(
+            503,
+            "Service Unavailable",
+            &json!({
+                "ready": false,
+                "vfsReady": false,
+                "reason": state.vfs_error.as_deref().unwrap_or("VFS not mounted"),
+            }),
+        );
+    }
+
+    if method == "GET" && raw_path == "/v1/vfs/remotes" {
+        return tokio::task::spawn_blocking(
+            || match nie_formats::vfs_remote::rclone_list_remotes() {
+                Ok(raw) => {
+                    let parsed: Value =
+                        serde_json::from_str(&raw).unwrap_or_else(|_| Value::String(raw));
+                    HttpResponse::json(200, "OK", &json!({ "remotes": parsed }))
+                }
+                Err(err) => HttpResponse::json(
+                    503,
+                    "Service Unavailable",
+                    &json!({ "error": err.to_string() }),
+                ),
+            },
+        )
+        .await
+        .unwrap_or_else(|_| {
+            HttpResponse::json(
+                500,
+                "Internal Server Error",
+                &json!({ "error": "task failed" }),
+            )
+        });
+    }
+
+    if method == "POST" && raw_path == "/v1/formats/detect" {
+        let fmt = nie_formats::detect(&body);
+        return HttpResponse::json(
+            200,
+            "OK",
+            &json!({
+                "format": fmt.name(),
+                "size": body.len(),
+            }),
+        );
+    }
+
+    if method == "POST" && raw_path == "/v1/formats/decode" {
+        let name = query
+            .get("name")
+            .cloned()
+            .unwrap_or_else(|| "asset".to_owned());
+        if let Some(ext) = query.get("format").map(|s| s.to_ascii_lowercase())
+            && ext == "png"
+        {
+            return match nie_formats::g4tx_decode::decode_best_to_png(&body, &name) {
+                Some(png) => {
+                    HttpResponse::bytes(200, "OK", "image/png", "public, max-age=300", png)
+                }
+                None => HttpResponse::json(
+                    422,
+                    "Unprocessable Entity",
+                    &json!({ "error": "payload is not a decodable G4TX texture" }),
+                ),
+            };
+        }
+        return match nie_formats::decode::decode(&body) {
+            Some(decoded) => HttpResponse::bytes(
+                200,
+                "OK",
+                "application/json; charset=utf-8",
+                "no-store",
+                decoded.json,
+            ),
+            None => HttpResponse::json(
+                422,
+                "Unprocessable Entity",
+                &json!({ "error": "unsupported or unreadable format" }),
+            ),
+        };
+    }
+
+    if method == "GET" && raw_path == "/v1/wiki/games" {
+        let reg = nie_pkg::Registry::embedded();
+        let locale = query
+            .get("locale")
+            .or_else(|| query.get("lang"))
+            .map(String::as_str)
+            .unwrap_or("fr");
+        if let Some(slug) = query.get("slug").or_else(|| query.get("id")) {
+            return match reg.by_slug(slug) {
+                Some(game) => HttpResponse::json(
+                    200,
+                    "OK",
+                    &json!({
+                        "schemaVersion": 1,
+                        "locale": locale,
+                        "localized": {
+                            "title": game.titles.pick(locale),
+                            "summary": game.summaries.pick(locale),
+                            "statusDetail": game.status_detail.pick(locale),
+                            "highlights": game.highlights.pick(locale),
+                        },
+                        "game": game,
+                    }),
+                ),
+                None => HttpResponse::json(
+                    404,
+                    "Not Found",
+                    &json!({ "error": "game not found", "slug": slug }),
+                ),
+            };
+        }
+
+        let era_filter = query.get("era").map(|s| s.trim()).filter(|s| !s.is_empty());
+        let status_filter = query
+            .get("status")
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty());
+        let q_filter = query
+            .get("q")
+            .map(|s| s.trim().to_ascii_lowercase())
+            .filter(|s| !s.is_empty());
+
+        let games: Vec<Value> = reg
+            .games
+            .iter()
+            .filter(|g| era_filter.is_none_or(|e| g.era == e))
+            .filter(|g| status_filter.is_none_or(|st| g.status == st))
+            .filter(|g| {
+                q_filter.as_ref().is_none_or(|q| {
+                    g.id.to_ascii_lowercase().contains(q)
+                        || g.slug.to_ascii_lowercase().contains(q)
+                        || g.title.to_ascii_lowercase().contains(q)
+                        || g.titles.pick(locale).to_ascii_lowercase().contains(q)
+                        || g.protagonist.to_ascii_lowercase().contains(q)
+                })
+            })
+            .map(|g| {
+                json!({
+                    "id": g.id,
+                    "slug": g.slug,
+                    "order": g.order,
+                    "series": g.series,
+                    "era": g.era,
+                    "status": g.status,
+                    "title": g.titles.pick(locale),
+                    "summary": g.summaries.pick(locale),
+                    "releaseYear": g.release_year,
+                    "protagonist": g.protagonist,
+                    "officialUrl": g.official_url,
+                    "communityWikis": g.community_wikis,
+                    "modHubs": g.mod_hubs,
+                })
+            })
+            .collect();
+
+        return HttpResponse::json(
+            200,
+            "OK",
+            &json!({
+                "schemaVersion": 1,
+                "locale": locale,
+                "total": games.len(),
+                "eras": reg.eras,
+                "games": games,
+            }),
+        );
+    }
+
+    if method == "GET" && raw_path == "/v1/wiki/mods" {
+        let reg = nie_pkg::Registry::embedded();
+        let game_filter = query
+            .get("game")
+            .map(|s| s.trim().to_ascii_lowercase())
+            .filter(|s| !s.is_empty());
+        let lang_filter = query
+            .get("lang")
+            .map(|s| s.trim().to_ascii_lowercase())
+            .filter(|s| !s.is_empty());
+        let q_filter = query
+            .get("q")
+            .map(|s| s.trim().to_ascii_lowercase())
+            .filter(|s| !s.is_empty());
+        let limit = query
+            .get("limit")
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(50)
+            .clamp(1, MAX_FIND_LIMIT);
+
+        let mut hubs = Vec::new();
+        let mut wikis = Vec::new();
+        for g in &reg.games {
+            let game_match = game_filter
+                .as_ref()
+                .is_none_or(|gf| g.slug.eq_ignore_ascii_case(gf) || g.id.eq_ignore_ascii_case(gf));
+            if !game_match {
+                continue;
+            }
+            for hub in &g.mod_hubs {
+                if q_filter.as_ref().is_some_and(|q| {
+                    !hub.name.to_ascii_lowercase().contains(q)
+                        && !g.slug.to_ascii_lowercase().contains(q)
+                        && !hub.platform.to_ascii_lowercase().contains(q)
+                }) {
+                    continue;
+                }
+                if hubs.len() < limit {
+                    hubs.push(json!({
+                        "gameId": g.id,
+                        "gameSlug": g.slug,
+                        "platform": hub.platform,
+                        "name": hub.name,
+                        "url": hub.url,
+                        "gamebananaId": hub.gamebanana_id,
+                        "apiUrl": hub.api_url,
+                    }));
+                }
+            }
+            for wiki in &g.community_wikis {
+                if lang_filter
+                    .as_ref()
+                    .is_some_and(|lf| !wiki.lang.eq_ignore_ascii_case(lf))
+                {
+                    continue;
+                }
+                if q_filter.as_ref().is_some_and(|q| {
+                    !wiki.name.to_ascii_lowercase().contains(q)
+                        && !g.slug.to_ascii_lowercase().contains(q)
+                        && !wiki.url.to_ascii_lowercase().contains(q)
+                }) {
+                    continue;
+                }
+                if wikis.len() < limit {
+                    wikis.push(json!({
+                        "gameId": g.id,
+                        "gameSlug": g.slug,
+                        "lang": wiki.lang,
+                        "name": wiki.name,
+                        "url": wiki.url,
+                        "apiUrl": wiki.api_url,
+                        "kind": wiki.kind,
+                    }));
+                }
+            }
+        }
+
+        let live_snapshot = load_mods_snapshot_value();
+        return HttpResponse::json(
+            200,
+            "OK",
+            &json!({
+                "schemaVersion": 1,
+                "totalHubs": hubs.len(),
+                "totalWikiSources": wikis.len(),
+                "hubs": hubs,
+                "wikiSources": wikis,
+                "snapshot": live_snapshot,
+            }),
+        );
+    }
+
+    if method == "GET" && raw_path == "/v1/design/tokens" {
+        let manifest: Value = serde_json::from_str(RG_M3_TOKENS_JSON).unwrap_or_else(|_| json!({}));
+        return HttpResponse::json(
+            200,
+            "OK",
+            &json!({
+                "schemaVersion": nie_core::contract_generated::CONTRACT_SCHEMA_VERSION,
+                "contractVersion": nie_core::contract_generated::CONTRACT_VERSION,
+                "defaultDomain": nie_core::contract_generated::DEFAULT_DOMAIN,
+                "ports": {
+                    "website": nie_core::contract_generated::PORT_WEBSITE,
+                    "api": nie_core::contract_generated::PORT_API,
+                    "azalee": nie_core::contract_generated::PORT_AZALEE,
+                },
+                "manifest": manifest,
+            }),
+        );
+    }
+
+    let Some(vfs) = state.vfs.clone() else {
+        return HttpResponse::json(
+            503,
+            "Service Unavailable",
+            &json!({
+                "error": "VFS is not mounted",
+                "reason": state.vfs_error.as_deref().unwrap_or("no game source configured"),
+            }),
+        );
+    };
+
+    if method == "GET" && raw_path == "/v1/vfs/info" {
+        let (io_calls, payload_bytes) = vfs.remote_stats().unwrap_or_default();
+        return HttpResponse::json(
+            200,
+            "OK",
+            &json!({
+                "source": state.source_label,
+                "entries": vfs.asset_count(),
+                "cpks": vfs.cpk_count(),
+                "transport": {
+                    "ioCalls": io_calls,
+                    "payloadBytes": payload_bytes,
+                }
+            }),
+        );
+    }
+
+    if method == "GET" && raw_path == "/v1/vfs/find" {
+        let q = query.get("q").map(String::as_str).unwrap_or("");
+        let ext = query
+            .get("ext")
+            .map(|e| format!(".{}", e.trim_start_matches('.').to_ascii_lowercase()));
+        let limit = query
+            .get("limit")
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(50)
+            .clamp(1, MAX_FIND_LIMIT);
+        let q_lower = q.to_ascii_lowercase();
+        return tokio::task::spawn_blocking(move || {
+            let mut matches = Vec::new();
+            for (path, entry) in vfs.iter() {
+                if !q_lower.is_empty() && !path.to_ascii_lowercase().contains(&q_lower) {
+                    continue;
+                }
+                if let Some(ref ext_dot) = ext
+                    && !path.to_ascii_lowercase().ends_with(ext_dot)
+                {
+                    continue;
+                }
+                matches.push(json!({
+                    "path": path,
+                    "size": entry.file_size,
+                    "cpk": entry.cpk_filename,
+                }));
+                if matches.len() >= limit {
+                    break;
+                }
+            }
+            HttpResponse::json(
+                200,
+                "OK",
+                &json!({ "count": matches.len(), "items": matches }),
+            )
+        })
+        .await
+        .unwrap_or_else(|_| {
+            HttpResponse::json(
+                500,
+                "Internal Server Error",
+                &json!({ "error": "task failed" }),
+            )
+        });
+    }
+
+    if method == "GET" && raw_path == "/v1/vfs/stat" {
+        let Some(raw_vfs_path) = query.get("path") else {
+            return HttpResponse::json(
+                400,
+                "Bad Request",
+                &json!({ "error": "missing path query param" }),
+            );
+        };
+        let Ok(clean_path) = sanitize_vfs_path(raw_vfs_path) else {
+            return HttpResponse::json(400, "Bad Request", &json!({ "error": "invalid VFS path" }));
+        };
+        return tokio::task::spawn_blocking(move || match vfs.find(&clean_path) {
+            Some(entry) => HttpResponse::json(
+                200,
+                "OK",
+                &json!({
+                    "path": clean_path,
+                    "size": entry.file_size,
+                    "cpk": entry.cpk_filename,
+                }),
+            ),
+            None => HttpResponse::json(404, "Not Found", &json!({ "error": "entry not found" })),
+        })
+        .await
+        .unwrap_or_else(|_| {
+            HttpResponse::json(
+                500,
+                "Internal Server Error",
+                &json!({ "error": "task failed" }),
+            )
+        });
+    }
+
+    if method == "GET" && raw_path == "/v1/vfs/read" {
+        if !authorize_bearer(state.raw_token.as_deref(), headers) {
+            return HttpResponse::json(
+                401,
+                "Unauthorized",
+                &json!({ "error": "valid Bearer token matching NIE_RAW_VFS_TOKEN required" }),
+            );
+        }
+        let Some(raw_vfs_path) = query.get("path") else {
+            return HttpResponse::json(
+                400,
+                "Bad Request",
+                &json!({ "error": "missing path query param" }),
+            );
+        };
+        let Ok(clean_path) = sanitize_vfs_path(raw_vfs_path) else {
+            return HttpResponse::json(400, "Bad Request", &json!({ "error": "invalid VFS path" }));
+        };
+        let decode_mode = query
+            .get("decode")
+            .map(String::as_str)
+            .unwrap_or("raw")
+            .to_owned();
+        return tokio::task::spawn_blocking(move || match vfs.read(&clean_path) {
+            Ok(bytes) => {
+                if decode_mode == "json" {
+                    return match nie_formats::decode::decode(&bytes) {
+                        Some(d) => HttpResponse::bytes(
+                            200,
+                            "OK",
+                            "application/json; charset=utf-8",
+                            "public, max-age=300",
+                            d.json,
+                        ),
+                        None => HttpResponse::json(
+                            422,
+                            "Unprocessable Entity",
+                            &json!({ "error": "cannot decode entry as JSON" }),
+                        ),
+                    };
+                }
+                if decode_mode == "png" {
+                    let stem = clean_path
+                        .rsplit('/')
+                        .next()
+                        .unwrap_or("asset")
+                        .split('.')
+                        .next()
+                        .unwrap_or("asset");
+                    return match nie_formats::g4tx_decode::decode_best_to_png(&bytes, stem) {
+                        Some(png) => {
+                            HttpResponse::bytes(200, "OK", "image/png", "public, max-age=300", png)
+                        }
+                        None => HttpResponse::json(
+                            422,
+                            "Unprocessable Entity",
+                            &json!({ "error": "cannot decode entry as PNG" }),
+                        ),
+                    };
+                }
+                HttpResponse::bytes(
+                    200,
+                    "OK",
+                    "application/octet-stream",
+                    "public, max-age=3600",
+                    bytes,
+                )
+            }
+            Err(err) => HttpResponse::json(
+                404,
+                "Not Found",
+                &json!({ "error": err.to_string(), "path": clean_path }),
+            ),
+        })
+        .await
+        .unwrap_or_else(|_| {
+            HttpResponse::json(
+                500,
+                "Internal Server Error",
+                &json!({ "error": "task failed" }),
+            )
+        });
+    }
+
+    if method == "GET" && raw_path == "/v1/game/query" {
+        let domain = query
+            .get("domain")
+            .cloned()
+            .unwrap_or_else(|| "characters".to_owned());
+        let q = query.get("q").cloned().unwrap_or_default();
+        let limit = query
+            .get("limit")
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(50)
+            .clamp(1, MAX_FIND_LIMIT);
+        let req = json!({
+            "domain": domain,
+            "query": q,
+            "limit": limit,
+        });
+        return tokio::task::spawn_blocking(move || {
+            match nie_app::game_data::query_vfs(&vfs, &req) {
+                Ok(res) => HttpResponse::json(200, "OK", &res),
+                Err(err) => HttpResponse::json(400, "Bad Request", &json!({ "error": err })),
+            }
+        })
+        .await
+        .unwrap_or_else(|_| {
+            HttpResponse::json(
+                500,
+                "Internal Server Error",
+                &json!({ "error": "task failed" }),
+            )
+        });
+    }
+
+    HttpResponse::json(404, "Not Found", &json!({ "error": "route not found" }))
+}
+
+fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    haystack.windows(needle.len()).position(|w| w == needle)
+}
+
+fn parse_query(raw: &str) -> HashMap<String, String> {
+    let mut map = HashMap::new();
+    for pair in raw.split('&') {
+        if pair.is_empty() {
+            continue;
+        }
+        let (k, v) = pair.split_once('=').unwrap_or((pair, ""));
+        map.insert(percent_decode(k), percent_decode(v));
+    }
+    map
+}
+
+fn percent_decode(input: &str) -> String {
+    let bytes = input.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'+' => {
+                out.push(b' ');
+                i += 1;
+            }
+            b'%' if i + 2 < bytes.len() => {
+                if let Ok(hex) = std::str::from_utf8(&bytes[i + 1..i + 3])
+                    && let Ok(val) = u8::from_str_radix(hex, 16)
+                {
+                    out.push(val);
+                    i += 3;
+                    continue;
+                }
+                out.push(b'%');
+                i += 1;
+            }
+            b => {
+                out.push(b);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+pub(crate) fn sanitize_vfs_path(path: &str) -> Result<String, &'static str> {
+    let trimmed = path.trim();
+    if trimmed.is_empty()
+        || trimmed.starts_with('/')
+        || trimmed.contains('\\')
+        || trimmed.contains('\0')
+        || trimmed.split('/').any(|seg| seg == ".." || seg.is_empty())
+    {
+        return Err("invalid VFS path");
+    }
+    Ok(trimmed.to_owned())
+}
+
+fn load_mods_snapshot_value() -> Value {
+    let mut candidates = Vec::new();
+    if let Ok(root) = std::env::var("RG_CRAWL_DATA_ROOT") {
+        candidates.push(std::path::PathBuf::from(root).join("community-mods-index.json"));
+    }
+    if let Ok(shared) = std::env::var("RG_CRON_SHARED_ROOT") {
+        candidates.push(
+            std::path::PathBuf::from(shared)
+                .join("ie-crawl")
+                .join("community-mods-index.json"),
+        );
+    }
+    candidates.push(std::path::PathBuf::from(
+        "/srv/rg/shared/cron/ie-crawl/community-mods-index.json",
+    ));
+    candidates.push(std::path::PathBuf::from(
+        "C:/srv/rg/shared/cron/ie-crawl/community-mods-index.json",
+    ));
+
+    for path in candidates {
+        if let Ok(raw) = std::fs::read_to_string(&path)
+            && let Ok(parsed) = serde_json::from_str::<Value>(&raw)
+        {
+            return json!({
+                "available": true,
+                "path": path.display().to_string(),
+                "updatedAt": parsed.get("updatedAt").cloned().unwrap_or(Value::Null),
+                "modsCount": parsed.get("mods").and_then(Value::as_array).map(|a| a.len()).unwrap_or(0),
+                "wikisCount": parsed.get("wikis").and_then(Value::as_array).map(|a| a.len()).unwrap_or(0),
+            });
+        }
+    }
+    json!({
+        "available": false,
+        "updatedAt": Value::Null,
+        "modsCount": 0,
+        "wikisCount": 0,
+    })
+}
+
+fn authorize_bearer(expected: Option<&str>, headers: &HashMap<String, String>) -> bool {
+    let Some(expected) = expected else {
+        return true;
+    };
+    let Some(auth) = headers.get("authorization") else {
+        return false;
+    };
+    let Some(token) = auth.strip_prefix("Bearer ").map(str::trim) else {
+        return false;
+    };
+    let a = token.as_bytes();
+    let b = expected.as_bytes();
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0_u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn state(stateless: bool, raw_token: Option<&str>) -> Arc<ServerState> {
+        Arc::new(ServerState {
+            vfs: None,
+            source_label: None,
+            vfs_error: Some("no source in unit test".to_owned()),
+            stateless,
+            raw_token: raw_token.map(str::to_owned),
+        })
+    }
+
+    #[tokio::test]
+    async fn health_and_readiness_reflect_stateless_flag() {
+        let headers = HashMap::new();
+        let h = route_request("GET", "/health", &headers, Vec::new(), state(false, None)).await;
+        assert_eq!(h.status, 200);
+
+        let r_unready =
+            route_request("GET", "/ready", &headers, Vec::new(), state(false, None)).await;
+        assert_eq!(r_unready.status, 503);
+
+        let r_ready = route_request("GET", "/ready", &headers, Vec::new(), state(true, None)).await;
+        assert_eq!(r_ready.status, 200);
+    }
+
+    #[tokio::test]
+    async fn format_detect_identifies_g4tx_and_rejects_traversal() {
+        let headers = HashMap::new();
+        let resp = route_request(
+            "POST",
+            "/v1/formats/detect",
+            &headers,
+            b"G4TX\x00\x00\x00\x00".to_vec(),
+            state(true, None),
+        )
+        .await;
+        assert_eq!(resp.status, 200);
+        let parsed: Value = serde_json::from_slice(&resp.body).expect("json body");
+        assert_eq!(parsed["format"], "G4TX");
+        assert_eq!(parsed["size"], 8);
+
+        assert!(sanitize_vfs_path("data/common/text/fr.cfg.bin").is_ok());
+        assert!(sanitize_vfs_path("../secret").is_err());
+        assert!(sanitize_vfs_path("/abs/path").is_err());
+        assert!(sanitize_vfs_path("data\\win").is_err());
+    }
+
+    #[test]
+    fn bearer_token_check_is_strict() {
+        let mut headers = HashMap::new();
+        assert!(authorize_bearer(None, &headers));
+        assert!(!authorize_bearer(Some("abc123"), &headers));
+        headers.insert("authorization".to_owned(), "Bearer wrong".to_owned());
+        assert!(!authorize_bearer(Some("abc123"), &headers));
+        headers.insert("authorization".to_owned(), "Bearer abc123".to_owned());
+        assert!(authorize_bearer(Some("abc123"), &headers));
+    }
+
+    #[tokio::test]
+    async fn wiki_games_mods_and_design_tokens_routes_respond() {
+        let headers = HashMap::new();
+        let games = route_request(
+            "GET",
+            "/v1/wiki/games?locale=ja&status=in-development",
+            &headers,
+            Vec::new(),
+            state(true, None),
+        )
+        .await;
+        assert_eq!(games.status, 200);
+        let games_json: Value = serde_json::from_slice(&games.body).expect("games json");
+        assert_eq!(games_json["total"], 2);
+        assert_eq!(games_json["locale"], "ja");
+
+        let detail = route_request(
+            "GET",
+            "/v1/wiki/games?slug=inazuma-eleven-re&locale=en",
+            &headers,
+            Vec::new(),
+            state(true, None),
+        )
+        .await;
+        assert_eq!(detail.status, 200);
+        let detail_json: Value = serde_json::from_slice(&detail.body).expect("detail json");
+        assert_eq!(detail_json["game"]["slug"], "inazuma-eleven-re");
+
+        let mods = route_request(
+            "GET",
+            "/v1/wiki/mods?lang=es&limit=5",
+            &headers,
+            Vec::new(),
+            state(true, None),
+        )
+        .await;
+        assert_eq!(mods.status, 200);
+        let mods_json: Value = serde_json::from_slice(&mods.body).expect("mods json");
+        assert!(
+            mods_json["wikiSources"]
+                .as_array()
+                .is_some_and(|a| !a.is_empty())
+        );
+
+        let tokens = route_request(
+            "GET",
+            "/v1/design/tokens",
+            &headers,
+            Vec::new(),
+            state(true, None),
+        )
+        .await;
+        assert_eq!(tokens.status, 200);
+        let tokens_json: Value = serde_json::from_slice(&tokens.body).expect("tokens json");
+        assert_eq!(tokens_json["manifest"]["defaultTheme"], "roy");
+        assert_eq!(
+            tokens_json["manifest"]["themes"]
+                .as_array()
+                .map(|a| a.len()),
+            Some(9)
+        );
+    }
+}

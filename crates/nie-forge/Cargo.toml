@@ -1,0 +1,42 @@
+[package]
+name = "nie-forge"
+version = "1.4.8"
+edition = "2024"
+rust-version = "1.100"
+license-file = "LICENSE"
+publish = false
+description = "Static PE reconstruction, function lifting, registry, and binary coverage tools for Inazuma Eleven RE"
+
+[lib]
+name = "nie_forge"
+path = "src/lib.rs"
+
+[[bin]]
+name = "nie-forge"
+path = "src/main.rs"
+required-features = ["redb"]
+
+[features]
+default = ["redb"]
+redb = ["dep:clap", "dep:rusqlite"]
+
+[dependencies]
+nie-pe = { path = "../nie-pe", default-features = true }
+iced-x86 = "1.22"
+anyhow = { workspace = true }
+clap = { version = "4.6", optional = true, features = [
+  "derive",
+  "color",
+  "env",
+] }
+serde = { workspace = true, features = ["std", "derive"] }
+serde_json = { workspace = true }
+rusqlite = { workspace = true, optional = true, features = ["bundled"] }
+
+[dev-dependencies]
+tempfile = { version = "3.27", default-features = false, features = [
+  "getrandom",
+] }
+
+[lints]
+workspace = true

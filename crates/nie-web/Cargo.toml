@@ -17,5 +17,11 @@ desktop = ["dioxus/desktop"]
 dioxus = { workspace = true, features = ["minimal"] }
 nie-craft.workspace = true
 
-[lints]
-workspace = true
+[lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[lints.clippy]
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"

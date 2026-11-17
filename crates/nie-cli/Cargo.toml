@@ -1,0 +1,160 @@
+[package]
+name = "nie-cli"
+version = "1.4.8"
+edition = "2024"
+rust-version = "1.100"
+license-file = "LICENSE"
+publish = false
+description = "Native host CLI for Inazuma Eleven reverse engineering and game data"
+autobins = false
+
+[[bin]]
+name = "nie"
+path = "src/bin.rs"
+required-features = ["cloud"]
+
+[[bin]]
+name = "nie-mcp"
+path = "src/bin/nie-mcp.rs"
+required-features = ["host"]
+
+[[bin]]
+name = "nie-play"
+path = "src/bin/nie-play.rs"
+required-features = ["host"]
+
+[lib]
+path = "src/main.rs"
+
+[package.metadata.rg-package]
+binary = "nie"
+install-package = "nie-cli"
+supported-os = ["linux", "macos", "windows"]
+
+[lints]
+workspace = true
+
+[features]
+default = ["host"]
+# Self-hosted, pure-Rust cloud profile (Docker / Kubernetes / static musl): zero C++ ISPC, zero Lua C, zero desktop RE.
+cloud = [
+  "dep:rg-steam",
+  "dep:nie-data",
+  "dep:nie-formats",
+  "dep:nie-explore",
+  "dep:nie-net",
+  "dep:tokio",
+  "dep:futures-util",
+  "dep:tokio-tungstenite",
+  "dep:reqwest",
+  "dep:nie-save",
+  "dep:nie-app",
+  "dep:nie-core",
+  "dep:nie-render3d",
+  "dep:nie-pkg",
+  "dep:clap",
+  "dep:anyhow",
+  "dep:tracing",
+  "dep:tracing-subscriber",
+  "dep:sha2",
+  "dep:sha1",
+  "dep:steamroom",
+  "dep:zip",
+  "dep:hex",
+  "dep:base64",
+  "dep:serde",
+  "dep:serde_json",
+  "dep:rayon",
+  "dep:image_dds",
+  "dep:image",
+  "dep:png",
+]
+host = [
+  "cloud",
+  "nie-formats/lua",
+  "dep:nie-index",
+  "dep:nie-seed",
+  "dep:nie-queue",
+  "dep:yolo-re-core",
+  "dep:nie-trace",
+  "dep:nie-computer-use",
+  "dep:nie-viola",
+  "dep:nie-launcher",
+  "dep:nie-lua",
+  "dep:nie-wiki",
+  "dep:nie-zukan",
+  "dep:nie-runtime",
+  "dep:nie-ocgen",
+  "dep:redis",
+  "dep:schemars",
+  "dep:rmcp",
+  "dep:goblin",
+  "dep:iced-x86",
+  "dep:ignore",
+  "dep:globset",
+  "dep:grep-searcher",
+  "dep:grep-regex",
+  "dep:rusqlite",
+]
+textures-encode = ["host", "nie-formats/textures-encode"]
+
+[dependencies]
+nie-data = { path = "../nie-data", version = "1.4.8", features = ["serde", "std"], optional = true }
+aho-corasick = { workspace = true }
+nie-formats = { path = "../nie-formats", version = "1.4.8", default-features = false, features = ["std", "serde", "textures", "audio-decode", "images", "remote-vfs"], optional = true }
+nie-explore = { path = "../nie-explore", version = "1.4.8", features = ["host"], optional = true }
+nie-net = { path = "../nie-net", version = "1.4.8", features = ["transport"], optional = true }
+futures-util = { version = "0.3", optional = true }
+nie-save = { path = "../nie-save", version = "1.4.8", optional = true }
+nie-app = { path = "../nie-app", version = "1.4.8", optional = true }
+nie-core = { path = "../nie-core", version = "1.4.8", optional = true }
+nie-pkg = { path = "../nie-pkg", version = "1.4.8", optional = true }
+nie-runtime = { path = "../nie-runtime", version = "1.4.8", default-features = false, optional = true }
+nie-render3d = { path = "../nie-render3d", version = "1.4.8", default-features = false, optional = true }
+clap = { workspace = true, features = ["color"], optional = true }
+anyhow = { workspace = true, features = ["std"], optional = true }
+tracing = { workspace = true, optional = true }
+tracing-subscriber = { workspace = true, features = ["fmt", "env-filter", "ansi", "tracing-log"], optional = true }
+sha2 = { workspace = true, optional = true }
+sha1 = { workspace = true, optional = true }
+zip = { version = "9.6.0", default-features = false, features = ["deflate"], optional = true }
+hex = { version = "0.4", optional = true }
+base64 = { version = "0.23.1", optional = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+schemars = { version = "1", optional = true }
+rayon = { workspace = true, optional = true }
+goblin = { version = "0.10", optional = true }
+iced-x86 = { version = "1.22", optional = true }
+image_dds = { workspace = true, features = ["ddsfile", "image"], optional = true }
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "webp", "gif", "bmp", "tiff"], optional = true }
+png = { workspace = true, optional = true }
+
+[target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
+rg-steam = { workspace = true, features = ["depot"], optional = true }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "sync", "macros", "time", "net"], optional = true }
+tokio-tungstenite = { version = "0.30", optional = true }
+reqwest = { workspace = true, features = ["http2", "rustls", "stream"], optional = true }
+steamroom = { workspace = true, optional = true }
+nie-index = { path = "../nie-index", version = "1.4.8", features = ["host"], optional = true }
+nie-seed = { path = "../nie-seed", version = "1.4.8", features = ["host"], optional = true }
+nie-queue = { path = "../nie-queue", version = "1.4.8", features = ["host"], optional = true }
+yolo-re-core = { path = "../yolo-re-core", version = "1.4.8", default-features = false, features = ["nie"], optional = true }
+nie-trace = { path = "../nie-trace", version = "1.4.8", features = ["host"], optional = true }
+nie-computer-use = { path = "../nie-computer-use", version = "1.4.8", features = ["host"], optional = true }
+nie-viola = { path = "../nie-viola", version = "1.4.8", optional = true }
+nie-launcher = { path = "../nie-launcher", version = "1.4.8", optional = true }
+nie-lua = { path = "../nie-lua", version = "1.4.8", features = ["host"], optional = true }
+nie-wiki = { path = "../nie-wiki", version = "1.4.8", optional = true }
+nie-zukan = { path = "../nie-zukan", version = "1.4.8", optional = true }
+nie-ocgen = { path = "../nie-ocgen", version = "1.4.8", features = ["cli"], optional = true }
+redis = { workspace = true, features = ["r2d2"], optional = true }
+rmcp = { version = "3.10.0", features = ["server", "transport-io", "macros", "schemars"], optional = true }
+ignore = { version = "0.4", optional = true }
+globset = { version = "0.4", optional = true }
+grep-searcher = { version = "0.1", optional = true }
+grep-regex = { version = "0.1", optional = true }
+rusqlite = { workspace = true, features = ["bundled"], optional = true }
+
+[dev-dependencies]
+nie-pe = { workspace = true }

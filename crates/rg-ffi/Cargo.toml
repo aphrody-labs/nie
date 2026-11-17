@@ -1,0 +1,23 @@
+[package]
+name = "rg-ffi"
+version = "1.4.8"
+edition = "2024"
+rust-version = "1.100"
+license = "Apache-2.0"
+publish = false
+description = "C ABI of the Rust core for bun:ffi and any C consumer; the exported surface is generated from crates/rg-ffi-contract/contract.json"
+
+[lints]
+workspace = true
+
+[lib]
+name = "rg_ffi"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+achillea-core = { path = "../achillea-core", version = "1.4.8" }
+nie-cfgsql = { path = "../nie-cfgsql", version = "1.4.8" }
+nie-sitemap = { path = "../nie-sitemap", version = "1.4.8" }
+
+[dev-dependencies]
+rg-ffi-contract = { path = "../rg-ffi-contract", version = "1.4.8" }

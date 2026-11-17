@@ -1,0 +1,41 @@
+[package]
+name = "nie-zukan"
+version = "1.4.8"
+edition = "2024"
+rust-version = "1.100"
+license-file = "LICENSE"
+publish = false
+description = "Inagle encyclopedia HTML parsing, query coding, fuzzy matching, SQLite correlation and optional live pull for IE research"
+
+[lints]
+workspace = true
+
+[features]
+default = ["sqlite"]
+sqlite = ["dep:rusqlite"]
+# Live, rate-limited pull of zukan.inazuma.jp (blocking reqwest with retries and host pacing), plus the
+# `nie-zukan` CLI. Off by default: the offline parsers and matchers need no network.
+pull = ["sqlite", "dep:reqwest", "dep:clap", "dep:tracing-subscriber"]
+
+[dependencies]
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true, features = ["std", "derive"] }
+serde_json = { workspace = true }
+base64 = "0.23.1"
+percent-encoding = "2.3.2"
+scraper = "0.29"
+rusqlite = { workspace = true, optional = true }
+tracing = { workspace = true }
+reqwest = { workspace = true, features = ["blocking", "rustls"], optional = true }
+clap = { version = "4.6.7", optional = true, features = [
+  "derive",
+  "color",
+  "env",
+] }
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "env-filter", "ansi", "tracing-log"], optional = true }
+
+[[bin]]
+name = "nie-zukan"
+path = "src/bin/nie_zukan.rs"
+required-features = ["pull"]

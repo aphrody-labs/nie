@@ -1,0 +1,28 @@
+[package]
+name = "nie-app"
+version = "1.4.8"
+edition = "2024"
+rust-version = "1.100"
+license-file = "LICENSE"
+publish = false
+description = "Headless IE application-state machine, game-data views, and CPU presentation"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+nie-formats = { workspace = true, features = ["serde"] }
+nie-render3d = { path = "../nie-render3d", version = "1.4.8", default-features = false }
+nie-core = { workspace = true, features = ["data"] }
+nie-data = { workspace = true, features = ["serde", "std"] }
+nie-runtime = { path = "../nie-runtime", version = "1.4.8", default-features = false }
+nie-ui = { workspace = true }
+nie-explore = { path = "../nie-explore", version = "1.4.8", default-features = false }
+specta = { version = "2.0.0-rc.28", features = ["derive", "serde_json"] }
+bcdec_rs = "0.2.1"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+nie-explore = { path = "../nie-explore", version = "1.4.8", default-features = false, features = ["host"] }

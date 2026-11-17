@@ -1,0 +1,121 @@
+{
+  "schema": 1,
+  "id": "nie",
+  "name": "nie",
+  "version": "1.4.8",
+  "repository": "https://github.com/aphrody-labs/nie",
+  "commands": [
+    {
+      "id": "play",
+      "package": "nie-football",
+      "binary": "nie-football",
+      "args": [
+        "--manifest",
+        "{manifest}"
+      ],
+      "mode": "window",
+      "headless": false,
+      "platforms": [
+        "windows",
+        "linux",
+        "macos"
+      ]
+    },
+    {
+      "id": "studio",
+      "package": "nie-studio",
+      "binary": "nie-studio",
+      "args": [],
+      "mode": "window",
+      "headless": false,
+      "platforms": [
+        "windows",
+        "linux",
+        "macos"
+      ]
+    },
+    {
+      "id": "game",
+      "package": "nie-game",
+      "binary": "nie-game",
+      "args": [],
+      "mode": "window",
+      "headless": false,
+      "platforms": [
+        "windows",
+        "linux",
+        "macos"
+      ]
+    },
+    {
+      "id": "serve",
+      "package": "nie-cli",
+      "binary": "nie",
+      "args": [
+        "serve"
+      ],
+      "mode": "service",
+      "headless": true,
+      "platforms": [
+        "windows",
+        "linux",
+        "macos"
+      ]
+    },
+    {
+      "id": "mcp",
+      "package": "nie-cli",
+      "binary": "nie-mcp",
+      "args": [],
+      "mode": "stdio",
+      "headless": true,
+      "platforms": [
+        "windows",
+        "linux",
+        "macos"
+      ]
+    }
+  ],
+  "game_source": {
+    "asset_source": "game",
+    "config_env": "NIE_ASSETS_CONFIG",
+    "source_env": "NIE_GAME_SOURCE",
+    "schemes": [
+      "ssh",
+      "sftp",
+      "r2",
+      "s3",
+      "gdrive",
+      "rclone",
+      "https"
+    ],
+    "cache_env": [
+      "NIE_ASSETS_CACHE_DIR",
+      "NIE_ASSETS_CACHE_MAX_MIB"
+    ],
+    "ships_game_assets": false
+  },
+  "targets": [
+    {
+      "triple": "native-windows",
+      "kind": "native",
+      "graphics": "wgpu (DX12, Vulkan)"
+    },
+    {
+      "triple": "native-linux",
+      "kind": "native",
+      "graphics": "wgpu (Vulkan)"
+    },
+    {
+      "triple": "native-macos",
+      "kind": "native",
+      "graphics": "wgpu (Metal)"
+    },
+    {
+      "triple": "wasm32-unknown-unknown",
+      "kind": "web",
+      "graphics": "WebGPU"
+    }
+  ],
+  "remote_port": 15702
+}

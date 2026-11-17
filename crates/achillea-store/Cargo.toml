@@ -1,0 +1,19 @@
+[package]
+name = "achillea-store"
+version = "1.4.8"
+edition = "2024"
+rust-version = "1.100"
+license = "Apache-2.0"
+publish = false
+description = "Achillea PostgreSQL schema and operations: ranked, clans, tournaments, leagues, Ultimate Team"
+
+[lints]
+workspace = true
+
+[dependencies]
+achillea-core = { path = "../achillea-core", version = "1.4.8" }
+thiserror = { workspace = true, features = ["std"] }
+tokio-postgres = { version = "0.7.18", default-features = false, features = ["runtime"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

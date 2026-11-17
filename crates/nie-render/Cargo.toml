@@ -8,11 +8,21 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 
+[features]
+# Browser build: wgpu on WebGPU (wasm32-unknown-unknown).
+webgpu = ["bevy/webgpu"]
+
 [dependencies]
-bevy.workspace = true
+bevy = { workspace = true, features = ["3d", "ui"] }
 nie-craft.workspace = true
 nie-model.workspace = true
 nie-sim.workspace = true
 
-[lints]
-workspace = true
+[lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[lints.clippy]
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"

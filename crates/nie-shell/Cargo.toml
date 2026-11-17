@@ -1,0 +1,22 @@
+[package]
+name = "nie-shell"
+description = "App and launcher contract between nie and the aphrody native GPUI shell: one typed source for the JSON contract and the shell's store entry"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[dependencies]
+serde = { workspace = true, features = ["std", "derive"] }
+serde_json = { workspace = true, features = ["std"] }
+toml = { workspace = true, features = ["display", "serde", "std"] }
+
+[dev-dependencies]
+toml = { workspace = true, features = ["parse", "display", "serde", "std"] }

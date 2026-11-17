@@ -1,0 +1,27 @@
+[package]
+name = "nie-ui-dioxus"
+version = "1.4.8"
+edition = "2024"
+rust-version = "1.100"
+license = "Apache-2.0"
+publish = false
+description = "Data-driven UI tree (built from VFS data), taffy layout and Dioxus renderer shared by Azalee, Achillea and nie"
+
+[lints]
+workspace = true
+
+[features]
+default = ["ssr"]
+# Server-side HTML for pages, sitemap targets and tests. Web/desktop targets reuse `NodeView`.
+ssr = ["dep:dioxus-ssr"]
+
+[dependencies]
+dioxus = { workspace = true, features = ["macro", "html", "signals", "hooks"] }
+dioxus-ssr = { workspace = true, optional = true }
+nie-cfgsql = { path = "../nie-cfgsql", version = "1.4.8" }
+taffy = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
+
+[dev-dependencies]
+nie-formats = { workspace = true, features = ["std", "serde"] }

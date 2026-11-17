@@ -1,0 +1,35 @@
+[package]
+name = "nie-assets"
+description = "Bevy asset source over the installed game: VFS layers and CRI CPK archives read in place from a local path, SSH, or rclone-backed R2 and Google Drive; no game byte is ever copied into the repository"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[features]
+default = ["host"]
+# Native mounts: local installs, SSH, rclone (R2, Google Drive) and HTTP range reads.
+host = ["nie-formats/remote-vfs"]
+
+[dependencies]
+nie-formats = { workspace = true, default-features = false, features = ["std"] }
+bevy_app = { workspace = true }
+bevy_asset = { workspace = true }
+bevy_reflect = { workspace = true }
+futures-lite = { workspace = true }
+serde = { workspace = true, features = ["std", "derive"] }
+sha2 = { workspace = true }
+thiserror = { workspace = true, features = ["std"] }
+toml = { workspace = true, features = ["parse", "serde", "std"] }
+tracing = { workspace = true }
+
+[dev-dependencies]
+bevy_image = { workspace = true, features = ["png"] }
+png = { workspace = true }
+tempfile = { workspace = true }

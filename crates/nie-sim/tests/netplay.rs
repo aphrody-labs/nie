@@ -3,8 +3,8 @@
 
 use bevy_app::App;
 use nie_input::InputCommand;
+use nie_lockstep::{Lockstep, Loopback, Packet, Transport};
 use nie_model::{Rules, Side};
-use nie_net::{Lockstep, Loopback, Packet, Transport};
 use nie_sim::{HumanInputs, MatchConfig, MatchPlugin, MatchReport, PlayerKey, SimTick, checksum};
 
 struct Peer {

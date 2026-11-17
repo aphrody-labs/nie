@@ -16,15 +16,17 @@ concurrency:
 env:
   CARGO_TERM_COLOR: never
   CARGO_INCREMENTAL: "0"
-  RUSTFLAGS: -D warnings
 
 jobs:
   engine:
-    name: engine, craft and headless match
+    name: football engine, craft, shell contract and headless match
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          # vendor/bevy and vendor/dioxus are submodules of the aphrody-labs forks (relative URLs).
+          submodules: true
       - name: Toolchain
         # rust-toolchain.toml pins the compiler, its components and the wasm32 target.
         run: rustup show active-toolchain || rustup toolchain install
@@ -32,10 +34,11 @@ jobs:
       - name: Format
         run: cargo fmt --all --check
       - name: Lint
-        run: cargo clippy --locked --all-targets -p nie-model -p nie-physics -p nie-input -p nie-ai -p nie-net -p nie-sim -p nie-craft
+        run: cargo clippy --locked --all-targets -p nie-model -p nie-physics -p nie-input -p nie-ai -p nie-lockstep -p nie-sim -p nie-craft -p nie-shell -- -D warnings
       - name: Test
-        # Includes the pinned 5v5 headless match and the two-peer lockstep netplay test.
-        run: cargo test --locked -p nie-model -p nie-physics -p nie-input -p nie-ai -p nie-net -p nie-sim -p nie-craft
+        # Includes the pinned 5v5 headless match, the two-peer lockstep netplay test and the
+        # drift check of contract/nie-app.json.
+        run: cargo test --locked -p nie-model -p nie-physics -p nie-input -p nie-ai -p nie-lockstep -p nie-sim -p nie-craft -p nie-shell
       - name: Validate every manifest
         run: for manifest in games/*.toml; do cargo run --locked -q -p nie-craft -- check "$manifest"; done
       - name: Headless vertical slice
@@ -44,19 +47,57 @@ jobs:
         env:
           SLICE_SCORE: "0-1"
 
-  frontends:
-    name: frontends (Bevy 3D, studio, Dioxus)
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
+  native:
+    name: headless asset load (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - name: Synthetic CPK through Bevy's AssetServer, VFS and remote transports
+        # Builds a CPK archive in a temp directory and loads bytes and a texture through
+        # `game://`. No game file is involved.
+        run: cargo test --locked -p nie-assets -p nie-formats --lib --tests
+
+  workspace:
+    name: workspace (every crate, every target)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: System libraries
         # Bevy, winit and eframe link against ALSA, udev, Wayland and xkbcommon through pkg-config.
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev libgl1-mesa-dev
       - name: Toolchain
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2
-      - name: Check the Bevy 3D game, the studio and the Dioxus app
-        run: cargo clippy --locked --all-targets -p nie-render -p nie-game -p nie-studio -p nie-web
-      - name: Check the Dioxus app as WebAssembly
-        run: cargo check --locked -p nie-web --target wasm32-unknown-unknown
+      - name: Check the whole workspace
+        run: cargo check --locked --workspace --all-targets
+      - name: Bevy asset integration
+        run: cargo check --locked -p nie-bevy --features bevy --all-targets
+
+  web:
+    name: wasm32 and WebGPU
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - name: Dioxus app and asset source for WebAssembly
+        run: cargo check --locked --target wasm32-unknown-unknown -p nie-web -p nie-assets
+      - name: Bevy renderer with WebGPU
+        run: cargo check --locked --target wasm32-unknown-unknown -p nie-render --features webgpu

@@ -26,7 +26,7 @@ impl Frontend {
     pub fn target(self) -> Target {
         match self {
             Frontend::Bevy3d => Target {
-                package: "nie-game",
+                package: "nie-football",
                 features: &[],
                 cargo_target: None,
                 kind: TargetKind::Native,
@@ -150,7 +150,7 @@ frontend = "dioxus_web"
     fn native_launch_passes_the_manifest() {
         let m = Manifest::from_toml(&WEB.replace("dioxus_web", "bevy3d")).unwrap();
         let plan = m.plan(Path::new("games/x.toml"), false).unwrap();
-        assert_eq!(&plan.launch[1..4], ["run", "-p", "nie-game"]);
+        assert_eq!(&plan.launch[1..4], ["run", "-p", "nie-football"]);
         assert!(
             plan.launch
                 .ends_with(&["--manifest".to_owned(), "games/x.toml".to_owned()])

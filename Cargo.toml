@@ -1,9 +1,10 @@
 [workspace]
 resolver = "3"
-members = ["crates/*"]
+members = ["crates/*", "tools/steam-index"]
+exclude = ["vendor"]
 
 [workspace.package]
-version = "0.1.0"
+version = "1.4.8"
 edition = "2024"
 rust-version = "1.100"
 license = "MIT OR Apache-2.0"
@@ -11,43 +12,262 @@ repository = "https://github.com/aphrody-labs/nie"
 authors = ["nie contributors"]
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+unsafe_op_in_unsafe_fn = "deny"
 unused_must_use = "deny"
+non_ascii_idents = "deny"
 
 [workspace.lints.clippy]
 todo = "deny"
 unimplemented = "deny"
 dbg_macro = "deny"
+correctness = { level = "warn", priority = -1 }
+perf = { level = "warn", priority = -1 }
 
 [workspace.dependencies]
-# Engine: Bevy ECS/app only for the simulation, the full renderer lives in nie-render.
-bevy_app = { version = "0.20.1", default-features = false }
-bevy_ecs = { version = "0.20.1", default-features = false }
-bevy_math = { version = "0.20.1", default-features = false }
-# Full Bevy (rendering, windowing, UI) for the 3D frontend only.
-bevy = { version = "0.20.1", default-features = false, features = ["3d", "ui"] }
-# Frontends.
-dioxus = { version = "0.7.10", default-features = false }
-eframe = { version = "0.37.0", default-features = false }
-# Shared.
-clap = { version = "4.6.7", features = ["derive"] }
-serde = { version = "1.0.229", features = ["derive"] }
-serde_json = "1.0.154"
-thiserror = "2.0.21"
-toml = "1.2.1"
+anyhow = { version = "1.0.104", default-features = false }
+base64 = { version = "0.23.1", default-features = false, features = ["alloc"] }
+libc = { version = "0.2.191", default-features = false }
+png = { version = "0.18.1", default-features = false }
+rayon = { version = "1.12.0", default-features = false }
+redis = { version = "1.8.2", default-features = false }
+reqwest = { version = "0.13.5", default-features = false }
+serde = { version = "1.0.229", default-features = false, features = [
+  "derive",
+  "std",
+] }
+serde_json = { version = "1.0.154", default-features = false, features = [
+  "std",
+] }
+sha1 = { version = "0.11.0", default-features = false }
+sha2 = { version = "0.11.1", default-features = false }
+steamroom = "0.3.0"
+steamroom-client = "0.3.0"
+tempfile = { version = "3.27.0", default-features = false, features = [
+  "getrandom",
+] }
+thiserror = { version = "2.0.21", default-features = false }
+tokio = { version = "1.54.1", default-features = false }
+tracing = { version = "0.1.44", default-features = false }
+tracing-subscriber = { version = "0.3.23", default-features = false }
 
-nie-ai = { path = "crates/nie-ai" }
-nie-craft = { path = "crates/nie-craft" }
-nie-input = { path = "crates/nie-input" }
-nie-model = { path = "crates/nie-model" }
-nie-net = { path = "crates/nie-net" }
-nie-physics = { path = "crates/nie-physics" }
-nie-render = { path = "crates/nie-render" }
-nie-sim = { path = "crates/nie-sim" }
+bevy = { version = "=0.20.0-dev", default-features = false, features = ["std"] }
+bevy_app = { version = "=0.20.0-dev", default-features = false, features = ["std"] }
+bevy_asset = { version = "=0.20.0-dev", default-features = false }
+bevy_ecs = { version = "=0.20.0-dev", default-features = false, features = ["std"] }
+bevy_image = { version = "=0.20.0-dev", default-features = false, features = [
+  "bevy_reflect",
+] }
+bevy_math = { version = "=0.20.0-dev", default-features = false }
+bevy_mesh = { version = "=0.20.0-dev", default-features = false }
+bevy_reflect = { version = "=0.20.0-dev", default-features = false }
+bevy-wgpu-types = { package = "wgpu-types", version = "30.0.2", default-features = false }
+rg-steam = { path = "crates/rg-steam", version = "1.4.8", default-features = false }
+nie-gpu = { path = "crates/nie-gpu", version = "1.4.8" }
+bytemuck = { version = "1.25", features = [
+  "derive",
+  "extern_crate_alloc",
+  "min_const_generics",
+] }
+clap = { version = "4", features = ["derive", "env"] }
+console_error_panic_hook = "0.1.7"
+futures-lite = "2"
+js-sys = { version = "0.3.107", default-features = false }
+pollster = "1.0"
+rusqlite = { version = "0.43" }
+wasm-bindgen = { version = "0.2.130", default-features = false }
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3.107", default-features = false }
+crc32fast = { version = "1.5", default-features = false }
+yolo-re-core = { path = "crates/yolo-re-core", version = "1.4.8" }
+image_dds = { version = "0.7", default-features = false }
+memmap2 = { version = "0.9" }
+nie-app = { default-features = false, path = "crates/nie-app", version = "1.4.8" }
+nie-camera = { default-features = false, path = "crates/nie-camera", version = "1.4.8" }
+nie-computer-use = { default-features = false, path = "crates/nie-computer-use", version = "1.4.8" }
+nie-core = { default-features = false, path = "crates/nie-core", version = "1.4.8" }
+nie-data = { path = "crates/nie-data", version = "1.4.8" }
+nie-explore = { default-features = false, path = "crates/nie-explore", version = "1.4.8" }
+nie-forge = { default-features = false, path = "crates/nie-forge", version = "1.4.8" }
+nie-formats = { default-features = false, path = "crates/nie-formats", version = "1.4.8" }
+nie-index = { default-features = false, path = "crates/nie-index", version = "1.4.8" }
+nie-lua = { default-features = false, path = "crates/nie-lua", version = "1.4.8" }
+nie-model-serve = { default-features = false, path = "crates/nie-model-serve", version = "1.4.8" }
+nie-pe = { default-features = false, path = "crates/nie-pe", version = "1.4.8" }
+nie-render3d = { default-features = false, path = "crates/nie-render3d", version = "1.4.8" }
+nie-runtime = { default-features = false, path = "crates/nie-runtime", version = "1.4.8" }
+nie-save = { default-features = false, path = "crates/nie-save", version = "1.4.8" }
+nie-seed = { default-features = false, path = "crates/nie-seed", version = "1.4.8" }
+nie-trace = { default-features = false, path = "crates/nie-trace", version = "1.4.8" }
+nie-wiki = { path = "crates/nie-wiki", version = "1.4.8" }
+nie-zukan = { default-features = false, path = "crates/nie-zukan", version = "1.4.8" }
+nie-ui = { path = "crates/nie-ui", version = "1.4.8" }
+# Same feature set as bevy_ui: taffy's default `float_layout`/`table` features add `Style` fields that bevy_ui
+# does not initialise, and Cargo unifies features across the workspace.
+taffy = { version = "0.15.1", default-features = false, features = ["std", "taffy_tree", "block_layout", "flexbox", "grid", "content_size"] }
+dioxus = { version = "0.8.0-alpha.3", default-features = false }
+dioxus-ssr = { version = "0.8.0-alpha.3" }
+winnow = { version = "1.0.5", default-features = false, features = [
+  "alloc",
+  "parser",
+] }
+wana_kana = "5.0.0"
+aho-corasick = "1.1.5"
+
+# Football layer (original games on the same Bevy fork).
+eframe = { version = "0.37.0", default-features = false }
+toml = "1.2.1"
+nie-ai = { path = "crates/nie-ai", version = "1.4.8" }
+nie-craft = { path = "crates/nie-craft", version = "1.4.8" }
+nie-input = { path = "crates/nie-input", version = "1.4.8" }
+nie-lockstep = { path = "crates/nie-lockstep", version = "1.4.8" }
+nie-model = { path = "crates/nie-model", version = "1.4.8" }
+nie-net = { default-features = false, path = "crates/nie-net", version = "1.4.8" }
+nie-physics = { path = "crates/nie-physics", version = "1.4.8" }
+nie-render = { path = "crates/nie-render", version = "1.4.8" }
+nie-sim = { path = "crates/nie-sim", version = "1.4.8" }
+
+# Vendored forks (vendor/*, git submodules of aphrody-labs/{bevy,dioxus} with relative URLs):
+# one Bevy and one Dioxus for the whole workspace. Bumped by .github/workflows/vendor-sync.yml.
+[patch.crates-io]
+bevy_a11y = { path = "vendor/bevy/crates/bevy_a11y" }
+bevy_app = { path = "vendor/bevy/crates/bevy_app" }
+bevy_derive = { path = "vendor/bevy/crates/bevy_derive" }
+bevy_macro_utils = { path = "vendor/bevy/crates/bevy_macro_utils" }
+bevy_ecs = { path = "vendor/bevy/crates/bevy_ecs" }
+bevy_ecs_macros = { path = "vendor/bevy/crates/bevy_ecs/macros" }
+bevy_ecs_macro_logic = { path = "vendor/bevy/crates/bevy_ecs/macro_logic" }
+bevy_platform = { path = "vendor/bevy/crates/bevy_platform" }
+bevy_ptr = { path = "vendor/bevy/crates/bevy_ptr" }
+bevy_reflect = { path = "vendor/bevy/crates/bevy_reflect" }
+bevy_annotations = { path = "vendor/bevy/crates/bevy_annotations" }
+bevy_reflect_derive = { path = "vendor/bevy/crates/bevy_reflect/derive" }
+bevy_utils = { path = "vendor/bevy/crates/bevy_utils" }
+bevy_tasks = { path = "vendor/bevy/crates/bevy_tasks" }
+bevy_android = { path = "vendor/bevy/crates/bevy_android" }
+bevy_animation = { path = "vendor/bevy/crates/bevy_animation" }
+bevy_animation_macros = { path = "vendor/bevy/crates/bevy_animation/macros" }
+bevy_asset = { path = "vendor/bevy/crates/bevy_asset" }
+bevy_asset_macros = { path = "vendor/bevy/crates/bevy_asset/macros" }
+bevy_diagnostic = { path = "vendor/bevy/crates/bevy_diagnostic" }
+bevy_time = { path = "vendor/bevy/crates/bevy_time" }
+bevy_color = { path = "vendor/bevy/crates/bevy_color" }
+bevy_curve = { path = "vendor/bevy/crates/bevy_curve" }
+bevy_math = { path = "vendor/bevy/crates/bevy_math" }
+bevy_mesh = { path = "vendor/bevy/crates/bevy_mesh" }
+bevy_shape = { path = "vendor/bevy/crates/bevy_shape" }
+bevy_transform = { path = "vendor/bevy/crates/bevy_transform" }
+bevy_anti_alias = { path = "vendor/bevy/crates/bevy_anti_alias" }
+bevy_camera = { path = "vendor/bevy/crates/bevy_camera" }
+bevy_image = { path = "vendor/bevy/crates/bevy_image" }
+bevy_window = { path = "vendor/bevy/crates/bevy_window" }
+bevy_input = { path = "vendor/bevy/crates/bevy_input" }
+bevy_scene = { path = "vendor/bevy/crates/bevy_scene" }
+bevy_scene_macros = { path = "vendor/bevy/crates/bevy_scene/macros" }
+bevy_core_pipeline = { path = "vendor/bevy/crates/bevy_core_pipeline" }
+bevy_extract = { path = "vendor/bevy/crates/bevy_extract" }
+bevy_extract_macros = { path = "vendor/bevy/crates/bevy_extract/macros" }
+bevy_log = { path = "vendor/bevy/crates/bevy_log" }
+bevy_light = { path = "vendor/bevy/crates/bevy_light" }
+bevy_gizmos = { path = "vendor/bevy/crates/bevy_gizmos" }
+bevy_gizmos_macros = { path = "vendor/bevy/crates/bevy_gizmos/macros" }
+bevy_render = { path = "vendor/bevy/crates/bevy_render" }
+bevy_encase_derive = { path = "vendor/bevy/crates/bevy_encase_derive" }
+bevy_material = { path = "vendor/bevy/crates/bevy_material" }
+bevy_material_macros = { path = "vendor/bevy/crates/bevy_material/macros" }
+bevy_shader = { path = "vendor/bevy/crates/bevy_shader" }
+bevy_render_macros = { path = "vendor/bevy/crates/bevy_render/macros" }
+bevy_picking = { path = "vendor/bevy/crates/bevy_picking" }
+bevy_clipboard = { path = "vendor/bevy/crates/bevy_clipboard" }
+bevy_dev_tools = { path = "vendor/bevy/crates/bevy_dev_tools" }
+bevy_pbr = { path = "vendor/bevy/crates/bevy_pbr" }
+bevy_gltf = { path = "vendor/bevy/crates/bevy_gltf" }
+bevy_world_serialization = { path = "vendor/bevy/crates/bevy_world_serialization" }
+bevy_sprite = { path = "vendor/bevy/crates/bevy_sprite" }
+bevy_text = { path = "vendor/bevy/crates/bevy_text" }
+bevy_state = { path = "vendor/bevy/crates/bevy_state" }
+bevy_state_macros = { path = "vendor/bevy/crates/bevy_state/macros" }
+bevy_ui = { path = "vendor/bevy/crates/bevy_ui" }
+bevy_input_focus = { path = "vendor/bevy/crates/bevy_input_focus" }
+bevy_ui_render = { path = "vendor/bevy/crates/bevy_ui_render" }
+bevy_sprite_render = { path = "vendor/bevy/crates/bevy_sprite_render" }
+bevy_ui_widgets = { path = "vendor/bevy/crates/bevy_ui_widgets" }
+bevy_internal = { path = "vendor/bevy/crates/bevy_internal" }
+bevy_feathers = { path = "vendor/bevy/crates/bevy_feathers" }
+bevy_fuzzy = { path = "vendor/bevy/crates/bevy_fuzzy" }
+bevy_gilrs = { path = "vendor/bevy/crates/bevy_gilrs" }
+bevy_gizmos_render = { path = "vendor/bevy/crates/bevy_gizmos_render" }
+bevy_post_process = { path = "vendor/bevy/crates/bevy_post_process" }
+bevy_winit = { path = "vendor/bevy/crates/bevy_winit" }
+bevy = { path = "vendor/bevy" }
+dioxus = { path = "vendor/dioxus/packages/dioxus" }
+dioxus-asset-resolver = { path = "vendor/dioxus/packages/asset-resolver" }
+dx-env = { path = "vendor/dioxus/packages/dx-env" }
+dioxus-cli-config = { path = "vendor/dioxus/packages/cli-config" }
+dioxus-config-macro = { path = "vendor/dioxus/packages/config-macro" }
+dioxus-core = { path = "vendor/dioxus/packages/core" }
+dioxus-config-macros = { path = "vendor/dioxus/packages/config-macros" }
+dioxus-document = { path = "vendor/dioxus/packages/document" }
+dioxus-html = { path = "vendor/dioxus/packages/html" }
+dioxus-hooks = { path = "vendor/dioxus/packages/hooks" }
+dioxus-signals = { path = "vendor/dioxus/packages/signals" }
+dioxus-vdom = { path = "vendor/dioxus/packages/vdom" }
+dioxus-const-vec = { path = "vendor/dioxus/packages/dioxus-const-vec" }
+dioxus-vdom-macro = { path = "vendor/dioxus/packages/vdom-macro" }
+dioxus-rsx = { path = "vendor/dioxus/packages/rsx" }
+dioxus-vdom-template = { path = "vendor/dioxus/packages/vdom-template" }
+generational-box = { path = "vendor/dioxus/packages/generational-box" }
+manganis-core = { path = "vendor/dioxus/packages/manganis/manganis-core" }
+const-serialize = { path = "vendor/dioxus/packages/const-serialize" }
+const-serialize-macro = { path = "vendor/dioxus/packages/const-serialize-macro" }
+manganis = { path = "vendor/dioxus/packages/manganis/manganis" }
+manganis-macro = { path = "vendor/dioxus/packages/manganis/manganis-macro" }
+subsecond = { path = "vendor/dioxus/packages/subsecond/subsecond" }
+subsecond-types = { path = "vendor/dioxus/packages/subsecond/subsecond-types" }
+dioxus-ssr = { path = "vendor/dioxus/packages/ssr" }
+dioxus-html-internal-macro = { path = "vendor/dioxus/packages/html-internal-macro" }
+dioxus-web = { path = "vendor/dioxus/packages/web" }
+dioxus-devtools = { path = "vendor/dioxus/packages/devtools" }
+dioxus-devtools-types = { path = "vendor/dioxus/packages/devtools-types" }
+dioxus-fullstack-core = { path = "vendor/dioxus/packages/fullstack-core" }
+dioxus-history = { path = "vendor/dioxus/packages/history" }
+dioxus-fullstack = { path = "vendor/dioxus/packages/fullstack" }
+dioxus-fullstack-macro = { path = "vendor/dioxus/packages/fullstack-macro" }
+dioxus-interpreter-js = { path = "vendor/dioxus/packages/interpreter" }
+lazy-js-bundle = { path = "vendor/dioxus/packages/lazy-js-bundle" }
+dioxus-stores = { path = "vendor/dioxus/packages/stores" }
+dioxus-stores-macro = { path = "vendor/dioxus/packages/stores-macro" }
+dioxus-desktop = { path = "vendor/dioxus/packages/desktop" }
 
 [profile.dev]
 debug = 1
+opt-level = 0
+
+[profile.test]
+debug = 1
+opt-level = 0
 
 [profile.release]
 lto = "thin"
 codegen-units = 1
+
+# Browser builds: whole-program optimisation for wasm32-unknown-unknown; wasm-bindgen and wasm-opt run afterwards.
+[profile.wasm-release]
+inherits = "release"
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+debug = false
+strip = true
+incremental = false
+
+# Craft browser apps: smallest download; wasm-bindgen and wasm-opt -Oz run afterwards.
+[profile.web-craft]
+inherits = "release"
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+debug = false
+strip = true
+incremental = false

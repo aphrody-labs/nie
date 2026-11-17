@@ -1,0 +1,15 @@
+[package]
+name = "nie-sitemap"
+version = "1.4.8"
+edition = "2024"
+rust-version = "1.100"
+license = "Apache-2.0"
+publish = false
+description = "Sitemap, route tree and robots.txt generated in real time from the nie VFS"
+
+[lints]
+workspace = true
+
+[dependencies]
+nie-formats = { workspace = true, features = ["std", "serde", "remote-vfs"] }
+serde_json = { workspace = true, features = ["std"] }

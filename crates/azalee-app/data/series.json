@@ -1,0 +1,104 @@
+{
+  "source": "https://www.inazuma.jp/",
+  "games": [
+    {
+      "slug": "inazuma",
+      "official": "/inazuma/",
+      "nie": false,
+      "platforms": [
+        "ds"
+      ]
+    },
+    {
+      "slug": "inazuma2",
+      "official": "/inazuma2/",
+      "nie": false,
+      "platforms": [
+        "ds"
+      ]
+    },
+    {
+      "slug": "inazuma3",
+      "official": "/inazuma3/",
+      "nie": false,
+      "platforms": [
+        "ds"
+      ]
+    },
+    {
+      "slug": "strikers",
+      "official": "/strikers/",
+      "nie": false,
+      "platforms": [
+        "wii"
+      ]
+    },
+    {
+      "slug": "go",
+      "official": "/go/",
+      "nie": false,
+      "platforms": [
+        "3ds"
+      ]
+    },
+    {
+      "slug": "go2",
+      "official": "/go2/",
+      "nie": false,
+      "platforms": [
+        "3ds"
+      ]
+    },
+    {
+      "slug": "gogalaxy",
+      "official": "/gogalaxy/",
+      "nie": false,
+      "platforms": [
+        "3ds"
+      ]
+    },
+    {
+      "slug": "gostrikers",
+      "official": "/gostrikers/",
+      "nie": false,
+      "platforms": [
+        "wii"
+      ]
+    },
+    {
+      "slug": "re",
+      "official": "/re/",
+      "nie": false,
+      "platforms": [
+        "switch2",
+        "switch",
+        "ps5",
+        "steam"
+      ]
+    },
+    {
+      "slug": "victory-road",
+      "official": "/victory-road/",
+      "nie": true,
+      "platforms": [
+        "switch2",
+        "switch",
+        "ps5",
+        "ps4",
+        "xbox",
+        "steam"
+      ]
+    }
+  ],
+  "platforms": [
+    "ds",
+    "3ds",
+    "wii",
+    "switch",
+    "switch2",
+    "ps4",
+    "ps5",
+    "xbox",
+    "steam"
+  ]
+}

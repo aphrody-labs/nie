@@ -1,0 +1,222 @@
+# Bevy ecosystem used by nie: crate -> nie use, with versions read from crates.io when this file was written.
+# `fork` crates resolve to vendor/bevy or vendor/dioxus through [patch.crates-io] in the root Cargo.toml and are
+# pinned `=0.20.0-dev` (Dioxus `0.8.0-alpha.3`). Third-party Bevy crates need their own fork before use, because a
+# crates.io release asks for `bevy ^0.20` and cannot resolve against a prerelease.
+# Regenerate by re-reading https://crates.io/api/v1/crates/<name>; never hand-edit the version fields.
+
+generated = "2026-11-17"
+bevy_fork = "aphrody-labs/bevy"
+bevy_fork_version = "0.20.0-dev"
+dioxus_fork = "aphrody-labs/dioxus"
+fork_sync = ".github/workflows/vendor-sync.yml"
+
+[[crate]]
+name = "bevy_app"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "App, plugins and schedules of the headless match (nie-sim) and every frontend"
+
+[[crate]]
+name = "bevy_ecs"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "Entities and systems of the deterministic simulation (nie-sim)"
+
+[[crate]]
+name = "bevy_math"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "Vectors and fixed-order math of nie-physics and nie-ai"
+
+[[crate]]
+name = "bevy_asset"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "AssetServer and AssetReader behind game:// (nie-assets, nie-bevy)"
+
+[[crate]]
+name = "bevy_image"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "Image asset: PNG and decoded G4TX atlases (nie-bevy, nie-assets tests)"
+
+[[crate]]
+name = "bevy_mesh"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "Mesh asset: decoded G4MD/G4MG models (nie-bevy)"
+
+[[crate]]
+name = "bevy_render"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "Renderer of the 3D match and the wgpu host (nie-render, nie-game)"
+
+[[crate]]
+name = "bevy_pbr"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "Pitch, players and ball materials and lights (nie-render)"
+
+[[crate]]
+name = "bevy_ui"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "HUD, scoreboard and menus (nie-render, nie-ui-bevy); needs taffy =0.15.0"
+
+[[crate]]
+name = "bevy_ui_widgets"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "Buttons and sliders of the in-game menus (nie-ui-bevy)"
+
+[[crate]]
+name = "bevy_input"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "Keyboard and gamepad events mapped to nie-input commands"
+
+[[crate]]
+name = "bevy_window"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "Window and canvas handling, including the WebGPU canvas on wasm32"
+
+[[crate]]
+name = "bevy_winit"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "Native event loop on Windows, Linux and macOS (nie-game, nie-football)"
+
+[[crate]]
+name = "bevy_gizmos"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "Debug overlays: pitch lines, physics shapes, AI targets (planned in nie-render)"
+
+[[crate]]
+name = "bevy_picking"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "Pointer picking of players in the studio and menus (planned)"
+
+[[crate]]
+name = "bevy_remote"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "Bevy Remote Protocol: lets the aphrody shell inspect a running match (planned)"
+
+[[crate]]
+name = "bevy_audio"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "Playback of CRI-decoded sound effects and music (planned, behind nie-formats audio-decode)"
+
+[[crate]]
+name = "bevy_scene"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "Scene assets for stadium and team setups (planned)"
+
+[[crate]]
+name = "bevy_gltf"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "glTF export and import of decoded models (planned)"
+
+[[crate]]
+name = "bevy_state"
+source = "fork"
+crates_io = "0.20.1"
+pinned = "=0.20.0-dev"
+nie_use = "App states: menu, match, replay (planned)"
+
+[[crate]]
+name = "wgpu"
+source = "crates.io"
+crates_io = "30.0.2"
+nie_use = "GPU API shared by nie-gpu and the wgpu host; Bevy uses the same crates.io family"
+
+[[crate]]
+name = "taffy"
+source = "crates.io"
+crates_io = "0.15.1"
+nie_use = "Layout of nie-ui and of bevy_ui; pinned =0.15.0, 0.15.1 changed Style in a way bevy_ui does not yet follow"
+
+[[crate]]
+name = "dioxus"
+source = "fork"
+crates_io = "0.7.10"
+pinned = "0.8.0-alpha.3"
+nie_use = "Dioxus UI of nie-web and nie-ui-dioxus (vendor/dioxus, 0.8 alpha)"
+
+[[crate]]
+name = "eframe"
+source = "crates.io"
+crates_io = "0.37.0"
+nie_use = "egui studio shell (nie-studio)"
+
+[[crate]]
+name = "glam"
+source = "crates.io"
+crates_io = "0.34.3"
+nie_use = "Math of nie-formats; the family bevy_math 0.20 resolves to"
+
+[[crate]]
+name = "cridecoder"
+source = "crates.io"
+crates_io = "0.3.7"
+nie_use = "CRI HCA and ADX decoding for game audio (nie-formats)"
+
+[[crate]]
+name = "image_dds"
+source = "crates.io"
+crates_io = "0.7.2"
+nie_use = "BC1-BC7 texture decoding of G4TX atlases (nie-formats)"
+
+[[crate]]
+name = "avian3d"
+source = "candidate"
+crates_io = "0.8.0"
+bevy_requirement = "^0.20"
+nie_use = "3D physics: not used, nie-physics is deterministic integer-order code"
+
+[[crate]]
+name = "bevy_egui"
+source = "candidate"
+crates_io = "0.43.1"
+bevy_requirement = "^0.20.0"
+nie_use = "egui inside Bevy: not used, the studio is a separate eframe app"
+
+[[crate]]
+name = "leafwing-input-manager"
+source = "candidate"
+crates_io = "0.22.0"
+bevy_requirement = "^0.20.0"
+nie_use = "Input mapping: not used, nie-input owns rebinding"
+
+[[crate]]
+name = "bevy_kira_audio"
+source = "candidate"
+crates_io = "0.27.1"
+bevy_requirement = "^0.20"
+nie_use = "Audio backend: not used, bevy_audio is the planned path"

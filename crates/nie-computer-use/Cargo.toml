@@ -1,0 +1,36 @@
+[package]
+name = "nie-computer-use"
+version = "1.4.8"
+edition = "2024"
+rust-version = "1.100"
+license-file = "LICENSE"
+publish = false
+description = "Bounded offline image, Ghidra availability, and NIE reverse-engineering probes"
+
+[lints]
+workspace = true
+
+[features]
+default = ["host"]
+host = [
+  "dep:reqwest",
+  "dep:rusqlite",
+  "dep:yolo-re-core",
+  "yolo-re-core/nie",
+  "dep:nie-trace",
+  "nie-trace/host",
+]
+
+[dependencies]
+anyhow = { workspace = true }
+hex = "0.4"
+reqwest = { workspace = true, features = ["blocking", "rustls"], optional = true }
+rusqlite = { workspace = true, optional = true }
+sha2 = { workspace = true }
+serde = { workspace = true, features = ["std", "derive"] }
+serde_json = { workspace = true }
+yolo-re-core = { path = "../yolo-re-core", version = "1.4.8", optional = true, default-features = false }
+nie-trace = { path = "../nie-trace", version = "1.4.8", optional = true, default-features = false }
+
+[dev-dependencies]
+nie-index = { workspace = true, features = ["host"] }

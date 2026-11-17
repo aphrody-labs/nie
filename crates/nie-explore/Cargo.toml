@@ -1,0 +1,35 @@
+[package]
+name = "nie-explore"
+version = "1.4.8"
+edition = "2024"
+rust-version = "1.100"
+license-file = "LICENSE"
+publish = false
+description = "Format-aware VFS and game asset reverse-engineering summaries for Inazuma Eleven"
+
+[lints]
+workspace = true
+
+[features]
+default = ["host"]
+host = [
+  "dep:anyhow",
+  "dep:base64",
+  "dep:globset",
+  "dep:grep-regex",
+  "dep:grep-searcher",
+  "dep:ignore",
+]
+
+[dependencies]
+nie-formats = { path = "../nie-formats", version = "1.4.8", default-features = false, features = ["std", "serde", "lua", "textures", "images", "audio-decode"] }
+nie-lua = { path = "../nie-lua", version = "1.4.8" }
+nie-data = { path = "../nie-data", version = "1.4.8", features = ["serde", "std"] }
+serde = { version = "1.0.229", features = ["std", "derive"] }
+serde_json = { version = "1.0.154", features = ["std"] }
+anyhow = { version = "1.0.104", optional = true }
+base64 = { version = "0.23.1", optional = true }
+globset = { version = "0.4", optional = true }
+grep-regex = { version = "0.1", optional = true }
+grep-searcher = { version = "0.1", optional = true }
+ignore = { version = "0.4", optional = true }

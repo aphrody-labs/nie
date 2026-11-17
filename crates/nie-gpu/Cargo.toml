@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "nie-gpu"
+version = "1.4.8"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
+description = "Shared wgpu instance, adapter, device and surface-configuration boundary of the Rose Griffon renderers."
+
+[lib]
+name = "nie_gpu"
+
+[lints]
+workspace = true
+
+[features]
+default = ["wgsl", "native-backends"]
+native-backends = ["wgpu/vulkan", "wgpu/dx12", "wgpu/metal"]
+webgl = ["wgpu/web", "wgpu/webgl"]
+webgpu = ["wgpu/web", "wgpu/webgpu"]
+wgsl = ["wgpu/wgsl"]
+
+[dependencies]
+wgpu = { version = "30.0.2", default-features = false, features = ["std"] }
