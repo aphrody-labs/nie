@@ -56,7 +56,7 @@ nie-forge = { workspace = true, default-features = false }
 # Single RE core (bun-re): safe in-memory minidump parsing (the browser wrapper exposes metadata
 # only and never copies captured process memory back into JavaScript) and portable `.pdata`
 # inspection. The `nie` feature (SQLite, filesystem) stays disabled.
-yolo-re-core.workspace = true
+nie-re-core.workspace = true
 # Credential-free Steam depot selection/collision planning; the `depot` client feature (network,
 # token cache) stays disabled.
 rg-steam = { workspace = true }

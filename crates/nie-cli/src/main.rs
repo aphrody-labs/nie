@@ -559,7 +559,7 @@ enum Cmd {
         #[arg(long)]
         exe: PathBuf,
     },
-    /// Triage PE/ELF via yolo-re-core : sections + imports/exports ingérés dans la base.
+    /// Triage PE/ELF via nie-re-core : sections + imports/exports ingérés dans la base.
     #[cfg(feature = "host")]
     Index {
         /// Base sqlite cible.

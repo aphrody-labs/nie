@@ -78,7 +78,7 @@ wasm-bindgen = { version = "0.2.130", default-features = false }
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3.107", default-features = false }
 crc32fast = { version = "1.5", default-features = false }
-yolo-re-core = { path = "crates/yolo-re-core", version = "1.4.8" }
+nie-re-core = { path = "crates/nie-re-core", version = "1.4.8" }
 image_dds = { version = "0.7", default-features = false }
 memmap2 = { version = "0.9" }
 nie-app = { default-features = false, path = "crates/nie-app", version = "1.4.8" }

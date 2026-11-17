@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Steam depot acquisition, absorbed from `rg-re` (originally `nie-steam`, the Rust port
+//! Steam depot acquisition, absorbed from `nie-re` (originally `nie-steam`, the Rust port
 //! of the iecode C# Steam layer) over `steamroom`, which owns the Steam protocol (CM, auth,
 //! manifests, chunks, CDN).
 //!

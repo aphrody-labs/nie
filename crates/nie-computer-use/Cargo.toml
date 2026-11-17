@@ -15,8 +15,8 @@ default = ["host"]
 host = [
   "dep:reqwest",
   "dep:rusqlite",
-  "dep:yolo-re-core",
-  "yolo-re-core/nie",
+  "dep:nie-re-core",
+  "nie-re-core/nie",
   "dep:nie-trace",
   "nie-trace/host",
 ]
@@ -29,7 +29,7 @@ rusqlite = { workspace = true, optional = true }
 sha2 = { workspace = true }
 serde = { workspace = true, features = ["std", "derive"] }
 serde_json = { workspace = true }
-yolo-re-core = { path = "../yolo-re-core", version = "1.4.8", optional = true, default-features = false }
+nie-re-core = { path = "../nie-re-core", version = "1.4.8", optional = true, default-features = false }
 nie-trace = { path = "../nie-trace", version = "1.4.8", optional = true, default-features = false }
 
 [dev-dependencies]

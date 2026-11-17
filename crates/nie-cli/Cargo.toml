@@ -75,7 +75,7 @@ host = [
   "dep:nie-index",
   "dep:nie-seed",
   "dep:nie-queue",
-  "dep:yolo-re-core",
+  "dep:nie-re-core",
   "dep:nie-trace",
   "dep:nie-computer-use",
   "dep:nie-viola",
@@ -139,7 +139,7 @@ steamroom = { workspace = true, optional = true }
 nie-index = { path = "../nie-index", version = "1.4.8", features = ["host"], optional = true }
 nie-seed = { path = "../nie-seed", version = "1.4.8", features = ["host"], optional = true }
 nie-queue = { path = "../nie-queue", version = "1.4.8", features = ["host"], optional = true }
-yolo-re-core = { path = "../yolo-re-core", version = "1.4.8", default-features = false, features = ["nie"], optional = true }
+nie-re-core = { path = "../nie-re-core", version = "1.4.8", default-features = false, features = ["nie"], optional = true }
 nie-trace = { path = "../nie-trace", version = "1.4.8", features = ["host"], optional = true }
 nie-computer-use = { path = "../nie-computer-use", version = "1.4.8", features = ["host"], optional = true }
 nie-viola = { path = "../nie-viola", version = "1.4.8", optional = true }

@@ -17,7 +17,7 @@ host = [
   "dep:nie-core",
   "dep:nie-data",
   "dep:nie-save",
-  "dep:yolo-re-core",
+  "dep:nie-re-core",
   "dep:nie-render3d",
   "nie-render3d/video",
   "dep:png",
@@ -31,7 +31,7 @@ nie-formats = { workspace = true, default-features = true }
 nie-data = { workspace = true, optional = true }
 nie-core = { workspace = true, optional = true }
 nie-save = { path = "../nie-save", optional = true }
-yolo-re-core = { workspace = true, default-features = false, optional = true }
+nie-re-core = { workspace = true, default-features = false, optional = true }
 nie-render3d = { workspace = true, default-features = false, optional = true }
 png = { workspace = true, optional = true }
 clap = { workspace = true, optional = true, features = [

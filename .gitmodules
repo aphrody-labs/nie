@@ -1,8 +1,6 @@
 [submodule "vendor/bevy"]
 	path = vendor/bevy
 	url = ../bevy
-	branch = main
 [submodule "vendor/dioxus"]
 	path = vendor/dioxus
 	url = ../dioxus
-	branch = main
