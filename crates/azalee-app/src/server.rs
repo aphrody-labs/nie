@@ -110,7 +110,7 @@ pub struct Built {
     pub title: String,
 }
 
-async fn build_dir(s: &AppState, path: &str) -> Result<Built, Response> {
+async fn build_dir(s: &AppState, path: &str) -> Result<Built, Box<Response>> {
     match s.db.list_dir(path, 500).await {
         Ok(d) if d.dirs.is_empty() && d.files.is_empty() => Ok(Built {
             status: StatusCode::NOT_FOUND,
@@ -122,14 +122,14 @@ async fn build_dir(s: &AppState, path: &str) -> Result<Built, Response> {
             ui: pages::directory(path, &d, &s.theme),
             title: format!("/{path}"),
         }),
-        Err(e) => Err(fail(&e)),
+        Err(e) => Err(Box::new(fail(&e))),
     }
 }
 
 async fn dir_page(s: &AppState, path: &str) -> Response {
     match build_dir(s, path).await {
         Ok(b) => (b.status, html(&b.ui, &b.title)).into_response(),
-        Err(r) => r,
+        Err(r) => *r,
     }
 }
 
@@ -140,13 +140,13 @@ fn is_image(path: &str) -> bool {
         .any(|e| p.ends_with(e))
 }
 
-async fn build_file(s: &AppState, raw: &str) -> Result<Built, Response> {
+async fn build_file(s: &AppState, raw: &str) -> Result<Built, Box<Response>> {
     let path = nie_formats::vfs_manifest::canonical_path(raw);
-    let entry = s.db.entry(&path).await.map_err(|e| fail(&e))?;
+    let entry = s.db.entry(&path).await.map_err(|e| Box::new(fail(&e)))?;
     let Some((pack, size)) = entry else {
         return build_dir(s, &path).await;
     };
-    let cfg = s.db.file(&path).await.map_err(|e| fail(&e))?;
+    let cfg = s.db.file(&path).await.map_err(|e| Box::new(fail(&e)))?;
     let mut tables = Vec::new();
     if let Some(c) = &cfg {
         let res: Result<(), DbError> = async {
@@ -162,7 +162,7 @@ async fn build_file(s: &AppState, raw: &str) -> Result<Built, Response> {
             Ok(())
         }
         .await;
-        res.map_err(|e| fail(&e))?;
+        res.map_err(|e| Box::new(fail(&e)))?;
     }
     let image = is_image(&path).then(|| {
         format!(
@@ -189,7 +189,7 @@ async fn build_file(s: &AppState, raw: &str) -> Result<Built, Response> {
 async fn files(State(s): State<Shared>, Path(raw): Path<String>) -> Response {
     match build_file(&s, &raw).await {
         Ok(b) => (b.status, html(&b.ui, &b.title)).into_response(),
-        Err(r) => r,
+        Err(r) => *r,
     }
 }
 
@@ -203,7 +203,7 @@ async fn api_ui(State(s): State<Shared>, Path(raw): Path<String>) -> Response {
             serde_json::to_string(&b.ui).unwrap_or_default(),
         )
             .into_response(),
-        Err(r) => r,
+        Err(r) => *r,
     }
 }
 
@@ -285,13 +285,15 @@ fn percent_decode(s: &str) -> String {
     let mut out = Vec::with_capacity(b.len());
     let mut i = 0;
     while i < b.len() {
-        if b[i] == b'%' && i + 2 < b.len() && s.is_char_boundary(i + 1) && s.is_char_boundary(i + 3)
+        if b[i] == b'%'
+            && i + 2 < b.len()
+            && s.is_char_boundary(i + 1)
+            && s.is_char_boundary(i + 3)
+            && let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16)
         {
-            if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
-                out.push(v);
-                i += 3;
-                continue;
-            }
+            out.push(v);
+            i += 3;
+            continue;
         }
         out.push(b[i]);
         i += 1;

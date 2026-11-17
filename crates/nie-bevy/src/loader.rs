@@ -91,13 +91,22 @@ impl AssetLoader for G4mdLoader {
         let source = load_context.path().source().clone_owned();
         let sibling_path = load_context.path().path().with_extension("g4mg");
         let sibling = AssetPath::from(sibling_path.clone()).with_source(source);
-        let mg = load_context
-            .read_asset_bytes(sibling)
-            .await
-            .map_err(|error| NieAssetError::Dependency {
-                path: sibling_path.display().to_string(),
-                reason: error.to_string(),
-            })?;
+        let dependency = |error: &dyn std::fmt::Display| NieAssetError::Dependency {
+            path: sibling_path.display().to_string(),
+            reason: error.to_string(),
+        };
+        let mg = {
+            let mut reader = load_context
+                .read_asset(sibling)
+                .await
+                .map_err(|error| dependency(&error))?;
+            let mut bytes = Vec::new();
+            reader
+                .read_to_end(&mut bytes)
+                .await
+                .map_err(|error| dependency(&error))?;
+            bytes
+        };
 
         let meshes = meshes_from_g4md_g4mg(&md, &mg)?;
         let submesh_count = meshes.len();

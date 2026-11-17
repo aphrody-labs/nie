@@ -114,12 +114,12 @@ pub fn parse_ievr_rich_text<'a>(mut input: &'a str) -> Vec<RichTextToken<'a>> {
         let before = input;
         if input.starts_with('[') {
             let mut probe = input;
-            if let Ok(parsed) = bracket_token.parse_next(&mut probe) {
-                if let Some(tok) = parsed {
-                    tokens.push(tok);
-                    input = probe;
-                    continue;
-                }
+            if let Ok(parsed) = bracket_token.parse_next(&mut probe)
+                && let Some(tok) = parsed
+            {
+                tokens.push(tok);
+                input = probe;
+                continue;
             }
         }
         if input.starts_with('<') {

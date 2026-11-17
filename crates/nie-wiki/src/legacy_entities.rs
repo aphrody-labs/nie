@@ -22,7 +22,6 @@ pub(crate) fn rows(
     let mut statement = connection.prepare(sql)?;
     let columns = statement
         .column_names()
-        .into_iter()
         .map(str::to_owned)
         .collect::<Vec<_>>();
     Ok(statement

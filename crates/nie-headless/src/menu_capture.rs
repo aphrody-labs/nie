@@ -220,9 +220,9 @@ fn render_menu_pixel_buffer(
             }
             let idx = ((y * width + x) * 4) as usize;
             // Card background
-            pixels[idx] = (bg_top[0] as i32 + 25).clamp(0, 255) as u8;
-            pixels[idx + 1] = (bg_top[1] as i32 + 25).clamp(0, 255) as u8;
-            pixels[idx + 2] = (bg_top[2] as i32 + 35).clamp(0, 255) as u8;
+            pixels[idx] = (bg_top[0] + 25).clamp(0, 255) as u8;
+            pixels[idx + 1] = (bg_top[1] + 25).clamp(0, 255) as u8;
+            pixels[idx + 2] = (bg_top[2] + 35).clamp(0, 255) as u8;
 
             // Border
             if x == card_x || x == card_x + card_w - 1 || y == card_y || y == card_y + card_h - 1 {

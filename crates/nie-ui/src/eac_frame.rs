@@ -200,7 +200,9 @@ mod tests {
         let mut buf = vec![0u8; 320 * 180 * 4];
         render_eac_launcher(&comp, 0.45, 5, 11, &mut buf, 320, 180);
         let cyan_pixels = buf
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .filter(|px| px[2] > 200 && px[1] > 150 && px[0] < 32)
             .count();
         assert!(cyan_pixels > 20, "progress bar must be painted in RGBA");

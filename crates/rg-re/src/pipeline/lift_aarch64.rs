@@ -1077,7 +1077,7 @@ fn lower(pc: u64, w: u32) -> Lowered {
 
 fn decode_at(img: &Image, addr: u64) -> Option<u32> {
     let seg = img.segment_at(addr)?;
-    if !seg.exec || addr % 4 != 0 {
+    if !seg.exec || !addr.is_multiple_of(4) {
         return None;
     }
     let off = (addr - seg.vaddr) as usize;

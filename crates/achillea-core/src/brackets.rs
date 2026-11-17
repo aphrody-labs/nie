@@ -72,7 +72,7 @@ pub fn round_robin_rounds(participants: u64, double_legged: bool) -> u64 {
     if participants <= 1 {
         return 0;
     }
-    let rounds = if participants % 2 == 0 {
+    let rounds = if participants.is_multiple_of(2) {
         participants - 1
     } else {
         participants

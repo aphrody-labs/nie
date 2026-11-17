@@ -12,6 +12,8 @@ workspace = true
 
 [features]
 default = []
+# Runs the tests that read a real save file from a game install.
+real-saves = []
 serde = ["dep:serde", "nie-formats/serde"]
 
 [dependencies]

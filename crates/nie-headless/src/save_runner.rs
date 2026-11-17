@@ -148,28 +148,28 @@ pub fn execute_save_edit(options: &SaveEditOptions) -> Result<SaveEditReport> {
 
         if name == "AUTOSAVE_data.bin" {
             // Apply level in scalar stream or known offset
-            if let Some(lvl) = options.player_level {
-                if blob.body.len() > SCALAR_STREAM_OFFSET + 16 {
-                    let lvl_bytes = (lvl as u16).to_le_bytes();
-                    blob.body[SCALAR_STREAM_OFFSET + 12..SCALAR_STREAM_OFFSET + 14]
-                        .copy_from_slice(&lvl_bytes);
-                }
+            if let Some(lvl) = options.player_level
+                && blob.body.len() > SCALAR_STREAM_OFFSET + 16
+            {
+                let lvl_bytes = (lvl as u16).to_le_bytes();
+                blob.body[SCALAR_STREAM_OFFSET + 12..SCALAR_STREAM_OFFSET + 14]
+                    .copy_from_slice(&lvl_bytes);
             }
-            if let Some(c) = options.coins {
-                if blob.body.len() > SCALAR_STREAM_OFFSET + 24 {
-                    let coin_bytes = c.to_le_bytes();
-                    blob.body[SCALAR_STREAM_OFFSET + 20..SCALAR_STREAM_OFFSET + 24]
-                        .copy_from_slice(&coin_bytes);
-                }
+            if let Some(c) = options.coins
+                && blob.body.len() > SCALAR_STREAM_OFFSET + 24
+            {
+                let coin_bytes = c.to_le_bytes();
+                blob.body[SCALAR_STREAM_OFFSET + 20..SCALAR_STREAM_OFFSET + 24]
+                    .copy_from_slice(&coin_bytes);
             }
         }
     }
 
     // Write back plain container or re-encrypt
-    if let Some(parent) = target_out.parent() {
-        if !parent.exists() {
-            std::fs::create_dir_all(parent)?;
-        }
+    if let Some(parent) = target_out.parent()
+        && !parent.exists()
+    {
+        std::fs::create_dir_all(parent)?;
     }
 
     write_save(&container, target_out)

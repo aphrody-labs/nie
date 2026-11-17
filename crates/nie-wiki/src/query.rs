@@ -1827,7 +1827,6 @@ pub fn exec_readonly_sql_page(
     );
     let columns = statement
         .column_names()
-        .into_iter()
         .map(str::to_owned)
         .collect::<Vec<_>>();
     let mut cursor = statement.query([])?;

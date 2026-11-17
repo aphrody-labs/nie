@@ -328,8 +328,7 @@ async fn route_request(
         return tokio::task::spawn_blocking(
             || match nie_formats::vfs_remote::rclone_list_remotes() {
                 Ok(raw) => {
-                    let parsed: Value =
-                        serde_json::from_str(&raw).unwrap_or_else(|_| Value::String(raw));
+                    let parsed: Value = serde_json::from_str(&raw).unwrap_or(Value::String(raw));
                     HttpResponse::json(200, "OK", &json!({ "remotes": parsed }))
                 }
                 Err(err) => HttpResponse::json(

@@ -81,8 +81,8 @@ jobs:
       - name: Toolchain
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2
-      - name: Check the whole workspace
-        run: cargo check --locked --workspace --all-targets
+      - name: Lint the whole workspace, warnings denied
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Bevy asset integration
         run: cargo check --locked -p nie-bevy --features bevy --all-targets
 

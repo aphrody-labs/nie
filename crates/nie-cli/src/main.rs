@@ -5811,6 +5811,10 @@ lancable    NON — {manquants} composant(s) manquant(s)"
 /// The shared classifier derives tags from `common/text`, then sees whether the same exact tag
 /// appears in menu textures, font resources, and Criware containers. It deliberately does not
 /// turn an `<LG>` template into a path unless the resulting resource is indexed by the VFS.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "one parameter per `locales` flag, passed straight from the parsed command line"
+)]
 fn locales_cmd(
     game_dir: Option<PathBuf>,
     samples: usize,

@@ -361,11 +361,9 @@ impl NieClientRuntime {
                     self.enqueue(Target::Glb(slot), Group::Match, url);
                 }
             }
-            Stage::Match => {
-                if self.bgm_playing {
-                    self.media.push(MediaCommand::StopAudio { channel: "bgm" });
-                    self.bgm_playing = false;
-                }
+            Stage::Match if self.bgm_playing => {
+                self.media.push(MediaCommand::StopAudio { channel: "bgm" });
+                self.bgm_playing = false;
             }
             _ => {}
         }

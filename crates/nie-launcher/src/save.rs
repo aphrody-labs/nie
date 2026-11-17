@@ -82,12 +82,13 @@ impl SaveSession {
 
         // If installation fails after parking, put the original save back immediately.
         if let Err(install_error) = fs::copy(&self.mod_save_path, &self.live_path) {
-            if self.backup_path.exists() && !self.live_path.exists() {
-                if let Err(restore_error) = fs::rename(&self.backup_path, &self.live_path) {
-                    return Err(LauncherError::Save(format!(
-                        "failed to install mod save ({install_error}) and failed to restore backup ({restore_error})"
-                    )));
-                }
+            if self.backup_path.exists()
+                && !self.live_path.exists()
+                && let Err(restore_error) = fs::rename(&self.backup_path, &self.live_path)
+            {
+                return Err(LauncherError::Save(format!(
+                    "failed to install mod save ({install_error}) and failed to restore backup ({restore_error})"
+                )));
             }
             return Err(install_error.into());
         }

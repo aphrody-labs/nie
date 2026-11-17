@@ -616,8 +616,7 @@ pub fn lift_ines(rom: &[u8], limits: Limits) -> Result<IrModule, String> {
         let mut code = Vec::new();
         let mut pc = start;
         let mut fallthrough = None;
-        loop {
-            let Some(bytes) = fetch(pc) else { break };
+        while let Some(bytes) = fetch(pc) {
             let low = lower(pc, &bytes);
             code.extend_from_slice(&bytes);
             insns.push(IrInsn {

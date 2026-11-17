@@ -1631,10 +1631,12 @@ fn run_bevy_window(host: AppFenetre, title: &str) -> Result<()> {
             }),
             ..Default::default()
         }),
-        nie_bevy::NieAssetPlugin::default(),
+        nie_bevy::NieAssetPlugin,
     ))
     .insert_resource(WinitSettings::continuous())
-    .insert_non_send(host)
+    .setup_non_send(move |world| {
+        world.insert_non_send(host);
+    })
     .add_systems(Startup, setup_bevy_frame)
     .add_systems(Update, update_bevy_frame);
 

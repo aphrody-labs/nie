@@ -843,7 +843,7 @@ fn rect_center(r: &Rect) -> (f64, f64) {
 
 /// Remplit un tampon RGBA8 d'une couleur unie.
 pub fn fill_solid(canvas: &mut [u8], color: [u8; 4]) {
-    for px in canvas.chunks_exact_mut(4) {
+    for px in canvas.as_chunks_mut::<4>().0 {
         px.copy_from_slice(&color);
     }
 }

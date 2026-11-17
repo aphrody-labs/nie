@@ -303,7 +303,7 @@ impl LivesContainer {
                 "nombre d'entrées et de blobs incohérent",
             ));
         }
-        if self.slot_name.as_bytes().len() > 63 || self.slot_name.as_bytes().contains(&0) {
+        if self.slot_name.len() > 63 || self.slot_name.as_bytes().contains(&0) {
             return Err(SaveError::Corrupt("nom de slot trop long ou contenant NUL"));
         }
 

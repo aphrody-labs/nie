@@ -61,8 +61,7 @@ pub fn select_queue_pair(
 ) -> Option<(usize, usize)> {
     for i in 0..sorted.len().saturating_sub(1) {
         let first = &sorted[i];
-        for j in (i + 1)..sorted.len() {
-            let second = &sorted[j];
+        for (j, second) in sorted.iter().enumerate().skip(i + 1) {
             if first.user_id == second.user_id {
                 continue;
             }

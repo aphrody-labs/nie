@@ -170,6 +170,9 @@ pub fn not_found(path: &str, t: &Theme) -> UiNode {
     )
 }
 
+/// One preview table: title, headers, rows and the total row count.
+pub type PreviewTable = (String, Vec<String>, Vec<Vec<String>>, i64);
+
 /// Body of a file page, assembled by the server from the queries it ran.
 pub struct FileView<'a> {
     /// VFS path.
@@ -181,7 +184,7 @@ pub struct FileView<'a> {
     /// Decoded cfg.bin row, if the file is one.
     pub cfg: Option<&'a FileRow>,
     /// Preview tables: `(title, headers, rows, total rows)`.
-    pub tables: Vec<(String, Vec<String>, Vec<Vec<String>>, i64)>,
+    pub tables: Vec<PreviewTable>,
     /// Image URL when the file is a texture or image.
     pub image: Option<String>,
 }

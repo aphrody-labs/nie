@@ -223,11 +223,7 @@ fn mock_emb(names: &[&str], payloads: &[&[u8]]) -> Vec<u8> {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use super::{EmbArchive, mock_emb, mock_emb_fixture};
-
-    pub(crate) fn fixture(names: &[(&str, &[u8])]) -> Vec<u8> {
-        mock_emb_fixture(names)
-    }
+    use super::{EmbArchive, mock_emb};
 
     #[test]
     fn parses_named_entries_and_borrows_payloads() {

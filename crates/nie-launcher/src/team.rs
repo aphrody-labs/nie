@@ -80,7 +80,8 @@ pub fn decrypt_team_envelope(
     let cipher = Aes256Gcm::new_from_slice(&derived_key)
         .map_err(|e| LauncherError::Crypto(format!("failed to initialize AES-256-GCM: {e}")))?;
 
-    let nonce = Nonce::from_slice(&iv);
+    let nonce = &Nonce::try_from(iv.as_slice())
+        .map_err(|_| LauncherError::Crypto("invalid IV length".to_owned()))?;
     let plaintext = cipher
         .decrypt(nonce, ciphertext.as_ref())
         .map_err(|e| LauncherError::Crypto(format!("AES-GCM decryption failed: {e}")))?;
@@ -104,7 +105,7 @@ pub fn encrypt_team_envelope(
         .map_err(|e| LauncherError::Crypto(format!("failed to initialize AES-256-GCM: {e}")))?;
 
     let plaintext = serde_json::to_vec_pretty(lineup)?;
-    let nonce = Nonce::from_slice(iv);
+    let nonce = &Nonce::from(*iv);
 
     let ciphertext = cipher
         .encrypt(nonce, plaintext.as_ref())

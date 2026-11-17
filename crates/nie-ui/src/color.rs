@@ -529,7 +529,7 @@ pub fn find(name: &str) -> Option<ColorToken> {
 
 #[cfg(test)]
 mod tests {
-    use super::{CYAN_ACCENT, GAME_COLORS, Oklch, find, hex_to_rgb_triplet};
+    use super::{CYAN_ACCENT, GAME_COLORS, find, hex_to_rgb_triplet};
 
     #[test]
     fn chaque_nom_de_jeton_est_unique() {

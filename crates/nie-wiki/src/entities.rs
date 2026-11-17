@@ -1091,7 +1091,7 @@ pub fn page_lignes(
         table.cle_sql(),
     );
     let mut stmt = c.prepare(&sql)?;
-    let colonnes: Vec<String> = stmt.column_names().into_iter().map(str::to_owned).collect();
+    let colonnes: Vec<String> = stmt.column_names().map(str::to_owned).collect();
     let mut params = cl.params.clone();
     params.push(ValeurSql::Integer(i64::from(d.pagination.per_page)));
     params.push(ValeurSql::Integer(
@@ -1217,7 +1217,7 @@ pub fn lire_ligne(
         table.cle_sql()
     );
     let mut stmt = c.prepare(&sql)?;
-    let colonnes: Vec<String> = stmt.column_names().into_iter().map(str::to_owned).collect();
+    let colonnes: Vec<String> = stmt.column_names().map(str::to_owned).collect();
     let mut lignes = stmt.query(rusqlite::params_from_iter([valeur].iter()))?;
     match lignes.next()? {
         Some(r) => Ok(ligne_en_json(r, &colonnes)?),

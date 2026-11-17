@@ -194,19 +194,7 @@ pub struct CacheCpkStats {
 /// therefore compared byte for byte against its directory listing; elsewhere the filesystem
 /// is already case-exact.
 fn is_file_exact(path: &Path) -> bool {
-    if !path.is_file() {
-        return false;
-    }
-    #[cfg(windows)]
-    {
-        let (Some(parent), Some(name)) = (path.parent(), path.file_name()) else {
-            return false;
-        };
-        return std::fs::read_dir(parent)
-            .is_ok_and(|mut dir| dir.any(|e| e.is_ok_and(|e| e.file_name() == name)));
-    }
-    #[cfg(not(windows))]
-    true
+    path.is_file()
 }
 
 /// Positioned read of `size` bytes at `offset` in a local pack.

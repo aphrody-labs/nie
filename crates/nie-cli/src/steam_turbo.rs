@@ -507,6 +507,7 @@ pub async fn download_app_turbo(
                             .create(true)
                             .read(true)
                             .write(true)
+                            .truncate(false)
                             .open(&t)
                             .with_context(|| format!("open {}", t.display()))?;
                         f.set_len(sz)?;

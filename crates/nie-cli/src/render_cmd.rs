@@ -46,7 +46,6 @@ fn charger(glb_path: &Path) -> Result<glb::Model> {
 }
 
 /// CPU-only capture renderer. GPU and WebGPU backends stay outside this workspace.
-
 fn encoder_png(rgba: &[u8], width: u32, height: u32) -> Result<Vec<u8>> {
     let mut out = Vec::new();
     {

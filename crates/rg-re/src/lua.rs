@@ -585,19 +585,19 @@ fn collect_global_accesses(
                         });
                     }
                 }
-            } else if instr.opcode == "SETTABUP" && instr.a == env_idx as u32 {
-                if let Some(b) = instr.b
-                    && (b & (1 << 8)) != 0
-                {
-                    let k_idx = (b & !(1 << 8)) as usize;
-                    if let Some(RawConstant::String(bytes)) = proto.raw_constants.get(k_idx) {
-                        out.push(LuaGlobalAccess {
-                            kind: "write".to_string(),
-                            symbol: String::from_utf8_lossy(bytes).into_owned(),
-                            proto_path: path.to_string(),
-                            pc: instr.pc,
-                        });
-                    }
+            } else if instr.opcode == "SETTABUP"
+                && instr.a == env_idx as u32
+                && let Some(b) = instr.b
+                && (b & (1 << 8)) != 0
+            {
+                let k_idx = (b & !(1 << 8)) as usize;
+                if let Some(RawConstant::String(bytes)) = proto.raw_constants.get(k_idx) {
+                    out.push(LuaGlobalAccess {
+                        kind: "write".to_string(),
+                        symbol: String::from_utf8_lossy(bytes).into_owned(),
+                        proto_path: path.to_string(),
+                        pc: instr.pc,
+                    });
                 }
             }
         }
@@ -906,7 +906,7 @@ mod tests {
         // 2 instructions:
         // [0] GETTABUP R0 := Upvalue[0][K0("print")] -> op=6, A=0, B=0, C=256 (bit 8 + 0)
         // [1] RETURN (op=31, A=0, B=1)
-        let gettabup = 6u32 | (0u32 << 6) | (256u32 << 14) | (0u32 << 23);
+        let gettabup = 6u32 | (256u32 << 14);
         let ret = 31u32 | (1u32 << 23);
         out.extend_from_slice(&2u32.to_le_bytes());
         out.extend_from_slice(&gettabup.to_le_bytes());

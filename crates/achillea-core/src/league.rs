@@ -129,10 +129,10 @@ pub fn generate_single_round_robin(team_ids: &[String]) -> Vec<LeagueFixture> {
 /// Winner of a match, `None` for a pure draw.
 #[must_use]
 pub fn match_winner_id(m: &LeagueMatchResult) -> Option<&str> {
-    if let Some(w) = &m.winner_id {
-        if *w == m.home_id || *w == m.away_id {
-            return Some(w);
-        }
+    if let Some(w) = &m.winner_id
+        && (*w == m.home_id || *w == m.away_id)
+    {
+        return Some(w);
     }
     if m.home_score > m.away_score {
         Some(&m.home_id)
@@ -278,7 +278,7 @@ pub fn compute_league_table(
 pub fn matchday_count(team_count: u32) -> u32 {
     if team_count < 2 {
         0
-    } else if team_count % 2 == 0 {
+    } else if team_count.is_multiple_of(2) {
         team_count - 1
     } else {
         team_count

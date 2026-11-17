@@ -191,6 +191,7 @@ impl TokenStore {
                 let mut file = OpenOptions::new()
                     .create(true)
                     .write(true)
+                    .truncate(true)
                     .mode(0o600)
                     .open(path)?;
                 file.set_permissions(std::fs::Permissions::from_mode(0o600))?;

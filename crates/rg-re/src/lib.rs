@@ -175,8 +175,8 @@ mod tests {
         // Code: 2 instructions:
         // [0] GETTABUP R0, U0, K0 (opcode 6 = GETTABUP, A=0, B=0, C=256 (ISK|0))
         // [1] RETURN R0..R0 (opcode 31 = RETURN, A=0, B=2)
-        let instr_gettabup = 6u32 | (0u32 << 6) | (256u32 << 14) | (0u32 << 23);
-        let instr_return = 31u32 | (0u32 << 6) | (2u32 << 23);
+        let instr_gettabup = 6u32 | (256u32 << 14);
+        let instr_return = 31u32 | (2u32 << 23);
         chunk.extend_from_slice(&2u32.to_le_bytes()); // code_len = 2 (int = 4 bytes)
         chunk.extend_from_slice(&instr_gettabup.to_le_bytes());
         chunk.extend_from_slice(&instr_return.to_le_bytes());

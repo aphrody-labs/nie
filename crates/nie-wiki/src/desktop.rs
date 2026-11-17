@@ -63,7 +63,6 @@ fn contract_rows(conn: &Connection, sql: &str, numbers: &[&str]) -> anyhow::Resu
     let mut statement = conn.prepare(sql)?;
     let columns = statement
         .column_names()
-        .into_iter()
         .map(str::to_owned)
         .collect::<Vec<_>>();
     let rows = statement

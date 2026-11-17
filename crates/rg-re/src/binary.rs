@@ -113,14 +113,12 @@ pub fn inspect_binary_bytes(bytes: &[u8]) -> Result<BinaryFormatReport, String> 
         Object::Mach(mach) => match mach {
             goblin::mach::Mach::Binary(m) => {
                 let mut sections = Vec::new();
-                for s in m.segments.sections().flatten() {
-                    if let Ok((sec, _)) = s {
-                        sections.push(SectionSummary {
-                            name: sec.name().unwrap_or("").to_string(),
-                            virtual_address: sec.addr,
-                            size: sec.size,
-                        });
-                    }
+                for (sec, _) in m.segments.sections().flatten().flatten() {
+                    sections.push(SectionSummary {
+                        name: sec.name().unwrap_or("").to_string(),
+                        virtual_address: sec.addr,
+                        size: sec.size,
+                    });
                 }
                 Ok(BinaryFormatReport {
                     format: "Mach-O".to_string(),

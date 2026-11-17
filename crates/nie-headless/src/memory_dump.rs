@@ -80,24 +80,20 @@ pub fn execute_memory_dump(options: &MemoryDumpOptions) -> Result<ProcessMemoryM
     let mut raw_dump = Vec::new();
 
     // If a target PE file is supplied on disk, inspect its actual PE/COFF sections
-    if let Some(ref pe_path) = options.target_pe {
-        if pe_path.is_file() {
-            if let Ok(bytes) = std::fs::read(pe_path) {
-                if let Ok(report) = bun_re::triage(&bytes) {
-                    for sec in report.sections {
-                        regions.push(MemoryRegion {
-                            name: sec.name.clone(),
-                            start_address: BASE_ADDR + sec.vaddr as u64,
-                            size_bytes: sec.size as usize,
-                            permissions: if sec.name == ".text" { "R-X" } else { "RW-" }
-                                .to_string(),
-                            description: "Real PE/COFF section probed via nie-pe-inspect"
-                                .to_string(),
-                            sample_hex: format!("entropy={:.2}", sec.entropy.unwrap_or(0.0)),
-                        });
-                    }
-                }
-            }
+    if let Some(ref pe_path) = options.target_pe
+        && pe_path.is_file()
+        && let Ok(bytes) = std::fs::read(pe_path)
+        && let Ok(report) = bun_re::triage(&bytes)
+    {
+        for sec in report.sections {
+            regions.push(MemoryRegion {
+                name: sec.name.clone(),
+                start_address: BASE_ADDR + sec.vaddr,
+                size_bytes: sec.size as usize,
+                permissions: if sec.name == ".text" { "R-X" } else { "RW-" }.to_string(),
+                description: "Real PE/COFF section probed via nie-pe-inspect".to_string(),
+                sample_hex: format!("entropy={:.2}", sec.entropy.unwrap_or(0.0)),
+            });
         }
     }
 
@@ -191,10 +187,10 @@ pub fn execute_memory_dump(options: &MemoryDumpOptions) -> Result<ProcessMemoryM
     raw_dump.extend_from_slice(&heap_sample);
 
     // Write binary dump
-    if let Some(parent) = options.output_bin.parent() {
-        if !parent.exists() {
-            std::fs::create_dir_all(parent)?;
-        }
+    if let Some(parent) = options.output_bin.parent()
+        && !parent.exists()
+    {
+        std::fs::create_dir_all(parent)?;
     }
     let mut f = File::create(&options.output_bin)
         .with_context(|| format!("Creating binary dump at {}", options.output_bin.display()))?;

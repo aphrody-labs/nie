@@ -441,7 +441,7 @@ fn named_count(node: Node<'_>) -> u32 {
 
 /// Nombre d'enfants (nommés ou non), en `u32` — même raison que [`named_count`].
 fn child_count(node: Node<'_>) -> u32 {
-    u32::try_from(node.child_count()).unwrap_or(u32::MAX)
+    node.child_count()
 }
 
 /// État de la traversée : source, environnement d'alias et chaînes accumulées.

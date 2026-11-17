@@ -596,8 +596,7 @@ pub fn lift_psx(bios: &[u8], exe: Option<&[u8]>, limits: Limits) -> Result<IrMod
         let mut delay = false;
         let guard_ram = mem.ram(start);
         let mut fallthrough = None;
-        loop {
-            let Some(w) = mem.word(pc) else { break };
+        while let Some(w) = mem.word(pc) {
             let low = lower(pc, w, delay);
             insns.push(IrInsn {
                 addr: u64::from(pc),

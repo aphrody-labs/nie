@@ -126,7 +126,7 @@ fn map_tris(models: &[glb::Model]) -> (Vec<scene::Tri>, [f32; 3], f32) {
     let mut tris = Vec::new();
     for model in models {
         for p in &model.primitives {
-            for t in p.indices.chunks_exact(3) {
+            for t in p.indices.as_chunks::<3>().0 {
                 let (ia, ib, ic) = (t[0] as usize, t[1] as usize, t[2] as usize);
                 if ia.max(ib).max(ic) >= p.positions.len() {
                     continue;

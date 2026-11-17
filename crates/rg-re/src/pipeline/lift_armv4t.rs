@@ -673,8 +673,6 @@ fn lower_arm(m: &Mem, pc: u32, w: u32, k: &mut Consts) -> Lowered {
                         }
                         _ => (b.op(Alu::Not, op2, imm(0)), shc, None),
                     };
-                    // Materialise the flag inputs before any flag is written.
-                    let c = if matches!(c, Val::Flag { .. }) { c } else { c };
                     nz(&mut b, res);
                     if c != flag(C) {
                         b.set_flag(C, c);
@@ -1812,10 +1810,7 @@ pub fn lift(regions: &[Region], entries: &[(u32, Isa)], entry: u32, limits: Limi
         let mut k = Consts::default();
         let mut prev: Option<u16> = None;
         let mut fallthrough = None;
-        loop {
-            let Some(low) = decode(&mem, pc, isa, prev, &mut k) else {
-                break;
-            };
+        while let Some(low) = decode(&mem, pc, isa, prev, &mut k) {
             insns.push(IrInsn {
                 addr: u64::from(pc),
                 len: isa.size() as u8,

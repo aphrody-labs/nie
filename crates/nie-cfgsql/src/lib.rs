@@ -230,6 +230,9 @@ fn width(value: &RdbnValue) -> Option<usize> {
     }
 }
 
+/// A list field: its name and its component types (`None` for the scalar slot).
+type FieldLayout = (String, Vec<(Option<usize>, ColumnType)>);
+
 /// Builds the dataset for decoded RDBN lists.
 ///
 /// The column set of a table is taken from the first row whose field is not `Invalid` (types are
@@ -243,10 +246,10 @@ pub fn from_rdbn_lists(lists: &[RdbnList]) -> Dataset {
         let mut col_names = BTreeSet::from(["row_index".to_owned()]);
         // field position -> (field name, component types)
         let nfields = list.rows.iter().map(|r| r.fields.len()).max().unwrap_or(0);
-        let mut layout: Vec<(String, Vec<(Option<usize>, ColumnType)>)> = Vec::new();
+        let mut layout: Vec<FieldLayout> = Vec::new();
         let mut mixed: Vec<bool> = Vec::new();
         for pos in 0..nfields {
-            let mut chosen: Option<(String, Vec<(Option<usize>, ColumnType)>)> = None;
+            let mut chosen: Option<FieldLayout> = None;
             let mut name = String::new();
             for row in &list.rows {
                 let Some((n, v)) = row.fields.get(pos) else {

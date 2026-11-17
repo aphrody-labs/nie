@@ -345,6 +345,10 @@ mod process_tests {
 
     #[test]
     #[ignore = "subprocess fixture"]
+    #[allow(
+        clippy::zombie_processes,
+        reason = "with YOLO_RE_TEST_PARENT_EXITS the parent must exit while its descendant lives"
+    )]
     fn parent_fixture() {
         let mut child = Command::new(std::env::current_exe().unwrap())
             .args([
