@@ -468,6 +468,24 @@ pub fn emit_openapi(c: &Contract) -> String {
     let doc = json!({
         "openapi": "3.1.0",
         "info": {"title": c.title, "version": c.version, "description": "Generated from crates/rg-ffi-contract/contract.json"},
+        "components": {
+            "parameters": {
+                "AcceptLanguage": {
+                    "name": "Accept-Language",
+                    "in": "header",
+                    "required": false,
+                    "description": "Preferred response locale (BCP 47)",
+                    "schema": { "type": "string", "default": "en" }
+                }
+            },
+            "headers": {
+                "ContentLanguage": {
+                    "name": "Content-Language",
+                    "description": "Resolved response locale (BCP 47)",
+                    "schema": { "type": "string" }
+                }
+            }
+        },
         "paths": paths
     });
     let mut text = serde_json::to_string_pretty(&doc).expect("serialize");

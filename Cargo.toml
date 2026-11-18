@@ -252,6 +252,7 @@ opt-level = 0
 [profile.release]
 lto = "thin"
 codegen-units = 1
+debug = "limited"
 
 # Browser builds: whole-program optimisation for wasm32-unknown-unknown; wasm-bindgen and wasm-opt run afterwards.
 [profile.wasm-release]

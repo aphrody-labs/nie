@@ -1,6 +1,6 @@
 //! The contract the aphrody native GPUI shell reads to list, launch and inspect nie.
 //!
-//! The shell (aphrody-dev/aphrody, `gpui_store`) keeps a catalog of apps (`[[entries]]` with an id,
+//! The shell (aphrody-labs/aphrody, `gpui_store`) keeps a catalog of apps (`[[entries]]` with an id,
 //! a binary name, platforms and targets) and launches them as processes. nie describes itself in
 //! two documents generated from the types below, so the checked-in files cannot drift:
 //!

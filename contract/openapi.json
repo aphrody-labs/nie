@@ -1994,6 +1994,16 @@
           "maximum": 500,
           "default": 50
         }
+      },
+      "AcceptLanguage": {
+        "name": "Accept-Language",
+        "in": "header",
+        "required": false,
+        "description": "Preferred response locale (BCP 47)",
+        "schema": {
+          "type": "string",
+          "default": "en"
+        }
       }
     },
     "schemas": {
@@ -10316,6 +10326,15 @@
         "in": "cookie",
         "name": "better-auth.session_token",
         "description": "Cookie de session Better Auth (.rosegriffon.fr)"
+      }
+    },
+    "headers": {
+      "ContentLanguage": {
+        "name": "Content-Language",
+        "description": "Resolved response locale (BCP 47)",
+        "schema": {
+          "type": "string"
+        }
       }
     }
   }

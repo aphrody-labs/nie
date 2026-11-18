@@ -1,4 +1,27 @@
 {
+  "components": {
+    "headers": {
+      "ContentLanguage": {
+        "description": "Resolved response locale (BCP 47)",
+        "name": "Content-Language",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "parameters": {
+      "AcceptLanguage": {
+        "description": "Preferred response locale (BCP 47)",
+        "in": "header",
+        "name": "Accept-Language",
+        "required": false,
+        "schema": {
+          "default": "en",
+          "type": "string"
+        }
+      }
+    }
+  },
   "info": {
     "description": "Generated from crates/rg-ffi-contract/contract.json",
     "title": "Rose Griffon Rust/Bun contract",
