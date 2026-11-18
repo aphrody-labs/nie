@@ -1,5 +1,5 @@
-# Claude Code profile for nie. `bun tools/claude/setup.ts` renders `.claude/settings.json` from it;
-# `--check` fails when the rendered file drifts from the installed plugins and skills.
+# Claude Code profile for nie, applied by `bun ~/.claude/scripts/profile.ts` (aphrody-labs/claude):
+# renders `.claude/settings.json` and the per-project MCP toggles; `--check` reports drift.
 
 [mcp]
 # claude.ai cloud connectors (Gmail, Calendar, Drive, Docs, Sheets, Slides, Figma, Claude Docs).
