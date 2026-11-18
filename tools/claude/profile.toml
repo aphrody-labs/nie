@@ -2,16 +2,19 @@
 # renders `.claude/settings.json` and the per-project MCP toggles; `--check` reports drift.
 
 [mcp]
-# claude.ai cloud connectors (Gmail, Calendar, Drive, Docs, Sheets, Slides, Figma, Claude Docs).
-claude_ai_connectors = false
-# Servers this project may use. Anything not listed (OVH, Hostinger, Docker docs, Cloudflare, ...)
-# does not start in this repository.
+# Servers this project may use; every other discovered server (plugin, user or claude.ai connector)
+# is disabled for this repository only.
 allow = [
-  "nie",           # .mcp.json: native nie MCP server, every `nie` CLI command
-  "github",        # plugin github: issues, PRs, Actions of aphrody-labs/nie and the forks
-  "ai-os",         # plugin aphrody: fleet, orchestration, Context7 relay, second-model review
-  "claude-bridge", # plugin aphrody: cross-session sync
-  "memory",        # plugin aphrody: durable memory search
+  "nie",                 # .mcp.json: native nie MCP server, every `nie` CLI command
+  "github",              # plugin github: issues, PRs, Actions, releases of aphrody-labs/nie, iecode-*, forks
+  "ai-os",               # plugin aphrody: fleet, orchestration, Context7 relay, second-model review
+  "claude-bridge",       # plugin aphrody: cross-session sync
+  "memory",              # plugin aphrody: durable memory search
+  "docker-docs",         # plugin aphrody: docker/Dockerfile, ghcr images of nie and iecode
+  "cloudflare",          # user: R2 (`r2://` game sources), cdn.rosegriffon.fr DNS and cache
+  "claude.ai Figma",     # design/ tokens (rg-m3.json), studio and launcher UI
+  "claude.ai Google Drive", # `gdrive://` game sources, shared design and partner documents
+  "claude.ai Microsoft Learn", # iecode-dotnet: .NET, NativeAOT and MSVC docs, read live
 ]
 
 [plugins]
