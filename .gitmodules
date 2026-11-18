@@ -4,3 +4,13 @@
 [submodule "vendor/dioxus"]
 	path = vendor/dioxus
 	url = ../dioxus
+[submodule "iecode/dotnet"]
+	path = iecode/dotnet
+	url = ../iecode-dotnet
+	update = none
+	shallow = true
+[submodule "iecode/cpp"]
+	path = iecode/cpp
+	url = ../iecode-cpp
+	update = none
+	shallow = true
