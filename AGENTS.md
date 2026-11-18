@@ -24,4 +24,10 @@ loads game data from the installation the user owns and keeps a football craft l
   in `crates/nie-shell` fails when they drift.
 - Heavy builds run on the build host (`ssh fr1`, `/srv/xbuild/nie`) or in CI. Commit by path on
   `main`, no AI attribution, check `gh run list -R aphrody-labs/nie` after pushing.
+- Claude Code setup is generated: edit `tools/claude/profile.toml` (MCP servers, plugins, skills
+  kept for nie) and run `bun tools/claude/setup.ts`; `--check` reports drift. `.mcp.json` starts the
+  native `nie-mcp` server (local build, else the build host over SSH). Never hand-edit
+  `.claude/settings.json`.
+- nie is a standalone deployed service; consumers such as rosegriffon call it over HTTP and never
+  embed its Rust.
 - English, no emoji.

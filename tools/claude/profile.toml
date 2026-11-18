@@ -1,0 +1,51 @@
+# Claude Code profile for nie. `bun tools/claude/setup.ts` renders `.claude/settings.json` from it;
+# `--check` fails when the rendered file drifts from the installed plugins and skills.
+
+[mcp]
+# claude.ai cloud connectors (Gmail, Calendar, Drive, Docs, Sheets, Slides, Figma, Claude Docs).
+claude_ai_connectors = false
+# Servers this project may use. Anything not listed (OVH, Hostinger, Docker docs, Cloudflare, ...)
+# does not start in this repository.
+allow = [
+  "nie",           # .mcp.json: native nie MCP server, every `nie` CLI command
+  "github",        # plugin github: issues, PRs, Actions of aphrody-labs/nie and the forks
+  "ai-os",         # plugin aphrody: fleet, orchestration, Context7 relay, second-model review
+  "claude-bridge", # plugin aphrody: cross-session sync
+  "memory",        # plugin aphrody: durable memory search
+]
+
+[plugins]
+# true/false overrides of the user-level enabledPlugins for this repository.
+# The aphrody plugin already ships a tuned rust-analyzer (.lsp.json), so the official one stays off.
+"rust-analyzer-lsp@claude-plugins-official" = false
+"clangd-lsp@claude-plugins-official" = false
+"pyright-lsp@claude-plugins-official" = false
+"csharp-lsp@claude-plugins-official" = false
+"gopls-lsp@claude-plugins-official" = false
+"typescript-lsp@claude-plugins-official" = false
+"document-skills@anthropic-agent-skills" = false
+
+[skills]
+# Every installed plugin or user skill not listed here is turned off for this repository.
+# Built-in Claude Code skills are not affected.
+on = [
+  # Rust, Bevy, GPU, wasm
+  "aphrody:rust-cargo", "rust-upstream", "async-design", "recursion-design", "perf-math",
+  "aphrody:wgpu", "aphrody:webgpu", "aphrody:vulkan", "aphrody:directx",
+  "aphrody:wasm-bindgen", "aphrody:webassembly",
+  # Game formats and reverse engineering (nie-formats, nie-re, nie-pe, rg-steam)
+  "aphrody:ie-game-formats", "aphrody:reverse-engineer-anything", "aphrody:binary-triage",
+  "aphrody:decompile-cleaner", "aphrody:static-recompile", "aphrody:3ds-reverse",
+  "aphrody:ds-reverse", "aphrody:switch-reverse", "aphrody:ghidra-headless",
+  "aphrody:ghidra-mcp-live", "aphrody:ghidra-workflows", "aphrody:steam",
+  "aphrody:mod-package", "aphrody:gamebanana",
+  # Host, fleet, forks, agents
+  "aphrody:win32", "aphrody:microsoft", "aphrody:fleet", "aphrody:ai-os-orchestrator",
+  "aphrody:gh-fork", "aphrody:github-workflow", "aphrody:claude-live-bridge",
+  "aphrody:context7-deep-research", "aphrody:chromium", "aphrody:material-3",
+  "aphrody:humanizer", "aphrody:bun-aphrody", "agent-ops",
+  "claude-md-management:revise-claude-md", "claude-md-management:claude-md-improver",
+  "example-skills:mcp-builder", "example-skills:webapp-testing",
+]
+# Listed by name only (no description) to keep the listing short.
+name_only = ["aphrody:gpui", "aphrody:gpui-kit", "aphrody:intel", "aphrody:amd", "aphrody:nvidia"]
