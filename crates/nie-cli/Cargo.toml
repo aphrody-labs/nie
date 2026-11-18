@@ -158,3 +158,4 @@ rusqlite = { workspace = true, features = ["bundled"], optional = true }
 
 [dev-dependencies]
 nie-pe = { workspace = true }
+tempfile = { workspace = true }

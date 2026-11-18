@@ -124,8 +124,8 @@ struct Cli {
     #[arg(long)]
     body_manifest: Option<PathBuf>,
 
-    /// Répertoire de cache GLB assemblés.
-    #[arg(long)]
+    /// Répertoire de cache GLB assemblés (`NIE_CACHE_DIR`).
+    #[arg(long, env = "NIE_CACHE_DIR")]
     cache_dir: Option<PathBuf>,
 
     /// Budget du cache mémoire des GLB, en Mio (0 = désactivé).
@@ -150,8 +150,8 @@ struct Cli {
     #[arg(long)]
     asset_cross_ref: Option<PathBuf>,
 
-    /// Port d'écoute.
-    #[arg(long, default_value_t = 8790)]
+    /// Port d'écoute (`NIE_PORT`, la même variable que `nie serve`).
+    #[arg(long, env = "NIE_PORT", default_value_t = 8790)]
     port: u16,
 
     /// Adresse d'écoute. Boucle locale par défaut ; `0.0.0.0` dans un conteneur, où le port
@@ -1481,7 +1481,7 @@ fn bind_piece_textures(
 fn expression_skin_color(rgba: &[u8]) -> Option<[u8; 3]> {
     let mut counts = std::collections::HashMap::<[u8; 3], usize>::new();
     let mut opaque = 0usize;
-    for p in rgba.chunks_exact(4).filter(|p| p[3] == 255) {
+    for p in rgba.as_chunks::<4>().0.iter().filter(|p| p[3] == 255) {
         *counts.entry([p[0], p[1], p[2]]).or_default() += 1;
         opaque += 1;
     }
@@ -1823,7 +1823,7 @@ fn tint_skin_mask(
         return false;
     }
     let mut changed = false;
-    for (i, pixel) in rgba.chunks_exact_mut(4).enumerate() {
+    for (i, pixel) in rgba.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         let x = i as u64 % u64::from(w);
         let y = i as u64 / u64::from(w);
         let m = ((y * u64::from(mh) / u64::from(h)) * u64::from(mw)

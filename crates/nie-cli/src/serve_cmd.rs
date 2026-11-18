@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use clap::Args;
+use nie_explore::raw_access::{self, Token};
 use serde_json::{Value, json};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
@@ -39,7 +40,8 @@ struct ServerState {
     source_label: Option<String>,
     vfs_error: Option<String>,
     stateless: bool,
-    raw_token: Option<String>,
+    /// Bearer token opening `/v1/vfs/read` in its untouched (raw) mode; closed without one.
+    raw_token: Option<Token>,
 }
 
 impl ServerState {
@@ -91,10 +93,21 @@ async fn serve(args: ServeArgs) -> anyhow::Result<()> {
         }
     };
 
-    let raw_token = std::env::var("NIE_RAW_VFS_TOKEN")
-        .ok()
-        .map(|s| s.trim().to_owned())
-        .filter(|s| !s.is_empty());
+    // The game's own bytes stay closed unless a token of at least 32 bytes is configured, the
+    // same rule as `nie-model-serve` (`nie_explore::raw_access`).
+    let raw_token = match Token::from_env() {
+        Ok(token) => token,
+        Err(err) => {
+            tracing::warn!("nie serve: {err}");
+            None
+        }
+    };
+    if raw_token.is_none() {
+        tracing::info!(
+            "nie serve: raw /v1/vfs/read closed (no {})",
+            raw_access::TOKEN_ENV
+        );
+    }
 
     let state = Arc::new(ServerState {
         vfs,
@@ -703,12 +716,20 @@ async fn route_request(
     }
 
     if method == "GET" && raw_path == "/v1/vfs/read" {
-        if !authorize_bearer(state.raw_token.as_deref(), headers) {
-            return HttpResponse::json(
-                401,
-                "Unauthorized",
-                &json!({ "error": "valid Bearer token matching NIE_RAW_VFS_TOKEN required" }),
-            );
+        // `decode=json|png` is derived data and stays public; any other mode returns the game's
+        // own bytes and needs the configured bearer token. Refusals answer 404 so the origin
+        // does not advertise a private space.
+        let derived = matches!(
+            query.get("decode").map(String::as_str),
+            Some("json" | "png")
+        );
+        if !derived
+            && !raw_access::allows(
+                state.raw_token.as_ref(),
+                headers.get("authorization").map(String::as_str),
+            )
+        {
+            return HttpResponse::json(404, "Not Found", &json!({ "error": "route not found" }));
         }
         let Some(raw_vfs_path) = query.get("path") else {
             return HttpResponse::json(
@@ -920,31 +941,11 @@ fn load_mods_snapshot_value() -> Value {
     })
 }
 
-fn authorize_bearer(expected: Option<&str>, headers: &HashMap<String, String>) -> bool {
-    let Some(expected) = expected else {
-        return true;
-    };
-    let Some(auth) = headers.get("authorization") else {
-        return false;
-    };
-    let Some(token) = auth.strip_prefix("Bearer ").map(str::trim) else {
-        return false;
-    };
-    let a = token.as_bytes();
-    let b = expected.as_bytes();
-    if a.len() != b.len() {
-        return false;
-    }
-    let mut diff = 0_u8;
-    for (x, y) in a.iter().zip(b.iter()) {
-        diff |= x ^ y;
-    }
-    diff == 0
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const TOKEN: &str = "0123456789abcdef0123456789abcdef";
 
     fn state(stateless: bool, raw_token: Option<&str>) -> Arc<ServerState> {
         Arc::new(ServerState {
@@ -952,7 +953,23 @@ mod tests {
             source_label: None,
             vfs_error: Some("no source in unit test".to_owned()),
             stateless,
-            raw_token: raw_token.map(str::to_owned),
+            raw_token: raw_token.and_then(Token::new),
+        })
+    }
+
+    /// A VFS holding one loose synthetic file, mounted as an overlay: no game data involved.
+    fn synthetic_state(dir: &std::path::Path, raw_token: Option<&str>) -> Arc<ServerState> {
+        std::fs::create_dir_all(dir.join("data/common")).expect("create synthetic tree");
+        std::fs::write(dir.join("data/common/probe.bin"), b"synthetic-probe")
+            .expect("write synthetic file");
+        let mut vfs = nie_formats::vfs::Vfs::new();
+        assert_eq!(vfs.mount_overlay_dir(dir, ""), 1);
+        Arc::new(ServerState {
+            vfs: Some(Arc::new(vfs)),
+            source_label: Some("synthetic".to_owned()),
+            vfs_error: None,
+            stateless: false,
+            raw_token: raw_token.and_then(Token::new),
         })
     }
 
@@ -992,15 +1009,69 @@ mod tests {
         assert!(sanitize_vfs_path("data\\win").is_err());
     }
 
-    #[test]
-    fn bearer_token_check_is_strict() {
+    #[tokio::test]
+    async fn raw_vfs_read_is_closed_without_a_token_and_open_with_it() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let path = "/v1/vfs/read?path=data/common/probe.bin";
+
+        // No token configured: closed for everyone, even with a header.
+        let closed = synthetic_state(dir.path(), None);
         let mut headers = HashMap::new();
-        assert!(authorize_bearer(None, &headers));
-        assert!(!authorize_bearer(Some("abc123"), &headers));
-        headers.insert("authorization".to_owned(), "Bearer wrong".to_owned());
-        assert!(!authorize_bearer(Some("abc123"), &headers));
-        headers.insert("authorization".to_owned(), "Bearer abc123".to_owned());
-        assert!(authorize_bearer(Some("abc123"), &headers));
+        headers.insert("authorization".to_owned(), format!("Bearer {TOKEN}"));
+        let resp = route_request("GET", path, &headers, Vec::new(), closed).await;
+        assert_eq!(resp.status, 404);
+
+        // Token configured: missing and wrong credentials stay refused.
+        let gated = synthetic_state(dir.path(), Some(TOKEN));
+        let resp = route_request("GET", path, &HashMap::new(), Vec::new(), gated.clone()).await;
+        assert_eq!(resp.status, 404);
+        let mut wrong = HashMap::new();
+        wrong.insert("authorization".to_owned(), "Bearer wrong".to_owned());
+        let resp = route_request("GET", path, &wrong, Vec::new(), gated.clone()).await;
+        assert_eq!(resp.status, 404);
+
+        // Exact token: the bytes come back untouched.
+        let resp = route_request("GET", path, &headers, Vec::new(), gated.clone()).await;
+        assert_eq!(resp.status, 200);
+        assert_eq!(resp.content_type, "application/octet-stream");
+        assert_eq!(resp.body, b"synthetic-probe");
+
+        // A derived mode is public: it reaches the decoder (422 on a non-texture), not the gate.
+        let derived = route_request(
+            "GET",
+            "/v1/vfs/read?path=data/common/probe.bin&decode=png",
+            &HashMap::new(),
+            Vec::new(),
+            gated,
+        )
+        .await;
+        assert_eq!(derived.status, 422);
+    }
+
+    #[tokio::test]
+    async fn vfs_read_rejects_traversal_and_unknown_paths() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let st = synthetic_state(dir.path(), Some(TOKEN));
+        let mut headers = HashMap::new();
+        headers.insert("authorization".to_owned(), format!("Bearer {TOKEN}"));
+        let resp = route_request(
+            "GET",
+            "/v1/vfs/read?path=../secret",
+            &headers,
+            Vec::new(),
+            st.clone(),
+        )
+        .await;
+        assert_eq!(resp.status, 400);
+        let resp = route_request(
+            "GET",
+            "/v1/vfs/read?path=data/common/missing.bin",
+            &headers,
+            Vec::new(),
+            st,
+        )
+        .await;
+        assert_eq!(resp.status, 404);
     }
 
     #[tokio::test]
