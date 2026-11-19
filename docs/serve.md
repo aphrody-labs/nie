@@ -26,7 +26,7 @@ Environment variables (a flag of the same name wins). The image sets `NIE_HOST=0
 | `NIE_RAW_VFS_TOKEN` | unset | bearer token of at least 32 bytes that opens the game's untouched bytes; unset or shorter keeps them closed |
 | `NIE_HTTP_AUTH_TOKEN` | unset | bearer sent to an `https://` source |
 | `NIE_CACHE_DIR` | `<game>/var/model-cache` | `nie-model-serve` cache of assembled GLB, mixed WAV and MP4; `/var/lib/nie/model-cache` in the image |
-| `RCLONE_CONFIG` | rclone default | rclone configuration for `r2://`, `s3://`, `gdrive://`, `rclone://` sources |
+| `RCLONE_CONFIG` | `~/.config/rclone/rclone.conf` | rclone configuration, parsed in Rust, for `r2://`, `s3://`, `gdrive://`, `rclone://` sources; `RCLONE_CONFIG_<REMOTE>_<KEY>` variables also define remotes |
 
 `nie serve` flags: `--strict` exits at startup when the source cannot be mounted; `--stateless`
 makes `/ready` healthy without a VFS (format and registry worker mode).
@@ -36,11 +36,12 @@ makes `/ready` healthy without a VFS (format and registry worker mode).
 | value | transport |
 |---|---|
 | `/game`, `D:\Games\ievr` | local files, CPK ranges read in place |
-| `ssh://[user@]host[:port]/path`, `sftp://...` | the `ssh` client (host keys and credentials from `~/.ssh`) |
-| `r2://remote/bucket/path`, `s3://`, `gdrive://remote/path`, `rclone://remote/path` | the `rclone` CLI (`rclone cat --offset --count`), remotes from `rclone.conf` |
-| `https://host/path` | HTTP range requests |
+| `ssh://[user@]host[:port]/path`, `sftp://...` | SFTP over `russh`, no `ssh` binary: host keys from `~/.ssh/known_hosts`, identities from `ssh-agent` and `~/.ssh` keys, `~/.ssh/config` (`HostName`, `User`, `Port`, `IdentityFile`, `ProxyJump`, `ConnectTimeout`) |
+| `r2://remote/bucket/path`, `s3://`, `gdrive://remote/path`, `rclone://remote/path` | `opendal` ranged reads, no `rclone` binary; remotes of type `s3` (R2, AWS, others), `drive`, `sftp`, `http` and `alias` from `rclone.conf`; `crypt` and other types are reported unsupported |
+| `https://host/path` | HTTP range requests (`opendal`); `http://` uses the built-in client |
 
 Credentials never go in the URI. Only the CPK tables and the requested ranges are transferred.
+The image carries no `ssh` or `rclone` binary: every transport is Rust.
 
 ### Container
 
@@ -80,7 +81,7 @@ All responses carry `Access-Control-Allow-Origin: *` and `X-Content-Type-Options
 |---|---|
 | `GET /health`, `GET /` | 200 `{ok, service:"nie", profile:"cloud"\|"host", vfsReady, stateless, source, vfsError, entries, cpks}` |
 | `GET /ready` | 200 `{ready:true, vfsReady, stateless}`; 503 `{ready:false, vfsReady:false, reason}` |
-| `GET /v1/vfs/remotes` | 200 `{remotes}` (rclone remotes); 503 without rclone |
+| `GET /v1/vfs/remotes` | 200 `{remotes:[{name, type, supported, reason?}]}`, the remotes of `rclone.conf` (empty without one); 503 when the file cannot be read |
 | `POST /v1/formats/detect` | body = bytes; 200 `{format, size}` |
 | `POST /v1/formats/decode?name=&format=` | body = bytes; `format=png` returns `image/png` (G4TX), else the decoded structure as JSON; 422 when unreadable |
 | `GET /v1/vfs/info` | 200 `{source, entries, cpks, transport:{ioCalls, payloadBytes}}`; 503 without VFS |

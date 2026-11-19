@@ -1,6 +1,6 @@
 [package]
 name = "nie-assets"
-description = "Bevy asset source over the installed game: VFS layers and CRI CPK archives read in place from a local path, SSH, or rclone-backed R2 and Google Drive; no game byte is ever copied into the repository"
+description = "Bevy asset source over the installed game: VFS layers and CRI CPK archives read in place from a local path, SFTP, or the R2, S3 and Google Drive remotes of rclone.conf, all in Rust; no game byte is ever copied into the repository"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -14,7 +14,7 @@ workspace = true
 
 [features]
 default = ["host"]
-# Native mounts: local installs, SSH, rclone (R2, Google Drive) and HTTP range reads.
+# Native mounts: local installs, SFTP (russh), rclone.conf remotes (opendal: R2, S3, Google Drive) and HTTP range reads.
 host = ["nie-formats/remote-vfs"]
 
 [dependencies]

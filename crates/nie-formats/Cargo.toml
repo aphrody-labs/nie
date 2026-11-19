@@ -14,7 +14,14 @@ workspace = true
 [features]
 default = ["std", "serde", "lua", "remote-vfs"]
 std = ["dep:crc32fast", "crc32fast/std", "dep:tempfile", "dep:base64"]
-remote-vfs = ["std"]
+remote-vfs = [
+  "std",
+  "dep:opendal",
+  "dep:russh",
+  "dep:russh-sftp",
+  "dep:ssh2-config",
+  "dep:tokio",
+]
 serde = ["dep:serde"]
 lua = ["dep:nie-lua"]
 textures = ["std", "dep:image_dds", "dep:png"]
@@ -40,19 +47,23 @@ cridecoder = { version = "0.3.7", default-features = false, optional = true }
 tempfile = { version = "3.27.0", default-features = false, features = ["getrandom"], optional = true }
 nie-lua = { workspace = true, optional = true }
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+opendal = { workspace = true, optional = true }
+russh = { workspace = true, optional = true }
+russh-sftp = { workspace = true, optional = true }
+ssh2-config = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["rt", "net", "time"], optional = true }
+
 [dev-dependencies]
 serde_json = { version = "1.0.154", default-features = false, features = [
   "std",
 ] }
 png = { version = "0.18.1", default-features = false }
+opendal = { workspace = true, features = ["services-memory"] }
 
 [[example]]
 name = "g4tx_patch_region"
 required-features = ["textures-encode"]
-
-[[example]]
-name = "menu_presentation_export"
-required-features = ["textures"]
 
 [[example]]
 name = "model_glb_preview"

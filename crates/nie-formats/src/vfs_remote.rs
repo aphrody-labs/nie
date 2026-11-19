@@ -1,11 +1,20 @@
-//! Bounded remote VFS transport supporting HTTP Range and the Go `rclone` core
-//! (`rclone://`, `r2://`, `s3://`, `gdrive://`, `nievfs://`, `https://`, `ssh://`, `sftp://`).
+//! Bounded remote VFS transport, pure Rust: HTTP range reads, SFTP over `russh`
+//! (`ssh://`, `sftp://`) and object stores over `opendal` (`r2://`, `s3://`, `gdrive://`,
+//! `rclone://`, `https://`). No `ssh` or `rclone` binary is run.
+//!
+//! The VFS reads are synchronous: one worker thread per mount owns a current-thread tokio runtime
+//! and drives the async backends with `block_on`, so a mount never nests inside the runtime of
+//! the caller (`nie serve`).
+
+mod object;
+mod rclone_conf;
+mod ssh;
 
 use crate::FormatError;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
-use std::path::PathBuf;
-use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::sync::{
     Arc,
     atomic::{AtomicU64, Ordering},
@@ -30,7 +39,8 @@ enum Request {
 }
 
 // ---------------------------------------------------------------------------
-// Go rclone-core discovery (native/go/rclone-core/build/nie-rclone)
+// Pack export: the only code that still starts an external tool, the optional Go `nie-rclone`
+// (`NIE_RCLONE_BIN`, next to the executable, or on `PATH`). Game-source reads never use it.
 // ---------------------------------------------------------------------------
 
 fn find_nie_rclone_bin() -> Option<PathBuf> {
@@ -105,20 +115,11 @@ fn run_nie_rclone(args: &[&str]) -> std::result::Result<String, FormatError> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
 }
 
-/// Returns true if the native Go `rclone` core (`nie-rclone`) is available.
-#[must_use]
-pub fn rclone_core_available() -> bool {
-    find_nie_rclone_bin().is_some()
-}
-
-/// Lists configured rclone remotes via the Go core, returning JSON.
+/// Lists the remotes of `rclone.conf` (and `RCLONE_CONFIG_<REMOTE>_*` variables) as a JSON array
+/// of `{name, type, supported, reason?}`; `supported` is false for types nie cannot open.
 pub fn rclone_list_remotes() -> std::result::Result<String, FormatError> {
-    run_nie_rclone(&["nie-remotes"])
-}
-
-/// Resolves a cloud URI (`rclone://`, `r2://`, `s3://`, `gdrive://`, `nievfs://`, etc.) via the Go core.
-pub fn rclone_resolve_spec(uri: &str) -> std::result::Result<String, FormatError> {
-    run_nie_rclone(&["nie-resolve", uri])
+    let conf = rclone_conf::Conf::load().map_err(FormatError::Malformed)?;
+    Ok(conf.remotes_json().to_string())
 }
 
 /// Options for parallel VFS pack export and continuous cloud sync.
@@ -205,7 +206,6 @@ pub fn rclone_export_packs_with_opts(
     }
     run_nie_rclone(&args)
 }
-
 // ---------------------------------------------------------------------------
 // RemoteStorage & Worker
 // ---------------------------------------------------------------------------
@@ -255,6 +255,11 @@ fn validate_uri(source: &str) -> std::result::Result<(), FormatError> {
 
 impl RemoteStorage {
     pub fn connect(source: &str) -> std::result::Result<Self, FormatError> {
+        Self::connect_in(source, ssh::home_dir())
+    }
+
+    /// Like [`Self::connect`], with the home directory that holds `~/.ssh`.
+    fn connect_in(source: &str, home: Option<PathBuf>) -> std::result::Result<Self, FormatError> {
         validate_uri(source)?;
         let normalized = source.trim_end_matches("/nie.exe").to_owned();
         let (sender, receiver) = mpsc::channel();
@@ -266,7 +271,7 @@ impl RemoteStorage {
         let thread = std::thread::Builder::new()
             .name("nie-vfs-remote".into())
             .spawn(move || {
-                let mut backend = match Backend::connect(&normalized) {
+                let mut backend = match Backend::connect(&normalized, home.as_deref()) {
                     Ok(backend) => {
                         let _ = ready.send(Ok(()));
                         backend
@@ -390,130 +395,41 @@ fn validate_path(path: &str) -> std::result::Result<(), FormatError> {
     Ok(())
 }
 
-struct RpcWorker {
-    child: Child,
-    stdin: ChildStdin,
-    stdout: BufReader<ChildStdout>,
-    uri: String,
-}
-
-impl Drop for RpcWorker {
-    fn drop(&mut self) {
-        let _ = self.child.kill();
-        let _ = self.child.wait();
-    }
-}
-
-enum Backend {
+/// The transports behind one mount.
+enum Kind {
     Http {
         host: String,
         port: u16,
         base_path: String,
         token: Option<String>,
     },
-    RcloneGo(RpcWorker),
-    RcloneCli {
-        remote_spec: String,
-    },
-    /// `ssh://[user@]host[:port]/root`: plain `ssh` commands, host keys and credentials come
-    /// from the user's SSH configuration (aliases, agents, jump hosts), never from the URI.
-    Ssh {
-        target: String,
-        port: Option<u16>,
-        root: String,
-    },
+    Sftp(ssh::Ssh),
+    Object(object::Object),
 }
 
-/// Single-quotes `value` for a POSIX shell.
-fn shell_quote(value: &str) -> String {
-    format!("'{}'", value.replace('\'', "'\\''"))
+/// A transport plus the current-thread runtime that drives its async calls.
+struct Backend {
+    runtime: tokio::runtime::Runtime,
+    kind: Kind,
 }
 
-fn parse_ssh_uri(source: &str) -> Result<(String, Option<u16>, String)> {
-    let rest = source
-        .strip_prefix("ssh://")
-        .or_else(|| source.strip_prefix("sftp://"))
-        .ok_or_else(|| "not an ssh URI".to_owned())?;
-    let (authority, root) = rest
-        .split_once('/')
-        .map_or((rest, "/".to_owned()), |(a, p)| (a, format!("/{p}")));
-    let (target, port) = match authority.rsplit_once(':') {
-        Some((host, port)) => (
-            host.to_owned(),
-            Some(port.parse().map_err(|_| "invalid SSH port".to_owned())?),
-        ),
-        None => (authority.to_owned(), None),
-    };
-    if target.is_empty() || target.starts_with('-') {
-        return Err("invalid SSH host".to_owned());
-    }
-    Ok((target, port, root.trim_end_matches('/').to_owned()))
-}
-
-impl Backend {
-    fn ssh_command(target: &str, port: Option<u16>, remote: &str) -> Command {
-        let mut cmd = Command::new("ssh");
-        cmd.args(["-o", "BatchMode=yes", "-o", "ConnectTimeout=15"]);
-        // Reuse one authenticated connection for the thousands of range reads of a session.
-        #[cfg(unix)]
-        {
-            let control = std::env::temp_dir().join("nie-ssh-%C");
-            cmd.args(["-o", "ControlMaster=auto", "-o", "ControlPersist=120", "-o"])
-                .arg(format!("ControlPath={}", control.display()));
-        }
-        if let Some(port) = port {
-            cmd.arg("-p").arg(port.to_string());
-        }
-        cmd.arg("--").arg(target).arg(remote);
-        cmd
-    }
-
-    fn ssh_run(target: &str, port: Option<u16>, remote: &str) -> Result<Vec<u8>> {
-        let output = Self::ssh_command(target, port, remote)
-            .stdin(Stdio::null())
-            .output()
-            .map_err(|e| format!("ssh: {e}"))?;
-        if !output.status.success() {
-            return Err(String::from_utf8_lossy(&output.stderr).trim().to_owned());
-        }
-        Ok(output.stdout)
-    }
-}
-
-fn resolve_via_cli_fallback(source: &str) -> Result<String> {
+/// Splits `scheme://authority/path` into the authority and the path without edge slashes.
+fn authority_and_path(source: &str) -> Result<(&str, &str)> {
     let (_, rest) = source
         .split_once("://")
         .ok_or_else(|| "invalid URI".to_owned())?;
-    let trimmed = rest.trim_matches('/');
-    if source.starts_with("rclone://") || source.starts_with("r2://") || source.starts_with("s3://")
-    {
-        if let Some((remote, sub)) = trimmed.split_once('/') {
-            return Ok(format!("{remote}:{sub}"));
-        }
-        return Ok(format!("{trimmed}:"));
-    }
-    if source.starts_with("gdrive://") {
-        if let Some((remote, sub)) = trimmed.split_once('/') {
-            let r = if remote.is_empty() {
-                "gdrive-ai"
-            } else {
-                remote
-            };
-            return Ok(format!("{r}:{sub}"));
-        }
-        let r = if trimmed.is_empty() {
-            "gdrive-ai"
-        } else {
-            trimmed
-        };
-        return Ok(format!("{r}:"));
-    }
-    Err("nie-rclone binary required for this remote scheme".to_owned())
+    let (authority, path) = rest.split_once('/').unwrap_or((rest, ""));
+    Ok((authority, path.trim_matches('/')))
 }
 
 impl Backend {
-    fn connect(source: &str) -> Result<Self> {
-        if let Some(rest) = source.strip_prefix("http://") {
+    fn connect(source: &str, home: Option<&Path>) -> Result<Self> {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|e| format!("remote VFS runtime: {e}"))?;
+        let needs_home = || home.ok_or_else(|| "HOME is not set: it holds ~/.ssh".to_owned());
+        let kind = if let Some(rest) = source.strip_prefix("http://") {
             let (authority, path) = match rest.split_once('/') {
                 Some((a, p)) => (a, format!("/{}", p.trim_matches('/'))),
                 None => (rest, String::new()),
@@ -529,153 +445,62 @@ impl Backend {
             } else {
                 format!("{path}/")
             };
-            return Ok(Self::Http {
+            Kind::Http {
                 host,
                 port,
                 base_path,
                 token: std::env::var("NIE_HTTP_AUTH_TOKEN").ok(),
-            });
-        }
-
-        if source.starts_with("ssh://") || source.starts_with("sftp://") {
-            let (target, port, root) = parse_ssh_uri(source)?;
-            // Fail at mount time, not at the first read, when the host is unreachable.
-            Self::ssh_run(&target, port, &format!("test -d {}", shell_quote(&root)))?;
-            return Ok(Self::Ssh { target, port, root });
-        }
-
-        if let Some(bin) = find_nie_rclone_bin() {
-            rclone_resolve_spec(source).map_err(|e| e.to_string())?;
-            let mut child = Command::new(bin)
-                .arg("nie-rpc")
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::inherit())
-                .spawn()
-                .map_err(|e| e.to_string())?;
-            let stdin = child
-                .stdin
-                .take()
-                .ok_or_else(|| "failed to open nie-rclone stdin".to_owned())?;
-            let stdout = BufReader::new(
-                child
-                    .stdout
-                    .take()
-                    .ok_or_else(|| "failed to open nie-rclone stdout".to_owned())?,
-            );
-            return Ok(Self::RcloneGo(RpcWorker {
-                child,
-                stdin,
-                stdout,
-                uri: source.to_owned(),
-            }));
-        }
-
-        Ok(Self::RcloneCli {
-            remote_spec: resolve_via_cli_fallback(source)?,
-        })
+            }
+        } else if source.starts_with("https://") {
+            let (authority, path) = authority_and_path(source)?;
+            let root = if path.is_empty() {
+                "/".to_owned()
+            } else {
+                format!("/{path}")
+            };
+            Kind::Object(object::Object::https(
+                &format!("https://{authority}"),
+                &root,
+            )?)
+        } else if source.starts_with("ssh://") || source.starts_with("sftp://") {
+            let spec = ssh::parse_uri(source)?;
+            Kind::Sftp(runtime.block_on(ssh::Ssh::connect(&spec, needs_home()?))?)
+        } else if ["rclone://", "r2://", "s3://", "gdrive://"]
+            .iter()
+            .any(|scheme| source.starts_with(scheme))
+        {
+            let (remote, path) = authority_and_path(source)?;
+            match rclone_conf::Conf::load()?.resolve(remote, path)? {
+                rclone_conf::Target::Object(spec) => Kind::Object(object::Object::open(&spec)?),
+                rclone_conf::Target::Sftp(spec) => {
+                    Kind::Sftp(runtime.block_on(ssh::Ssh::connect(&spec, needs_home()?))?)
+                }
+            }
+        } else {
+            let scheme = source.split("://").next().unwrap_or(source);
+            return Err(format!("unsupported game source scheme `{scheme}://`"));
+        };
+        Ok(Self { runtime, kind })
     }
 
     fn read(&mut self, path: &str, range: Option<(u64, usize)>) -> Result<Vec<u8>> {
-        match self {
-            Self::Http {
+        let Self { runtime, kind } = self;
+        match kind {
+            Kind::Http {
                 host,
                 port,
                 base_path,
                 token,
             } => http_read(host, *port, base_path, token.as_deref(), path, range),
-
-            Self::RcloneGo(rpc) => {
-                let (offset, length) = match range {
-                    Some((off, len)) => (off as i64, len as i64),
-                    None => (0i64, -1i64),
-                };
-                let req = serde_json::json!({
-                    "op": "read",
-                    "uri": rpc.uri,
-                    "path": path,
-                    "offset": offset,
-                    "length": length,
-                });
-                let mut line = serde_json::to_vec(&req).map_err(|e| e.to_string())?;
-                line.push(b'\n');
-                rpc.stdin.write_all(&line).map_err(|e| e.to_string())?;
-                rpc.stdin.flush().map_err(|e| e.to_string())?;
-                let mut header = String::new();
-                rpc.stdout
-                    .read_line(&mut header)
-                    .map_err(|e| e.to_string())?;
-                let meta: serde_json::Value =
-                    serde_json::from_str(header.trim()).map_err(|e| e.to_string())?;
-                if !meta["ok"].as_bool().unwrap_or(false) {
-                    return Err(meta["error"]
-                        .as_str()
-                        .unwrap_or("nie-rclone read failed")
-                        .to_owned());
-                }
-                let n = usize::try_from(meta["len"].as_u64().unwrap_or(0))
-                    .map_err(|_| "response length overflow".to_owned())?;
-                if n > MAX_READ {
-                    return Err("remote response exceeds 256 MiB bound".into());
-                }
-                let mut data = vec![0u8; n];
-                rpc.stdout
-                    .read_exact(&mut data)
-                    .map_err(|e| e.to_string())?;
-                if let Some((_, want)) = range
-                    && data.len() != want
-                {
-                    return Err("remote rclone range read truncated".into());
-                }
-                Ok(data)
-            }
-
-            Self::Ssh { target, port, root } => {
-                let file = shell_quote(&format!("{root}/{path}"));
-                let remote = match range {
-                    Some((offset, length)) => format!(
-                        "dd if={file} iflag=skip_bytes,count_bytes skip={offset} count={length} bs=1048576 status=none"
-                    ),
-                    None => format!("cat {file}"),
-                };
-                let data = Self::ssh_run(target, *port, &remote)?;
-                if let Some((_, want)) = range
-                    && data.len() != want
-                {
-                    return Err("ssh range read truncated".into());
-                }
-                Ok(data)
-            }
-
-            Self::RcloneCli { remote_spec } => {
-                let target = if remote_spec.ends_with(':') || remote_spec.ends_with('/') {
-                    format!("{remote_spec}{path}")
-                } else {
-                    format!("{remote_spec}/{path}")
-                };
-                let mut cmd = std::process::Command::new("rclone");
-                cmd.arg("cat").arg(&target);
-                if let Some((offset, size)) = range {
-                    cmd.arg("--offset").arg(offset.to_string());
-                    cmd.arg("--count").arg(size.to_string());
-                }
-                let output = cmd.output().map_err(|e| e.to_string())?;
-                if !output.status.success() {
-                    return Err(String::from_utf8_lossy(&output.stderr).into_owned());
-                }
-                if let Some((_, want)) = range
-                    && output.stdout.len() != want
-                {
-                    return Err("rclone cat returned truncated range".into());
-                }
-                Ok(output.stdout)
-            }
+            Kind::Sftp(ssh) => runtime.block_on(ssh.read(path, range)),
+            Kind::Object(object) => runtime.block_on(object.read(path, range)),
         }
     }
 
     fn list(&mut self, path: &str) -> Result<Vec<String>> {
-        match self {
-            Self::Http {
+        let Self { runtime, kind } = self;
+        match kind {
+            Kind::Http {
                 host,
                 port,
                 base_path,
@@ -689,81 +514,8 @@ impl Backend {
                 let text = std::str::from_utf8(&bytes).map_err(|e| e.to_string())?;
                 Ok(extract_html_links(text, &dir_prefix))
             }
-
-            Self::RcloneGo(rpc) => {
-                let req = serde_json::json!({
-                    "op": "list",
-                    "uri": rpc.uri,
-                    "path": path,
-                });
-                let mut line = serde_json::to_vec(&req).map_err(|e| e.to_string())?;
-                line.push(b'\n');
-                rpc.stdin.write_all(&line).map_err(|e| e.to_string())?;
-                rpc.stdin.flush().map_err(|e| e.to_string())?;
-                let mut header = String::new();
-                rpc.stdout
-                    .read_line(&mut header)
-                    .map_err(|e| e.to_string())?;
-                let meta: serde_json::Value =
-                    serde_json::from_str(header.trim()).map_err(|e| e.to_string())?;
-                if !meta["ok"].as_bool().unwrap_or(false) {
-                    return Err(meta["error"]
-                        .as_str()
-                        .unwrap_or("nie-rclone list failed")
-                        .to_owned());
-                }
-                let items: Vec<String> =
-                    serde_json::from_value(meta["items"].clone()).map_err(|e| e.to_string())?;
-                Ok(items)
-            }
-
-            Self::Ssh { target, port, root } => {
-                let dir = shell_quote(&format!("{root}/{}", path.trim_matches('/')));
-                let out = Self::ssh_run(target, *port, &format!("ls -1Ap -- {dir}"))?;
-                let mut names: Vec<String> = String::from_utf8_lossy(&out)
-                    .lines()
-                    .map(str::to_owned)
-                    .collect();
-                names.sort();
-                Ok(names)
-            }
-
-            Self::RcloneCli { remote_spec } => {
-                let trimmed = path.trim_matches('/');
-                let target = if trimmed.is_empty() {
-                    remote_spec.clone()
-                } else if remote_spec.ends_with(':') || remote_spec.ends_with('/') {
-                    format!("{remote_spec}{trimmed}")
-                } else {
-                    format!("{remote_spec}/{trimmed}")
-                };
-                let output = std::process::Command::new("rclone")
-                    .args(["lsjson", "--fast-list", &target])
-                    .output()
-                    .map_err(|e| e.to_string())?;
-                if !output.status.success() {
-                    return Err(String::from_utf8_lossy(&output.stderr).into_owned());
-                }
-                let entries: Vec<serde_json::Value> =
-                    serde_json::from_slice(&output.stdout).map_err(|e| e.to_string())?;
-                let mut names = Vec::with_capacity(entries.len());
-                for item in entries {
-                    if let Some(name) = item.get("Name").and_then(serde_json::Value::as_str) {
-                        let is_dir = item
-                            .get("IsDir")
-                            .and_then(serde_json::Value::as_bool)
-                            .unwrap_or(false);
-                        names.push(if is_dir {
-                            format!("{name}/")
-                        } else {
-                            name.to_owned()
-                        });
-                    }
-                }
-                names.sort();
-                names.dedup();
-                Ok(names)
-            }
+            Kind::Sftp(ssh) => runtime.block_on(ssh.list(path)),
+            Kind::Object(object) => runtime.block_on(object.list(path)),
         }
     }
 }
@@ -922,36 +674,26 @@ mod tests {
     use std::{net::TcpListener, sync::atomic::AtomicBool};
 
     #[test]
-    fn ssh_uri_splits_host_port_and_root() {
-        assert_eq!(
-            parse_ssh_uri("ssh://prd/srv/game/data").unwrap(),
-            ("prd".to_owned(), None, "/srv/game/data".to_owned())
+    fn unknown_remote_and_unsupported_schemes_fail_with_a_clear_error() {
+        let missing = RemoteStorage::connect("rclone://definitely-not-configured/data")
+            .err()
+            .unwrap()
+            .to_string();
+        assert!(missing.contains("definitely-not-configured"), "{missing}");
+        let unsupported = RemoteStorage::connect("nievfs://x/y")
+            .err()
+            .unwrap()
+            .to_string();
+        assert!(
+            unsupported.contains("unsupported game source scheme"),
+            "{unsupported}"
         );
-        assert_eq!(
-            parse_ssh_uri("sftp://ci@host:2222/data/").unwrap(),
-            ("ci@host".to_owned(), Some(2222), "/data".to_owned())
-        );
-        assert!(parse_ssh_uri("ssh://-oProxyCommand=x/").is_err());
-        assert!(parse_ssh_uri("ssh://host:notaport/").is_err());
     }
 
     #[test]
-    fn shell_quote_survives_single_quotes() {
-        assert_eq!(shell_quote("a'b c"), "'a'\\''b c'");
-    }
-
-    #[test]
-    fn rclone_cli_fallback_covers_object_stores() {
-        assert_eq!(
-            resolve_via_cli_fallback("r2://r2/bucket/ievr").unwrap(),
-            "r2:bucket/ievr"
-        );
-        assert_eq!(resolve_via_cli_fallback("s3://remote").unwrap(), "remote:");
-        assert_eq!(
-            resolve_via_cli_fallback("gdrive://drive/Games").unwrap(),
-            "drive:Games"
-        );
-        assert!(resolve_via_cli_fallback("nievfs://x/y").is_err());
+    fn remote_list_is_json_even_without_a_config() {
+        let raw = rclone_list_remotes().unwrap();
+        assert!(raw.starts_with('['), "{raw}");
     }
 
     struct Server {
@@ -1084,6 +826,33 @@ mod tests {
     }
 
     #[test]
+    fn https_style_object_source_reads_ranges_and_lists_the_html_index() {
+        let mut files = std::collections::HashMap::new();
+        files.insert("/packs/a.cpk".to_owned(), b"0123456789".to_vec());
+        files.insert(
+            "/packs".to_owned(),
+            br#"<a href="a.cpk">a.cpk</a><a href="sub/">sub/</a>"#.to_vec(),
+        );
+        let server = Server::start(false, false, false, Some(files));
+        let endpoint = server.source.trim_end_matches('/').to_owned();
+        let object = object::Object::https(&endpoint, "/").unwrap();
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        assert_eq!(
+            runtime
+                .block_on(object.read("packs/a.cpk", Some((3, 4))))
+                .unwrap(),
+            b"3456"
+        );
+        assert_eq!(
+            runtime.block_on(object.list("packs/")).unwrap(),
+            ["a.cpk", "sub/"]
+        );
+    }
+
+    #[test]
     fn uri_credentials_are_rejected_before_connecting() {
         for uri in [
             "http://user:pass@127.0.0.1/game",
@@ -1104,18 +873,5 @@ mod tests {
             extract_html_links(html, "/data/packs/"),
             vec!["a.cpk", "sub/"]
         );
-    }
-
-    #[test]
-    fn rclone_core_bridges_specs_and_remotes() {
-        if !rclone_core_available() {
-            return;
-        }
-        let remotes = rclone_list_remotes().expect("rclone_list_remotes");
-        assert!(remotes.starts_with('['));
-        let resolved_nv = rclone_resolve_spec("nievfs://C:/Games/IEVR/data").unwrap();
-        assert_eq!(resolved_nv, ":nievfs:C:/Games/IEVR/data");
-        let resolved_rc = rclone_resolve_spec("rclone://vps/data").unwrap();
-        assert_eq!(resolved_rc, "vps:data");
     }
 }

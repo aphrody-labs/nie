@@ -59,9 +59,9 @@ git submodule update --init --checkout iecode/dotnet iecode/cpp
 | source                          | transport                                             |
 |---------------------------------|-------------------------------------------------------|
 | `D:\Games\ievr`, `/srv/game`    | local files, CPK ranges read in place                 |
-| `ssh://host/path`, `sftp://...` | `ssh` with your SSH config, range reads with `dd`     |
-| `r2://remote/bucket/path`       | rclone remote, `rclone cat --offset --count`          |
-| `gdrive://remote/path`, `rclone://remote/path` | rclone remote (Google Drive and others)   |
+| `ssh://host/path`, `sftp://...` | SFTP over `russh`: `~/.ssh` keys, agent, known_hosts, config |
+| `r2://remote/bucket/path`       | `rclone.conf` remote read through `opendal` range reads |
+| `gdrive://remote/path`, `rclone://remote/path` | `rclone.conf` remote (Google Drive, S3, SFTP, alias) |
 | `https://host/path`             | HTTP range requests                                   |
 
 Only the CPK tables and the requested ranges are transferred. `NIE_ASSETS_CACHE_DIR` adds a
