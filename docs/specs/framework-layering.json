@@ -63,6 +63,11 @@
       "package": "nie-bindgen",
       "path": "crates/nie-bindgen",
       "role": "language bindings (C, C++, Rust, Python, C#, Go, Bun, Zig) generated from a C ABI contract"
+    },
+    {
+      "package": "nie-browser",
+      "path": "crates/nie-browser",
+      "role": "the kitesurf engine crates (vendor/kitesurf) behind a Rust host; `deps` reports each vendored crate against crates.io"
     }
   ],
   "app": [

@@ -1,0 +1,34 @@
+[package]
+name = "nie-browser"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+description = "nie browser: the kitesurf engine crates (vendor/kitesurf) behind a Rust host; `deps` reports each vendored crate against crates.io"
+
+[lints]
+workspace = true
+
+[lib]
+name = "nie_browser"
+
+[[bin]]
+name = "nie-browser"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true, features = ["std"] }
+clap = { workspace = true }
+flate2 = { workspace = true }
+nie-tls = { workspace = true }
+semver = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+ureq = { workspace = true, features = ["rustls-no-provider", "rustls-webpki-roots"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }
