@@ -33,7 +33,6 @@ bevy = [
 ]
 
 [dependencies]
-nie-core = { workspace = true }
 glam = { version = "0.33.12", default-features = false, features = ["std"] } # same family as bevy_math 0.20 (one glam in Cargo.lock)
 anyhow = { workspace = true }
 clap = { version = "4.6.7", features = ["derive", "color", "env"], optional = true }

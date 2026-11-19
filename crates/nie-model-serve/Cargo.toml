@@ -15,7 +15,6 @@ default = []
 host = [
   "dep:anyhow",
   "dep:clap",
-  "dep:nie-core",
   "dep:nie-data",
   "dep:nie-explore",
   "dep:nie-sql",
@@ -30,7 +29,6 @@ host = [
 real-audio = ["host"]
 
 [dependencies]
-nie-core = { path = "../nie-core", version = "1.4.8", default-features = false, optional = true }
 nie-formats = { path = "../nie-formats", version = "1.4.8", default-features = false, features = ["std", "serde", "textures", "remote-vfs"] }
 nie-data = { path = "../nie-data", version = "1.4.8", default-features = false, optional = true, features = ["serde", "std"] }
 nie-explore = { path = "../nie-explore", version = "1.4.8", optional = true }

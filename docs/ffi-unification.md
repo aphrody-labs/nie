@@ -106,7 +106,7 @@ Naming:
   - The wasm profiles keep `panic = "abort"`, and their shim maps errors to JS exceptions.
 - **Ownership.**
   - `nie_bytes { uint8_t *ptr; size_t len; }` is backed by `Box<[u8]>`, so the `cap` field goes away. Free it exactly once with `nie_bytes_free(nie_bytes*)`; NULL or empty is a no-op.
-  - Handles are opaque and typed: `nie_vfs*`, `nie_font*`, `nie_crand*`, `nie_steam*`, `nie_lua*`. Each has a matching `nie_<h>_free`.
+  - Handles are opaque and typed: `nie_vfs*`, `nie_font*`, `nie_steam*`, `nie_lua*`. Each has a matching `nie_<h>_free`.
   - Static strings, such as format names, are marked `ownership: "static"` in the contract and are never freed.
   - The C++ and C# wrappers encode these rules in their type systems (RAII, SafeHandle).
 - **Strings.** Inputs are `(const uint8_t*, size_t)` UTF-8, not NUL-terminated (friendlier to bun:ffi), and are validated, returning `NIE_E_INVALID_UTF8` on failure. Outputs are `nie_bytes` holding UTF-8.

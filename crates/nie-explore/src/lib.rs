@@ -18,6 +18,10 @@ pub mod cinema;
 // That database adapter belongs to the app layer; this crate keeps analysis stateless.
 #[cfg(all(feature = "host", not(target_arch = "wasm32")))]
 pub mod depot;
+/// Read-only game-data DTOs (skills, items, characters, ...) decoded from the VFS through the typed
+/// `nie-data` parsers. Native only: it goes through the "host" feature (filesystem search).
+#[cfg(all(feature = "host", not(target_arch = "wasm32")))]
+pub mod domain_data;
 pub mod export;
 pub mod folder_roles;
 #[cfg(all(feature = "host", not(target_arch = "wasm32")))]

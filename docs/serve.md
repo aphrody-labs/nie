@@ -76,7 +76,6 @@ All responses carry `Access-Control-Allow-Origin: *` and `X-Content-Type-Options
 | `POST /v1/formats/decode?name=&format=` | body = bytes; `format=png` returns `image/png` (G4TX), else the decoded structure as JSON; 422 when unreadable |
 | `GET /v1/wiki/games?locale=&slug=&era=&status=&q=` | 200 `{schemaVersion, locale, total, eras, games[]}`, or with `slug` `{schemaVersion, locale, localized, game}`; 404 unknown slug |
 | `GET /v1/wiki/mods?game=&lang=&q=&limit=` | 200 `{schemaVersion, totalHubs, totalWikiSources, hubs[], wikiSources[], snapshot}` |
-| `GET /v1/design/tokens` | 200 `{schemaVersion, contractVersion, defaultDomain, ports, manifest}` |
 | `GET /v1/vfs/info` | 200 `{source, entries, cpks, transport:{ioCalls, payloadBytes}}`; 503 without VFS |
 | `GET /v1/vfs/find?q=&ext=&limit=` | 200 `{count, items:[{path, size, cpk}]}`, `limit` 1 to 500 (default 50) |
 | `GET /v1/vfs/stat?path=` | 200 `{path, size, cpk}`; 400 invalid path, 404 unknown |

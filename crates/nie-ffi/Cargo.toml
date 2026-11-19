@@ -21,8 +21,7 @@ textures = ["formats", "nie-formats/textures"]
 
 [dependencies]
 anyhow = { workspace = true }
-nie-core = { workspace = true, features = ["serde"] }
-nie-app = { workspace = true }
+nie-explore = { workspace = true, features = ["host"] }
 nie-wiki = { workspace = true }
 nie-data = { workspace = true, features = ["serde", "std"] }
 nie-formats = { workspace = true, features = ["serde"] }

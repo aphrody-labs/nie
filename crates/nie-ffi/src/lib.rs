@@ -8,12 +8,6 @@
 //! | Symbole C              | Sémantique Rust                                           |
 //! |------------------------|-----------------------------------------------------------|
 //! | `nie_crc32`            | CRC32 IEEE 802.3 d'un tampon `(ptr, len)`                 |
-//! | `nie_crand_new`        | Crée un `CRand` (MT19937) depuis une graine `u32`         |
-//! | `nie_crand_from_u64`   | Crée un `CRand` depuis une graine `u64` (repli XOR)      |
-//! | `nie_crand_next_u32`   | Tire le prochain `u32`                                    |
-//! | `nie_crand_bounded`    | Tire un entier dans `[0, bound)` (Lemire + rejet)         |
-//! | `nie_crand_next_f32`   | Tire un `f32` dans `[0.0, 1.0)`                           |
-//! | `nie_crand_free`       | Libère un handle `CRand` (exactement une fois)            |
 //! | `nie_version`          | Version du crate en C-string statique                     |
 //!
 //! # Fonctions exportées — décodage formats + VFS
@@ -36,7 +30,6 @@
 //! | `nie_vfs_list_json_out`    | Idem, via `*mut NieBytes`                                        |
 //! | `nie_vfs_count`            | Nombre total d'entrées indexées (sans plafond)                   |
 //! | `nie_vfs_is_readable`      | Présence servable d'un chemin, **sans lire le contenu**          |
-//! | `nie_match_simulate_json_out` | Simulation de match à graine et à statistiques → JSON        |
 //! | `nie_vfs_list_range_json_out` | Tranche `[offset, offset+limit)` de l'index, via `*mut NieBytes` |
 //! | `nie_vfs_free`             | Libère le handle VFS                                             |
 //!
@@ -52,7 +45,7 @@
 //!
 //! # Invariants de sécurité pour les appelants
 //!
-//! - Les handles `*mut CRand` / VFS sont des pointeurs opaques alloués par ce crate.
+//! - Les handles VFS / `FontCtx` sont des pointeurs opaques alloués par ce crate.
 //! - Chaque handle doit être libéré **exactement une fois** via la fonction `_free` correspondante.
 //! - `null` est accepté en entrée par toutes les fonctions `unsafe` (no-op ou retour vide).
 //! - `NieBytes` retourné par valeur utilise la convention sret x86-64 : **en Bun FFI, utiliser
@@ -80,7 +73,6 @@
 #![warn(missing_docs)]
 
 use core::ffi::{c_char, c_void};
-use nie_core::crand::CRand;
 use std::cell::RefCell;
 use std::ffi::CStr;
 use std::path::PathBuf;
@@ -148,136 +140,6 @@ pub unsafe extern "C" fn nie_crc32_nie(ptr: *const u8, len: usize) -> u32 {
     // SAFETY: l'appelant garantit que ptr pointe vers au moins `len` octets valides.
     let data = unsafe { core::slice::from_raw_parts(ptr, len) };
     nie_formats::cpk::crc32_nie(data)
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CRand — handle opaque boxé (Box<CRand>)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Crée un nouveau `CRand` (MT19937) depuis une graine 32 bits.
-///
-/// Retourne un handle opaque alloué sur le tas. Le propriétaire doit appeler
-/// [`nie_crand_free`] **exactement une fois** pour libérer la mémoire.
-///
-/// # Propriété
-///
-/// ```text
-/// let h = nie_crand_new(5489);
-/// // ... utiliser h ...
-/// nie_crand_free(h);  // une seule fois
-/// // h est invalide après ce point
-/// ```
-///
-/// # Bun
-///
-/// ```js
-/// const h = symbols.nie_crand_new(5489); // FFIType.u32 -> FFIType.ptr (JS number)
-/// ```
-#[unsafe(no_mangle)]
-pub extern "C" fn nie_crand_new(seed: u32) -> *mut CRand {
-    Box::into_raw(Box::new(CRand::new(seed)))
-}
-
-/// Crée un nouveau `CRand` depuis une graine 64 bits (repli XOR des deux moitiés sur 32 bits).
-///
-/// Équivalent à `CRand::from_u64(seed)`. Côté Bun, la graine est un `BigInt` (`FFIType.u64`).
-///
-/// Même règle de propriété que [`nie_crand_new`] : libérer exactement une fois.
-#[unsafe(no_mangle)]
-pub extern "C" fn nie_crand_from_u64(seed: u64) -> *mut CRand {
-    Box::into_raw(Box::new(CRand::from_u64(seed)))
-}
-
-/// Tire le prochain `u32` depuis le PRNG (MT19937 `genrand_int32` avec tempering canonique).
-///
-/// # Safety
-///
-/// - `handle` doit être un pointeur valide retourné par [`nie_crand_new`] ou
-///   [`nie_crand_from_u64`], non encore libéré.
-/// - `null` est accepté : retourne `0` sans déréférencer.
-///
-/// # Vecteurs (graine 5489)
-///
-/// ```text
-/// new(5489) -> 3_499_211_612, 581_869_302, 3_890_346_734, …
-/// ```
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn nie_crand_next_u32(handle: *mut CRand) -> u32 {
-    if handle.is_null() {
-        return 0;
-    }
-    // SAFETY: handle est non-null ; l'appelant garantit qu'il est valide et non libéré.
-    unsafe { (*handle).next_u32() }
-}
-
-/// Tire un entier dans `[0, bound)` via la méthode de Lemire avec rejet.
-///
-/// Sémantique byte-exacte du moteur :
-/// - `bound == 0` → retourne le tirage **brut** `next_u32()` (pas `0`) ;
-/// - sinon → Lemire avec rejet (consommation de tirages identique au moteur nie.exe).
-///
-/// # Safety
-///
-/// Mêmes invariants que [`nie_crand_next_u32`].
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn nie_crand_bounded(handle: *mut CRand, bound: u32) -> u32 {
-    if handle.is_null() {
-        return 0;
-    }
-    // SAFETY: handle est non-null ; l'appelant garantit qu'il est valide et non libéré.
-    unsafe { (*handle).bounded(bound) }
-}
-
-/// Tire un `f32` dans `[0.0, 1.0)` via les 24 bits de poids fort du tirage brut.
-///
-/// # Safety
-///
-/// Mêmes invariants que [`nie_crand_next_u32`].
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn nie_crand_next_f32(handle: *mut CRand) -> f32 {
-    if handle.is_null() {
-        return 0.0_f32;
-    }
-    // SAFETY: handle est non-null ; l'appelant garantit qu'il est valide et non libéré.
-    unsafe { (*handle).next_f32() }
-}
-
-/// Libère un handle `CRand` précédemment retourné par [`nie_crand_new`] ou
-/// [`nie_crand_from_u64`].
-///
-/// # Safety
-///
-/// - Appeler cette fonction **exactement une fois** par handle.
-/// - `null` est un no-op (aucun déréférencement).
-/// - Après l'appel, tout usage du pointeur est un comportement indéfini.
-///
-/// # Recommandation JS / Bun
-///
-/// Encapsuler dans une classe qui nullifie le pointeur après free et implante
-/// `[Symbol.dispose]` (mot-clé `using`) pour garantir un seul appel :
-///
-/// ```js
-/// class CRandHandle {
-///   #ptr;
-///   constructor(seed) { this.#ptr = symbols.nie_crand_new(seed); }
-///   nextU32()  { return symbols.nie_crand_next_u32(this.#ptr); }
-///   bounded(n) { return symbols.nie_crand_bounded(this.#ptr, n); }
-///   [Symbol.dispose]() {
-///     if (this.#ptr) { symbols.nie_crand_free(this.#ptr); this.#ptr = null; }
-///   }
-/// }
-/// // usage : using h = new CRandHandle(5489);
-/// ```
-///
-/// Une `FinalizationRegistry` peut servir de filet de sécurité additionnel.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn nie_crand_free(handle: *mut CRand) {
-    if handle.is_null() {
-        return;
-    }
-    // SAFETY: handle est non-null ; l'appelant garantit qu'il provient de nie_crand_new /
-    // nie_crand_from_u64 et qu'il n'a pas encore été libéré.
-    unsafe { drop(Box::from_raw(handle)) };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -702,7 +564,7 @@ fn wiki_json_impl(input: &[u8]) -> NieBytes {
             {
                 direct["query"] = id.clone();
             }
-            return nie_app::game_data::query_vfs(&vfs, &direct).map_err(anyhow::Error::msg);
+            return nie_explore::domain_data::query_vfs(&vfs, &direct).map_err(anyhow::Error::msg);
         }
         let connection = nie_wiki::mirror::open(database.as_deref())
             .map_err(|error| anyhow::anyhow!("wiki mirror unavailable: {error}"))?;
@@ -1470,10 +1332,10 @@ fn cached_vfs_query(
     let mut cache = VFS_DOMAIN_CACHE.get_or_init(Default::default).lock().ok()?;
     let domains = cache.entry(key).or_default();
     if let std::collections::hash_map::Entry::Vacant(entry) = domains.entry(domain.to_owned()) {
-        let records = nie_app::game_data::load_domain_records(vfs, domain).ok()?;
+        let records = nie_explore::domain_data::load_domain_records(vfs, domain).ok()?;
         entry.insert(records);
     }
-    nie_app::game_data::query_records(domain, domains.get(domain)?, request).ok()
+    nie_explore::domain_data::query_records(domain, domains.get(domain)?, request).ok()
 }
 
 /// Query native game collections through the mounted VFS.
@@ -1718,91 +1580,6 @@ pub unsafe extern "C" fn nie_font_free(ctx: *mut c_void) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Moteur de match (`nie-runtime`) — la simulation, pilotable depuis l'extérieur
-// ─────────────────────────────────────────────────────────────────────────────
-//
-// Tout ce qui précède LIT le jeu (assets, formats, VFS). Ce bloc le fait TOURNER : il expose
-// `nie_runtime::World`, la simulation 11 v 11 déterministe, pour qu'un hôte non-Rust — la lib
-// Python `niepy`, et donc Ren'Py — puisse avancer un match tick par tick et lire son état.
-//
-// Le déterminisme est le contrat : à `dt` et entrées identiques, deux exécutions donnent la
-// même suite d'états. C'est ce qui permet à un visual novel de rejouer une action à l'identique.
-
-// ============================================================================
-// Simulation de match — à graine et à statistiques
-// ============================================================================
-
-/// Simule une rencontre complète et rend le résultat en JSON UTF-8.
-///
-/// C'est le complément du bloc `nie_world_*`, et il répond à un autre besoin.
-/// `nie_world_*` fait TOURNER un match jouable : on lui pousse des entrées et on
-/// l'avance pas à pas. Il n'accepte aucune graine et son onze est le sien — deux
-/// matchs laissés à eux-mêmes rendent le même score, et rien ne distingue les
-/// joueurs d'un camp de ceux de l'autre.
-///
-/// [`nie_core::match_sim::simulate_match`] fait l'inverse : il tranche une
-/// rencontre d'un bloc, à partir des STATISTIQUES des deux équipes et d'une
-/// GRAINE. C'est ce qu'un récit demande — un match que le joueur ne dispute pas,
-/// dont le résultat dépend de la force des effectifs et se rejoue à l'identique.
-///
-/// `home_json` et `away_json` sont des `TeamSetup` sérialisés :
-///
-/// ```json
-/// {"name": "Raimon", "aggregate_stats": {"kc":207,"cr":216,"tc":218,
-///  "pr":235,"ps":242,"ag":210,"it":261}, "placements": null}
-/// ```
-///
-/// La sortie est un `MatchResult` : `home_score`, `away_score`, `final_clock`
-/// (`minutes * 10_000 + secondes`) et la séquence complète d'`events`.
-///
-/// `NieBytes::empty` en sortie signale une entrée illisible — JSON invalide,
-/// champ manquant, ou pointeur nul.
-///
-/// # Safety
-///
-/// - `home_json` et `away_json` doivent être des chaînes C null-terminées valides.
-/// - `out` doit pointer sur un `NieBytes` inscriptible et aligné.
-/// - null (n'importe lequel) → `NieBytes::empty`, aucun effet.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn nie_match_simulate_json_out(
-    home_json: *const c_char,
-    away_json: *const c_char,
-    seed: u64,
-    out: *mut NieBytes,
-) {
-    if out.is_null() {
-        return;
-    }
-    if home_json.is_null() || away_json.is_null() {
-        // SAFETY: out est non-null et aligné.
-        unsafe { out.write(NieBytes::empty()) };
-        return;
-    }
-
-    // SAFETY: les deux pointeurs sont non-null et null-terminés.
-    let (home_str, away_str) = unsafe {
-        (
-            std::ffi::CStr::from_ptr(home_json).to_str(),
-            std::ffi::CStr::from_ptr(away_json).to_str(),
-        )
-    };
-
-    let resultat = (|| -> Option<Vec<u8>> {
-        let home: nie_core::match_sim::TeamSetup = serde_json::from_str(home_str.ok()?).ok()?;
-        let away: nie_core::match_sim::TeamSetup = serde_json::from_str(away_str.ok()?).ok()?;
-        let issue = nie_core::match_sim::simulate_match(home, away, seed);
-        serde_json::to_vec(&issue).ok()
-    })();
-
-    let sortie = match resultat {
-        Some(v) => NieBytes::from_vec(v),
-        None => NieBytes::empty(),
-    };
-    // SAFETY: out est non-null et aligné.
-    unsafe { out.write(sortie) };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Diagnostics & Info
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1848,11 +1625,11 @@ pub unsafe extern "C" fn nie_build_info_json_out(out: *mut NieBytes) {
         "version": env!("CARGO_PKG_VERSION"),
         "product": "iecode",
         "abiVersion": 1,
-        "profile": "formats/textures/save/menu-setting/match-simulation/game-source/vfs-domain-query/wiki",
+        "profile": "formats/textures/save/menu-setting/game-source/vfs-domain-query/wiki",
         "capabilities": [
-            "format-inspection", "crc32", "crc32_nie", "crand", "cpk", "crilayla",
+            "format-inspection", "crc32", "crc32_nie", "cpk", "crilayla",
             "cfgbin", "menu-setting", "g4tx", "vfs", "save", "font", "textures",
-            "match-simulation", "game-source-discovery", "vfs-domain-query", "wiki-query"
+            "game-source-discovery", "vfs-domain-query", "wiki-query"
         ],
         "targetOs": std::env::consts::OS,
         "targetArch": std::env::consts::ARCH,
@@ -2766,76 +2543,6 @@ mod tests {
         // Slice vide via ptr valide (même résultat).
         let hash = unsafe { nie_crc32(b"".as_ptr(), 0) };
         assert_eq!(hash, 0, "crc32(b\"\", 0)");
-    }
-
-    // ── CRand ────────────────────────────────────────────────────────────────
-
-    #[test]
-    fn crand_new_vecteur_mt19937_seed_5489() {
-        let h = nie_crand_new(5489);
-        assert_eq!(unsafe { nie_crand_next_u32(h) }, 3_499_211_612, "tirage #1");
-        assert_eq!(unsafe { nie_crand_next_u32(h) }, 581_869_302, "tirage #2");
-        assert_eq!(unsafe { nie_crand_next_u32(h) }, 3_890_346_734, "tirage #3");
-        unsafe { nie_crand_free(h) };
-    }
-
-    #[test]
-    fn crand_null_handle_safe() {
-        let null: *mut CRand = core::ptr::null_mut();
-        assert_eq!(unsafe { nie_crand_next_u32(null) }, 0);
-        assert_eq!(unsafe { nie_crand_bounded(null, 10) }, 0);
-        assert_eq!(unsafe { nie_crand_next_f32(null) }, 0.0_f32);
-        // free null = no-op
-        unsafe { nie_crand_free(null) };
-    }
-
-    #[test]
-    fn crand_from_u64_matches_u32_low_half() {
-        // from_u64(n) avec moitié haute nulle == new(n as u32)
-        let h64 = nie_crand_from_u64(12_345_u64);
-        let h32 = nie_crand_new(12_345_u32);
-        assert_eq!(unsafe { nie_crand_next_u32(h64) }, unsafe {
-            nie_crand_next_u32(h32)
-        });
-        unsafe { nie_crand_free(h64) };
-        unsafe { nie_crand_free(h32) };
-    }
-
-    #[test]
-    fn crand_bounded_zero_is_raw_next_u32() {
-        // bound==0 → tirage brut (pas 0) et consomme un tirage.
-        let h = nie_crand_new(99);
-        let h2 = nie_crand_new(99);
-        let via_bounded = unsafe { nie_crand_bounded(h, 0) };
-        let via_next = unsafe { nie_crand_next_u32(h2) };
-        assert_eq!(via_bounded, via_next, "bound==0 → tirage brut");
-        // Les deux PRNG restent synchronisés après.
-        assert_eq!(
-            unsafe { nie_crand_next_u32(h) },
-            unsafe { nie_crand_next_u32(h2) },
-            "consommation identique"
-        );
-        unsafe { nie_crand_free(h) };
-        unsafe { nie_crand_free(h2) };
-    }
-
-    #[test]
-    fn crand_bounded_nonzero_in_range() {
-        let h = nie_crand_new(42);
-        for _ in 0..10_000 {
-            assert!(unsafe { nie_crand_bounded(h, 6) } < 6);
-        }
-        unsafe { nie_crand_free(h) };
-    }
-
-    #[test]
-    fn crand_next_f32_in_range() {
-        let h = nie_crand_new(7);
-        for _ in 0..10_000 {
-            let f = unsafe { nie_crand_next_f32(h) };
-            assert!((0.0_f32..1.0_f32).contains(&f));
-        }
-        unsafe { nie_crand_free(h) };
     }
 
     // ── Version ──────────────────────────────────────────────────────────────

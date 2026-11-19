@@ -13,7 +13,6 @@ use tokio::net::{TcpListener, TcpStream};
 const MAX_HEADER_BYTES: usize = 16 * 1024;
 const MAX_BODY_BYTES: usize = 32 * 1024 * 1024;
 const MAX_FIND_LIMIT: usize = 500;
-const RG_M3_TOKENS_JSON: &str = include_str!("../../../design/rg-m3.json");
 
 #[derive(Debug, Args)]
 pub struct ServeArgs {
@@ -588,25 +587,6 @@ async fn route_request(
         );
     }
 
-    if method == "GET" && raw_path == "/v1/design/tokens" {
-        let manifest: Value = serde_json::from_str(RG_M3_TOKENS_JSON).unwrap_or_else(|_| json!({}));
-        return HttpResponse::json(
-            200,
-            "OK",
-            &json!({
-                "schemaVersion": nie_core::contract_generated::CONTRACT_SCHEMA_VERSION,
-                "contractVersion": nie_core::contract_generated::CONTRACT_VERSION,
-                "defaultDomain": nie_core::contract_generated::DEFAULT_DOMAIN,
-                "ports": {
-                    "website": nie_core::contract_generated::PORT_WEBSITE,
-                    "api": nie_core::contract_generated::PORT_API,
-                    "azalee": nie_core::contract_generated::PORT_AZALEE,
-                },
-                "manifest": manifest,
-            }),
-        );
-    }
-
     let Some(vfs) = state.vfs.clone() else {
         return HttpResponse::json(
             503,
@@ -824,7 +804,7 @@ async fn route_request(
             "limit": limit,
         });
         return tokio::task::spawn_blocking(move || {
-            match nie_app::game_data::query_vfs(&vfs, &req) {
+            match nie_explore::domain_data::query_vfs(&vfs, &req) {
                 Ok(res) => HttpResponse::json(200, "OK", &res),
                 Err(err) => HttpResponse::json(400, "Bad Request", &json!({ "error": err })),
             }
@@ -1116,24 +1096,6 @@ mod tests {
             mods_json["wikiSources"]
                 .as_array()
                 .is_some_and(|a| !a.is_empty())
-        );
-
-        let tokens = route_request(
-            "GET",
-            "/v1/design/tokens",
-            &headers,
-            Vec::new(),
-            state(true, None),
-        )
-        .await;
-        assert_eq!(tokens.status, 200);
-        let tokens_json: Value = serde_json::from_slice(&tokens.body).expect("tokens json");
-        assert_eq!(tokens_json["manifest"]["defaultTheme"], "roy");
-        assert_eq!(
-            tokens_json["manifest"]["themes"]
-                .as_array()
-                .map(|a| a.len()),
-            Some(9)
         );
     }
 }

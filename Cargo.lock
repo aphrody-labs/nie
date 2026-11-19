@@ -5207,7 +5207,6 @@ dependencies = [
  "nie-ui",
  "serde",
  "serde_json",
- "specta",
 ]
 
 [[package]]
@@ -5381,6 +5380,7 @@ dependencies = [
  "nie-lua",
  "serde",
  "serde_json",
+ "specta",
 ]
 
 [[package]]
@@ -5389,9 +5389,8 @@ version = "1.4.8"
 dependencies = [
  "anyhow",
  "image",
- "nie-app",
- "nie-core",
  "nie-data",
+ "nie-explore",
  "nie-formats",
  "nie-save",
  "nie-wiki",
@@ -5541,7 +5540,6 @@ dependencies = [
  "anyhow",
  "clap",
  "image_dds",
- "nie-core",
  "nie-data",
  "nie-explore",
  "nie-formats",
@@ -5677,7 +5675,6 @@ dependencies = [
  "bytemuck",
  "clap",
  "glam",
- "nie-core",
  "nie-formats",
  "nie-gpu",
  "png",
@@ -5749,7 +5746,6 @@ name = "nie-sql"
 version = "1.4.8"
 dependencies = [
  "bytes",
- "nie-core",
  "rusqlite",
  "rustls",
  "serde",
@@ -5819,38 +5815,29 @@ dependencies = [
 name = "nie-wasm"
 version = "1.4.8"
 dependencies = [
- "anyhow",
  "bevy_app",
  "bevy_asset",
  "bevy_ecs",
- "bytemuck",
  "console_error_panic_hook",
  "getrandom 0.2.17",
  "getrandom 0.3.4",
  "getrandom 0.4.3",
- "js-sys",
- "nie-app",
  "nie-bevy",
  "nie-camera",
  "nie-computer-use",
- "nie-core",
  "nie-data",
  "nie-explore",
  "nie-forge",
  "nie-formats",
- "nie-gpu",
  "nie-index",
  "nie-lua",
  "nie-model-serve",
- "nie-net",
  "nie-pe",
  "nie-re-core",
  "nie-render3d",
- "nie-runtime",
  "nie-save",
  "nie-seed",
  "nie-trace",
- "nie-ui",
  "nie-zukan",
  "rg-steam",
  "serde",
@@ -5865,7 +5852,6 @@ name = "nie-wiki"
 version = "1.4.8"
 dependencies = [
  "anyhow",
- "nie-core",
  "nie-sql",
  "rand 0.10.4",
  "redis",

@@ -25,13 +25,16 @@ pub mod auxiliary;
 pub mod cards;
 pub mod catalog;
 pub mod cross;
+/// Public origin of the NIE asset CDN, used when `NIE_CDN_BASE` is not set.
+const DEFAULT_CDN_ORIGIN: &str = "https://cdn.rosegriffon.fr";
+
 /// Origin of the NIE asset CDN: `NIE_CDN_BASE` (no trailing slash), else the public default.
 pub(crate) fn cdn_base() -> String {
     std::env::var("NIE_CDN_BASE")
         .ok()
         .map(|v| v.trim().trim_end_matches('/').to_string())
         .filter(|v| !v.is_empty())
-        .unwrap_or_else(|| nie_core::contract_generated::ORIGIN_CDN.to_string())
+        .unwrap_or_else(|| DEFAULT_CDN_ORIGIN.to_string())
 }
 
 pub mod desktop;

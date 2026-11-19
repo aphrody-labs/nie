@@ -16,6 +16,20 @@ pub use sqlite_registry::{DatabaseRegistry, ExecuteResult, Migration};
 /// registry contract used by native hosts.
 pub mod postgres_migrations;
 
+/// URL schemes that select the PostgreSQL backend.
+const PG_SCHEMES: &[&str] = &["postgres://", "postgresql://"];
+/// Environment variables naming the wiki mirror file, in priority order.
+const MIRROR_ENV_VARS: &[&str] = &[
+    "NIE_WIKI_DB",
+    "NIE_MIRROR_DB",
+    "SQLITE_DB_PATH",
+    "NIERS_MIRROR",
+];
+/// Default mirror path relative to the working directory.
+const MIRROR_DEFAULT_REL_PATH: &str = "var/mirror.sqlite";
+/// Directories searched for the newest non-empty snapshot when no mirror file is found.
+const MIRROR_SNAPSHOT_DIRS: &[&str] = &["var/miroir", "data/backups"];
+
 use rusqlite::{
     Connection, OpenFlags, params_from_iter,
     types::{Value as SqliteValue, ValueRef},
@@ -58,10 +72,7 @@ impl DatabaseUrl {
                 path: PathBuf::from(path),
             });
         }
-        if nie_core::contract_generated::PG_SCHEMES
-            .iter()
-            .any(|scheme| value.starts_with(scheme))
-        {
+        if PG_SCHEMES.iter().any(|scheme| value.starts_with(scheme)) {
             let authority = value
                 .split_once("://")
                 .map(|(_, rest)| rest)
@@ -89,13 +100,13 @@ impl DatabaseUrl {
 }
 
 /// Resolves the canonical local SQLite mirror (`var/mirror.sqlite`) using the
-/// environment variables and fallback paths declared in `contract/stack.yml`.
+/// environment variables and fallback paths declared in this module.
 pub fn resolve_mirror_path(explicit: Option<&Path>) -> Option<PathBuf> {
     if let Some(path) = explicit {
         return path.exists().then(|| path.to_path_buf());
     }
 
-    for var in nie_core::contract_generated::MIRROR_ENV_VARS {
+    for var in MIRROR_ENV_VARS {
         if let Ok(value) = std::env::var(var) {
             let trimmed = value.trim();
             if !trimmed.is_empty() && trimmed != "undefined" && trimmed != "null" {
@@ -107,12 +118,12 @@ pub fn resolve_mirror_path(explicit: Option<&Path>) -> Option<PathBuf> {
         }
     }
 
-    let primary = PathBuf::from(nie_core::contract_generated::MIRROR_DEFAULT_REL_PATH);
+    let primary = PathBuf::from(MIRROR_DEFAULT_REL_PATH);
     if primary.is_file() && primary.metadata().is_ok_and(|m| m.len() > 0) {
         return Some(primary);
     }
 
-    nie_core::contract_generated::MIRROR_SNAPSHOT_DIRS
+    MIRROR_SNAPSHOT_DIRS
         .iter()
         .filter_map(|dir| latest_nonempty_sqlite(Path::new(dir)))
         .max()

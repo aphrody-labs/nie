@@ -32,8 +32,6 @@
 //! En plus des parsers de formats (`nie-formats`), ce crate expose au navigateur le
 //! savoir VÉRIFIÉ déjà porté dans les autres crates nie :
 //!
-//! - **`nie-core`** — calcul de statistiques (courbe de croissance lv1→99, ancrée sur
-//!   `inagle/stat-calculator.ts`) et machine à états du match (FSM 11 états + score).
 //! - **`nie-data`** — lookup skill (résolution hissatsu name/element/power), aura
 //!   (sous-type + résolution du hissatsu lié) et item (catégorie + stats d'équipement),
 //!   parsés depuis les dumps `*.cfg.bin.json` d'IEVR.
@@ -50,8 +48,6 @@
 //! ```text
 //! import init, {
 //!   init_panic_hook, detect_format, crilayla_decompress, utf_table_json,
-//!   calculate_stats, single_stat, rarity_to_growth_rank,
-//!   match_tick, final_score,
 //!   skill_lookup, aura_lookup, item_lookup,
 //! } from "./pkg/nie_wasm.js";
 //!
@@ -69,14 +65,6 @@
 //!   const table = JSON.parse(json);
 //! }
 //!
-//! // Stats : FW rang UR (mainPosition 4, rank 5) au niveau 99.
-//! const stats = JSON.parse(calculate_stats(4, 0, 0, 5, 0, 99));
-//! console.log(stats.stats); // { kc, cr, tc, pr, ps, ag, it }
-//!
-//! // Match : transition de la FSM + score final.
-//! const t = JSON.parse(match_tick("WaitTimer", false, 0)); // { next, immediate }
-//! const score = final_score(2, 30); // 20030
-//!
 //! // Lookup data depuis un dump cfg.bin.json (string).
 //! const skills = JSON.parse(skill_lookup(skillConfigJson, skillTextJson));
 //! ```
@@ -92,9 +80,6 @@
 
 #[cfg(feature = "bevy")]
 pub mod bevy;
-pub mod client;
-#[cfg(feature = "webgpu")]
-pub mod gpu_client;
 pub mod native_audio;
 pub use native_audio::{audio_bank_cue_to_wav, audio_bank_json, audio_cue_to_wav};
 
@@ -102,15 +87,6 @@ pub mod native_video;
 pub use native_video::{
     usm_audio_track_wav, usm_elementary_video_bytes, usm_metadata_json, usm_video_track_bytes,
 };
-
-pub mod net;
-pub use net::*;
-pub mod team_code;
-pub use team_code::*;
-pub mod team_rules;
-pub use team_rules::*;
-pub mod team_generator;
-pub use team_generator::*;
 
 #[cfg(all(target_arch = "wasm32", feature = "webgpu"))]
 pub mod web_viewer;
@@ -716,169 +692,6 @@ fn utf_value_to_json(v: &cpk::UtfValue) -> serde_json::Value {
             serde_json::json!(b)
         }
     }
-}
-
-// ===========================================================================
-// nie-core — calcul de statistiques (growth)
-// ===========================================================================
-
-/// Calcule le bloc de 7 statistiques d'un personnage à un niveau donné.
-///
-/// Combine les tables de croissance réelles IEVR embarquées (`nie-core`,
-/// ancrées sur `inagle/stat-calculator.ts`) avec la résolution par fallback en
-/// cascade (lv1/lv30/main) puis l'interpolation 3-segments.
-///
-/// Paramètres :
-/// - `main_position` : 1=GK, 2=DF, 3=MF, 4=FW.
-/// - `sub_position` : sous-position (0 = aucune).
-/// - `growth_pattern` : pattern de croissance (0, 1, 2+).
-/// - `chara_rank` : code de rareté brut (0=N, 2=R, 3=SR, 4=SSR, 5=UR, 6=LR, 7=Legend, 20=BASARA).
-/// - `play_style` : style de jeu (0 par défaut).
-/// - `level` : niveau 1..=99.
-///
-/// Retourne un JSON :
-/// ```text
-/// {
-///   "stats": { "kc": 207, "cr": 216, "tc": 218, "pr": 235, "ps": 242, "ag": 210, "it": 261 },
-///   "total": 1589
-/// }
-/// ```
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[must_use]
-pub fn calculate_stats(
-    main_position: u8,
-    sub_position: u8,
-    growth_pattern: u8,
-    chara_rank: u8,
-    play_style: u8,
-    level: u8,
-) -> String {
-    use nie_core::growth::{GrowthParams, GrowthTables, calculate_stats as core_calc};
-
-    let tables = GrowthTables::load_embedded();
-    let params = GrowthParams {
-        main_position,
-        sub_position,
-        growth_pattern,
-        chara_rank,
-        play_style,
-    };
-    let block = core_calc(&tables, &params, level);
-    serde_json::json!({
-        "stats": block,
-        "total": block.total(),
-    })
-    .to_string()
-}
-
-/// Calcule une statistique unique par interpolation 3-segments (lv1/30/50/99).
-///
-/// Expose directement `nie_core::stats::calculate_single_stat`. Les niveaux hors
-/// plage sont clampés (lv≤1 → `stat_lv1`, lv≥99 → `stat_lv99`).
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[must_use]
-pub fn single_stat(
-    level: u8,
-    stat_lv1: u16,
-    stat_lv30: u16,
-    stat_lv50: u16,
-    stat_lv99: u16,
-) -> u16 {
-    nie_core::stats::calculate_single_stat(level, stat_lv1, stat_lv30, stat_lv50, stat_lv99)
-}
-
-/// Convertit un code de rareté brut en rang de table de croissance.
-///
-/// Expose `nie_core::stats::rarity_to_growth_rank` (0→0, 2→2, …, 5/6/7/20→5).
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[must_use]
-pub fn rarity_to_growth_rank(rarity_code: u8) -> u8 {
-    nie_core::stats::rarity_to_growth_rank(rarity_code)
-}
-
-// ===========================================================================
-// nie-core — machine à états du match (FSM)
-// ===========================================================================
-
-/// Convertit un nom d'état (insensible à la casse) vers le `MatchState` typé.
-///
-/// Accepte les libellés canoniques (`"Init"`, `"WaitTimer"`, `"ResultUi"`,
-/// `"CheckTelop"`, `"WaitAnim"`, `"Transition"`, `"Fade"`, `"Cleanup"`,
-/// `"PostMatch"`, `"FadeOut"`, `"LoadNext"`) et les index numériques `"0".."10"`.
-fn parse_match_state(state: &str) -> Option<nie_core::match_fsm::MatchState> {
-    use nie_core::match_fsm::MatchState as S;
-    // Index numérique direct (0-10) — réutilise le TryFrom<u8> porté.
-    if let Ok(n) = state.trim().parse::<u8>() {
-        return S::try_from(n).ok();
-    }
-    let key = state.trim().to_ascii_lowercase();
-    Some(match key.as_str() {
-        "init" => S::Init,
-        "waittimer" => S::WaitTimer,
-        "resultui" => S::ResultUi,
-        "checktelop" => S::CheckTelop,
-        "waitanim" => S::WaitAnim,
-        "transition" => S::Transition,
-        "fade" => S::Fade,
-        "cleanup" => S::Cleanup,
-        "postmatch" => S::PostMatch,
-        "fadeout" => S::FadeOut,
-        "loadnext" => S::LoadNext,
-        _ => return None,
-    })
-}
-
-/// Logique commune `match_tick` (wasm32 / natif) : résout l'état suivant de la FSM.
-fn match_tick_impl(state: &str, is_training: bool, end_counter: i32) -> Result<String, String> {
-    use nie_core::match_fsm::{MatchContext, tick};
-
-    let s = parse_match_state(state).ok_or_else(|| alloc_format_unknown_state(state))?;
-    let ctx = MatchContext {
-        is_training,
-        end_counter,
-    };
-    let t = tick(s, ctx);
-    serde_json::json!({
-        "next": t.next,
-        "immediate": t.immediate,
-    })
-    .to_string()
-    .pipe_ok()
-}
-
-/// Message d'erreur pour un état de match inconnu.
-fn alloc_format_unknown_state(state: &str) -> String {
-    format!("état de match inconnu : {state:?}")
-}
-
-/// Avance la machine à états du match d'un tick (transition nominale).
-///
-/// Porte la FSM 11 états de `CSceneSoccer` (`nie-core::match_fsm::tick`).
-/// - `state` : nom de l'état courant (`"Init"`, `"WaitTimer"`, … ou index `"0".."10"`).
-/// - `is_training` : flag entraînement (`false` = match normal).
-/// - `end_counter` : compteur de fin (case 5 : 0/1 = restart, 2 = complétion).
-///
-/// Retourne un JSON `{ "next": "WaitTimer", "immediate": false }`, ou lève une
-/// `Error` JS si l'état est inconnu.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn match_tick(state: &str, is_training: bool, end_counter: i32) -> Result<String, JsValue> {
-    match_tick_impl(state, is_training, end_counter).map_err(|e| JsValue::from_str(&e))
-}
-
-/// Avance la FSM du match d'un tick (version native, sans `JsValue`).
-#[cfg(not(target_arch = "wasm32"))]
-pub fn match_tick(state: &str, is_training: bool, end_counter: i32) -> Result<String, String> {
-    match_tick_impl(state, is_training, end_counter)
-}
-
-/// Encode le score final du match : `minutes * 10000 + secondes`.
-///
-/// Expose `nie_core::match_fsm::final_score` (case 7 de `FUN_1412aa4a0`).
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[must_use]
-pub fn final_score(minutes: u16, seconds: u16) -> u32 {
-    nie_core::match_fsm::final_score(minutes, seconds)
 }
 
 // ===========================================================================
@@ -2059,29 +1872,8 @@ pub fn parse_save_json(bytes: &[u8], filename: &str) -> Result<String, String> {
 }
 
 // ---------------------------------------------------------------------------
-// Machine à états d'écran en navigateur (nie-app : GameState + framebuffer CPU)
+// RGBA8 frame shared with JavaScript
 // ---------------------------------------------------------------------------
-
-#[cfg(any(target_arch = "wasm32", test))]
-fn parse_lines_json(lines_json: &str) -> Result<Vec<String>, String> {
-    serde_json::from_str(lines_json).map_err(|error| format!("lines: {error}"))
-}
-
-#[cfg(any(target_arch = "wasm32", test))]
-const MAX_UPDATE_SECONDS: f32 = 1.0 / 20.0;
-
-#[cfg(any(target_arch = "wasm32", test))]
-fn set_match_input(screen: &mut nie_app::flow::Screen, dx: f32, dy: f32, shoot: bool) {
-    let finite_or_zero = |axis: f32| if axis.is_finite() { axis } else { 0.0 };
-    screen.set_game_input(finite_or_zero(dx), finite_or_zero(dy), shoot);
-}
-
-#[cfg(any(target_arch = "wasm32", test))]
-fn update_screen(screen: &mut nie_app::flow::Screen, dt: f32) {
-    if dt.is_finite() && dt > 0.0 {
-        screen.update(dt.min(MAX_UPDATE_SECONDS));
-    }
-}
 
 #[cfg(any(target_arch = "wasm32", test))]
 #[derive(Default)]
@@ -2107,134 +1899,6 @@ impl FrameBuffer {
     fn pixels(&self) -> &[u8] {
         &self.pixels
     }
-}
-
-#[cfg(any(target_arch = "wasm32", test))]
-fn role_name(role: nie_runtime::Role) -> &'static str {
-    match role {
-        nie_runtime::Role::Goalkeeper => "goalkeeper",
-        nie_runtime::Role::Defender => "defender",
-        nie_runtime::Role::Midfielder => "midfielder",
-        nie_runtime::Role::Forward => "forward",
-    }
-}
-
-#[cfg(any(target_arch = "wasm32", test))]
-fn screen_snapshot(screen: &nie_app::flow::Screen) -> Result<String, String> {
-    let value = match screen {
-        nie_app::flow::Screen::Title => serde_json::json!({
-            "schemaVersion": 1,
-            "screen": { "kind": "title" },
-        }),
-        nie_app::flow::Screen::Menu { sel } => serde_json::json!({
-            "schemaVersion": 1,
-            "screen": {
-                "kind": "menu",
-                "selection": sel,
-                "renderOwner": "host",
-                "nativeSceneRequired": true,
-            },
-        }),
-        nie_app::flow::Screen::ModeSelect { sel } => serde_json::json!({
-            "schemaVersion": 1,
-            "screen": { "kind": "modeSelect", "selection": sel },
-        }),
-        nie_app::flow::Screen::Match { world } => {
-            let players: Vec<_> = world
-                .players
-                .iter()
-                .enumerate()
-                .map(|(index, player)| {
-                    serde_json::json!({
-                        "index": index,
-                        "team": player.team,
-                        "role": role_name(player.role),
-                        "position": { "x": player.pos.x, "y": player.pos.y },
-                        "velocity": { "x": player.vel.x, "y": player.vel.y },
-                        "home": { "x": player.home.x, "y": player.home.y },
-                    })
-                })
-                .collect();
-            serde_json::json!({
-                "schemaVersion": 1,
-                "screen": { "kind": "match" },
-                "world": {
-                    "tick": world.tick,
-                    "time": world.time,
-                    "score": world.score,
-                    "controlledPlayer": world.controlled(),
-                    "possessor": world.possessor(),
-                    "input": {
-                        "direction": { "x": world.input.dir.x, "y": world.input.dir.y },
-                        "shoot": world.input.shoot,
-                    },
-                    "ball": {
-                        "position": {
-                            "x": world.ball.pos.x,
-                            "y": world.ball.pos.y,
-                            "z": world.ball.pos.z,
-                        },
-                        "velocity": {
-                            "x": world.ball.vel.x,
-                            "y": world.ball.vel.y,
-                            "z": world.ball.vel.z,
-                        },
-                        "gravity": world.ball.gravity,
-                    },
-                    "players": players,
-                },
-            })
-        }
-        nie_app::flow::Screen::Story {
-            idx,
-            titre,
-            repliques,
-        } => serde_json::json!({
-            "schemaVersion": 1,
-            "screen": {
-                "kind": "story",
-                "index": idx,
-                "eventId": titre,
-                "lineCount": repliques.len(),
-                "awaitingDialogue": repliques.is_empty(),
-            },
-        }),
-        nie_app::flow::Screen::OpenWorld { state }
-        | nie_app::flow::Screen::KizunaTown { state } => serde_json::json!({
-            "schemaVersion": 1,
-            "screen": {
-                "kind": if matches!(screen, nie_app::flow::Screen::KizunaTown { .. }) {
-                    "kizunaTown"
-                } else {
-                    "openWorld"
-                },
-                "mapCode": state.zone.map_code(),
-                "tick": state.tick_count,
-                "player": {
-                    "x": state.player.position.x,
-                    "y": state.player.position.y,
-                    "z": state.player.position.z,
-                },
-                "npcCount": state.npcs.len(),
-                "activeDialogue": state.active_dialogue.is_some(),
-            },
-        }),
-        nie_app::flow::Screen::Info { title } => serde_json::json!({
-            "schemaVersion": 1,
-            "screen": { "kind": "info", "title": title },
-        }),
-        nie_app::flow::Screen::Liste { titre, lignes, sel } => serde_json::json!({
-            "schemaVersion": 1,
-            "screen": {
-                "kind": "list",
-                "title": titre,
-                "selection": sel,
-                "lineCount": lignes.len(),
-            },
-        }),
-    };
-
-    serde_json::to_string(&value).map_err(|error| format!("state: {error}"))
 }
 
 // ---------------------------------------------------------------------------
@@ -2491,151 +2155,6 @@ impl WasmBitmapFont {
     #[wasm_bindgen(getter)]
     pub fn height(&self) -> u32 {
         self.height
-    }
-}
-
-/// Machine à états d'écran interactive, rendue en WebAssembly.
-///
-/// Écran-titre → menu → match simulé (`nie-runtime` : physique, 22 joueurs, ballon, buts) → mode
-/// histoire, pilotée au clavier, rendue dans un framebuffer RGBA8 `W*H*4` que JS peint.
-///
-/// ⚠ **Ce n'est pas le jeu.** This binding exposes a local 2D simulation, not the native IEVR
-/// renderer. Main-menu pixels are intentionally host-owned while the native `nie-lua` path
-/// reconstructs script state. This framebuffer stays transparent on that screen instead of
-/// drawing an invented substitute or naming a capture as a runtime asset.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub struct WasmGame {
-    font: nie_app::Font,
-    screen: nie_app::flow::Screen,
-    frame: FrameBuffer,
-}
-
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-impl WasmGame {
-    /// Construit le jeu depuis les octets de la police (`font.cfg.bin` + `font.g4tx`, fetchés par JS).
-    /// Démarre sur l'écran-titre.
-    #[wasm_bindgen(constructor)]
-    pub fn new(font_cfg: &[u8], font_g4tx: &[u8]) -> Result<WasmGame, JsValue> {
-        let font = nie_app::Font::from_bytes(font_cfg, font_g4tx)
-            .map_err(|e| JsValue::from_str(&format!("font: {e}")))?;
-        Ok(WasmGame {
-            font,
-            screen: nie_app::flow::Screen::new(),
-            frame: FrameBuffer::default(),
-        })
-    }
-
-    /// Largeur du framebuffer (px).
-    #[wasm_bindgen(getter)]
-    pub fn width(&self) -> usize {
-        nie_app::W
-    }
-
-    /// Hauteur du framebuffer (px).
-    #[wasm_bindgen(getter)]
-    pub fn height(&self) -> usize {
-        nie_app::H
-    }
-
-    /// Commande de menu IEVR (CMD_FCS_*, CMD_ENTER, CMD_BACK…). Le mapping clavier/souris/manette
-    /// → commande vit côté front ; la FSM (transitions) vit dans `nie_app::flow` (dédup Phase 5).
-    pub fn input(&mut self, cmd: &str) {
-        self.screen.input(cmd);
-    }
-
-    /// Sets the held directional/shoot input consumed by the live `nie-runtime` match world.
-    /// The call is deliberately harmless outside a match, matching `nie_app::flow::Screen`.
-    pub fn set_match_input(&mut self, dx: f32, dy: f32, shoot: bool) {
-        set_match_input(&mut self.screen, dx, dy, shoot);
-    }
-
-    /// Avance le temps de `dt` s : la physique du match tourne quand un match est en cours.
-    pub fn update(&mut self, dt: f32) {
-        update_screen(&mut self.screen, dt);
-    }
-
-    /// Score du match en cours `[domicile, extérieur]` (zéros hors match).
-    pub fn score(&self) -> Vec<u32> {
-        self.screen.score()
-    }
-
-    /// Index of the home player controlled by the browser, or `undefined` outside a match.
-    pub fn controlled_player(&self) -> Option<u32> {
-        self.screen
-            .controlled_player()
-            .and_then(|index| u32::try_from(index).ok())
-    }
-
-    /// Title of a data-backed screen whose rows the browser may now provide.
-    pub fn info_title(&self) -> Option<String> {
-        self.screen.info_title().map(str::to_owned)
-    }
-
-    /// Whether story mode is waiting for dialogue rows fetched by the browser VFS client.
-    #[wasm_bindgen(getter)]
-    pub fn awaiting_dialogue(&self) -> bool {
-        self.screen.attend_dialogue()
-    }
-
-    /// Replaces the current information screen with real, already-resolved VFS rows.
-    /// `lines_json` must be a JSON array of strings.
-    pub fn provide_list(&mut self, lines_json: &str) -> Result<(), JsValue> {
-        let lines = parse_lines_json(lines_json).map_err(|error| JsValue::from_str(&error))?;
-        self.screen.fournir_liste(lines);
-        Ok(())
-    }
-
-    /// Supplies real story dialogue resolved by the browser VFS client.
-    /// `lines_json` must be a JSON array of strings.
-    pub fn provide_dialogue(&mut self, event_id: &str, lines_json: &str) -> Result<(), JsValue> {
-        let lines = parse_lines_json(lines_json).map_err(|error| JsValue::from_str(&error))?;
-        self.screen.fournir_dialogue(event_id.to_owned(), lines);
-        Ok(())
-    }
-
-    /// Serializes the complete portable screen state for browser renderers and diagnostics.
-    /// Match snapshots contain the live ball, all 22 players, input, clock, score and ownership.
-    pub fn state_json(&self) -> Result<String, JsValue> {
-        screen_snapshot(&self.screen).map_err(|error| JsValue::from_str(&error))
-    }
-
-    /// `true` si un match est en cours (pour l'overlay de score côté UI).
-    #[wasm_bindgen(getter)]
-    pub fn in_match(&self) -> bool {
-        self.screen.in_match()
-    }
-
-    /// `true` when the current screen must be drawn from the verified host-side menu source.
-    ///
-    /// The Rust framebuffer is transparent in this state so the obsolete vertical placeholder
-    /// can never be exposed as the native main menu.
-    #[wasm_bindgen(getter)]
-    pub fn requires_host_surface(&self) -> bool {
-        self.screen.requires_host_surface()
-    }
-
-    /// Rend l'écran courant en framebuffer RGBA8 `W*H*4`.
-    pub fn render(&self) -> Vec<u8> {
-        self.screen.render(&self.font)
-    }
-
-    /// Renders into Rust-owned WebAssembly memory without copying pixels into a JS array.
-    /// Call [`WasmGame::frame_ptr`] and [`WasmGame::frame_len`] immediately afterwards.
-    pub fn render_frame(&mut self) {
-        self.frame.replace(self.screen.render(&self.font));
-    }
-
-    /// Byte offset of the latest shared RGBA8 frame in `WebAssembly.Memory`.
-    /// The offset is invalidated by the next call to [`WasmGame::render_frame`].
-    pub fn frame_ptr(&self) -> usize {
-        self.frame.pointer()
-    }
-
-    /// Byte length of the latest shared RGBA8 frame.
-    pub fn frame_len(&self) -> usize {
-        self.frame.len()
     }
 }
 
@@ -3551,34 +3070,6 @@ mod tests {
     }
 
     #[test]
-    fn screen_snapshot_starts_with_versioned_title_state() {
-        let screen = nie_app::flow::Screen::new();
-        let json: serde_json::Value = serde_json::from_str(
-            &screen_snapshot(&screen).expect("screen snapshot should serialize"),
-        )
-        .expect("screen snapshot should be valid JSON");
-
-        assert_eq!(json["schemaVersion"], 1);
-        assert_eq!(json["screen"]["kind"], "title");
-        assert!(json.get("world").is_none());
-    }
-
-    #[test]
-    fn main_menu_snapshot_requires_a_native_scene_without_naming_a_capture() {
-        let mut screen = nie_app::flow::Screen::new();
-        screen.input("CMD_ENTER");
-        let json: serde_json::Value = serde_json::from_str(
-            &screen_snapshot(&screen).expect("menu snapshot should serialize"),
-        )
-        .expect("menu snapshot should be valid JSON");
-
-        assert_eq!(json["screen"]["kind"], "menu");
-        assert_eq!(json["screen"]["renderOwner"], "host");
-        assert_eq!(json["screen"]["nativeSceneRequired"], true);
-        assert!(json["screen"].get("referenceCapture").is_none());
-    }
-
-    #[test]
     fn shared_frame_buffer_keeps_the_rendered_bytes_in_place() {
         let mut frame = FrameBuffer::default();
         assert_eq!(frame.len(), 0);
@@ -3591,94 +3082,6 @@ mod tests {
         frame.replace(vec![9, 8]);
         assert_eq!(frame.len(), 2);
         assert_eq!(frame.pixels(), [9, 8]);
-    }
-
-    #[test]
-    fn screen_bridge_accepts_real_list_and_dialogue_rows() {
-        let lines = parse_lines_json(r#"["Alpha","Beta"]"#).expect("valid line array");
-        assert_eq!(lines, ["Alpha", "Beta"]);
-        assert!(parse_lines_json(r#"{"line":"not an array"}"#).is_err());
-
-        let mut list_screen = nie_app::flow::Screen::new();
-        list_screen.input("CMD_ENTER");
-        list_screen.input("CMD_ENTER");
-        assert!(list_screen.info_title().is_some());
-        list_screen.fournir_liste(lines);
-        let list_json: serde_json::Value = serde_json::from_str(
-            &screen_snapshot(&list_screen).expect("list snapshot should serialize"),
-        )
-        .expect("list snapshot should be valid JSON");
-        assert_eq!(list_json["screen"]["kind"], "list");
-        assert_eq!(list_json["screen"]["lineCount"], 2);
-
-        // « Mode Histoire » ouvre désormais l'exploration (`Screen::OpenWorld`) : l'écran de
-        // dialogue n'est plus atteint par le menu, il est posé tel qu'un événement l'ouvrirait.
-        let mut story_screen = nie_app::flow::Screen::Story {
-            idx: 0,
-            titre: String::new(),
-            repliques: Vec::new(),
-        };
-        assert!(story_screen.attend_dialogue());
-        story_screen.fournir_dialogue("event_001".into(), vec!["A real line".into()]);
-        let story_json: serde_json::Value = serde_json::from_str(
-            &screen_snapshot(&story_screen).expect("story snapshot should serialize"),
-        )
-        .expect("story snapshot should be valid JSON");
-        assert_eq!(story_json["screen"]["kind"], "story");
-        assert_eq!(story_json["screen"]["eventId"], "event_001");
-        assert_eq!(story_json["screen"]["lineCount"], 1);
-        assert_eq!(story_json["screen"]["awaitingDialogue"], false);
-    }
-
-    #[test]
-    fn match_snapshot_exposes_the_live_runtime_world() {
-        let mut screen = nie_app::flow::Screen::new();
-        screen.input("CMD_ENTER");
-        for _ in 0..5 {
-            screen.input("CMD_FCS_NEXT");
-        }
-        screen.input("CMD_ENTER");
-        screen.input("CMD_FCS_NEXT");
-        screen.input("CMD_ENTER");
-        assert!(screen.in_match());
-
-        set_match_input(&mut screen, f32::NAN, f32::INFINITY, false);
-        update_screen(&mut screen, f32::NAN);
-        let invalid_json: serde_json::Value = serde_json::from_str(
-            &screen_snapshot(&screen).expect("invalid input snapshot should serialize"),
-        )
-        .expect("invalid input snapshot should be valid JSON");
-        assert_eq!(invalid_json["world"]["tick"], 0);
-        assert_eq!(invalid_json["world"]["input"]["direction"]["x"], 0.0);
-        assert_eq!(invalid_json["world"]["input"]["direction"]["y"], 0.0);
-
-        set_match_input(&mut screen, 3.0, 4.0, true);
-        update_screen(&mut screen, 0.125);
-        let json: serde_json::Value = serde_json::from_str(
-            &screen_snapshot(&screen).expect("match snapshot should serialize"),
-        )
-        .expect("match snapshot should be valid JSON");
-
-        assert_eq!(json["screen"]["kind"], "match");
-        assert_eq!(json["world"]["tick"], 1);
-        assert_eq!(json["world"]["time"], MAX_UPDATE_SECONDS);
-        assert_eq!(json["world"]["score"], serde_json::json!([0, 0]));
-        assert_eq!(json["world"]["input"]["direction"]["x"], 3.0);
-        assert_eq!(json["world"]["input"]["direction"]["y"], 4.0);
-        assert_eq!(json["world"]["input"]["shoot"], true);
-        assert!(json["world"]["controlledPlayer"].is_number());
-        let players = json["world"]["players"]
-            .as_array()
-            .expect("players should be an array");
-        assert_eq!(players.len(), 22);
-        assert_eq!(
-            players
-                .iter()
-                .filter(|player| player["role"] == "goalkeeper")
-                .count(),
-            2
-        );
-        assert!(json["world"]["ball"]["position"]["z"].is_number());
     }
 
     #[test]
@@ -3797,115 +3200,6 @@ mod tests {
             Some("Paramètres".into())
         );
         assert_eq!(cfgbin_lookup_text(&bytes, 999_999), None);
-    }
-
-    // -----------------------------------------------------------------------
-    // nie-core — stats (growth)
-    // -----------------------------------------------------------------------
-
-    /// Golden : FW rang UR (mainPosition 4, rank 5) au niveau 99.
-    /// Ancré sur `nie_core::growth` test `golden_fw_ur` (sorties RÉELLES d'inagle).
-    #[test]
-    fn calculate_stats_fw_ur_lv99() {
-        let json: serde_json::Value =
-            serde_json::from_str(&calculate_stats(4, 0, 0, 5, 0, 99)).expect("JSON valide");
-        let s = &json["stats"];
-        assert_eq!(s["kc"], 207);
-        assert_eq!(s["cr"], 216);
-        assert_eq!(s["tc"], 218);
-        assert_eq!(s["pr"], 235);
-        assert_eq!(s["ps"], 242);
-        assert_eq!(s["ag"], 210);
-        assert_eq!(s["it"], 261);
-        // total = somme des 7 stats.
-        assert_eq!(json["total"], 207 + 216 + 218 + 235 + 242 + 210 + 261);
-    }
-
-    /// Golden : GK rang N au niveau 1 (= valeurs de base lv1).
-    #[test]
-    fn calculate_stats_gk_n_lv1() {
-        let json: serde_json::Value =
-            serde_json::from_str(&calculate_stats(1, 0, 0, 0, 0, 1)).expect("JSON valide");
-        let s = &json["stats"];
-        // golden_gk_n lv1 = [12, 13, 12, 10, 11, 9, 11].
-        assert_eq!(s["kc"], 12);
-        assert_eq!(s["it"], 11);
-    }
-
-    /// Position inexistante → stats 0 (parité TS, pas d'invention).
-    #[test]
-    fn calculate_stats_position_inconnue_zero() {
-        let json: serde_json::Value =
-            serde_json::from_str(&calculate_stats(9, 0, 0, 0, 0, 50)).expect("JSON valide");
-        assert_eq!(json["total"], 0);
-    }
-
-    #[test]
-    fn single_stat_bornes() {
-        // lv≤1 → stat_lv1 ; lv≥99 → stat_lv99 ; lv30 exact → stat_lv30.
-        assert_eq!(single_stat(1, 10, 30, 50, 80), 10);
-        assert_eq!(single_stat(99, 10, 30, 50, 80), 80);
-        assert_eq!(single_stat(30, 10, 30, 50, 80), 30);
-    }
-
-    #[test]
-    fn rarity_rank_mapping() {
-        assert_eq!(rarity_to_growth_rank(0), 0);
-        assert_eq!(rarity_to_growth_rank(5), 5);
-        assert_eq!(rarity_to_growth_rank(20), 5); // BASARA → UR.
-    }
-
-    // -----------------------------------------------------------------------
-    // nie-core — FSM de match
-    // -----------------------------------------------------------------------
-
-    #[test]
-    fn match_tick_normal_waittimer_to_transition() {
-        // Match normal : WaitTimer → Transition (état 5).
-        let json: serde_json::Value =
-            serde_json::from_str(&match_tick("WaitTimer", false, 0).expect("ok"))
-                .expect("JSON valide");
-        assert_eq!(json["next"], "Transition");
-        assert_eq!(json["immediate"], false);
-    }
-
-    #[test]
-    fn match_tick_training_waittimer_to_resultui() {
-        // Entraînement : WaitTimer → ResultUi (état 2).
-        let json: serde_json::Value =
-            serde_json::from_str(&match_tick("WaitTimer", true, 0).expect("ok"))
-                .expect("JSON valide");
-        assert_eq!(json["next"], "ResultUi");
-    }
-
-    #[test]
-    fn match_tick_training_completion_immediate() {
-        // Entraînement + end_counter==2 (Transition) → LoadNext, transition immédiate.
-        let json: serde_json::Value =
-            serde_json::from_str(&match_tick("Transition", true, 2).expect("ok"))
-                .expect("JSON valide");
-        assert_eq!(json["next"], "LoadNext");
-        assert_eq!(json["immediate"], true);
-    }
-
-    #[test]
-    fn match_tick_accepte_index_numerique() {
-        // "1" == WaitTimer.
-        let json: serde_json::Value =
-            serde_json::from_str(&match_tick("1", false, 0).expect("ok")).expect("JSON valide");
-        assert_eq!(json["next"], "Transition");
-    }
-
-    #[test]
-    fn match_tick_etat_inconnu_erreur() {
-        assert!(match_tick("Pizza", false, 0).is_err());
-    }
-
-    #[test]
-    fn final_score_golden() {
-        // 2 min 30 s = 20030 (golden FSM).
-        assert_eq!(final_score(2, 30), 20030);
-        assert_eq!(final_score(0, 0), 0);
     }
 
     // -----------------------------------------------------------------------

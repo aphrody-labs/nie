@@ -234,6 +234,11 @@ struct UniformMapEntry {
     g4tx: String,
 }
 
+/// Liveness route.
+const HEALTH_PATH: &str = "/health";
+/// Route serving `contract/openapi.json`.
+const OPENAPI_PATH: &str = "/openapi.json";
+
 /// Version de l'assembleur de personnages. À incrémenter à chaque changement de recette ou de
 /// format de sortie : le cache GLB (`var/model-cache`) est purgé au démarrage quand la version
 /// enregistrée dans `VERSION` diffère, et chaque rapport la cite avec le SHA-256 du GLB servi.
@@ -4695,7 +4700,7 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
     let path = path.split('?').next().unwrap_or(path);
 
     // Routing.
-    if path == nie_core::contract_generated::HEALTH_PATH {
+    if path == HEALTH_PATH {
         let body = serde_json::json!({
             "ok": true,
             "service": "nie-model-serve",
@@ -4712,7 +4717,7 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
         );
         return;
     }
-    if path == nie_core::contract_generated::OPENAPI_PATH {
+    if path == OPENAPI_PATH {
         respond(
             &mut stream,
             200,

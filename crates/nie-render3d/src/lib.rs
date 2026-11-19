@@ -37,6 +37,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod animation;
 #[cfg(feature = "bevy")]
 pub mod bevy;
 pub mod document;

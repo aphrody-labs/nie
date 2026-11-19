@@ -5,8 +5,8 @@
 //! La chaîne matériau→texture est résolue
 //! (`primitive.material → materials[].baseColorTexture → textures[].source → images[]`).
 
+use crate::animation::{BoneId, BonePose, PoseFrame, SkeletonId};
 use anyhow::{Context, Result, bail};
-use nie_core::animation::{BoneId, BonePose, PoseFrame, SkeletonId};
 use serde_json::Value;
 
 /// Une texture décodée en RGBA8 (atlas du modèle : corps, visage, uniforme…).
@@ -432,7 +432,7 @@ pub struct CpuSkinnedMesh {
     pub vertices: Vec<SkinVertex>,
 }
 
-/// Result of applying one local [`nie_core::animation::PoseFrame`] to a CPU-skinned mesh.
+/// Result of applying one local [`crate::animation::PoseFrame`] to a CPU-skinned mesh.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SkinnedVertex {
     pub position: [f32; 3],
@@ -1807,7 +1807,7 @@ mod tests {
 
     // ─── Skinning par pose (apply_pose_cpu) ──────────────────────────────────────────────
 
-    use nie_core::animation::{BonePose, PoseFrame, Rotation};
+    use crate::animation::{BonePose, PoseFrame, Rotation};
 
     const SQUELETTE: SkeletonId = SkeletonId::new(7);
     const RACINE: BoneId = BoneId::new(1);
@@ -1893,7 +1893,7 @@ mod tests {
     fn la_translation_de_la_racine_entraine_lenfant() {
         let mesh = chaine();
         let racine = BonePose {
-            translation: nie_core::Vec3::new(0.0, 5.0, 0.0),
+            translation: crate::animation::Vec3::new(0.0, 5.0, 0.0),
             ..Default::default()
         };
         let rendu = apply_pose_cpu(&mesh, &pose(vec![(RACINE, racine)])).expect("pose applicable");
@@ -1972,7 +1972,7 @@ mod tests {
             vertex.joints[0] = 0; // les sommets suivent l'enfant, désormais à l'index 0
         }
         let racine = BonePose {
-            translation: nie_core::Vec3::new(0.0, 5.0, 0.0),
+            translation: crate::animation::Vec3::new(0.0, 5.0, 0.0),
             ..Default::default()
         };
         let rendu = apply_pose_cpu(&mesh, &pose(vec![(RACINE, racine)])).expect("pose applicable");
@@ -2006,7 +2006,7 @@ mod tests {
         mesh.vertices[0].joints = [1, 240, 0, 0, 0, 0, 0, 0];
         mesh.vertices[0].weights = [0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         let racine = BonePose {
-            translation: nie_core::Vec3::new(0.0, 4.0, 0.0),
+            translation: crate::animation::Vec3::new(0.0, 4.0, 0.0),
             ..Default::default()
         };
         let rendu = apply_pose_cpu(&mesh, &pose(vec![(RACINE, racine)])).expect("pose applicable");
@@ -2130,13 +2130,13 @@ mod tests {
             bones: vec![(
                 BoneId::new(u16::try_from(tourne).expect("index d'os")),
                 BonePose {
-                    translation: nie_core::Vec3::new(
+                    translation: crate::animation::Vec3::new(
                         poses[tourne].local.translation[0],
                         poses[tourne].local.translation[1],
                         poses[tourne].local.translation[2],
                     ),
                     rotation: Rotation::new(0.0, 0.0, demi, demi),
-                    scale: nie_core::Vec3::new(
+                    scale: crate::animation::Vec3::new(
                         poses[tourne].local.scale[0],
                         poses[tourne].local.scale[1],
                         poses[tourne].local.scale[2],

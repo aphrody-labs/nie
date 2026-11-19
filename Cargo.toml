@@ -73,7 +73,6 @@ bytemuck = { version = "1.25", features = [
 clap = { version = "4", features = ["derive", "env"] }
 console_error_panic_hook = "0.1.7"
 futures-lite = "2"
-js-sys = { version = "0.3.107", default-features = false }
 pollster = "1.0"
 rusqlite = { version = "0.43" }
 wasm-bindgen = { version = "0.2.130", default-features = false }
@@ -111,10 +110,10 @@ winnow = { version = "1.0.5", default-features = false, features = [
   "parser",
 ] }
 wana_kana = "5.0.0"
+specta = { version = "2.0.0-rc.28", features = ["derive", "serde_json"] }
 aho-corasick = "1.1.5"
 
 toml = "1.2.1"
-nie-net = { default-features = false, path = "crates/nie-net", version = "1.4.8" }
 
 [profile.dev]
 split-debuginfo = "unpacked"

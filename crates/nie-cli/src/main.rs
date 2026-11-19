@@ -7584,7 +7584,8 @@ fn vfs_domain_search(
             request[*key] = serde_json::json!(value);
         }
     }
-    let mut result = nie_app::game_data::query_vfs(&vfs, &request).map_err(anyhow::Error::msg)?;
+    let mut result =
+        nie_explore::domain_data::query_vfs(&vfs, &request).map_err(anyhow::Error::msg)?;
     if show_paths
         && let Some(items) = result
             .get_mut("items")

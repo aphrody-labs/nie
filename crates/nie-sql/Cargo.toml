@@ -11,7 +11,6 @@ description = "Shared bounded read-only SQLite and PostgreSQL boundary for NIE h
 workspace = true
 
 [dependencies]
-nie-core = { path = "../nie-core", version = "1.4.8", default-features = false }
 bytes = "1.12.1"
 rusqlite = { workspace = true, features = ["bundled", "column_decltype"] }
 serde = { workspace = true, features = ["std", "derive"] }

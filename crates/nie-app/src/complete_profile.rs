@@ -1,6 +1,6 @@
 //! Complete-profile application model shared by delivery hosts.
 //!
-//! Every collection is derived from the typed VFS readers in [`crate::game_data`]. The profile
+//! Every collection is derived from the typed VFS readers in [`nie_explore::domain_data`]. The profile
 //! intentionally reports story, chronicle and extend with the same phase-grouped quest list:
 //! [`game_data::QuestDto`] does not expose a measured field that separates those modes.
 
@@ -9,7 +9,7 @@ use std::collections::BTreeSet;
 use nie_formats::vfs::Vfs;
 use serde::Serialize;
 
-use crate::game_data;
+use nie_explore::domain_data as game_data;
 
 /// A finished character whose level, skills and board state are ready for presentation.
 #[derive(Serialize)]

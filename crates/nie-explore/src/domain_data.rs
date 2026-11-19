@@ -6,7 +6,7 @@
 //! utilisable et utilisé dans l'app »).
 //!
 //! Le pont bytes→JSON forme "inagle" qu'attendent les parseurs `nie-data` (`parse_skill_config`,
-//! et ~115 autres modules du même crate) existe déjà et est TESTÉ : [`nie_explore::bridge`]
+//! et ~115 autres modules du même crate) existe déjà et est TESTÉ : [`crate::bridge`]
 //! (`t2b_to_json`/`rdbn_to_json`), utilisé par `nie vfs cat`. Ce module ne fait que l'appeler
 //! avec les bons chemins VFS — pas de nouvelle logique de décodage, zéro doublon.
 //!
@@ -14,10 +14,10 @@
 //! auras, boutiques, quêtes…) suivent EXACTEMENT le même patron (`list_values`/`walk_named` +
 //! bridge), à étendre au besoin.
 
-use nie_data::skill::{SkillInfo, SkillTextMaps};
-use nie_explore::game_data::{
+use crate::game_data::{
     base_name, load_rdbn, load_t2b, load_text, load_text_json, load_text_json_lang,
 };
+use nie_data::skill::{SkillInfo, SkillTextMaps};
 use nie_formats::vfs::Vfs;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -44,7 +44,7 @@ pub struct SkillDto {
 /// suffixés par version, ex. `skill_config_4.00.17.00.cfg.bin` : pas de nom fixe possible).
 /// Charge un `.cfg.bin` **RDBN** du VFS (chemin résolu dynamiquement, cf. [`find_path`]) et le
 /// convertit en JSON forme "inagle" `{"lists":[…]}` via le pont déjà vérifié
-/// [`nie_explore::bridge::rdbn_to_json`] — symétrique de [`load_t2b`].
+/// [`crate::bridge::rdbn_to_json`] — symétrique de [`load_t2b`].
 ///
 /// 67 des 110 modules `nie-data` lisent du RDBN : ce chemin était jusqu'ici écrit à la main dans
 /// `parse_skills` uniquement, ce qui obligeait chaque nouvelle famille à le redupliquer.
@@ -136,7 +136,7 @@ pub fn list_skills(vfs: &Vfs) -> Result<Vec<SkillDto>, String> {
 /// Convertit UNE liste de `CfgEntry` frères en JSON **avec suffixe d'index par nom dupliqué**
 /// (`TEXT_INFO` → `TEXT_INFO_0`, `TEXT_INFO_1`, …) — c'est la forme "inagle"/iecode RÉELLE
 /// qu'attendent `walk_named`/[`nie_data::text::parse_text_file`] (prefix-match `"TEXT_INFO_"` +
-/// exclusion du noeud `"…_BEGIN"`), PAS la forme brute de [`nie_explore::bridge::t2b_to_json`]
+/// exclusion du noeud `"…_BEGIN"`), PAS la forme brute de [`crate::bridge::t2b_to_json`]
 /// (noms non désambiguïsés, ex. plusieurs frères tous nommés `"TEXT_INFO"`) : `walk_named`
 /// matcherait alors 0 noeud (bug constaté : `list_items`/`list_auras`/`list_trophies`/
 /// `list_quests` résolvaient 0 texte avant ce correctif, malgré des fichiers texte trouvés et
@@ -403,7 +403,7 @@ pub fn list_chara_picker(vfs: &Vfs) -> Result<Vec<CharaPickerDto>, String> {
         .collect())
 }
 
-/// Bloc de 7 stats calculées (`nie_core::stats::StatBlock`), pour l'IPC/l'export TS.
+/// Bloc de 7 stats calculées (`nie_data::growth::StatBlock`), pour l'IPC/l'export TS.
 #[derive(Serialize, specta::Type)]
 pub struct StatBlockDto {
     pub kc: u16,
@@ -416,29 +416,62 @@ pub struct StatBlockDto {
     pub total: u32,
 }
 
-impl From<nie_core::stats::StatBlock> for StatBlockDto {
-    fn from(s: nie_core::stats::StatBlock) -> Self {
+impl From<nie_data::growth::StatBlock> for StatBlockDto {
+    fn from(s: nie_data::growth::StatBlock) -> Self {
+        let stat = |value: i64| u16::try_from(value.max(0)).unwrap_or(u16::MAX);
+        let (kc, cr, tc, pr, ps, ag, it) = (
+            stat(s.kc),
+            stat(s.cr),
+            stat(s.tc),
+            stat(s.pr),
+            stat(s.ps),
+            stat(s.ag),
+            stat(s.it),
+        );
         StatBlockDto {
-            kc: s.kc,
-            cr: s.cr,
-            tc: s.tc,
-            pr: s.pr,
-            ps: s.ps,
-            ag: s.ag,
-            it: s.it,
-            total: s.total(),
+            kc,
+            cr,
+            tc,
+            pr,
+            ps,
+            ag,
+            it,
+            total: [kc, cr, tc, pr, ps, ag, it]
+                .iter()
+                .map(|&v| u32::from(v))
+                .sum(),
         }
     }
 }
 
+/// Growth tables (`growth_table_config`) read from the mounted VFS.
+fn load_growth_tables(vfs: &Vfs) -> Result<nie_data::growth::GrowthTables, String> {
+    let root = load_rdbn(
+        vfs,
+        |p| base_name(p).starts_with("growth_table_config") && base_name(p).ends_with(".cfg.bin"),
+        "growth_table_config",
+    )?;
+    let rows = |list: &str| {
+        serde_json::Value::Array(
+            nie_data::cfgbin::list_values(&root, list)
+                .cloned()
+                .unwrap_or_default(),
+        )
+    };
+    Ok(nie_data::growth::parse_growth_tables(&serde_json::json!({
+        "lv1": rows("m_growthTableLv1List"),
+        "lv30": rows("m_growthTableLv30List"),
+        "main": rows("m_growthTableMainList"),
+        "sub": rows("m_growthTableSubList"),
+    })))
+}
+
 /// Calcule les stats d'un personnage (`chara_param_id`, cf. [`list_chara_picker`]) à un niveau et
-/// une rareté donnés — `nie_core::growth::calculate_stats` sur les tables de croissance IEVR
-/// EMBARQUÉES (`GrowthTables::load_embedded`, byte-exactes, pas besoin de reparser
-/// `growth_table_config` du VFS). `rarity_code` : 0=N, 2=R, 3=SR, 4=SSR, 5=UR, 6=LR, 7=Legend,
-/// 20=BASARA (converti en rang de croissance en interne par `calculate_stats`, cf. doc
-/// `GrowthParams::chara_rank`). `play_style` = var[5] du noeud `CHARA_PARAM_INFO` (cf.
-/// `nie_data::playstyle`), lu directement depuis `raw_variables` (absent du struct `CharaParam`
-/// typé — même limitation documentée que `TeamSetup::from_chara_params_and_levels`).
+/// une rareté donnés — `nie_data::growth::calculate_stats` sur les tables de croissance IEVR lues
+/// dans le VFS (`growth_table_config`). `rarity_code` : 0=N, 2=R, 3=SR, 4=SSR, 5=UR, 6=LR,
+/// 7=Legend, 20=BASARA (converti en rang de croissance par `rarity_to_growth_rank`).
+/// `play_style` = var[5] du noeud `CHARA_PARAM_INFO` (cf. `nie_data::playstyle`), lu directement
+/// depuis `raw_variables` (absent du struct `CharaParam` typé).
 pub fn calculate_character_stats(
     vfs: &Vfs,
     chara_param_id: &str,
@@ -456,17 +489,15 @@ pub fn calculate_character_stats(
         .find(|cp| cp.chara_param_id.to_hex() == chara_param_id)
         .ok_or_else(|| format!("chara_param_id {chara_param_id} introuvable"))?;
 
-    let play_style = cp.raw_variables.get(5).copied().unwrap_or(0);
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let growth_params = nie_core::growth::GrowthParams {
-        main_position: cp.main_position as u8,
-        sub_position: cp.sub_position as u8,
-        growth_pattern: cp.growth_pattern as u8,
-        chara_rank: rarity_code,
-        play_style: play_style as u8,
+    let growth_params = nie_data::growth::CharacterGrowthParams {
+        main_position: cp.main_position,
+        sub_position: cp.sub_position,
+        growth_pattern: cp.growth_pattern,
+        chara_rank: i64::from(rarity_code),
+        play_style: cp.raw_variables.get(5).copied().unwrap_or(0),
     };
-    let tables = nie_core::growth::GrowthTables::load_embedded();
-    Ok(nie_core::growth::calculate_stats(&tables, &growth_params, level).into())
+    let tables = load_growth_tables(vfs)?;
+    Ok(nie_data::growth::calculate_stats(&tables, &growth_params, i64::from(level)).into())
 }
 
 /// Décode N'IMPORTE QUEL `.cfg.bin` du VFS (RDBN *ou* T2B, détecté via `nie_formats::cfgbin::
@@ -474,10 +505,10 @@ pub fn calculate_character_stats(
 /// TOUS les fichiers de configuration du jeu (plusieurs centaines sous `data/common/gamedata/`
 /// et `data/common/text/`), pas seulement les modules `nie-data` câblés individuellement avec un
 /// DTO typé (`list_skills` ci-dessus) — cf. demande utilisatrice « nie doit couvrir tout
-/// nie.exe ». Générique : délègue au pont canonique `nie_explore::game_data`, sans parseur
+/// nie.exe ». Générique : délègue au pont canonique `crate::game_data`, sans parseur
 /// dupliqué dans l'hôte Tauri.
 pub fn decode_cfgbin(vfs: &Vfs, path: &str) -> Result<serde_json::Value, String> {
-    nie_explore::game_data::decode_cfgbin(vfs, path)
+    crate::game_data::decode_cfgbin(vfs, path)
 }
 
 /// Result of the shared generic + typed cfg.bin decoding pipeline.
@@ -1098,7 +1129,7 @@ pub struct CharaDto {
     /// `f64`, cf. [`ItemDto::price`].
     pub skill_count: f64,
     /// Stats au **niveau 99, rang de rareté UR** (code 5), calculées par
-    /// `nie_core::growth::calculate_stats` sur les tables embarquées. Le rang N'EST PAS dans
+    /// `nie_data::growth::calculate_stats` sur les tables du VFS. Le rang N'EST PAS dans
     /// `chara_param` (il dépend de l'exemplaire possédé) : c'est une base de COMPARAISON commune,
     /// affichée comme telle, pas la fiche d'un personnage précis — pour un couple (niveau,
     /// rareté) choisi, c'est `game_data_calculate_stats` qui répond.
@@ -1170,9 +1201,9 @@ pub fn list_charas(vfs: &Vfs) -> Result<Vec<CharaDto>, String> {
     };
 
     // Techniques : hash → nom FR (ou code interne à défaut de table de texte).
-    // Tables de croissance EMBARQUÉES (byte-exactes, aucun fichier du VFS à reparser) : chargées
-    // une fois pour les ~6 000 personnages, le calcul par ligne n'est qu'une recherche de table.
-    let tables = nie_core::growth::GrowthTables::load_embedded();
+    // Tables de croissance du VFS : lues une fois pour les ~6 000 personnages, le calcul par
+    // ligne n'est qu'une recherche de table.
+    let tables = load_growth_tables(vfs)?;
 
     let skill_names: HashMap<String, String> = list_skills(vfs)
         .unwrap_or_default()
@@ -1222,15 +1253,14 @@ pub fn list_charas(vfs: &Vfs) -> Result<Vec<CharaDto>, String> {
                     .collect(),
                 skill_count: cp.skills.len() as f64,
                 stats: {
-                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                    let p = nie_core::growth::GrowthParams {
-                        main_position: cp.main_position as u8,
-                        sub_position: cp.sub_position as u8,
-                        growth_pattern: cp.growth_pattern as u8,
+                    let p = nie_data::growth::CharacterGrowthParams {
+                        main_position: cp.main_position,
+                        sub_position: cp.sub_position,
+                        growth_pattern: cp.growth_pattern,
                         chara_rank: 5,
-                        play_style: cp.raw_variables.get(5).copied().unwrap_or(0) as u8,
+                        play_style: cp.raw_variables.get(5).copied().unwrap_or(0),
                     };
-                    nie_core::growth::calculate_stats(&tables, &p, 99).into()
+                    nie_data::growth::calculate_stats(&tables, &p, 99).into()
                 },
             })
         })
