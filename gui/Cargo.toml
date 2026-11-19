@@ -1,0 +1,54 @@
+# The GPUI workspace of nie: the toolkit (nie-ui), its apps and the desktop shell.
+#
+# A workspace of its own on purpose. GPUI comes from the pinned submodule `vendor/zed` (branch `nie`
+# of the aphrody-labs/zed fork, `update = none`), which is only checked out where these crates are
+# built (the build host, CI). The core workspace at the repository root therefore never resolves a
+# path that may be missing, and a checkout without the submodule keeps building the core.
+[workspace]
+resolver = "3"
+members = ["nie-ui", "nie-apps", "nie-shell"]
+
+[workspace.package]
+version = "2.0.0"
+edition = "2024"
+rust-version = "1.100"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/aphrody-labs/nie"
+authors = ["nie contributors"]
+publish = false
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+unused_must_use = "deny"
+non_ascii_idents = "deny"
+
+[workspace.lints.clippy]
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+correctness = { level = "warn", priority = -1 }
+perf = { level = "warn", priority = -1 }
+
+[workspace.dependencies]
+# GPUI: path dependencies on the vendor/zed submodule, the only source dependency of nie. No [patch].
+gpui = { path = "../vendor/zed/crates/gpui", default-features = false }
+gpui_platform = { path = "../vendor/zed/crates/gpui_platform", default-features = false }
+gpui_wgpu = { path = "../vendor/zed/crates/gpui_wgpu", default-features = false }
+gpui_web = { path = "../vendor/zed/crates/gpui_web", default-features = false }
+http_client = { path = "../vendor/zed/crates/http_client" }
+
+nie-data = { path = "../crates/nie-data", version = "2.0.0", default-features = false }
+nie-formats = { path = "../crates/nie-formats", version = "2.0.0", default-features = false }
+nie-explore = { path = "../crates/nie-explore", version = "2.0.0", default-features = false }
+nie-wiki-vfs = { path = "../crates/nie-wiki-vfs", version = "2.0.0" }
+nie-ui = { path = "nie-ui", version = "2.0.0" }
+nie-shell-desktop = { path = "../plugins/shell-desktop/nie-shell-desktop", version = "2.0.0" }
+
+anyhow = { version = "1.0.104", default-features = false, features = ["std"] }
+nucleo = "0.5.0"
+serde_json = { version = "1.0.154", default-features = false, features = ["std"] }
+image = { version = "0.25.10", default-features = false }
+futures = "0.3.34"
+png = { version = "0.18.1", default-features = false }
+wasm-bindgen = "0.2.130"
+web-sys = { version = "0.3", features = ["Window", "Location"] }

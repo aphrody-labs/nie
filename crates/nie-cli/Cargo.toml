@@ -72,6 +72,7 @@ host = [
   "dep:nie-computer-use",
   "dep:nie-viola",
   "dep:nie-launcher",
+  "dep:nie-shell-desktop",
   "dep:nie-lua",
   "dep:nie-ocgen",
   "dep:redis",
@@ -131,6 +132,7 @@ nie-trace = { path = "../../plugins/exe/nie-trace", version = "2.0.0", features 
 nie-computer-use = { path = "../../plugins/exe/nie-computer-use", version = "2.0.0", features = ["host"], optional = true }
 nie-viola = { path = "../../plugins/launcher/nie-viola", version = "2.0.0", optional = true }
 nie-launcher = { path = "../../plugins/launcher/nie-launcher", version = "2.0.0", optional = true }
+nie-shell-desktop = { path = "../../plugins/shell-desktop/nie-shell-desktop", version = "2.0.0", optional = true }
 nie-lua = { path = "../nie-lua", version = "2.0.0", features = ["host"], optional = true }
 nie-ocgen = { path = "../nie-ocgen", version = "2.0.0", features = ["cli"], optional = true }
 redis = { workspace = true, features = ["r2d2"], optional = true }

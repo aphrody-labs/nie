@@ -1,0 +1,79 @@
+name: GUI
+
+# The GPUI workspace (gui/) builds against the vendor/zed submodule, which public CI skips by
+# default (`update = none`): this workflow checks it out explicitly.
+
+on:
+  push:
+    branches: [main]
+    paths: ["gui/**", "vendor/zed", "tools/nie-zed-branch/**", ".github/workflows/gui.yml"]
+  pull_request:
+    paths: ["gui/**", "vendor/zed", "tools/nie-zed-branch/**", ".github/workflows/gui.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: never
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  linux:
+    name: gpui (linux, snapshots and AccessKit audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Submodule
+        run: git submodule update --init --checkout --depth 1 vendor/zed
+      - name: System libraries and a software Vulkan device
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwayland-dev libxkbcommon-x11-dev libxcb1-dev libfontconfig-dev libfreetype-dev mesa-vulkan-drivers
+      - name: Toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: gui
+      - name: Check, warnings denied
+        run: cargo clippy --locked --manifest-path gui/Cargo.toml --workspace --all-targets -- -D warnings
+      - name: Snapshots and the AccessKit tree of every scene
+        run: cargo test --locked --manifest-path gui/Cargo.toml -p nie-ui --features test-support
+      - name: Archive the dumped accessibility trees
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-trees
+          path: /tmp/nie-ui-*-a11y.json
+          if-no-files-found: ignore
+
+  windows:
+    name: gpui (windows-msvc check)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Submodule
+        run: git submodule update --init --checkout --depth 1 vendor/zed
+      - name: Toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: gui
+      - run: cargo check --locked --manifest-path gui/Cargo.toml -p nie-ui --all-targets
+
+  wasm:
+    name: gpui (wasm32 build of the browser app)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Submodule
+        run: git submodule update --init --checkout --depth 1 vendor/zed
+      - name: Toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: gui
+      - run: cargo check --locked --manifest-path gui/Cargo.toml -p nie-ui -p nie-apps --lib --target wasm32-unknown-unknown

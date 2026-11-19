@@ -274,6 +274,12 @@
       "path": "plugins/steam/nie-steam",
       "app": "ievr",
       "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-shell-desktop",
+      "path": "plugins/shell-desktop/nie-shell-desktop",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
     }
   ],
   "plans": [

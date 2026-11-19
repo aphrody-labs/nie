@@ -1,0 +1,56 @@
+[package]
+name = "nie-apps"
+description = "The apps of nie on the GPUI toolkit: the explorer (the GUI twin of `nie fm`), the asset viewer and the wiki"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[[bin]]
+name = "nie-explorer"
+path = "src/bin/nie-explorer.rs"
+
+[[bin]]
+name = "nie-wiki"
+path = "src/bin/nie-wiki.rs"
+
+[[bin]]
+name = "nie-viewer"
+path = "src/bin/nie-viewer.rs"
+
+[dependencies]
+nie-ui = { workspace = true }
+gpui = { workspace = true }
+anyhow = { workspace = true }
+nie-formats = { workspace = true, features = ["std"] }
+serde_json = { workspace = true }
+http_client = { workspace = true }
+futures = { workspace = true }
+png = { workspace = true }
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+gpui_platform = { workspace = true }
+gpui_web = { workspace = true }
+wasm-bindgen = { workspace = true }
+web-sys = { workspace = true }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+gpui_platform = { workspace = true, features = ["wayland", "x11"] }
+nie-explore = { workspace = true, features = ["fm"] }
+nie-wiki-vfs = { workspace = true }
+
+[dev-dependencies]
+nie-ui = { workspace = true, features = ["test-support"] }
+gpui = { workspace = true, features = ["test-support"] }
+gpui_platform = { workspace = true, features = ["test-support"] }
+gpui_wgpu = { workspace = true, features = ["test-support"] }
+nie-explore = { workspace = true, features = ["fm", "fm-fixture"] }

@@ -1,0 +1,30 @@
+[package]
+name = "nie-ui"
+description = "The GPUI toolkit of nie: a theme derived from the game's own UI, accessible components (tree, table, tabs, picker, image, frame and terminal surfaces) and the AccessKit audit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+# Offscreen rendering and snapshot capture through GPUI's headless context (wgpu, Vulkan).
+test-support = ["gpui/test-support"]
+
+[dependencies]
+gpui = { workspace = true }
+nie-data = { workspace = true, features = ["serde", "std"] }
+nie-formats = { workspace = true, features = ["std"] }
+nucleo = { workspace = true }
+serde_json = { workspace = true }
+image = { workspace = true }
+anyhow = { workspace = true }
+
+[dev-dependencies]
+gpui_wgpu = { workspace = true, features = ["test-support"] }
+gpui_platform = { workspace = true, features = ["test-support"] }

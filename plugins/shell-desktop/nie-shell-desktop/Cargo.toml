@@ -1,0 +1,14 @@
+[package]
+name = "nie-shell-desktop"
+version = "2.0.0"
+edition = "2024"
+rust-version = "1.100"
+license-file = "LICENSE"
+publish = false
+description = "The model of the nie desktop shell (apps, notifications, panel geometry); the GPUI windows that draw it live in gui/nie-shell"
+
+[lints]
+workspace = true
+
+[dependencies]
+nie-plugin = { workspace = true }

@@ -26,6 +26,9 @@ pub fn registry() -> Registry {
         registry
             .register(Box::new(nie_launcher::LauncherPlugin))
             .expect("launcher plugin");
+        registry
+            .register(Box::new(nie_shell_desktop::ShellDesktopPlugin))
+            .expect("shell-desktop plugin");
     }
     registry
 }
@@ -79,6 +82,6 @@ mod tests {
     #[test]
     fn the_four_plugins_are_registered() {
         let ids: Vec<_> = registry().infos().iter().map(|p| p.id).collect();
-        assert_eq!(ids, ["save", "steam", "exe", "launcher"]);
+        assert_eq!(ids, ["save", "steam", "exe", "launcher", "shell-desktop"]);
     }
 }

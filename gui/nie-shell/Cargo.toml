@@ -1,0 +1,28 @@
+[package]
+name = "nie-shell"
+description = "The desktop shell of the nie OS on GPUI: panels, launcher and notifications as wlr-layer-shell windows"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+name = "nie_shell_gui"
+
+[[bin]]
+name = "nie-shell"
+path = "src/bin/nie-shell.rs"
+
+[dependencies]
+nie-ui = { workspace = true }
+nie-shell-desktop = { workspace = true }
+gpui = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gpui_platform = { workspace = true, features = ["wayland", "x11"] }

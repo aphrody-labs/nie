@@ -1,0 +1,310 @@
+{
+  "root": "w",
+  "gpui_focus": null,
+  "active_descendant_focus": null,
+  "frame": {
+    "rendered_at": "2026-11-19T12:57:50.949+00:00",
+    "frame_number": 3,
+    "window_title": "nie-ui scene explorer",
+    "node_count": 23,
+    "tab_stop_count": 0,
+    "viewport_size": {
+      "width": 900.0,
+      "height": 360.0
+    },
+    "scale_factor": 2.0
+  },
+  "nodes": {
+    "a": {
+      "accesskit_id": "16997622218133417698",
+      "element_id": "Name(\"nie-explorer-header\")",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:368:17",
+      "aria": {
+        "role": "Heading",
+        "label": "Folder data/common/menu",
+        "level": 1
+      }
+    },
+    "b": {
+      "accesskit_id": "10143402860191509316",
+      "element_id": "NamedInteger(\"nie-col-parent\", 0)",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:204:13",
+      "aria": {
+        "role": "ListItem",
+        "label": "font, folder, 12 files",
+        "selected": false,
+        "position_in_set": 1,
+        "size_of_set": 3
+      }
+    },
+    "c": {
+      "accesskit_id": "3854559905741160752",
+      "element_id": "NamedInteger(\"nie-col-parent\", 1)",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:204:13",
+      "aria": {
+        "role": "ListItem",
+        "label": "menu, folder, 340 files",
+        "selected": true,
+        "position_in_set": 2,
+        "size_of_set": 3
+      }
+    },
+    "d": {
+      "accesskit_id": "16012461025000363803",
+      "element_id": "NamedInteger(\"nie-col-parent\", 2)",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:204:13",
+      "aria": {
+        "role": "ListItem",
+        "label": "text, folder, 90 files",
+        "selected": false,
+        "position_in_set": 3,
+        "size_of_set": 3
+      }
+    },
+    "e": {
+      "accesskit_id": "1210355363480074957",
+      "children": [
+        "b",
+        "c",
+        "d"
+      ],
+      "element_id": "Name(\"nie-col-parent\")",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:194:5",
+      "aria": {
+        "role": "List",
+        "label": "data/common, 3 entries"
+      }
+    },
+    "f": {
+      "accesskit_id": "8118294027110670121",
+      "element_id": "NamedInteger(\"nie-col-current\", 0)",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:204:13",
+      "aria": {
+        "role": "ListItem",
+        "label": "50_title, folder, 8 files",
+        "selected": false,
+        "position_in_set": 1,
+        "size_of_set": 3
+      }
+    },
+    "g": {
+      "accesskit_id": "1829451072727430421",
+      "element_id": "NamedInteger(\"nie-col-current\", 1)",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:204:13",
+      "aria": {
+        "role": "ListItem",
+        "label": "60_story, folder, 5 files",
+        "selected": false,
+        "position_in_set": 2,
+        "size_of_set": 3
+      }
+    },
+    "h": {
+      "accesskit_id": "13987352191986633472",
+      "element_id": "NamedInteger(\"nie-col-current\", 2)",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:204:13",
+      "aria": {
+        "role": "ListItem",
+        "label": "menu.cfg.bin, 12.4 KiB",
+        "selected": true,
+        "position_in_set": 3,
+        "size_of_set": 3
+      }
+    },
+    "i": {
+      "accesskit_id": "6684061323849342898",
+      "children": [
+        "f",
+        "g",
+        "h"
+      ],
+      "element_id": "Name(\"nie-col-current\")",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:194:5",
+      "aria": {
+        "role": "List",
+        "label": "data/common/menu, 3 entries"
+      }
+    },
+    "j": {
+      "accesskit_id": "17455253780404061830",
+      "element_id": "NamedInteger(\"nie-preview-col\", 0)",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:269:25",
+      "aria": {
+        "role": "ColumnHeader",
+        "label": "id"
+      }
+    },
+    "k": {
+      "accesskit_id": "11166410825953713266",
+      "element_id": "NamedInteger(\"nie-preview-col\", 1)",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:269:25",
+      "aria": {
+        "role": "ColumnHeader",
+        "label": "name"
+      }
+    },
+    "l": {
+      "accesskit_id": "13266467882081100754",
+      "children": [
+        "j",
+        "k"
+      ],
+      "element_id": "Name(\"nie-preview-table-head\")",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:262:17",
+      "aria": {
+        "role": "Row",
+        "label": "Columns"
+      }
+    },
+    "m": {
+      "accesskit_id": "16222305714391941868",
+      "element_id": "NamedInteger(\"nie-preview-cell\", 0)",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:285:25",
+      "aria": {
+        "role": "Cell",
+        "label": "1"
+      }
+    },
+    "n": {
+      "accesskit_id": "9933462760008702168",
+      "element_id": "NamedInteger(\"nie-preview-cell\", 1)",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:285:25",
+      "aria": {
+        "role": "Cell",
+        "label": "title"
+      }
+    },
+    "o": {
+      "accesskit_id": "17839214996484171785",
+      "children": [
+        "m",
+        "n"
+      ],
+      "element_id": "NamedInteger(\"nie-preview-row\", 0)",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:279:17",
+      "aria": {
+        "role": "Row",
+        "label": "1"
+      }
+    },
+    "p": {
+      "accesskit_id": "2698357655437460401",
+      "element_id": "NamedInteger(\"nie-preview-cell\", 4096)",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:285:25",
+      "aria": {
+        "role": "Cell",
+        "label": "2"
+      }
+    },
+    "q": {
+      "accesskit_id": "14856258774696663452",
+      "element_id": "NamedInteger(\"nie-preview-cell\", 4097)",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:285:25",
+      "aria": {
+        "role": "Cell",
+        "label": "story"
+      }
+    },
+    "r": {
+      "accesskit_id": "11550372042033823221",
+      "children": [
+        "p",
+        "q"
+      ],
+      "element_id": "NamedInteger(\"nie-preview-row\", 1)",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:279:17",
+      "aria": {
+        "role": "Row",
+        "label": "2"
+      }
+    },
+    "s": {
+      "accesskit_id": "16559086229352220475",
+      "children": [
+        "l",
+        "o",
+        "r"
+      ],
+      "element_id": "Name(\"nie-preview-table\")",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:254:56",
+      "aria": {
+        "role": "Table",
+        "label": "Records of data/common/menu/menu.cfg.bin, 3 rows",
+        "row_count": 4,
+        "column_count": 2
+      }
+    },
+    "t": {
+      "accesskit_id": "12907625174709179672",
+      "children": [
+        "s"
+      ],
+      "element_id": "Name(\"nie-preview\")",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:307:5",
+      "aria": {
+        "role": "Group",
+        "label": "Preview of data/common/menu/menu.cfg.bin"
+      }
+    },
+    "u": {
+      "accesskit_id": "9049077146454394840",
+      "element_id": "Name(\"nie-explorer-status\")",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:392:17",
+      "aria": {
+        "role": "Status",
+        "label": "3 files"
+      }
+    },
+    "v": {
+      "accesskit_id": "12429693448324175304",
+      "children": [
+        "a",
+        "e",
+        "i",
+        "t",
+        "u"
+      ],
+      "element_id": "Name(\"nie-explorer\")",
+      "view": "nie_ui::explorer::Explorer",
+      "source_location": "nie-ui/src/explorer.rs:338:9",
+      "aria": {
+        "role": "Application",
+        "on_action": [
+          "Focus"
+        ],
+        "label": "nie file explorer"
+      }
+    },
+    "w": {
+      "accesskit_id": "0",
+      "children": [
+        "v"
+      ],
+      "aria": {
+        "role": "Window",
+        "label": "nie-ui scene explorer"
+      }
+    }
+  }
+}
