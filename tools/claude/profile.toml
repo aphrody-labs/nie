@@ -1,26 +1,17 @@
 # Claude Code profile for nie, applied by `bun ~/.claude/scripts/profile.ts` (aphrody-labs/claude):
 # renders `.claude/settings.json` and the per-project MCP toggles; `--check` reports drift.
+# Minimal by design: only what the plan in docs needs; everything else is off for this repository.
 
 [mcp]
-# Servers this project may use; every other discovered server (plugin, user or claude.ai connector)
-# is disabled for this repository only.
 allow = [
-  "nie",                 # .mcp.json: native nie MCP server, every `nie` CLI command
-  "github",              # plugin github: issues, PRs, Actions, releases of aphrody-labs/nie, iecode-*, forks
-  "ai-os",               # plugin aphrody: fleet, orchestration, second-model review
-  "claude-bridge",       # plugin aphrody: cross-session sync
-  "memory",              # plugin aphrody: durable memory search
-  "context7",            # plugin context7: live library docs (pingora, wgpu, russh, opendal, winfsp)
-  "hostinger",           # plugin aphrody: prd (srv2116886) VPS, firewall, snapshots
-  "ovh-vps",             # plugin aphrody: fr1 (vps-203bea89) VPS, disk upgrades
-  "cloudflare",          # user: aphrody.app zone, nie.aphrody.app origin, Origin CA, R2 `r2://` sources
-  "claude.ai Figma",     # the game UI exported from the VFS (docs/design-system.md)
-  "claude.ai Google Drive", # `gdrive://` game sources, partner documents
+  "nie",           # .mcp.json: native nie MCP server (RE, VFS, CLI), JSON in and out
+  "context7",      # live library docs (wgpu, russh, gix, gpui, rustls)
+  "claude-bridge", # cross-session sync between workers
+  "hostinger",     # prd: CachyOS conversion, snapshots, console break-glass
+  "cloudflare",    # nie.aphrody.app origin and edge
 ]
 
 [plugins]
-# true/false overrides of the user-level enabledPlugins for this repository.
-# The aphrody plugin already ships a tuned rust-analyzer (.lsp.json), so the official one stays off.
 "rust-analyzer-lsp@claude-plugins-official" = false
 "clangd-lsp@claude-plugins-official" = false
 "pyright-lsp@claude-plugins-official" = false
@@ -28,29 +19,16 @@ allow = [
 "gopls-lsp@claude-plugins-official" = false
 "typescript-lsp@claude-plugins-official" = false
 "document-skills@anthropic-agent-skills" = false
+"example-skills@anthropic-agent-skills" = false
 
 [skills]
-# Every installed plugin or user skill not listed here is turned off for this repository.
-# Built-in Claude Code skills are not affected.
 on = [
-  # Rust, Bevy, GPU, wasm
-  "aphrody:rust-cargo", "rust-upstream", "async-design", "recursion-design", "perf-math",
-  "aphrody:wgpu", "aphrody:webgpu", "aphrody:vulkan", "aphrody:directx",
-  "aphrody:wasm-bindgen", "aphrody:webassembly",
-  # Game formats and reverse engineering (nie-formats, nie-re, nie-pe, rg-steam)
-  "aphrody:ie-game-formats", "aphrody:reverse-engineer-anything", "aphrody:binary-analysis",
-  "aphrody:static-recompile", "aphrody:3ds-reverse", "aphrody:ds-reverse",
-  "aphrody:switch-reverse", "aphrody:steam", "aphrody:emscripten",
-  "aphrody:mod-package", "aphrody:gamebanana",
-  # Host, fleet, forks, agents
-  "aphrody:win32", "aphrody:microsoft", "aphrody:fleet", "aphrody:ai-os-orchestrator",
-  "aphrody:gh-fork", "aphrody:github-workflow", "aphrody:claude-live-bridge",
-  "aphrody:context7-deep-research", "aphrody:chromium", "aphrody:design",
-  "aphrody:hostinger", "aphrody:disks", "aphrody:linux-kernel", "aphrody:kernel-watch",
-  "cloudflare:cloudflare", "cloudflare:cf-cli",
-  "aphrody:humanizer", "aphrody:bun-aphrody", "agent-ops",
-  "claude-md-management:revise-claude-md", "claude-md-management:claude-md-improver",
-  "example-skills:mcp-builder", "example-skills:webapp-testing",
+  "aphrody:rust-cargo", "rust-upstream", "async-design", "perf-math",
+  "aphrody:wgpu", "aphrody:webgpu", "aphrody:wasm-bindgen", "aphrody:webassembly",
+  "aphrody:emscripten", "aphrody:gpui",
+  "aphrody:ie-game-formats",
+  "aphrody:win32", "aphrody:steam",
+  "aphrody:fleet", "aphrody:gh-fork", "aphrody:linux-kernel", "aphrody:kernel-watch",
+  "aphrody:claude-live-bridge",
 ]
-# Listed by name only (no description) to keep the listing short.
-name_only = ["aphrody:gpui", "aphrody:intel", "aphrody:amd", "aphrody:nvidia"]
+name_only = []
