@@ -1,0 +1,16 @@
+dir	tier	files	bytes	gate
+(root)	misc	13	412554	none
+.claude	misc	2	5275	none
+.github	misc	3	9935	none
+apps	misc	7	2327	none
+bindings	misc	8	10739	none
+contract	misc	2	32469	none
+crates	misc	646	9202449	none
+deploy	misc	10	302462	none
+docs	misc	26	363429	none
+gui	misc	36	724985	none
+include	misc	16	13007	none
+os	misc	10	22344	none
+plugins	misc	239	3182430	none
+tests	misc	10	6407	none
+tools	misc	7	28713	none

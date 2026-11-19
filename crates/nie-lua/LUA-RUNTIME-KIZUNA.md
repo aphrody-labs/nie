@@ -1,4 +1,4 @@
-# Couverture Lua runtime — Kizuna
+# Couverture Lua runtime - Kizuna
 
 Date de clôture : 2026-09-06.
 
@@ -8,7 +8,7 @@ Le chemin Lua brut VFS → décodage → VM Lua 5.2 unsafe → hôte de menu →
 runtime est opérationnel pour le menu `kizuna_town_mainmenu`.
 
 - Scripts réels décodés : **1 197/1 197**, soit **1 053 252 instructions** (remesuré
-  2026-09-19 ; la clôture de 2026-09-06 annonçait 1 143 et 985 971 — le corpus a grossi, ces
+  2026-09-19 ; la clôture de 2026-09-06 annonçait 1 143 et 985 971 - le corpus a grossi, ces
   chiffres ne sont pas comparables d’une version du jeu à l’autre).
 - Audit ciblé Kizuna : **25/25 scripts exécutés**, 0 erreur, 0 include manquant,
   0 appel hôte manquant.
@@ -165,7 +165,7 @@ La classification runtime confirme que ces 13 résidus sont des **lectures uniqu
 l’audit global rend `missingHostInvocations={}`. Aucun appel de fonction hôte inconnue ne reste
 dans le corpus.
 
-### Douze des treize ne sont PAS du contexte natif — mesuré 2026-09-19
+### Douze des treize ne sont PAS du contexte natif - mesuré 2026-09-19
 
 Ce document a longtemps désigné « l’injection documentée du contexte natif des 13 lectures
 résiduelles » comme la prochaine étape RE. **C’est faux pour douze d’entre elles**, et le
@@ -173,7 +173,7 @@ vérifier coûtait un désassemblage.
 
 `nie lua-audit` rend maintenant `missingHostReadSinks` : pour chaque lecture indéfinie, ce que
 devient sa valeur, relevé statiquement par `nie_lua::bytecode::global_reads`. Sur le corpus
-complet, **les 13 noms sortent tous en `tableArrayItem`** — la valeur n’alimente que la partie
+complet, **les 13 noms sortent tous en `tableArrayItem`** - la valeur n’alimente que la partie
 TABLEAU d’un constructeur de table :
 
 ```text
@@ -199,7 +199,7 @@ Cette partie tableau **n’est jamais indexée**. Les seuls autres usages de la 
 `isGrayout = false`, `rarityGatePieceType = 0`, `isSendInfoOnly = false`). Les consommateurs ne
 touchent ces champs que par `TEST` (véracité) et `EQ` (égalité), jamais par arithmétique : un
 `nil` y est sans effet. Injecter un contexte natif pour ces dix noms ne changerait donc **rien
-d’observable** — seulement le contenu d’un tableau que rien ne lit.
+d’observable** - seulement le contenu d’un tableau que rien ne lit.
 
 `x` et `y` suivent le même idiome (`{ x, y }` au niveau supérieur, dans quatre menus). Leurs
 vraies valeurs sont posées à l’exécution par un autre prototype, en champs nommés
@@ -209,7 +209,7 @@ d’accès.
 ### Le seul résidu réel est `MENU_LINIT_NONE`, et sa portée est bornée
 
 Il est unique dans tout le corpus : **une occurrence sur 1 197 chunks**, jamais assignée nulle
-part en Lua. Son tableau, lui, **est indexé** — contrairement aux douze autres, ses six voisins
+part en Lua. Son tableau, lui, **est indexé** - contrairement aux douze autres, ses six voisins
 sont des `0` littéraux :
 
 ```lua
@@ -218,7 +218,7 @@ local linit = { MENU_LINIT_NONE, 0, 0, 0, 0, 0, 0 }   -- un élément par calque
 
 Le seul consommateur (`main:18` de `soccer_top_menu`, la seule closure qui capture ce registre)
 lit `linit[idx + 1]` et le compare à **1, 2 et 3** ; le résultat choisit entre un identifiant de
-texte fixe et celui du calque. Toute valeur **hors de `{1, 2, 3}`** — dont `nil` — produit donc
+texte fixe et celui du calque. Toute valeur **hors de `{1, 2, 3}`** - dont `nil` - produit donc
 exactement le même comportement. Le manque est réel mais borné à cette branche, et la valeur ne
 doit pas être devinée : un nom se terminant par `_NONE` vaut conventionnellement `0`, ce qui
 serait une supposition, pas une mesure.
@@ -226,7 +226,7 @@ serait une supposition, pas une mesure.
 ### Deux garde-fous que cette session a payés
 
 **L’absence d’un nom dans `nie.exe` ne prouve rien.** `MENU_LINIT_NONE` et les dix noms de
-`LiberationPieceInfo` sont absents des chaînes du binaire — mais `SetPartTexture`,
+`LiberationPieceInfo` sont absents des chaînes du binaire - mais `SetPartTexture`,
 `GetObjectAttr`, `IsExistFocusItem` et `UpdateNamePop` le sont aussi, alors que ce sont de vraies
 fonctions. Le jeu clé ses commandes par CRC-32 : seuls les globals posés par `lua_setglobal`
 (`INCLUDE`, `funcLuaMenuCommand`) apparaissent en clair. Cette piste a été ouverte puis
@@ -234,15 +234,15 @@ abandonnée ; ne pas la rouvrir.
 
 **`missingHostReads` ne voit que les lectures EXÉCUTÉES**, c’est-à-dire le niveau supérieur des
 chunks et les callbacks effectivement pilotés. Le corpus porte quatre autres noms `MENU_*`
-lus une seule fois chacun — `MENU_TITLE_TEX_RES_NAME`, `MENU_PRIO_OPTION`,
-`MENU_PRIO_OPTION_BUTTON`, `MENU_OBJ_NAME_HELP_WINDOW` — que l’audit ne signale jamais parce
+lus une seule fois chacun - `MENU_TITLE_TEX_RES_NAME`, `MENU_PRIO_OPTION`,
+`MENU_PRIO_OPTION_BUTTON`, `MENU_OBJ_NAME_HELP_WINDOW` - que l’audit ne signale jamais parce
 qu’ils sont lus dans des closures qu’aucun pilotage n’atteint. « 13 » est donc le compte des
 lectures atteintes, pas celui des lectures existantes.
 
 Un build workspace complet n’a pas été lancé, conformément à la règle du dépôt
 qui le déconseille lorsque l’espace disque est contraint.
 
-## Clôture de session — 2026-09-06
+## Clôture de session - 2026-09-06
 
 Le lot de reproduction Lua/Kizuna est versionné et poussé sur `main` jusqu’à
 `cbe5fde` (`feat: validate live Lua bytecode before execution`). Il couvre le
@@ -257,20 +257,20 @@ chemin machine, secret ou dump hors périmètre n’a été ajouté.
 **Cette clôture désignait comme prochaine étape RE « l’injection documentée du contexte natif
 des 13 lectures résiduelles ». Elle est close par la négative** (voir « Limites connues ») :
 douze de ces lectures n’attendent aucune valeur, et la treizième n’en attend aucune qu’on
-puisse mesurer. Ce qui reste ouvert est ailleurs — les lectures que l’audit n’atteint jamais,
+puisse mesurer. Ce qui reste ouvert est ailleurs - les lectures que l’audit n’atteint jamais,
 faute de piloter les closures qui les portent.
 
 ## RE anchors
 
 Knowledge base (`var/nie.sqlite`) tables:
 
-- `hash_name` — CRC32 and string hashes for Lua commands, modules and functions
-- `function` — Lua host functions and dispatch loop in `nie.exe`
-- `xref` — call-graph topology for Lua host functions
-- `rtti_class` — `game::CMapNpcController`, `game::VCraftMapStatus`
-- `coverage` — Lua command interpreter coverage
+- `hash_name` - CRC32 and string hashes for Lua commands, modules and functions
+- `function` - Lua host functions and dispatch loop in `nie.exe`
+- `xref` - call-graph topology for Lua host functions
+- `rtti_class` - `game::CMapNpcController`, `game::VCraftMapStatus`
+- `coverage` - Lua command interpreter coverage
 
 Key binary reference addresses:
 
-- `0x1404aadb8` — Lua host command interpreter
-- `0x1406d5840` — Core game state tick loop
+- `0x1404aadb8` - Lua host command interpreter
+- `0x1406d5840` - Core game state tick loop
