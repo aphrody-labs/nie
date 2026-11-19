@@ -31,3 +31,9 @@
 	branch = nie
 	update = none
 	shallow = true
+[submodule "vendor/zed"]
+	path = vendor/zed
+	url = ../zed.git
+	branch = nie
+	update = none
+	shallow = true
