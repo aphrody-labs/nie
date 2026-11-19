@@ -10,7 +10,7 @@ allow = [
   "ai-os",               # plugin aphrody: fleet, orchestration, Context7 relay, second-model review
   "claude-bridge",       # plugin aphrody: cross-session sync
   "memory",              # plugin aphrody: durable memory search
-  "docker-docs",         # plugin aphrody: docker/Dockerfile, ghcr images of nie and iecode
+  "docker-docs",         # plugin aphrody: Dockerfile, ghcr images of nie and iecode
   "cloudflare",          # user: R2 (`r2://` game sources), cdn.rosegriffon.fr DNS and cache
   "claude.ai Figma",     # design/ tokens (rg-m3.json), studio and launcher UI
   "claude.ai Google Drive", # `gdrive://` game sources, shared design and partner documents

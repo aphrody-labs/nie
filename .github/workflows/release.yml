@@ -59,7 +59,7 @@ jobs:
     permissions:
       contents: read
     # Debian 12 (glibc 2.36): the binaries run on every glibc distribution at least that old and
-    # in the runtime image. Keep this digest equal to RUST_IMAGE in docker/Dockerfile.
+    # in the runtime image. Keep this digest equal to RUST_IMAGE in Dockerfile.
     container:
       image: rust:1.100.0-slim-bookworm@sha256:7c7d4eb4d05b7781187a327809466cfddf29753f6defdc3d19a0e291951b7a37
     env:
@@ -157,12 +157,8 @@ jobs:
         include:
           - image: nie
             bin: nie
-            package: nie-cli
-            features: cloud
           - image: nie-model-serve
             bin: nie-model-serve
-            package: nie-model-serve
-            features: host
     env:
       REGISTRY_IMAGE: ghcr.io/aphrody-labs/${{ matrix.image }}
       VERSION: ${{ needs.version.outputs.version }}
@@ -178,11 +174,8 @@ jobs:
         run: |
           mkdir -p dist
           cp "image-bin/${{ matrix.bin }}/${{ matrix.bin }}" "dist/${{ matrix.bin }}"
-          docker build -f docker/Dockerfile \
+          docker build --target "${{ matrix.bin }}" \
             --build-arg BIN_SOURCE=prebuilt \
-            --build-arg BIN="${{ matrix.bin }}" \
-            --build-arg PACKAGE="${{ matrix.package }}" \
-            --build-arg FEATURES="${{ matrix.features }}" \
             --label org.opencontainers.image.source="https://github.com/${GITHUB_REPOSITORY}" \
             --label org.opencontainers.image.revision="${GITHUB_SHA}" \
             --label org.opencontainers.image.version="${VERSION}" \

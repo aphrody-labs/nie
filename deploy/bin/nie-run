@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -uo pipefail
+# Steam library layout: game in steamapps/common/<installdir>, Proton prefix in compatdata/<appid>/pfx.
+LIB="${NIE_STEAM_LIBRARY:-/srv/nie/steam}"
+GAME="${NIE_GAME_PATH:-$LIB/steamapps/common/INAZUMA ELEVEN Victory Road}"
+BASE="${STEAM_COMPAT_DATA_PATH:-$LIB/steamapps/compatdata/2799860}"
+export STEAM_COMPAT_DATA_PATH="$BASE" STEAM_COMPAT_CLIENT_INSTALL_PATH="$LIB"
+P="${PROTON_PATH:-/srv/steam/compatibilitytools.d/proton-cachyos}/files"
+
+export WINEPREFIX="$BASE/pfx"
+export WINEARCH=win64
+export LD_LIBRARY_PATH="$P/lib/x86_64-linux-gnu:$P/lib/i386-linux-gnu:${LD_LIBRARY_PATH:-}"
+export WINEDEBUG="${WINEDEBUG:-fixme-all,err+module}"
+export DISPLAY="${DISPLAY:-:99}"
+
+# Software Vulkan (llvmpipe) on headless VPS without GPU
+export VK_DRIVER_FILES=/usr/share/vulkan/icd.d/lvp_icd.json
+export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json
+export DXVK_FILTER_DEVICE_NAME=llvmpipe
+export MESA_VK_DEVICE_SELECT=llvmpipe
+export DXVK_STATE_CACHE_PATH="$BASE/dxvk-cache"
+export DXVK_LOG_PATH="$BASE/logs"
+export DXVK_LOG_LEVEL="${DXVK_LOG_LEVEL:-info}"
+export DXVK_ENABLE_NVAPI=0
+export LP_NUM_THREADS="${LP_NUM_THREADS:-4}"
+
+export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:-d3d11,dxgi,d3d10core,d3d9=n;nvapi64,nvapi=b;winemenubuilder.exe=d}"
+export SteamAppId=2799860 SteamGameId=2799860
+
+mkdir -p "$BASE/logs" "$BASE/dxvk-cache"
+cd "$GAME"
+exec "$P/bin/wine" "$@"

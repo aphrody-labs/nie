@@ -45,13 +45,23 @@ Credentials never go in the URI. Only the CPK tables and the requested ranges ar
 
 ### Container
 
+One `Dockerfile` and one `compose.yaml` at the repository root build and run every image: the
+targets `nie` (`nie serve`, cloud profile) and `nie-model-serve` (host profile) share one builder.
+
 ```
-docker run -d --name nie -p 8790:8790 \
-  -v /srv/game/ievr:/game:ro \
-  -e NIE_GAME_SOURCE=/game \
-  -e NIE_RAW_VFS_TOKEN="$(openssl rand -hex 32)" \
-  ghcr.io/aphrody-labs/nie:latest
+docker build --target nie -t nie .
+NIE_TAG=dev NIE_GAME_DIR=/path/to/game NIE_CACHE_ROOT=./var docker compose up --build
 ```
+
+### Production host
+
+`NIE_TAG=v1.4.8 deploy/install.sh` (root on prd) installs compose project `nie` under
+`/srv/nie/deploy` with `nie-stack.service`, `nie-xvfb.service` and, once
+`/etc/nie/cloudflared.token` exists, `nie-cloudflared.service` for `nie.aphrody.app`. `nie serve`
+listens on `127.0.0.1:8796`, `nie-model-serve` on `127.0.0.1:8797`. `/srv/nie/steam` is the Steam
+library of the game: `steamapps/common/INAZUMA ELEVEN Victory Road` (mounted read-only, uid 10001
+ACL), `steamapps/compatdata/2799860/pfx` (the Proton prefix `nie-run` starts `nie.exe` in) and
+`steamapps/appmanifest_2799860.acf`.
 
 Remote sources: mount `rclone.conf` at `/home/nie/.config/rclone/rclone.conf` and `~/.ssh` at
 `/home/nie/.ssh` (read-only, readable by uid 10001). The image runs as uid 10001, exposes 8790,

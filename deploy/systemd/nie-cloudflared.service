@@ -1,0 +1,18 @@
+# Cloudflare tunnel for nie.aphrody.app. The tunnel token is /etc/nie/cloudflared.token (0600);
+# ingress (path rules to 127.0.0.1:8796 and 127.0.0.1:8797) is configured on the tunnel itself.
+[Unit]
+Description=Cloudflare tunnel nie (nie.aphrody.app to 127.0.0.1:8796 and 8797)
+After=network-online.target nie-stack.service
+Wants=network-online.target
+ConditionPathExists=/etc/nie/cloudflared.token
+
+[Service]
+Type=simple
+LoadCredential=token:/etc/nie/cloudflared.token
+ExecStart=/usr/bin/cloudflared tunnel --no-autoupdate --metrics 127.0.0.1:20246 --protocol auto run --token-file %d/token
+Restart=always
+RestartSec=5
+DynamicUser=yes
+
+[Install]
+WantedBy=multi-user.target
