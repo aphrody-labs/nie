@@ -1,7 +1,7 @@
 name: Release
 
-# Tag `v<workspace version>` to publish: binaries on the GitHub Release and two images on ghcr.io.
-# `workflow_dispatch` runs every build and the image smoke tests without publishing anything.
+# Tag `v<workspace version>` to publish the binaries on the GitHub Release.
+# `workflow_dispatch` runs every build without publishing anything.
 
 on:
   push:
@@ -19,8 +19,7 @@ env:
   CARGO_INCREMENTAL: "0"
   CARGO_PROFILE_RELEASE_DEBUG: "false"
   CARGO_PROFILE_RELEASE_STRIP: "true"
-  # Features of the shipped binaries. `host` is the full CLI (MCP, Lua, wiki, RE); the image
-  # runs the pure-Rust `cloud` profile.
+  # Features of the shipped binaries: `host` is the full CLI (MCP, Lua, wiki, RE).
   CLI_FEATURES: nie-cli/host,nie-model-serve/host
 
 jobs:
@@ -52,54 +51,44 @@ jobs:
           echo "toolchain=${toolchain}" >> "$GITHUB_OUTPUT"
 
   linux:
-    name: x86_64-unknown-linux-gnu
+    name: x86_64-unknown-linux-musl
     needs: version
+    # Static musl binaries: no glibc baseline, so the runner image does not matter.
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
       contents: read
-    # Debian 12 (glibc 2.36): the binaries run on every glibc distribution at least that old and
-    # in the runtime image. Keep this digest equal to RUST_IMAGE in Dockerfile.
-    container:
-      image: rust:1.100.0-slim-bookworm@sha256:7c7d4eb4d05b7781187a327809466cfddf29753f6defdc3d19a0e291951b7a37
     env:
       RUSTUP_TOOLCHAIN: ${{ needs.version.outputs.toolchain }}
     steps:
-      - name: Tools for checkout and linking
-        run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates pkg-config
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Toolchain
+        run: |
+          rustup toolchain install "${RUSTUP_TOOLCHAIN}" --profile minimal --no-self-update --target x86_64-unknown-linux-musl
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends musl-tools
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - name: Build nie and nie-model-serve (host profile)
-        run: cargo build --locked --release --no-default-features -p nie-cli -p nie-model-serve --features "${CLI_FEATURES}" --bin nie --bin nie-model-serve
-      - name: Build nie (cloud profile, for the image)
-        run: cargo build --locked --release --no-default-features -p nie-cli --features nie-cli/cloud --bin nie --target-dir target-cloud
+      - name: Build nie, nie-model-serve (host profile) and nie-deploy
+        run: cargo build --locked --release --target x86_64-unknown-linux-musl --no-default-features -p nie-cli -p nie-model-serve -p nie-deploy --features "${CLI_FEATURES}" --bin nie --bin nie-model-serve --bin nie-deploy
       - name: Smoke test
         run: |
-          ./target/release/nie --version
-          ./target/release/nie-model-serve --version
-          ./target-cloud/release/nie --version
+          d=target/x86_64-unknown-linux-musl/release
+          for b in nie nie-model-serve nie-deploy; do "$d/$b" --version; file "$d/$b" | grep -q "statically linked"; done
       - name: Archive
         env:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
-          name="nie-v${VERSION}-x86_64-unknown-linux-gnu"
-          mkdir -p "dist/${name}" image-bin/nie image-bin/nie-model-serve
-          cp target/release/nie target/release/nie-model-serve LICENSE LICENSE-APACHE README.md "dist/${name}/"
+          name="nie-v${VERSION}-x86_64-unknown-linux-musl"
+          d=target/x86_64-unknown-linux-musl/release
+          mkdir -p "dist/${name}"
+          cp "$d/nie" "$d/nie-model-serve" "$d/nie-deploy" LICENSE LICENSE-APACHE README.md "dist/${name}/"
           tar -C dist -czf "dist/${name}.tar.gz" "${name}"
           rm -rf "dist/${name}"
-          cp target-cloud/release/nie image-bin/nie/nie
-          cp target/release/nie-model-serve image-bin/nie-model-serve/nie-model-serve
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-linux
           path: dist/*.tar.gz
-          if-no-files-found: error
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: image-bin
-          path: image-bin
           if-no-files-found: error
 
   windows:
@@ -143,79 +132,10 @@ jobs:
           path: dist/*.zip
           if-no-files-found: error
 
-  image:
-    name: image ${{ matrix.image }}
-    needs: [version, linux]
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      packages: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - image: nie
-            bin: nie
-          - image: nie-model-serve
-            bin: nie-model-serve
-    env:
-      REGISTRY_IMAGE: ghcr.io/aphrody-labs/${{ matrix.image }}
-      VERSION: ${{ needs.version.outputs.version }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: image-bin
-          path: image-bin
-      - name: Build
-        run: |
-          mkdir -p dist
-          cp "image-bin/${{ matrix.bin }}/${{ matrix.bin }}" "dist/${{ matrix.bin }}"
-          docker build --target "${{ matrix.bin }}" \
-            --build-arg BIN_SOURCE=prebuilt \
-            --label org.opencontainers.image.source="https://github.com/${GITHUB_REPOSITORY}" \
-            --label org.opencontainers.image.revision="${GITHUB_SHA}" \
-            --label org.opencontainers.image.version="${VERSION}" \
-            --label org.opencontainers.image.title="${{ matrix.image }}" \
-            --label org.opencontainers.image.licenses="MIT OR Apache-2.0" \
-            -t "${REGISTRY_IMAGE}:candidate" .
-      - name: Smoke test, no game data
-        run: |
-          docker run -d --name smoke -p 18790:8790 "${REGISTRY_IMAGE}:candidate"
-          for i in $(seq 1 60); do
-            if curl --fail --silent http://127.0.0.1:18790/health > health.json; then break; fi
-            sleep 1
-          done
-          docker ps -a --filter name=smoke --format '{{.Status}}'
-          docker logs smoke 2>&1 | tail -20
-          cat health.json
-          grep -q '"ok"' health.json || grep -q '"status"' health.json
-          docker inspect --format '{{.Config.User}}' smoke | grep -q '^10001'
-        continue-on-error: false
-      - name: Container logs on failure
-        if: failure()
-        run: docker logs smoke || true
-      - name: Publish
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
-          for tag in "${GITHUB_REF_NAME}" "${VERSION}" latest; do
-            docker tag "${REGISTRY_IMAGE}:candidate" "${REGISTRY_IMAGE}:${tag}"
-            docker push "${REGISTRY_IMAGE}:${tag}"
-          done
-          digest=$(docker inspect --format '{{index .RepoDigests 0}}' "${REGISTRY_IMAGE}:latest")
-          echo "published ${digest}"
-          echo "${digest}" >> "${GITHUB_STEP_SUMMARY}"
-
   release:
     name: GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [version, linux, windows, image]
+    needs: [version, linux, windows]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
