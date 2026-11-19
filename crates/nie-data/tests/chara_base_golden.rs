@@ -66,7 +66,7 @@ fn endou_full_fields() {
     assert_eq!(b.internal_code, "c01000010");
     assert_eq!(b.name_hash, HashId(0xE551_FF12));
     assert_eq!(b.last_name_hash, Some(HashId(0xE565_5F9E)));
-    assert_eq!(b.gender, 1);
+    assert_eq!(b.gender, Some(1));
     assert_eq!(b.series_id, Some(HashId(0x62E8_448F)));
     assert_eq!(b.belong_team_id, Some(HashId(0xF01B_B293)));
     assert_eq!(b.description_hash, Some(HashId(0xFA43_BBBE)));
@@ -79,7 +79,7 @@ fn npc_minimal_optionals_absent() {
     assert_eq!(b.chara_id, HashId(0xA791_C2B5));
     assert_eq!(b.internal_code, "npc0010");
     assert_eq!(b.name_hash, HashId::ZERO);
-    assert_eq!(b.gender, 0); // var[11] = 0 explicite (pas le défaut 1)
+    assert_eq!(b.gender, Some(0)); // var[11] = 0 explicite
     // Champs optionnels à 0 → None.
     assert_eq!(b.last_name_hash, None);
     assert_eq!(b.series_id, None);
@@ -88,8 +88,8 @@ fn npc_minimal_optionals_absent() {
 }
 
 #[test]
-fn gender_defaults_to_one_when_var11_absent() {
-    // Noeud minimal (4 vars) : pas de var[11] → genre défaut 1 (port de `let gender = 1`).
+fn gender_is_none_when_var11_absent() {
+    // Noeud minimal (4 vars) : pas de var[11] → aucun genre, pas de défaut inventé.
     let n = node(
         "CHARA_BASE_INFO_2",
         4,
@@ -97,7 +97,7 @@ fn gender_defaults_to_one_when_var11_absent() {
         &[(1, "c99")],
     );
     let b = parse_base_node(&Node::new(&n)).expect("4 vars suffisent");
-    assert_eq!(b.gender, 1);
+    assert_eq!(b.gender, None);
     assert_eq!(b.last_name_hash, None); // var[4] absent
 }
 

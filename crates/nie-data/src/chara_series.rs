@@ -3,7 +3,7 @@
 //! ## Vérité terrain (anti-hallucination)
 //!
 //! - Parser TS de référence : `inagle`
-//!   (`loadCharaSeriesInfo`, `buildSeriesMapping`, table `SERIES_NAMES_BY_TYPE`) — **port 1:1**.
+//!   (`loadCharaSeriesInfo`) — **port 1:1**.
 //! - Données : `data/common/gamedata/character/chara_series_config.cfg.bin` (VFS IEVR), format
 //!   **RDBN** (`lists`). Liste `m_charaSeriesInfoList`, type `CHARA_SERIES_INFO`, **9 séries** ;
 //!   champs réels (probe live) : `charaSeriesId` (Hash), `charaSeriesType` (Int),
@@ -11,9 +11,8 @@
 //!
 //! ## Noms de série
 //!
-//! Les noms viennent d'une **table par TYPE codée en dur** (inagle : *« text files don't have
-//! reliable entries »*, validée contre `zukan.inazuma.jp` sur 5640 personnages) — **PAS** d'une
-//! table de texte. `charaSeriesNameTextId` est conservé mais non utilisé pour le nom.
+//! Le jeu ne porte aucun libellé de série : `charaSeriesId` et `charaSeriesType` sont servis tels
+//! quels, sans table de noms écrite à la main.
 
 use serde_json::Value;
 
@@ -30,42 +29,6 @@ pub struct CharaSeriesInfo {
     pub series_type: i64,
     /// `charaSeriesNameTextId` — hash de texte (conservé ; non utilisé pour le nom).
     pub name_text_id: HashId,
-}
-
-/// Nom **français** d'un type de série (`1..=9`), ou `None` hors plage.
-///
-/// Port de `SERIES_NAMES_BY_TYPE` (champ `fr`).
-#[must_use]
-pub fn series_name_fr(series_type: i64) -> Option<&'static str> {
-    Some(match series_type {
-        1 => "Inazuma Eleven",
-        2 => "Inazuma Eleven 2",
-        3 => "Inazuma Eleven 3",
-        4 => "Inazuma Eleven GO",
-        5 => "Chrono Stone",
-        6 => "Galaxy",
-        7 => "Ares",
-        8 => "Orion",
-        9 => "Victory Road",
-        _ => return None,
-    })
-}
-
-/// Nom **anglais** d'un type de série (`1..=9`), ou `None` hors plage (port de `SERIES_NAMES_BY_TYPE.en`).
-#[must_use]
-pub fn series_name_en(series_type: i64) -> Option<&'static str> {
-    Some(match series_type {
-        1 => "Inazuma Eleven",
-        2 => "Inazuma Eleven 2",
-        3 => "Inazuma Eleven 3",
-        4 => "Inazuma Eleven GO",
-        5 => "Chrono Stone",
-        6 => "Galaxy",
-        7 => "Ares",
-        8 => "Orion",
-        9 => "Victory Road",
-        _ => return None,
-    })
 }
 
 /// Parse la liste `m_charaSeriesInfoList` d'un `chara_series_config.cfg.bin.json` désérialisé.

@@ -1116,13 +1116,14 @@ pub struct CharaDto {
     pub name: String,
     pub description: Option<String>,
     /// `1` = masculin, `2` = féminin dans la donnée ; rendu tel quel, non interprété.
-    pub gender: f64,
+    pub gender: Option<f64>,
     pub element: String,
     pub main_position: String,
     pub sub_position: String,
     /// `f64`, cf. [`ItemDto::price`] — pattern de croissance (entrée des tables `growth`).
     pub growth_pattern: f64,
-    pub series: Option<String>,
+    /// `chara_base` variable 15 (hash hexadécimal) : le jeu ne porte aucun libellé de série.
+    pub series_id: Option<String>,
     pub team: Option<String>,
     /// Techniques apprises, `« niveau — nom »` quand le nom se résout (sinon le hash).
     pub skills: Vec<String>,
@@ -1165,18 +1166,6 @@ pub fn list_charas(vfs: &Vfs) -> Result<Vec<CharaDto>, String> {
     let descriptions = load_text_json(vfs, "chara_description")
         .map(|j| nie_data::chara_description::parse_chara_descriptions(&j))
         .unwrap_or_default();
-    let series = load_rdbn(
-        vfs,
-        |p| {
-            p.contains("/gamedata/character/")
-                && base_name(p).starts_with("chara_series_config")
-                && base_name(p).ends_with(".cfg.bin")
-        },
-        "chara_series_config",
-    )
-    .map(|j| nie_data::chara_series::parse_chara_series_config(&j))
-    .unwrap_or_default();
-
     // Équipes : hash → nom FR, via la même jointure que `list_belong_teams`.
     let teams: HashMap<String, String> = match (
         load_rdbn(
@@ -1227,7 +1216,7 @@ pub fn list_charas(vfs: &Vfs) -> Result<Vec<CharaDto>, String> {
                 name,
                 description: nie_data::chara_base::resolve_description(base, &descriptions)
                     .map(str::to_string),
-                gender: base.gender as f64,
+                gender: base.gender.map(|g| g as f64),
                 element: nie_data::chara_param::element_id_to_names(cp.element).map_or_else(
                     || format!("? ({})", cp.element),
                     |(fr, _, _)| fr.to_string(),
@@ -1237,8 +1226,7 @@ pub fn list_charas(vfs: &Vfs) -> Result<Vec<CharaDto>, String> {
                 sub_position: nie_data::chara_param::position_code_owned(cp.sub_position)
                     .unwrap_or_else(|| "—".to_string()),
                 growth_pattern: cp.growth_pattern as f64,
-                series: nie_data::chara_base::resolve_series_name_fr(base, &series)
-                    .map(str::to_string),
+                series_id: base.series_id.map(|h| h.to_hex()),
                 team: base
                     .belong_team_id
                     .and_then(|t| teams.get(&t.to_hex()).cloned()),

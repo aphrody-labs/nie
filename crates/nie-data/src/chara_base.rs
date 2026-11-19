@@ -17,7 +17,7 @@
 //! - `[1]` = `internalCode` (String, **obligatoire**) — code interne (`c01000100`, `npc0010`…).
 //! - `[3]` = `nameHash` (Int, **obligatoire**) — hash du prénom → `chara_text`.
 //! - `[4]` = `lastNameHash` (Int, optionnel ≠ 0) — hash du nom de famille.
-//! - `[11]` = `gender` (Int, défaut **1**) — 1 = masculin, 2 = féminin.
+//! - `[11]` = `gender` (Int, optionnel) — 1 = masculin, 2 = féminin ; absent → `None`.
 //! - `[15]` = `seriesId` (Int, optionnel ≠ 0) → `charaSeriesInfo`.
 //! - `[16]` = `belongTeamId` (Int, optionnel ≠ 0) → `belongTeamInfo`.
 //! - `[19]` = `descriptionHash` (Int, optionnel ≠ 0) → `chara_description_text`.
@@ -46,8 +46,8 @@ pub struct CharaBase {
     pub last_name_hash: Option<HashId>,
     /// `[19]` — hash de la description (`None` si absent ou nul).
     pub description_hash: Option<HashId>,
-    /// `[11]` — genre (1 = masculin, 2 = féminin ; défaut 1).
-    pub gender: i64,
+    /// `[11]` — genre tel que stocké (1 = masculin, 2 = féminin) ; `None` si la variable manque.
+    pub gender: Option<i64>,
     /// `[15]` — identifiant de série (`None` si absent ou nul).
     pub series_id: Option<HashId>,
     /// `[16]` — identifiant d'équipe d'appartenance (`None` si absent ou nul).
@@ -103,11 +103,8 @@ pub fn parse_base_node(node: &Node<'_>) -> Option<CharaBase> {
         return None;
     }
 
-    // `[11]` gender : Int si présent, sinon défaut 1.
-    let gender = node
-        .var(11)
-        .filter(|v| v.ty == "Int")
-        .map_or(1, |v| v.as_i64());
+    // `[11]` gender : Int si présent, sinon `None` (aucun défaut inventé).
+    let gender = node.var(11).filter(|v| v.ty == "Int").map(|v| v.as_i64());
 
     Some(CharaBase {
         chara_id: v0.as_hash(),
@@ -143,7 +140,7 @@ pub fn find_by_chara_id(bases: &[CharaBase], chara_id: HashId) -> Option<&CharaB
 }
 
 /// Résout le **prénom** d'un personnage via les noms `chara_text` (issus de
-/// [`crate::chara_text::parse_all_nouns`]).
+/// [`crate::chara_text::parse_all_nouns`]) : forme 12 de `nameHash`, à défaut son nom complet.
 ///
 /// Port de la jointure `chara_base.nameHash → chara_text` (« name hash -> chara_text (first
 /// name) », `chara-base.ts`). `name_hash` = `[3]`. `None` si non résolu.
@@ -152,7 +149,8 @@ pub fn resolve_first_name<'a>(
     base: &CharaBase,
     nouns: &'a [crate::chara_text::ParsedNoun],
 ) -> Option<&'a str> {
-    crate::chara_text::find_name(nouns, base.name_hash)
+    crate::chara_text::find_name_form(nouns, base.name_hash, crate::chara_text::FORM_GIVEN)
+        .or_else(|| crate::chara_text::find_name(nouns, base.name_hash))
 }
 
 /// Résout le **nom de famille** d'un personnage via `chara_text` (`lastNameHash` = `[4]`).
@@ -177,15 +175,4 @@ pub fn resolve_description<'a>(
 ) -> Option<&'a str> {
     base.description_hash
         .and_then(|h| crate::chara_description::find_by_hash(descriptions, h))
-}
-
-/// Résout le **nom de série FR** d'un personnage : `series_id` (`[15]`) → `chara_series` → type →
-/// nom codé en dur (port de `buildSeriesMapping`). `None` si série absente ou type hors `1..=9`.
-#[must_use]
-pub fn resolve_series_name_fr(
-    base: &CharaBase,
-    series: &[crate::chara_series::CharaSeriesInfo],
-) -> Option<&'static str> {
-    let s = crate::chara_series::find_by_id(series, base.series_id?)?;
-    crate::chara_series::series_name_fr(s.series_type)
 }

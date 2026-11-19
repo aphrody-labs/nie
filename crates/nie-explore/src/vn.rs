@@ -263,7 +263,12 @@ pub fn identities_from_iecode(
             Some(CharacterIdentity {
                 code: character.internal_code,
                 name,
-                gender: if character.gender == 2 { "f" } else { "m" }.to_owned(),
+                gender: if character.gender == Some(2) {
+                    "f"
+                } else {
+                    "m"
+                }
+                .to_owned(),
             })
         })
         .collect()

@@ -3,12 +3,13 @@
 //!
 //! Vérité terrain = le vrai `common/text/fr/chara_text.cfg.bin` (VFS IEVR, T2B), via
 //! `cargo run -p nie-game --example extract_chara_text` : **20802** noms `NOUN_INFO`. Le hash
-//! d'Endou `0xE551FF12` (= `chara_base.nameHash` de `c01000010`) a **3 entrées** dans l'ordre
-//! `["Mark Evans", "Evans", "Mark"]` ; la sémantique **last-wins** de `buildNameMap` résout donc
-//! `nameHash → "Mark"` (prénom) et `lastNameHash 0xE5655F9E → "Evans"`.
+//! d'Endou `0xE551FF12` (= `chara_base.nameHash` de `c01000010`) a **3 entrées**, de formes 0
+//! (« Mark Evans »), 11 (« Evans ») et 12 (« Mark ») ; la clé est (hash, forme).
 
 use nie_data::cfgbin::Node;
-use nie_data::chara_text::{find_name, parse_all_nouns, parse_noun_node, parse_roma_node};
+use nie_data::chara_text::{
+    find_name, find_name_form, parse_all_nouns, parse_noun_node, parse_roma_node,
+};
 use nie_data::hash::HashId;
 use serde_json::{Value, json};
 
@@ -21,7 +22,12 @@ fn svar(v: &str) -> Value {
 
 /// Noeud `NOUN_INFO` : `[hash, 0, "", "", "", <strings…>]` (≥ 6 variables).
 fn noun(name: &str, hash: i64, strings: &[&str]) -> Value {
-    let mut vars = vec![ivar(hash), ivar(0), svar(""), svar(""), svar("")];
+    noun_form(name, hash, 0, strings)
+}
+
+/// Même noeud avec la forme (variable 1) explicite.
+fn noun_form(name: &str, hash: i64, form: i64, strings: &[&str]) -> Value {
+    let mut vars = vec![ivar(hash), ivar(form), svar(""), svar(""), svar("")];
     for s in strings {
         vars.push(svar(s));
     }
@@ -61,24 +67,35 @@ fn rejects_short_bad_type_and_empty() {
 }
 
 #[test]
-fn walk_last_wins_for_duplicate_hash() {
-    // Réplique exacte des 3 entrées réelles d'Endou (0xE551FF12) + le nom de famille (0xE5655F9E).
+fn walk_keys_entries_by_hash_and_form() {
+    // Réplique des 3 entrées réelles d'Endou (0xE551FF12, formes 0, 11, 12) + le nom de famille
+    // (0xE5655F9E, forme 0).
     let root = json!({
         "entries": [{
             "name": "NOUN_INFO_BEGIN_0",
             "variables": [ivar(4)], // compteur → écarté (BEGIN)
             "children": [
-                noun("NOUN_INFO_0", 0xE551_FF12, &["Mark Evans"]),
-                noun("NOUN_INFO_1", 0xE551_FF12, &["Evans"]),
-                noun("NOUN_INFO_2", 0xE551_FF12, &["Mark"]),
-                noun("NOUN_INFO_3", 0xE565_5F9E, &["Evans"]),
+                noun_form("NOUN_INFO_0", 0xE551_FF12, 0, &["Mark Evans"]),
+                noun_form("NOUN_INFO_1", 0xE551_FF12, 11, &["Evans"]),
+                noun_form("NOUN_INFO_2", 0xE551_FF12, 12, &["Mark"]),
+                noun_form("NOUN_INFO_3", 0xE565_5F9E, 0, &["Evans"]),
             ]
         }]
     });
     let nouns = parse_all_nouns(&root);
     assert_eq!(nouns.len(), 4, "4 NOUN_INFO (BEGIN exclu)");
-    // last-wins : la 3ᵉ entrée (« Mark ») gagne pour le hash dupliqué.
-    assert_eq!(find_name(&nouns, HashId(0xE551_FF12)), Some("Mark"));
+    assert_eq!(nouns[2].form, 12);
+    // Forme 0 par défaut : les formes 11 et 12 ne masquent pas le nom complet.
+    assert_eq!(find_name(&nouns, HashId(0xE551_FF12)), Some("Mark Evans"));
+    assert_eq!(
+        find_name_form(&nouns, HashId(0xE551_FF12), 11),
+        Some("Evans")
+    );
+    assert_eq!(
+        find_name_form(&nouns, HashId(0xE551_FF12), 12),
+        Some("Mark")
+    );
+    assert_eq!(find_name_form(&nouns, HashId(0xE551_FF12), 7), None);
     assert_eq!(find_name(&nouns, HashId(0xE565_5F9E)), Some("Evans"));
     assert_eq!(find_name(&nouns, HashId(0xDEAD_BEEF)), None);
 }

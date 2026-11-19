@@ -15,7 +15,7 @@
 //!
 //! ## `NOUN_INFO` (noms localisés)
 //!
-//! `[0]` = hashId (Int, **obligatoire**) ; `[1]` = inconnu ; les variables `String` à partir de
+//! `[0]` = hashId (Int, **obligatoire**) ; `[1]` = forme (0 nom complet, 11 famille, 12 prénom) ; les variables `String` à partir de
 //! l'index **2** donnent le nom : la **première** non vide (après `sanitize_text`) est le nom
 //! principal, les suivantes sont des formes alternatives. Rejet si moins de 6 variables, si
 //! `[0]`≠Int, ou si aucun nom non vide.
@@ -40,6 +40,9 @@ use crate::text::sanitize_text;
 pub struct ParsedNoun {
     /// `[0]` — hash de l'entrée (lie au `nameHash`/`lastNameHash` de `chara_base`).
     pub hash_id: HashId,
+    /// `[1]` — forme de l'entrée : 0 nom complet, 11 nom de famille, 12 prénom. Une même clé
+    /// (hash) porte plusieurs formes ; l'entrée est identifiée par (hash, forme).
+    pub form: i64,
     /// Nom principal (1ʳᵉ chaîne non vide ≥ index 2, nettoyée).
     pub name: String,
     /// Formes alternatives (chaînes non vides suivantes).
@@ -97,8 +100,13 @@ pub fn parse_noun_node(node: &Node<'_>) -> Option<ParsedNoun> {
     if name.is_empty() {
         return None;
     }
+    let form = node
+        .var(1)
+        .filter(|v| v.ty == "Int")
+        .map_or(0, |v| v.as_i64());
     Some(ParsedNoun {
         hash_id: hash_var.as_hash(),
+        form,
         name,
         alt_names,
     })
@@ -175,15 +183,31 @@ pub fn parse_all_roma(root: &Value) -> Vec<ParsedRomanizedName> {
     out
 }
 
-/// Recherche un nom par hash (port de `buildNameMap().get`).
-///
-/// `buildNameMap` insère dans l'ordre (`map.set`) ; en cas de **hash dupliqué**, la **dernière**
-/// entrée l'emporte. On reproduit donc cette sémantique « last-wins » (itération inverse).
+/// Forme d'une entrée `NOUN_INFO` : nom complet.
+pub const FORM_FULL: i64 = 0;
+/// Forme d'une entrée `NOUN_INFO` : nom de famille.
+pub const FORM_FAMILY: i64 = 11;
+/// Forme d'une entrée `NOUN_INFO` : prénom.
+pub const FORM_GIVEN: i64 = 12;
+
+/// Recherche le nom stocké pour la clé exacte (`hash_id`, `form`).
 #[must_use]
-pub fn find_name(nouns: &[ParsedNoun], hash_id: HashId) -> Option<&str> {
+pub fn find_name_form(nouns: &[ParsedNoun], hash_id: HashId, form: i64) -> Option<&str> {
     nouns
         .iter()
-        .rev()
-        .find(|n| n.hash_id == hash_id)
+        .find(|n| n.hash_id == hash_id && n.form == form)
         .map(|n| n.name.as_str())
+}
+
+/// Recherche le nom d'un hash : la forme 0 (nom complet) ; à défaut la première forme stockée
+/// pour ce hash. Une clé n'est plus résolue « dernière entrée gagnante » : les formes 11 et 12
+/// du même hash ne masquent pas la forme 0.
+#[must_use]
+pub fn find_name(nouns: &[ParsedNoun], hash_id: HashId) -> Option<&str> {
+    find_name_form(nouns, hash_id, FORM_FULL).or_else(|| {
+        nouns
+            .iter()
+            .find(|n| n.hash_id == hash_id)
+            .map(|n| n.name.as_str())
+    })
 }
