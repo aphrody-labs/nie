@@ -1,7 +1,25 @@
 # nie: agent contract
 
-nie is the self-hosted Inazuma Eleven engine and studio, and the home of all Rose Griffon Rust. It
-loads game data from the installation the user owns. See `README.md` for the layout.
+nie reads Inazuma Eleven: Victory Road through the two artifacts of the installation the user
+owns: the game binary `nie.exe` (reverse engineering: `nie index`, `rtti`, `disasm`, `mem`) and its
+data VFS (`data/cpk_list.cfg.bin`, 936 CPK, files under `data/common/*` and `data/dx11/*`). Every
+doc, typed table, CLI/MCP name and HTTP route derives from those two; `nie --help`, `nie vfs stats`
+and `nie vfs formats` are authoritative, never facts written beside them. Saves, launcher, mods and
+Steam are feature crates on top of that core. See `README.md` for the layout.
+
+## Commands
+
+```sh
+cargo test --locked -p nie-assets -p nie-formats --lib --tests    # CI test job
+cargo clippy --locked --workspace --all-targets -- -D warnings    # CI lint job
+cargo check --locked -p nie-bevy --features bevy --all-targets
+cargo shear                                                       # unused dependencies
+cargo run -p nie-shell -- contract > contract/nie-app.json        # regenerate the contract
+NIE_GAME_SOURCE=ssh://prd/srv/rosegriffon/game/ievr nie vfs ls data/common/menu
+nie serve      # HTTP on 8790, /health returns JSON with vfsReady
+```
+
+Built binaries on the build host: `/srv/xbuild/nie/target/release/{nie,nie-mcp,nie-model-serve}`.
 
 ## Rules
 
@@ -26,4 +44,14 @@ loads game data from the installation the user owns. See `README.md` for the lay
   `.claude/settings.json`.
 - nie is a standalone deployed service; consumers such as rosegriffon call it over HTTP and never
   embed its Rust.
+- Run `gitleaks detect` before every push.
 - English, no emoji.
+
+## Gotchas
+
+- iecode's .NET and C++ decoders fail on this build's encrypted `data/cpk_list.cfg.bin`; nie reads
+  it. Route iecode through nie's VFS instead of fixing the duplicate decoders.
+- Nine text languages ship (`de en es fr it ja pt zh_hans zh_hant`, all translated). The
+  `nie vfs cat` preview of a text file prints NOUN_INFO names in Japanese for most of them: compare
+  raw bytes or decode with `nie decode` before concluding a language is missing.
+- Licensing questions go to the Level-5 partner review: list them, change nothing.
