@@ -17,7 +17,7 @@ Five C ABIs exist today, and none of them is complete:
 | ABI | Location | Exports | Style |
 |---|---|---|---|
 | `nie_*` | `crates/nie-ffi/src/lib.rs` (3101 LOC, `[lib] name = "iecode"`, cdylib+rlib) | about 75 | Hand-written. Values returned by value or through `_out`. `NieBytes{ptr,len,cap}`. Thread-local `LAST_ERROR`. One `catch_unwind`, at line 661. |
-| `rg_*` | `crates/rg-ffi` (generated from `crates/rg-ffi-contract/contract.json`, `abi_version 1`) | 8 + `rg_ffi_abi_version` + `rg_string_free` | Contract-first. Emits a C header, a Rust extern layer, bun:ffi bindings and an OpenAPI document. Drift test in `crates/rg-ffi/tests/in_sync.rs`. |
+| `rg_*` | `crates/rg-ffi` (generated from `crates/rg-ffi-contract/contract.json`, `abi_version 1`) | 2 + `rg_ffi_abi_version` + `rg_string_free` | Contract-first. Emits a C header, a Rust extern layer, bun:ffi bindings and an OpenAPI document. Drift test in `crates/rg-ffi/tests/in_sync.rs`. |
 | `iecode_*` | `apps/iecode-dotnet/Ffi/Native/IecodeNative.cs` (NativeAOT, `NativeLib=Shared`) | 10 | `UnmanagedCallersOnly`. Returns an int status. Uses `NativeMemory`. A second bridge, `NodeApiBridge.cs` (node-api-dotnet JSExport). |
 | C++ | `tools/iecode-cpp` (`iecode_core STATIC`, `src/include/iecode/export.h`) | no C ABI, C++ API only | vcpkg feature `iecode-cpp` pulls bgfx, capstone, directxtex, openssl, cpp-httplib, tree-sitter, zstd, libwebp and others. |
 | wasm-bindgen | `crates/nie-wasm/src/lib.rs` | 108 `#[wasm_bindgen]` items | A separate surface over the same crates. |
@@ -54,7 +54,6 @@ Decision: the single library is the Rust crate `nie-ffi`, with library name `nie
 | Viola (dump, pack, merge, crypto) | `nie-viola/src/*` | `Core/Viola/*` | `viola/{dump,merge,pack}.cpp` | Rust | |
 | Ghidra index parsing (`nie.c`) | `nie-re`, `nie-index` | n/a | `decomp/src/nie_parser.cpp` | Rust | |
 | Modding (GameBanana, profiles, conflicts), `pg_push` | `nie-cli/src/mod_cmd.rs` | Gui/IevrManager | `modding/*.cpp`, `db/pg_push.cpp` | n/a | Out of the FFI. Modding stays an app concern. `pg_push` duplicates inagle's push and should be retired. |
-| Achillea ranking math (elo, bracket, clan) | `achillea-core` via `rg-ffi` | n/a | n/a | Rust | Moves into the unified contract as domain `rank`. |
 
 Not verified: byte-exact status of the Rust audio, USM, menu, Lua and DXBC modules. The capability matrix at a8ed41ad still lists them as "NON PORTE"; the current code has them, but no cross-implementation diff was found. Step M4 settles this.
 

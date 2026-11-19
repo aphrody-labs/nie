@@ -17,7 +17,7 @@ crates/
   nie-cli nie-model-serve nie-explore nie-launcher    command line, services and mod tooling
   nie-shell     app and launcher contract for the aphrody native GPUI shell
   nie-re rg-steam nie-re-core   reverse engineering and Steam libraries (from rosegriffon)
-  achillea-* azalee-app rg-ffi*   site, bot and FFI crates of the ecosystem
+  azalee-app rg-ffi*   site and FFI crates of the ecosystem
 tools/steam-index
 contract/       nie-app.json and aphrody-store.toml (generated), openapi.json
 design/         design tokens

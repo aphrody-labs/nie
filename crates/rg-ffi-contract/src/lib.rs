@@ -500,7 +500,7 @@ mod tests {
     #[test]
     fn contract_is_valid_and_complete() {
         let c = load();
-        assert!(c.functions.len() >= 8);
+        assert!(c.functions.len() >= 2);
         let h = emit_c_header(&c);
         for f in &c.functions {
             assert!(h.contains(&format!("{}(", f.name)), "{} in header", f.name);
@@ -510,7 +510,7 @@ mod tests {
 
     #[test]
     fn ts_names_are_camel_case() {
-        assert_eq!(camel("rg_elo_expected_score"), "eloExpectedScore");
+        assert_eq!(camel("rg_sitemap_encode_path"), "sitemapEncodePath");
         assert_eq!(camel("season_k"), "seasonK");
     }
 

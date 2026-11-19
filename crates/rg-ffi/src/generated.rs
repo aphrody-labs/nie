@@ -20,60 +20,6 @@ pub unsafe extern "C" fn rg_string_free(s: *mut c_char) {
     }
 }
 
-/// Probability (0..1) that the player beats the opponent.
-///
-/// # Safety
-/// Pointer arguments must be valid for the stated lengths (strings NUL-terminated).
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn rg_elo_expected_score(player: f64, opponent: f64) -> f64 {
-    catch_unwind(AssertUnwindSafe(|| crate::impls::rg_elo_expected_score(player, opponent))).unwrap_or(f64::NAN)
-}
-
-/// Progressive AP change by tier (actual: 1 win, 0.5 draw, 0 loss).
-///
-/// # Safety
-/// Pointer arguments must be valid for the stated lengths (strings NUL-terminated).
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn rg_elo_progressive_delta(player: f64, opponent: f64, actual: f64, tier: f64, season_k: f64) -> f64 {
-    catch_unwind(AssertUnwindSafe(|| crate::impls::rg_elo_progressive_delta(player, opponent, actual, tier, season_k))).unwrap_or(f64::NAN)
-}
-
-/// AP awarded for a final placement in a tournament of the given size (0 outside the top 4).
-///
-/// # Safety
-/// Pointer arguments must be valid for the stated lengths (strings NUL-terminated).
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn rg_tournament_placement_prize_ap(size: f64, rank: f64) -> u32 {
-    catch_unwind(AssertUnwindSafe(|| crate::impls::rg_tournament_placement_prize_ap(size, rank))).unwrap_or(0)
-}
-
-/// Rounds of a single elimination tree.
-///
-/// # Safety
-/// Pointer arguments must be valid for the stated lengths (strings NUL-terminated).
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn rg_bracket_single_elimination_rounds(participants: u64) -> u64 {
-    catch_unwind(AssertUnwindSafe(|| crate::impls::rg_bracket_single_elimination_rounds(participants))).unwrap_or(0)
-}
-
-/// First-round byes for the number of participants.
-///
-/// # Safety
-/// Pointer arguments must be valid for the stated lengths (strings NUL-terminated).
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn rg_bracket_bye_count(participants: u64) -> u64 {
-    catch_unwind(AssertUnwindSafe(|| crate::impls::rg_bracket_bye_count(participants))).unwrap_or(0)
-}
-
-/// A clan member acts only on a strictly lower role (0 trial, 1 member, 2 sub captain, 3 captain).
-///
-/// # Safety
-/// Pointer arguments must be valid for the stated lengths (strings NUL-terminated).
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn rg_clan_can_act_on_member(actor_role: i32, target_role: i32) -> bool {
-    catch_unwind(AssertUnwindSafe(|| crate::impls::rg_clan_can_act_on_member(actor_role, target_role))).unwrap_or(false)
-}
-
 /// Percent-encodes a VFS path segment by segment. Free the result with rg_string_free.
 ///
 /// # Safety

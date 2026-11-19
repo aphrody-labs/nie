@@ -19,24 +19,6 @@ uint32_t rg_ffi_abi_version(void);
 /* Frees a string returned by this library. NULL is accepted. */
 void rg_string_free(char *s);
 
-/* Probability (0..1) that the player beats the opponent. */
-double rg_elo_expected_score(double player, double opponent);
-
-/* Progressive AP change by tier (actual: 1 win, 0.5 draw, 0 loss). */
-double rg_elo_progressive_delta(double player, double opponent, double actual, double tier, double season_k);
-
-/* AP awarded for a final placement in a tournament of the given size (0 outside the top 4). */
-uint32_t rg_tournament_placement_prize_ap(double size, double rank);
-
-/* Rounds of a single elimination tree. */
-uint64_t rg_bracket_single_elimination_rounds(uint64_t participants);
-
-/* First-round byes for the number of participants. */
-uint64_t rg_bracket_bye_count(uint64_t participants);
-
-/* A clan member acts only on a strictly lower role (0 trial, 1 member, 2 sub captain, 3 captain). */
-bool rg_clan_can_act_on_member(int32_t actor_role, int32_t target_role);
-
 /* Percent-encodes a VFS path segment by segment. Free the result with rg_string_free. */
 char * rg_sitemap_encode_path(const char *path);
 

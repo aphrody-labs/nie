@@ -15,7 +15,6 @@ name = "rg_ffi"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-achillea-core = { path = "../achillea-core", version = "1.4.8" }
 nie-cfgsql = { path = "../nie-cfgsql", version = "1.4.8" }
 nie-sitemap = { path = "../nie-sitemap", version = "1.4.8" }
 

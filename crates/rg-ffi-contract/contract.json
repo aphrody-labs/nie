@@ -5,48 +5,6 @@
   "abi_version": 1,
   "functions": [
     {
-      "name": "rg_elo_expected_score",
-      "doc": "Probability (0..1) that the player beats the opponent.",
-      "args": [{ "name": "player", "type": "f64" }, { "name": "opponent", "type": "f64" }],
-      "returns": "f64"
-    },
-    {
-      "name": "rg_elo_progressive_delta",
-      "doc": "Progressive AP change by tier (actual: 1 win, 0.5 draw, 0 loss).",
-      "args": [
-        { "name": "player", "type": "f64" },
-        { "name": "opponent", "type": "f64" },
-        { "name": "actual", "type": "f64" },
-        { "name": "tier", "type": "f64" },
-        { "name": "season_k", "type": "f64" }
-      ],
-      "returns": "f64"
-    },
-    {
-      "name": "rg_tournament_placement_prize_ap",
-      "doc": "AP awarded for a final placement in a tournament of the given size (0 outside the top 4).",
-      "args": [{ "name": "size", "type": "f64" }, { "name": "rank", "type": "f64" }],
-      "returns": "u32"
-    },
-    {
-      "name": "rg_bracket_single_elimination_rounds",
-      "doc": "Rounds of a single elimination tree.",
-      "args": [{ "name": "participants", "type": "u64" }],
-      "returns": "u64"
-    },
-    {
-      "name": "rg_bracket_bye_count",
-      "doc": "First-round byes for the number of participants.",
-      "args": [{ "name": "participants", "type": "u64" }],
-      "returns": "u64"
-    },
-    {
-      "name": "rg_clan_can_act_on_member",
-      "doc": "A clan member acts only on a strictly lower role (0 trial, 1 member, 2 sub captain, 3 captain).",
-      "args": [{ "name": "actor_role", "type": "i32" }, { "name": "target_role", "type": "i32" }],
-      "returns": "bool"
-    },
-    {
       "name": "rg_sitemap_encode_path",
       "doc": "Percent-encodes a VFS path segment by segment. Free the result with rg_string_free.",
       "args": [{ "name": "path", "type": "str" }],
