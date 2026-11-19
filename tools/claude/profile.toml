@@ -7,14 +7,15 @@
 allow = [
   "nie",                 # .mcp.json: native nie MCP server, every `nie` CLI command
   "github",              # plugin github: issues, PRs, Actions, releases of aphrody-labs/nie, iecode-*, forks
-  "ai-os",               # plugin aphrody: fleet, orchestration, Context7 relay, second-model review
+  "ai-os",               # plugin aphrody: fleet, orchestration, second-model review
   "claude-bridge",       # plugin aphrody: cross-session sync
   "memory",              # plugin aphrody: durable memory search
-  "docker-docs",         # plugin aphrody: Dockerfile, ghcr images of nie and iecode
-  "cloudflare",          # user: R2 (`r2://` game sources), cdn.rosegriffon.fr DNS and cache
-  "claude.ai Figma",     # design/ tokens (rg-m3.json), studio and launcher UI
-  "claude.ai Google Drive", # `gdrive://` game sources, shared design and partner documents
-  "claude.ai Microsoft Learn", # iecode-dotnet: .NET, NativeAOT and MSVC docs, read live
+  "context7",            # plugin context7: live library docs (pingora, wgpu, russh, opendal, winfsp)
+  "hostinger",           # plugin aphrody: prd (srv2116886) VPS, firewall, snapshots
+  "ovh-vps",             # plugin aphrody: fr1 (vps-203bea89) VPS, disk upgrades
+  "cloudflare",          # user: aphrody.app zone, nie.aphrody.app origin, Origin CA, R2 `r2://` sources
+  "claude.ai Figma",     # the game UI exported from the VFS (docs/design-system.md)
+  "claude.ai Google Drive", # `gdrive://` game sources, partner documents
 ]
 
 [plugins]
@@ -37,18 +38,19 @@ on = [
   "aphrody:wgpu", "aphrody:webgpu", "aphrody:vulkan", "aphrody:directx",
   "aphrody:wasm-bindgen", "aphrody:webassembly",
   # Game formats and reverse engineering (nie-formats, nie-re, nie-pe, rg-steam)
-  "aphrody:ie-game-formats", "aphrody:reverse-engineer-anything", "aphrody:binary-triage",
-  "aphrody:decompile-cleaner", "aphrody:static-recompile", "aphrody:3ds-reverse",
-  "aphrody:ds-reverse", "aphrody:switch-reverse", "aphrody:ghidra-headless",
-  "aphrody:ghidra-mcp-live", "aphrody:ghidra-workflows", "aphrody:steam",
+  "aphrody:ie-game-formats", "aphrody:reverse-engineer-anything", "aphrody:binary-analysis",
+  "aphrody:static-recompile", "aphrody:3ds-reverse", "aphrody:ds-reverse",
+  "aphrody:switch-reverse", "aphrody:steam", "aphrody:emscripten",
   "aphrody:mod-package", "aphrody:gamebanana",
   # Host, fleet, forks, agents
   "aphrody:win32", "aphrody:microsoft", "aphrody:fleet", "aphrody:ai-os-orchestrator",
   "aphrody:gh-fork", "aphrody:github-workflow", "aphrody:claude-live-bridge",
-  "aphrody:context7-deep-research", "aphrody:chromium", "aphrody:material-3",
+  "aphrody:context7-deep-research", "aphrody:chromium", "aphrody:design",
+  "aphrody:hostinger", "aphrody:disks", "aphrody:linux-kernel", "aphrody:kernel-watch",
+  "cloudflare:cloudflare", "cloudflare:cf-cli",
   "aphrody:humanizer", "aphrody:bun-aphrody", "agent-ops",
   "claude-md-management:revise-claude-md", "claude-md-management:claude-md-improver",
   "example-skills:mcp-builder", "example-skills:webapp-testing",
 ]
 # Listed by name only (no description) to keep the listing short.
-name_only = ["aphrody:gpui", "aphrody:gpui-kit", "aphrody:intel", "aphrody:amd", "aphrody:nvidia"]
+name_only = ["aphrody:gpui", "aphrody:intel", "aphrody:amd", "aphrody:nvidia"]
