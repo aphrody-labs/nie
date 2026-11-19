@@ -5000,6 +5000,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "nie-wiki-vfs"
+version = "1.4.8"
+dependencies = [
+ "crc32fast",
+ "nie-data",
+ "nie-explore",
+ "nie-formats",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "nie-zukan"
 version = "1.4.8"
 dependencies = [

@@ -1,0 +1,23 @@
+[package]
+name = "nie-wiki-vfs"
+version = "1.4.8"
+edition = "2024"
+rust-version = "1.100"
+license = "MIT OR Apache-2.0"
+publish = false
+description = "Inazuma Eleven: Victory Road wiki pages computed from the game's VFS only"
+
+[lints]
+workspace = true
+
+[dependencies]
+crc32fast = { workspace = true, features = ["std"] }
+nie-data = { workspace = true, features = ["serde", "std"] }
+nie-explore = { workspace = true, features = ["host"] }
+nie-formats = { workspace = true, features = ["std", "remote-vfs"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true, features = ["std"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }
