@@ -1,6 +1,6 @@
 [package]
 name = "nie-explore"
-version = "1.4.8"
+version = "2.0.0"
 edition = "2024"
 rust-version = "1.100"
 license-file = "LICENSE"
@@ -23,9 +23,9 @@ host = [
 ]
 
 [dependencies]
-nie-formats = { path = "../nie-formats", version = "1.4.8", default-features = false, features = ["std", "serde", "lua", "textures", "images", "audio-decode"] }
-nie-lua = { path = "../nie-lua", version = "1.4.8" }
-nie-data = { path = "../nie-data", version = "1.4.8", features = ["serde", "std"] }
+nie-formats = { path = "../nie-formats", version = "2.0.0", default-features = false, features = ["std", "serde", "lua", "textures", "images", "audio-decode"] }
+nie-lua = { path = "../nie-lua", version = "2.0.0" }
+nie-data = { path = "../nie-data", version = "2.0.0", features = ["serde", "std"] }
 serde = { version = "1.0.229", features = ["std", "derive"] }
 serde_json = { version = "1.0.154", features = ["std"] }
 anyhow = { version = "1.0.104", optional = true }

@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/*", "plugins/*/*", "tools/steam-index"]
 
 [workspace.package]
-version = "1.4.8"
+version = "2.0.0"
 edition = "2024"
 rust-version = "1.100"
 license = "MIT OR Apache-2.0"
@@ -58,8 +58,8 @@ bevy_math = { version = "0.20.1", default-features = false }
 bevy_mesh = { version = "0.20.1", default-features = false }
 bevy_reflect = { version = "0.20.1", default-features = false }
 bevy-wgpu-types = { package = "wgpu-types", version = "30.0.2", default-features = false }
-nie-steam = { path = "plugins/steam/nie-steam", version = "1.4.8", default-features = false }
-nie-gpu = { path = "crates/nie-gpu", version = "1.4.8" }
+nie-steam = { path = "plugins/steam/nie-steam", version = "2.0.0", default-features = false }
+nie-gpu = { path = "crates/nie-gpu", version = "2.0.0" }
 clap = { version = "4", features = ["derive", "env"] }
 console_error_panic_hook = "0.1.7"
 futures-lite = "2"
@@ -68,14 +68,14 @@ wasm-bindgen = { version = "0.2.130", default-features = false }
 crc32fast = { version = "1.5", default-features = false }
 image_dds = { version = "0.7", default-features = false }
 memmap2 = { version = "0.9" }
-nie-data = { path = "crates/nie-data", version = "1.4.8" }
-nie-explore = { default-features = false, path = "crates/nie-explore", version = "1.4.8" }
-nie-formats = { default-features = false, path = "crates/nie-formats", version = "1.4.8" }
-nie-index = { default-features = false, path = "plugins/exe/nie-index", version = "1.4.8" }
-nie-lua = { default-features = false, path = "crates/nie-lua", version = "1.4.8" }
-nie-plugin = { path = "crates/nie-plugin", version = "1.4.8" }
-nie-pe = { default-features = false, path = "plugins/exe/nie-pe", version = "1.4.8" }
-nie-save = { default-features = false, path = "plugins/save/nie-save", version = "1.4.8" }
+nie-data = { path = "crates/nie-data", version = "2.0.0" }
+nie-explore = { default-features = false, path = "crates/nie-explore", version = "2.0.0" }
+nie-formats = { default-features = false, path = "crates/nie-formats", version = "2.0.0" }
+nie-index = { default-features = false, path = "plugins/exe/nie-index", version = "2.0.0" }
+nie-lua = { default-features = false, path = "crates/nie-lua", version = "2.0.0" }
+nie-plugin = { path = "crates/nie-plugin", version = "2.0.0" }
+nie-pe = { default-features = false, path = "plugins/exe/nie-pe", version = "2.0.0" }
+nie-save = { default-features = false, path = "plugins/save/nie-save", version = "2.0.0" }
 winnow = { version = "1.0.5", default-features = false, features = [
   "alloc",
   "parser",

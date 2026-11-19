@@ -1,6 +1,6 @@
 [package]
 name = "nie-cli"
-version = "1.4.8"
+version = "2.0.0"
 edition = "2024"
 rust-version = "1.100"
 license-file = "LICENSE"
@@ -87,15 +87,15 @@ host = [
 textures-encode = ["host", "nie-formats/textures-encode"]
 
 [dependencies]
-nie-data = { path = "../nie-data", version = "1.4.8", features = ["serde", "std"], optional = true }
+nie-data = { path = "../nie-data", version = "2.0.0", features = ["serde", "std"], optional = true }
 aho-corasick = { workspace = true }
-nie-formats = { path = "../nie-formats", version = "1.4.8", default-features = false, features = ["std", "serde", "textures", "audio-decode", "images", "remote-vfs"], optional = true }
-nie-explore = { path = "../nie-explore", version = "1.4.8", features = ["host"], optional = true }
-nie-wiki-vfs = { path = "../nie-wiki-vfs", version = "1.4.8", optional = true }
+nie-formats = { path = "../nie-formats", version = "2.0.0", default-features = false, features = ["std", "serde", "textures", "audio-decode", "images", "remote-vfs"], optional = true }
+nie-explore = { path = "../nie-explore", version = "2.0.0", features = ["host"], optional = true }
+nie-wiki-vfs = { path = "../nie-wiki-vfs", version = "2.0.0", optional = true }
 futures-util = { version = "0.3", optional = true }
-nie-save = { path = "../../plugins/save/nie-save", version = "1.4.8", optional = true }
+nie-save = { path = "../../plugins/save/nie-save", version = "2.0.0", optional = true }
 nie-plugin = { workspace = true }
-nie-render3d = { path = "../nie-render3d", version = "1.4.8", default-features = false, optional = true }
+nie-render3d = { path = "../nie-render3d", version = "2.0.0", default-features = false, optional = true }
 clap = { workspace = true, features = ["color"], optional = true }
 anyhow = { workspace = true, features = ["std"], optional = true }
 tracing = { workspace = true, optional = true }
@@ -121,16 +121,16 @@ tokio = { workspace = true, features = ["rt", "rt-multi-thread", "sync", "macros
 tokio-tungstenite = { version = "0.30", optional = true }
 reqwest = { workspace = true, features = ["http2", "rustls", "stream"], optional = true }
 steamroom = { workspace = true, optional = true }
-nie-index = { path = "../../plugins/exe/nie-index", version = "1.4.8", features = ["host"], optional = true }
-nie-seed = { path = "../../plugins/exe/nie-seed", version = "1.4.8", features = ["host"], optional = true }
-nie-queue = { path = "../../plugins/exe/nie-queue", version = "1.4.8", features = ["host"], optional = true }
-nie-re-core = { path = "../../plugins/exe/nie-re-core", version = "1.4.8", default-features = false, features = ["nie"], optional = true }
-nie-trace = { path = "../../plugins/exe/nie-trace", version = "1.4.8", features = ["host"], optional = true }
-nie-computer-use = { path = "../../plugins/exe/nie-computer-use", version = "1.4.8", features = ["host"], optional = true }
-nie-viola = { path = "../../plugins/launcher/nie-viola", version = "1.4.8", optional = true }
-nie-launcher = { path = "../../plugins/launcher/nie-launcher", version = "1.4.8", optional = true }
-nie-lua = { path = "../nie-lua", version = "1.4.8", features = ["host"], optional = true }
-nie-ocgen = { path = "../nie-ocgen", version = "1.4.8", features = ["cli"], optional = true }
+nie-index = { path = "../../plugins/exe/nie-index", version = "2.0.0", features = ["host"], optional = true }
+nie-seed = { path = "../../plugins/exe/nie-seed", version = "2.0.0", features = ["host"], optional = true }
+nie-queue = { path = "../../plugins/exe/nie-queue", version = "2.0.0", features = ["host"], optional = true }
+nie-re-core = { path = "../../plugins/exe/nie-re-core", version = "2.0.0", default-features = false, features = ["nie"], optional = true }
+nie-trace = { path = "../../plugins/exe/nie-trace", version = "2.0.0", features = ["host"], optional = true }
+nie-computer-use = { path = "../../plugins/exe/nie-computer-use", version = "2.0.0", features = ["host"], optional = true }
+nie-viola = { path = "../../plugins/launcher/nie-viola", version = "2.0.0", optional = true }
+nie-launcher = { path = "../../plugins/launcher/nie-launcher", version = "2.0.0", optional = true }
+nie-lua = { path = "../nie-lua", version = "2.0.0", features = ["host"], optional = true }
+nie-ocgen = { path = "../nie-ocgen", version = "2.0.0", features = ["cli"], optional = true }
 redis = { workspace = true, features = ["r2d2"], optional = true }
 rmcp = { version = "3.10.0", features = ["server", "transport-io", "macros", "schemars"], optional = true }
 ignore = { version = "0.4", optional = true }

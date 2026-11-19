@@ -1,6 +1,6 @@
 [package]
 name = "nie-ffi"
-version = "1.4.8"
+version = "2.0.0"
 edition = "2024"
 rust-version = "1.100"
 license = "Apache-2.0"
@@ -20,7 +20,7 @@ formats = []
 textures = ["formats", "nie-formats/textures"]
 
 [dependencies]
-nie-cfgsql = { path = "../nie-cfgsql", version = "1.4.8" }
+nie-cfgsql = { path = "../nie-cfgsql", version = "2.0.0" }
 nie-explore = { workspace = true, features = ["host"] }
 nie-data = { workspace = true, features = ["serde", "std"] }
 nie-formats = { workspace = true, features = ["serde"] }
@@ -29,4 +29,4 @@ serde_json = { workspace = true }
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 
 [dev-dependencies]
-nie-abi = { path = "../nie-abi", version = "1.4.8" }
+nie-abi = { path = "../nie-abi", version = "2.0.0" }

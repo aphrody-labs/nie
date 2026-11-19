@@ -1,6 +1,6 @@
 [package]
 name = "nie-pe"
-version = "1.4.8"
+version = "2.0.0"
 edition = "2024"
 rust-version = "1.100"
 license = "Apache-2.0"
@@ -17,4 +17,4 @@ default = ["serde"]
 serde = []
 
 [dependencies]
-nie-re = { path = "../nie-re", version = "1.4.8", default-features = false }
+nie-re = { path = "../nie-re", version = "2.0.0", default-features = false }

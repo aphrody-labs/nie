@@ -1,6 +1,6 @@
 [package]
 name = "nie-render3d"
-version = "1.4.8"
+version = "2.0.0"
 edition = "2024"
 rust-version = "1.100"
 license-file = "LICENSE"
@@ -55,7 +55,7 @@ web-sys = { version = "0.3.107", default-features = false, optional = true, feat
 
 [dev-dependencies]
 bcdec_rs = "0.2.1"
-nie-formats = { path = "../nie-formats", version = "1.4.8" }
+nie-formats = { path = "../nie-formats", version = "2.0.0" }
 
 [[bin]]
 name = "nie-render3d"

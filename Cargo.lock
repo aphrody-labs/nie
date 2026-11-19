@@ -3936,7 +3936,7 @@ dependencies = [
 
 [[package]]
 name = "nie-abi"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -3944,7 +3944,7 @@ dependencies = [
 
 [[package]]
 name = "nie-assets"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -3963,7 +3963,7 @@ dependencies = [
 
 [[package]]
 name = "nie-bevy"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -3978,7 +3978,7 @@ dependencies = [
 
 [[package]]
 name = "nie-camera"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "bevy_ecs",
@@ -3993,7 +3993,7 @@ dependencies = [
 
 [[package]]
 name = "nie-cfgsql"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "nie-formats",
  "rusqlite",
@@ -4002,7 +4002,7 @@ dependencies = [
 
 [[package]]
 name = "nie-cli"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "aho-corasick",
  "anyhow",
@@ -4059,7 +4059,7 @@ dependencies = [
 
 [[package]]
 name = "nie-computer-use"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "hex",
@@ -4075,7 +4075,7 @@ dependencies = [
 
 [[package]]
 name = "nie-data"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4085,7 +4085,7 @@ dependencies = [
 
 [[package]]
 name = "nie-explore"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -4103,7 +4103,7 @@ dependencies = [
 
 [[package]]
 name = "nie-ffi"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "image",
  "nie-abi",
@@ -4117,7 +4117,7 @@ dependencies = [
 
 [[package]]
 name = "nie-forge"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -4131,7 +4131,7 @@ dependencies = [
 
 [[package]]
 name = "nie-formats"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "aes 0.9.4",
  "base64 0.23.1",
@@ -4150,14 +4150,14 @@ dependencies = [
 
 [[package]]
 name = "nie-gpu"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "wgpu",
 ]
 
 [[package]]
 name = "nie-index"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "ignore",
@@ -4174,7 +4174,7 @@ dependencies = [
 
 [[package]]
 name = "nie-launcher"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -4196,7 +4196,7 @@ dependencies = [
 
 [[package]]
 name = "nie-lua"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "mlua",
  "nie-data",
@@ -4209,7 +4209,7 @@ dependencies = [
 
 [[package]]
 name = "nie-model-serve"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -4228,7 +4228,7 @@ dependencies = [
 
 [[package]]
 name = "nie-ocgen"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "clap",
  "image",
@@ -4241,18 +4241,18 @@ dependencies = [
 
 [[package]]
 name = "nie-pe"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "nie-re",
 ]
 
 [[package]]
 name = "nie-plugin"
-version = "1.4.8"
+version = "2.0.0"
 
 [[package]]
 name = "nie-queue"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "redis",
  "thiserror 2.0.21",
@@ -4260,7 +4260,7 @@ dependencies = [
 
 [[package]]
 name = "nie-re"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "aes 0.9.4",
  "anyhow",
@@ -4295,7 +4295,7 @@ dependencies = [
 
 [[package]]
 name = "nie-re-core"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "criterion",
@@ -4313,7 +4313,7 @@ dependencies = [
 
 [[package]]
 name = "nie-render3d"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "bcdec_rs",
@@ -4337,7 +4337,7 @@ dependencies = [
 
 [[package]]
 name = "nie-save"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "nie-formats",
  "nie-plugin",
@@ -4348,7 +4348,7 @@ dependencies = [
 
 [[package]]
 name = "nie-seed"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "nie-formats",
@@ -4363,7 +4363,7 @@ dependencies = [
 
 [[package]]
 name = "nie-shell"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4372,7 +4372,7 @@ dependencies = [
 
 [[package]]
 name = "nie-sql"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "bytes",
  "rusqlite",
@@ -4389,7 +4389,7 @@ dependencies = [
 
 [[package]]
 name = "nie-steam"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "bytes",
@@ -4412,7 +4412,7 @@ dependencies = [
 
 [[package]]
 name = "nie-trace"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "libc",
  "nie-steam",
@@ -4422,7 +4422,7 @@ dependencies = [
 
 [[package]]
 name = "nie-viola"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "memmap2",
  "nie-formats",
@@ -4433,7 +4433,7 @@ dependencies = [
 
 [[package]]
 name = "nie-wasm"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "console_error_panic_hook",
  "getrandom 0.2.17",
@@ -4449,7 +4449,7 @@ dependencies = [
 
 [[package]]
 name = "nie-wiki-vfs"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "crc32fast",
  "nie-data",
@@ -6533,7 +6533,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "steam-index"
-version = "1.4.8"
+version = "2.0.0"
 dependencies = [
  "blake3",
  "nie-steam",

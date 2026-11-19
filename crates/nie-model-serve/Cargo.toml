@@ -1,6 +1,6 @@
 [package]
 name = "nie-model-serve"
-version = "1.4.8"
+version = "2.0.0"
 edition = "2024"
 rust-version = "1.100"
 license-file = "LICENSE.upstream"
@@ -29,10 +29,10 @@ host = [
 real-audio = ["host"]
 
 [dependencies]
-nie-formats = { path = "../nie-formats", version = "1.4.8", default-features = false, features = ["std", "serde", "textures", "remote-vfs"] }
-nie-data = { path = "../nie-data", version = "1.4.8", default-features = false, optional = true, features = ["serde", "std"] }
-nie-explore = { path = "../nie-explore", version = "1.4.8", optional = true }
-nie-sql = { path = "../nie-sql", version = "1.4.8", optional = true }
+nie-formats = { path = "../nie-formats", version = "2.0.0", default-features = false, features = ["std", "serde", "textures", "remote-vfs"] }
+nie-data = { path = "../nie-data", version = "2.0.0", default-features = false, optional = true, features = ["serde", "std"] }
+nie-explore = { path = "../nie-explore", version = "2.0.0", optional = true }
+nie-sql = { path = "../nie-sql", version = "2.0.0", optional = true }
 anyhow = { workspace = true, features = ["std"], optional = true }
 clap = { version = "4.6", default-features = false, features = ["derive", "color", "env", "std"], optional = true }
 serde_json = { workspace = true, features = ["std"], optional = true }

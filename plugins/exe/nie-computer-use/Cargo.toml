@@ -1,6 +1,6 @@
 [package]
 name = "nie-computer-use"
-version = "1.4.8"
+version = "2.0.0"
 edition = "2024"
 rust-version = "1.100"
 license-file = "LICENSE"
@@ -29,8 +29,8 @@ rusqlite = { workspace = true, optional = true }
 sha2 = { workspace = true }
 serde = { workspace = true, features = ["std", "derive"] }
 serde_json = { workspace = true }
-nie-re-core = { path = "../nie-re-core", version = "1.4.8", optional = true, default-features = false }
-nie-trace = { path = "../nie-trace", version = "1.4.8", optional = true, default-features = false }
+nie-re-core = { path = "../nie-re-core", version = "2.0.0", optional = true, default-features = false }
+nie-trace = { path = "../nie-trace", version = "2.0.0", optional = true, default-features = false }
 
 [dev-dependencies]
 nie-index = { workspace = true, features = ["host"] }

@@ -1,6 +1,6 @@
 [package]
 name = "nie-camera"
-version = "1.4.8"
+version = "2.0.0"
 edition = "2024"
 rust-version = "1.100"
 license-file = "LICENSE"
@@ -28,9 +28,9 @@ host = [
 ]
 
 [dependencies]
-nie-formats = { path = "../../../crates/nie-formats", version = "1.4.8", default-features = true }
-nie-trace = { path = "../nie-trace", version = "1.4.8", optional = true, default-features = true }
-nie-index = { path = "../nie-index", version = "1.4.8", optional = true, default-features = true }
+nie-formats = { path = "../../../crates/nie-formats", version = "2.0.0", default-features = true }
+nie-trace = { path = "../nie-trace", version = "2.0.0", optional = true, default-features = true }
+nie-index = { path = "../nie-index", version = "2.0.0", optional = true, default-features = true }
 sha2 = { workspace = true, optional = true }
 thiserror = { version = "2.0.21" }
 anyhow = { version = "1.0", optional = true }

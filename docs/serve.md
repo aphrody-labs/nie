@@ -54,7 +54,7 @@ NIE_TAG=dev NIE_GAME_DIR=/path/to/game NIE_CACHE_ROOT=./var docker compose up --
 
 ### Production host
 
-`NIE_TAG=v1.4.8 deploy/install.sh` (root on prd) installs compose project `nie` under
+`NIE_TAG=v2.0.0 deploy/install.sh` (root on prd) installs compose project `nie` under
 `/srv/nie/deploy` with `nie-stack.service`, `nie-xvfb.service` and, once
 `/etc/nie/cloudflared.token` exists, `nie-cloudflared.service` for `nie.aphrody.app`. `nie serve`
 listens on `127.0.0.1:8796`, `nie-model-serve` on `127.0.0.1:8797`. `/srv/nie/steam` is the Steam
