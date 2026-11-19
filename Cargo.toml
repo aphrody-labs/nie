@@ -25,7 +25,6 @@ perf = { level = "warn", priority = -1 }
 [workspace.dependencies]
 anyhow = { version = "1.0.104", default-features = false }
 base64 = { version = "0.23.1", default-features = false, features = ["alloc"] }
-libc = { version = "0.2.191", default-features = false }
 png = { version = "0.18.1", default-features = false }
 rayon = { version = "1.12.0", default-features = false }
 redis = { version = "1.8.2", default-features = false }
@@ -49,7 +48,6 @@ tokio = { version = "1.54.1", default-features = false }
 tracing = { version = "0.1.44", default-features = false }
 tracing-subscriber = { version = "0.3.23", default-features = false }
 
-bevy = { version = "0.20.1", default-features = false, features = ["std"] }
 bevy_app = { version = "0.20.1", default-features = false, features = ["std"] }
 bevy_asset = { version = "0.20.1", default-features = false }
 bevy_ecs = { version = "0.20.1", default-features = false, features = ["std"] }
@@ -65,15 +63,9 @@ bevy_reflect = { version = "0.20.1", default-features = false }
 bevy-wgpu-types = { package = "wgpu-types", version = "30.0.2", default-features = false }
 rg-steam = { path = "crates/rg-steam", version = "1.4.8", default-features = false }
 nie-gpu = { path = "crates/nie-gpu", version = "1.4.8" }
-bytemuck = { version = "1.25", features = [
-  "derive",
-  "extern_crate_alloc",
-  "min_const_generics",
-] }
 clap = { version = "4", features = ["derive", "env"] }
 console_error_panic_hook = "0.1.7"
 futures-lite = "2"
-pollster = "1.0"
 rusqlite = { version = "0.43" }
 wasm-bindgen = { version = "0.2.130", default-features = false }
 wasm-bindgen-futures = "0.4"
@@ -82,10 +74,8 @@ crc32fast = { version = "1.5", default-features = false }
 nie-re-core = { path = "crates/nie-re-core", version = "1.4.8" }
 image_dds = { version = "0.7", default-features = false }
 memmap2 = { version = "0.9" }
-nie-app = { default-features = false, path = "crates/nie-app", version = "1.4.8" }
 nie-camera = { default-features = false, path = "crates/nie-camera", version = "1.4.8" }
 nie-computer-use = { default-features = false, path = "crates/nie-computer-use", version = "1.4.8" }
-nie-core = { default-features = false, path = "crates/nie-core", version = "1.4.8" }
 nie-data = { path = "crates/nie-data", version = "1.4.8" }
 nie-explore = { default-features = false, path = "crates/nie-explore", version = "1.4.8" }
 nie-forge = { default-features = false, path = "crates/nie-forge", version = "1.4.8" }
@@ -95,13 +85,11 @@ nie-lua = { default-features = false, path = "crates/nie-lua", version = "1.4.8"
 nie-model-serve = { default-features = false, path = "crates/nie-model-serve", version = "1.4.8" }
 nie-pe = { default-features = false, path = "crates/nie-pe", version = "1.4.8" }
 nie-render3d = { default-features = false, path = "crates/nie-render3d", version = "1.4.8" }
-nie-runtime = { default-features = false, path = "crates/nie-runtime", version = "1.4.8" }
 nie-save = { default-features = false, path = "crates/nie-save", version = "1.4.8" }
 nie-seed = { default-features = false, path = "crates/nie-seed", version = "1.4.8" }
 nie-trace = { default-features = false, path = "crates/nie-trace", version = "1.4.8" }
 nie-wiki = { path = "crates/nie-wiki", version = "1.4.8" }
 nie-zukan = { default-features = false, path = "crates/nie-zukan", version = "1.4.8" }
-nie-ui = { path = "crates/nie-ui", version = "1.4.8" }
 # Same feature set as bevy_ui: taffy's default `float_layout`/`table` features add `Style` fields that bevy_ui
 # does not initialise, and Cargo unifies features across the workspace.
 taffy = { version = "0.15.1", default-features = false, features = ["std", "taffy_tree", "block_layout", "flexbox", "grid", "content_size"] }

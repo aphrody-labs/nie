@@ -10,10 +10,10 @@ and the other containers of the game) and never ships, copies or commits a game 
 
 ```
 crates/
-  nie-formats nie-data nie-core nie-index nie-lua ...   game formats, data, VFS and CPK readers
+  nie-formats nie-data nie-explore nie-index nie-lua ...   game formats, data, VFS and CPK readers
   nie-assets    Bevy asset source `game://` over the VFS: local path, SSH, rclone (R2, Google Drive)
   nie-bevy      G4TX and G4MD/G4MG as Bevy assets
-  nie-render3d nie-gpu nie-runtime nie-game nie-ui*   renderers and the wgpu host
+  nie-render3d nie-gpu nie-camera nie-ui*   renderers and the wgpu host
   nie-cli nie-model-serve nie-explore nie-launcher    command line, services and mod tooling
   nie-shell     app and launcher contract for the aphrody native GPUI shell
   nie-re rg-steam nie-re-core   reverse engineering and Steam libraries (from rosegriffon)
@@ -61,7 +61,7 @@ lists and reads a CPK of the real installation over SSH.
 - Native: Windows, Linux and macOS (CI matrix).
 - Web: `wasm32-unknown-unknown` with WebGPU (`bevy/webgpu`).
 - aphrody shell: `cargo run -p nie-shell -- contract` prints `contract/nie-app.json` (commands,
-  game source settings, Bevy Remote port); `-- store` prints the catalog entry the shell merges
+  game source settings, build targets); `-- store` prints the catalog entry the shell merges
   from `$XDG_CONFIG_HOME/aphrody/awesome_gpui_store.toml`.
 
 ## Versions

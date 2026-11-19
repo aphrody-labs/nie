@@ -185,12 +185,6 @@ define_cli_tools!(
         "Audit the game Lua corpus against the bounded native runtime."
     ),
     (
-        CliNet,
-        "cli_net",
-        "net",
-        "Drive the online suite: WebSocket server, rooms, deterministic match simulation, ladder and ELO."
-    ),
-    (
         CliSeed,
         "cli_seed",
         "seed",
@@ -225,12 +219,6 @@ define_cli_tools!(
         "cli_img",
         "img",
         "Run native image inspection, resize, crop, conversion, composition, contact-sheet, or diff operations."
-    ),
-    (
-        CliPlay,
-        "cli_play",
-        "play",
-        "Run the headless game engine: simulate or render a screen, menu, or match for a bounded number of frames."
     ),
     (
         CliMode,
@@ -1135,7 +1123,7 @@ mod tests {
         use clap::CommandFactory as _;
 
         let tools = NieMcpServer::all_tools().list_all();
-        assert_eq!(tools.len(), 67);
+        assert_eq!(tools.len(), 65);
         let commands = crate::Cli::command()
             .get_subcommands()
             .map(clap::Command::get_name)
@@ -1143,7 +1131,7 @@ mod tests {
             .filter(|name| !matches!(*name, "mcp" | "serve"))
             .map(str::to_owned)
             .collect::<Vec<_>>();
-        assert_eq!(commands.len(), 47);
+        assert_eq!(commands.len(), 45);
         for command in commands {
             let tool_name = format!("cli_{}", command.replace('-', "_"));
             assert!(

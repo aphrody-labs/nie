@@ -2182,7 +2182,7 @@ mod tests {
     /// premier personnage de la liste à Lv50/rang N — vérifie juste que le calcul ABOUTIT à des
     /// valeurs plausibles (pas un golden byte-exact : ça dépend du perso pris en tête de liste,
     /// non déterministe entre versions du jeu — `calculate_stats` lui-même EST déjà golden-testé
-    /// dans `nie-core`).
+    /// dans `nie-data`).
     #[test]
     fn chara_picker_et_calcul_stats_sur_le_vrai_jeu() {
         let Some(vfs) = real_vfs_or_skip("chara_picker_et_calcul_stats_sur_le_vrai_jeu") else {

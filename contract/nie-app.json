@@ -1,23 +1,10 @@
 {
-  "schema": 1,
+  "schema": 2,
   "id": "nie",
   "name": "nie",
   "version": "1.4.8",
   "repository": "https://github.com/aphrody-labs/nie",
   "commands": [
-    {
-      "id": "game",
-      "package": "nie-game",
-      "binary": "nie-game",
-      "args": [],
-      "mode": "window",
-      "headless": false,
-      "platforms": [
-        "windows",
-        "linux",
-        "macos"
-      ]
-    },
     {
       "id": "serve",
       "package": "nie-cli",
@@ -87,6 +74,5 @@
       "kind": "web",
       "graphics": "WebGPU"
     }
-  ],
-  "remote_port": 15702
+  ]
 }

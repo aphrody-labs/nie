@@ -12,10 +12,8 @@
 //!
 //! `docs/STACK.md` écarte les ECS pour le **cœur** du jeu : la reconstruction byte-exact exige
 //! des structs 1:1 avec le layout C++, qu'un ECS éclaterait. Bevy est donc la **coquille** —
-//! assets, fenêtre, entrées, rendu, plateformes — et jamais la simulation. Le cœur
-//! (`nie-runtime`, `nie-core`, `nie-net`) ne dépend d'aucun crate `bevy_*`, et la seule chose
-//! qui traverse la frontière est un instantané que le rendu lit. Cette crate est du bon côté de
-//! cette ligne : elle transforme des octets en assets, elle ne décide de rien.
+//! assets, fenêtre, entrées, rendu, plateformes — et jamais la simulation. Cette crate est du
+//! bon côté de cette ligne : elle transforme des octets en assets, elle ne décide de rien.
 //!
 //! # Pourquoi les sous-crates et pas `bevy`
 //!

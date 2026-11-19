@@ -81,7 +81,7 @@ fn initialize_list_and_call_stay_on_clean_stdio() {
         .filter(|tool| tool["name"].as_str().is_some_and(|n| n.starts_with("cli_")))
         .count();
     assert_eq!(
-        generes, 48,
+        generes, 46,
         "bindings generated from the public CLI commands"
     );
     assert_eq!(
@@ -90,7 +90,7 @@ fn initialize_list_and_call_stay_on_clean_stdio() {
         "explicit tools from `compatibility_router`"
     );
     assert!(tools.iter().any(|tool| tool["name"] == "cli_info"));
-    assert!(tools.iter().any(|tool| tool["name"] == "cli_play"));
+    assert!(tools.iter().any(|tool| tool["name"] == "cli_vfs"));
     for compatibility_name in [
         "rg_api_health",
         "vfs_list",

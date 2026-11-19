@@ -80,7 +80,7 @@ All responses carry `Access-Control-Allow-Origin: *` and `X-Content-Type-Options
 | `GET /v1/vfs/find?q=&ext=&limit=` | 200 `{count, items:[{path, size, cpk}]}`, `limit` 1 to 500 (default 50) |
 | `GET /v1/vfs/stat?path=` | 200 `{path, size, cpk}`; 400 invalid path, 404 unknown |
 | `GET /v1/vfs/read?path=&decode=` | `decode=json`: decoded structure (`application/json`, `max-age=300`); `decode=png`: texture as `image/png`; otherwise the raw bytes as `application/octet-stream`, which needs `Authorization: Bearer <NIE_RAW_VFS_TOKEN>` and is a 404 for everyone while no token is configured; 422 when not decodable |
-| `GET /v1/game/query?domain=&q=&limit=` | 200 game-data rows of `nie_app::game_data::query_vfs` (default domain `characters`), 400 on an unknown domain |
+| `GET /v1/game/query?domain=&q=&limit=` | 200 game-data rows of `nie_explore::domain_data::query_vfs` (default domain `characters`), 400 on an unknown domain |
 
 VFS paths are relative, `/`-separated, without `..`, empty segments, backslashes or a leading `/`
 (for example `data/common/text/fr.cfg.bin`).

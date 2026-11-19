@@ -4,7 +4,7 @@
 //! a binary name, platforms and targets) and launches them as processes. nie describes itself in
 //! two documents generated from the types below, so the checked-in files cannot drift:
 //!
-//! - `contract/nie-app.json`: commands, the game source configuration, the inspection endpoint.
+//! - `contract/nie-app.json`: commands, the game source configuration and build targets.
 //! - `contract/aphrody-store.toml`: an `awesome_gpui_store.toml` override the shell merges into its
 //!   catalog (`$XDG_CONFIG_HOME/aphrody/awesome_gpui_store.toml`).
 //!
@@ -15,10 +15,7 @@
 use serde::Serialize;
 
 /// Contract schema version, bumped on any breaking change of [`AppContract`].
-pub const SCHEMA_VERSION: u32 = 1;
-
-/// Port of the Bevy Remote Protocol (`bevy_remote` default) a running match exposes for inspection.
-pub const REMOTE_PORT: u16 = 15702;
+pub const SCHEMA_VERSION: u32 = 2;
 
 /// A runnable entry point of the app.
 #[derive(Debug, Clone, Serialize)]
@@ -31,7 +28,7 @@ pub struct Command {
     pub binary: &'static str,
     /// Arguments passed to the binary.
     pub args: &'static [&'static str],
-    /// `window` opens its own GPU window, `stdio` speaks MCP on stdin/stdout, `service` serves HTTP.
+    /// `stdio` speaks MCP on stdin/stdout, `service` serves HTTP.
     pub mode: &'static str,
     /// Whether it runs without a display.
     pub headless: bool,
@@ -86,8 +83,6 @@ pub struct AppContract {
     pub game_source: GameSource,
     /// Build targets.
     pub targets: Vec<Target>,
-    /// Bevy Remote Protocol port of a running match.
-    pub remote_port: u16,
 }
 
 const DESKTOP: &[&str] = &["windows", "linux", "macos"];
@@ -102,15 +97,6 @@ pub fn contract() -> AppContract {
         version: env!("CARGO_PKG_VERSION"),
         repository: env!("CARGO_PKG_REPOSITORY"),
         commands: vec![
-            Command {
-                id: "game",
-                package: "nie-game",
-                binary: "nie-game",
-                args: &[],
-                mode: "window",
-                headless: false,
-                platforms: DESKTOP,
-            },
             Command {
                 id: "serve",
                 package: "nie-cli",
@@ -160,7 +146,6 @@ pub fn contract() -> AppContract {
                 graphics: "WebGPU",
             },
         ],
-        remote_port: REMOTE_PORT,
     }
 }
 
@@ -216,8 +201,8 @@ pub fn store_toml() -> String {
         entries: vec![StoreEntry {
             id: "nie",
             name: "nie",
-            tagline: "Self-hosted Inazuma Eleven engine and studio",
-            description: "Bevy-based engine, studio and asset streamer that loads game data from the player's own installation through VFS layers and CRI CPK archives; no game asset is shipped.",
+            tagline: "Self-hosted Inazuma Eleven engine",
+            description: "Engine and asset streamer that loads game data from the player's own installation through VFS layers and CRI CPK archives; no game asset is shipped.",
             category: "app",
             subcategory: "Games",
             repo: env!("CARGO_PKG_REPOSITORY"),
@@ -229,7 +214,7 @@ pub fn store_toml() -> String {
             license: "MIT OR Apache-2.0",
             status: "active",
             platforms: vec!["windows", "linux", "macos", "web"],
-            tags: vec!["bevy", "wgpu", "webgpu", "rust", "inazuma-eleven"],
+            tags: vec!["wgpu", "webgpu", "rust", "inazuma-eleven"],
             first_party: true,
         }],
     };

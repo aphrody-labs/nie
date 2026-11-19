@@ -52,11 +52,8 @@ mod menu_predecode;
 mod mod_cmd;
 #[cfg(feature = "host")]
 mod mode_index;
-mod net_cmd;
 #[cfg(feature = "host")]
 mod ocgen_cmd;
-#[cfg(feature = "host")]
-mod play_cmd;
 #[cfg(feature = "host")]
 mod render_cmd;
 #[cfg(feature = "host")]
@@ -122,11 +119,6 @@ enum Cmd {
     /// Serveur HTTP cloud-first (VFS distant, formats, requêtes game-data, sondes /health & /ready).
     #[command(name = "serve")]
     Serve(serve_cmd::ServeArgs),
-    /// Lance l'exécution headless du moteur de jeu nie (simulation, menu, match, rendu).
-    #[cfg(feature = "host")]
-    Play(play_cmd::PlayArgs),
-    /// Mode multijoueur en ligne, matchmaking Inacode, simulation déterministe et ladder ranked.
-    Net(net_cmd::NetArgs),
     /// Start the native Model Context Protocol server on stdio.
     #[cfg(feature = "host")]
     Mcp,
@@ -3079,14 +3071,6 @@ fn run() -> anyhow::Result<()> {
 fn dispatch(cli: Cli) -> anyhow::Result<()> {
     match cli.cmd {
         Cmd::Serve(args) => serve_cmd::run(args),
-        #[cfg(feature = "host")]
-        Cmd::Play(args) => play_cmd::run(args),
-        Cmd::Net(args) => {
-            let runtime = tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()?;
-            runtime.block_on(net_cmd::exec_net(args))
-        }
         #[cfg(feature = "host")]
         Cmd::Mcp => {
             let runtime = tokio::runtime::Builder::new_multi_thread()

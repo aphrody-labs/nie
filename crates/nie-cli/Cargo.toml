@@ -18,11 +18,6 @@ name = "nie-mcp"
 path = "src/bin/nie-mcp.rs"
 required-features = ["host"]
 
-[[bin]]
-name = "nie-play"
-path = "src/bin/nie-play.rs"
-required-features = ["host"]
-
 [lib]
 path = "src/main.rs"
 
@@ -42,14 +37,11 @@ cloud = [
   "dep:nie-data",
   "dep:nie-formats",
   "dep:nie-explore",
-  "dep:nie-net",
   "dep:tokio",
   "dep:futures-util",
   "dep:tokio-tungstenite",
   "dep:reqwest",
   "dep:nie-save",
-  "dep:nie-app",
-  "dep:nie-core",
   "dep:nie-render3d",
   "dep:nie-pkg",
   "dep:clap",
@@ -83,7 +75,6 @@ host = [
   "dep:nie-lua",
   "dep:nie-wiki",
   "dep:nie-zukan",
-  "dep:nie-runtime",
   "dep:nie-ocgen",
   "dep:redis",
   "dep:schemars",
@@ -94,7 +85,6 @@ host = [
   "dep:globset",
   "dep:grep-searcher",
   "dep:grep-regex",
-  "dep:rusqlite",
 ]
 textures-encode = ["host", "nie-formats/textures-encode"]
 
@@ -103,13 +93,9 @@ nie-data = { path = "../nie-data", version = "1.4.8", features = ["serde", "std"
 aho-corasick = { workspace = true }
 nie-formats = { path = "../nie-formats", version = "1.4.8", default-features = false, features = ["std", "serde", "textures", "audio-decode", "images", "remote-vfs"], optional = true }
 nie-explore = { path = "../nie-explore", version = "1.4.8", features = ["host"], optional = true }
-nie-net = { path = "../nie-net", version = "1.4.8", features = ["transport"], optional = true }
 futures-util = { version = "0.3", optional = true }
 nie-save = { path = "../nie-save", version = "1.4.8", optional = true }
-nie-app = { path = "../nie-app", version = "1.4.8", optional = true }
-nie-core = { path = "../nie-core", version = "1.4.8", optional = true }
 nie-pkg = { path = "../nie-pkg", version = "1.4.8", optional = true }
-nie-runtime = { path = "../nie-runtime", version = "1.4.8", default-features = false, optional = true }
 nie-render3d = { path = "../nie-render3d", version = "1.4.8", default-features = false, optional = true }
 clap = { workspace = true, features = ["color"], optional = true }
 anyhow = { workspace = true, features = ["std"], optional = true }
@@ -154,7 +140,6 @@ ignore = { version = "0.4", optional = true }
 globset = { version = "0.4", optional = true }
 grep-searcher = { version = "0.1", optional = true }
 grep-regex = { version = "0.1", optional = true }
-rusqlite = { workspace = true, features = ["bundled"], optional = true }
 
 [dev-dependencies]
 nie-pe = { workspace = true }

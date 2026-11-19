@@ -5,8 +5,8 @@ total_entries = 1
 [[entries]]
 id = "nie"
 name = "nie"
-tagline = "Self-hosted Inazuma Eleven engine and studio"
-description = "Bevy-based engine, studio and asset streamer that loads game data from the player's own installation through VFS layers and CRI CPK archives; no game asset is shipped."
+tagline = "Self-hosted Inazuma Eleven engine"
+description = "Engine and asset streamer that loads game data from the player's own installation through VFS layers and CRI CPK archives; no game asset is shipped."
 category = "app"
 subcategory = "Games"
 repo = "https://github.com/aphrody-labs/nie"
@@ -18,5 +18,5 @@ version = "1.4.8"
 license = "MIT OR Apache-2.0"
 status = "active"
 platforms = ["windows", "linux", "macos", "web"]
-tags = ["bevy", "wgpu", "webgpu", "rust", "inazuma-eleven"]
+tags = ["wgpu", "webgpu", "rust", "inazuma-eleven"]
 first_party = true
