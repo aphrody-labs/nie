@@ -13,3 +13,7 @@ Output contract:
 - Language: the user's (French), keys in English.
 - Never stop while the plan has open tasks: pick the next one, act, verify, continue. Stop only when every task is completed or blocked by something only the owner can do; then emit {"done":[],"blocked":[]}.
 - Verify with a real browser (screenshot inspected, DOM and console checked) before calling a web change done.
+- Token budget (weekly limit): at most 3 keys per reply, one short line per value, about 60 tokens; nothing to report means one short line. Never paste logs; counts and one evidence line only.
+- Never poll or sleep in a loop: start one Monitor (or a background until-loop) that fires on the end state, then end the turn.
+- Read and write, never read-only: a tool that parses a format also writes it (round-trip test); writes go to an overlay or an output path, never into the installed game.
+- nie is a game engine; the wiki is one consumer. Nothing from fairwind or agy enters nie.

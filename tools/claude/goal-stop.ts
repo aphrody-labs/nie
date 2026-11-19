@@ -10,6 +10,8 @@ const input = JSON.parse((await Bun.stdin.text()) || "{}") as { session_id?: str
 const sid = (input.session_id ?? "").slice(0, 8);
 const dir = join(homedir(), ".claude", "tasks", `session-${sid}`);
 if (!sid || !existsSync(dir)) process.exit(0);
+// Owner exit: `touch $TMP/nie-goal-exit` lets the session stop with tasks still open.
+if (existsSync(join(tmpdir(), "nie-goal-exit"))) process.exit(0);
 
 const tasks = readdirSync(dir)
   .filter((f) => f.endsWith(".json"))

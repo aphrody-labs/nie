@@ -37,8 +37,13 @@ name_only = []
 [settings]
 outputStyle = "nie"
 
+[settings.statusLine]
+type = "command"
+command = "bun --no-install --no-env-file tools/claude/statusline.ts"
+refreshInterval = 30
+
 [[settings.hooks.Stop]]
 [[settings.hooks.Stop.hooks]]
 type = "command"
-command = "cargo xtask claude-stop"
+command = "bun --no-install --no-env-file tools/claude/goal-stop.ts"
 timeout = 10
