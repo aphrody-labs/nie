@@ -1,0 +1,21 @@
+# Workloads traced by `nie deps audit --syscalls`. Each one runs under `strace -yy -f` and every
+# call is matched against the SCML tables of vendor/asterinas
+# (book/src/kernel/linux-compatibility/syscall-flag-coverage).
+# Placeholders: {nie} the running binary, {game} the game source, {port} a free local port.
+
+[[workload]]
+name = "serve-health"
+argv = ["{nie}", "serve", "--host", "127.0.0.1", "--port", "{port}", "--source", "{game}", "--strict"]
+ready = { path = "/health" }
+
+[[workload]]
+name = "vfs-stats"
+argv = ["{nie}", "vfs", "stats", "--game-dir", "{game}"]
+
+[[workload]]
+name = "vfs-ls"
+argv = ["{nie}", "vfs", "ls", "--game-dir", "{game}", "data/common"]
+
+[[workload]]
+name = "wiki-languages"
+argv = ["{nie}", "wiki", "--game-dir", "{game}", "languages"]

@@ -1,0 +1,23 @@
+[package]
+name = "nie-syscalls"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+description = "Linux syscall audit of nie workloads: strace logs matched against the Asterinas SCML compatibility tables"
+
+[lints]
+workspace = true
+
+[target.'cfg(unix)'.dependencies]
+anyhow.workspace = true
+nix.workspace = true
+regex = { workspace = true, features = ["std", "unicode"] }
+sctrace.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tempfile.workspace = true
+toml.workspace = true
+
