@@ -53,7 +53,7 @@ git submodule update --init --checkout iecode/dotnet iecode/cpp
 Only the CPK tables and the requested ranges are transferred. `NIE_ASSETS_CACHE_DIR` adds a
 size-bounded read-through cache outside the repository. Credentials stay in `~/.ssh` and
 `rclone.conf`, never in a URI. The synthetic-CPK test (`cargo test -p nie-assets`) builds its own
-archive in a temp directory; `NIE_ASSETS_PRD_SOURCE=ssh://prd/srv/rosegriffon/game/ievr cargo test -p nie-assets --test prd_stream`
+archive in a temp directory; `NIE_ASSETS_PRD_SOURCE="ssh://prd/srv/nie/steam/steamapps/common/INAZUMA ELEVEN Victory Road" cargo test -p nie-assets --test prd_stream`
 lists and reads a CPK of the real installation over SSH.
 
 ## Targets

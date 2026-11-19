@@ -15,7 +15,7 @@ cargo clippy --locked --workspace --all-targets -- -D warnings    # CI lint job
 cargo check --locked -p nie-bevy --features bevy --all-targets
 cargo shear                                                       # unused dependencies
 cargo run -p nie-shell -- contract > contract/nie-app.json        # regenerate the contract
-NIE_GAME_SOURCE=ssh://prd/srv/rosegriffon/game/ievr nie vfs ls data/common/menu
+NIE_GAME_SOURCE="ssh://prd/srv/nie/steam/steamapps/common/INAZUMA ELEVEN Victory Road" nie vfs ls data/common/menu
 nie serve      # HTTP on 8790, /health returns JSON with vfsReady
 ```
 
