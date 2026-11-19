@@ -114,6 +114,8 @@ enum Cmd {
     Serve(serve_cmd::ServeArgs),
     /// Les personnages, techniques et équipes du jeu, calculés depuis le VFS (`nie-wiki-vfs`).
     Wiki(wiki_cmd::WikiArgs),
+    /// Scaffold a nie application (`--template cli|serve|lib|ui|wasm`): `apps/<name>` or `--path`.
+    New(nie_scaffold::Args),
     /// Liste les plugins de ce build (exe, save, launcher, steam) et les commandes qu'ils portent.
     Plugins {
         /// Sortie JSON plutôt que texte.
@@ -2486,6 +2488,7 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
         Cmd::Serve(args) => serve_cmd::run(args),
         Cmd::Plugins { json } => plugins::run(json),
         Cmd::Wiki(args) => wiki_cmd::run(args),
+        Cmd::New(args) => nie_scaffold::run(&args),
         #[cfg(feature = "host")]
         Cmd::Mcp => {
             let runtime = tokio::runtime::Builder::new_multi_thread()

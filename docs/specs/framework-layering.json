@@ -48,6 +48,16 @@
       "package": "nie-specs",
       "path": "crates/nie-specs",
       "role": "official-spec sync and host spec records"
+    },
+    {
+      "package": "nie-scaffold",
+      "path": "crates/nie-scaffold",
+      "role": "nie new: app scaffolds and the nie.toml manifest"
+    },
+    {
+      "package": "hello",
+      "path": "apps/hello",
+      "role": "example app generated from the cli template"
     }
   ],
   "app": [

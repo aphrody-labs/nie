@@ -1,0 +1,20 @@
+{
+  "name": "@ident@_contract",
+  "title": "@name@ C ABI",
+  "version": "0.1.0",
+  "abi_version": 1,
+  "functions": [
+    {
+      "name": "nie_@ident@_version",
+      "doc": "Version of the crate as an owned string; free it with nie_string_free.",
+      "args": [],
+      "returns": "string"
+    },
+    {
+      "name": "nie_@ident@_add",
+      "doc": "Wrapping sum of two integers.",
+      "args": [{ "name": "a", "type": "i32" }, { "name": "b", "type": "i32" }],
+      "returns": "i32"
+    }
+  ]
+}
