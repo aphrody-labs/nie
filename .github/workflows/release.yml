@@ -196,6 +196,8 @@ jobs:
             if curl --fail --silent http://127.0.0.1:18790/health > health.json; then break; fi
             sleep 1
           done
+          docker ps -a --filter name=smoke --format '{{.Status}}'
+          docker logs smoke 2>&1 | tail -20
           cat health.json
           grep -q '"ok"' health.json || grep -q '"status"' health.json
           docker inspect --format '{{.Config.User}}' smoke | grep -q '^10001'

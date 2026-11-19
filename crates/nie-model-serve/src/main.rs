@@ -11,7 +11,7 @@
 //! - `GET /tex/<chemin>.png`       — texture principale d'un `.g4tx` du VFS
 //! - `GET /tex/<chemin>.g4tx/<nom>.png` — texture **nommée** de ce conteneur (ex.
 //!   `/tex/dx11/menu/200_icon/02_icon_item/icon_item05.g4tx/eq_ac0100101.png`)
-//! - `GET /health`                 — `200 OK`
+//! - `GET /health`                 — `200` JSON `{ok, service, vfsReady, entries, vfsError}`
 //!
 //! ## Résolution uniforme
 //!
@@ -300,6 +300,9 @@ struct State {
     /// mono-tâche. C'est lui qui, le 21/8/2026, a fait attendre des milliers de threads
     /// derrière un balayage de vignette jusqu'à épuiser les descripteurs.
     vfs: Vfs,
+    /// Why the game source could not be opened; the server then runs on an empty VFS and
+    /// `/health` reports `vfsReady: false` instead of the process exiting.
+    vfs_error: Option<String>,
     glb_dir: PathBuf,
     crc_manifest: Vec<nie_formats::assemble::ManifestEntry>,
     /// CRC uniforme → chemins G4MD+G4TX (depuis var/uniform-model-map.ndjson).
@@ -4693,7 +4696,20 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
 
     // Routing.
     if path == nie_core::contract_generated::HEALTH_PATH {
-        respond_text(&mut stream, 200, "OK", "ok");
+        let body = serde_json::json!({
+            "ok": true,
+            "service": "nie-model-serve",
+            "vfsReady": state.vfs_error.is_none(),
+            "entries": state.vfs.asset_count(),
+            "vfsError": state.vfs_error,
+        });
+        respond(
+            &mut stream,
+            200,
+            "OK",
+            "application/json",
+            body.to_string().as_bytes(),
+        );
         return;
     }
     if path == nie_core::contract_generated::OPENAPI_PATH {
@@ -6606,15 +6622,23 @@ fn main() -> Result<()> {
         .with_context(|| format!("création cache_dir {}", cache_dir.display()))?;
 
     // Initialise le VFS (local ou cloud-first `remote-vfs`).
-    let mut vfs = nie_formats::vfs::open_source(source_override.as_deref()).with_context(|| {
-        format!(
-            "init VFS depuis {}",
-            resolved_source
-                .as_deref()
-                .unwrap_or(&racine.display().to_string())
-        )
-    })?;
-    info!("VFS initialisé ({} fichiers indexés)", vfs.asset_count());
+    // Sans source lisible, le serveur démarre quand même sur un VFS vide : chaque route d'asset
+    // répond 404 et `/health` porte `vfsReady: false` avec la cause, comme `nie serve`.
+    let source_label = resolved_source
+        .as_deref()
+        .map(str::to_owned)
+        .unwrap_or_else(|| racine.display().to_string());
+    let (mut vfs, vfs_error) = match nie_formats::vfs::open_source(source_override.as_deref()) {
+        Ok(vfs) => {
+            info!("VFS initialisé ({} fichiers indexés)", vfs.asset_count());
+            (vfs, None)
+        }
+        Err(err) => {
+            let reason = format!("init VFS depuis {source_label}: {err}");
+            warn!("{reason}; démarrage sans VFS");
+            (Vfs::new(), Some(reason))
+        }
+    };
 
     // Index supplémentaire : rend lisibles les fichiers des CPK hors cpk_list.cfg.bin
     // (films .usm, sound_asset .acb…) via l'index global [chemin, cpk].
@@ -6683,6 +6707,7 @@ fn main() -> Result<()> {
 
     let state = Arc::new(State {
         vfs,
+        vfs_error,
         glb_dir: glb_dir.clone(),
         crc_manifest,
         uniform_map,

@@ -52,7 +52,8 @@ RUN apt-get update \
     && install -d -o nie -g nie -m 0750 /var/lib/nie /var/lib/nie/model-cache \
     && install -d -m 0755 /game
 COPY --from=rclone /usr/local/bin/rclone /usr/local/bin/rclone
-COPY --from=binsrc /out/${BIN} /usr/local/bin/${BIN}
+# --chmod: a prebuilt binary arrives through a CI artifact, which drops the executable bit.
+COPY --chmod=0755 --from=binsrc /out/${BIN} /usr/local/bin/${BIN}
 COPY --chmod=0755 docker/entrypoint.sh /usr/local/bin/nie-entrypoint
 
 ENV NIE_IMAGE_BIN=${BIN} \
