@@ -5276,6 +5276,8 @@ fn export_vfs_locales(
     const ALL_VFS_LANGS: &[&str] = &[
         "ja", "en", "fr", "es", "de", "it", "pt", "zh_hans", "zh_hant",
     ];
+    // Every shipped language except the Japanese source text.
+    const TRANSLATED_LANGS: &[&str] = &["en", "fr", "es", "de", "it", "pt", "zh_hans", "zh_hant"];
     const CORE_CATEGORIES: &[&str] = &[
         "chara",
         "chara_add",
@@ -5440,9 +5442,7 @@ fn export_vfs_locales(
                 if !norm_ja.is_empty()
                     && !norm_ja.contains('\n')
                     && norm_ja.chars().count() <= 48
-                    && (texts.contains_key("fr")
-                        || texts.contains_key("en")
-                        || texts.contains_key("es"))
+                    && TRANSLATED_LANGS.iter().any(|l| texts.contains_key(*l))
                 {
                     fn cat_rank(cat: &str) -> u8 {
                         match cat {
@@ -5453,14 +5453,14 @@ fn export_vfs_locales(
                             _ => 1,
                         }
                     }
-                    let is_real_translation = ["fr", "en", "es"]
+                    let is_real_translation = TRANSLATED_LANGS
                         .iter()
                         .any(|l| texts.get(*l).is_some_and(|v| v != norm_ja));
                     let cand_rank = cat_rank(cat_key);
                     let should_write = match ja_to_translations.get(norm_ja) {
                         None => true,
                         Some(existing) => {
-                            let existing_real = ["fr", "en", "es"]
+                            let existing_real = TRANSLATED_LANGS
                                 .iter()
                                 .any(|l| existing.texts.get(*l).is_some_and(|v| v != norm_ja));
                             let existing_rank = cat_rank(&existing.category);
@@ -5471,7 +5471,7 @@ fn export_vfs_locales(
                     };
                     if should_write {
                         let mut tr_texts = BTreeMap::new();
-                        for l in ["en", "fr", "es"] {
+                        for &l in TRANSLATED_LANGS {
                             if let Some(v) = texts.get(l) {
                                 tr_texts.insert(l.to_string(), v.clone());
                             }
