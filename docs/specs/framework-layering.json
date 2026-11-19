@@ -58,6 +58,11 @@
       "package": "hello",
       "path": "apps/hello",
       "role": "example app generated from the cli template"
+    },
+    {
+      "package": "nie-bindgen",
+      "path": "crates/nie-bindgen",
+      "role": "language bindings (C, C++, Rust, Python, C#, Go, Bun, Zig) generated from a C ABI contract"
     }
   ],
   "app": [
