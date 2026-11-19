@@ -23,8 +23,8 @@
     }
   },
   "info": {
-    "description": "Generated from crates/rg-ffi-contract/contract.json",
-    "title": "Rose Griffon Rust/Bun contract",
+    "description": "Generated from crates/nie-abi/contract.json",
+    "title": "nie C ABI, contract-generated part",
     "version": "1.0.0"
   },
   "openapi": "3.1.0",
@@ -79,8 +79,8 @@
             "description": "Result"
           }
         },
-        "summary": "Decodes a cfg.bin (RDBN or T2B) and returns its SQL script; dialect 0 = PostgreSQL, 1 = SQLite. NULL when the bytes are not a cfg.bin. Free the result with rg_string_free.",
-        "x-ffi-symbol": "rg_cfgbin_to_sql"
+        "summary": "Decodes a cfg.bin (RDBN or T2B) and returns its SQL script; dialect 0 = PostgreSQL, 1 = SQLite. NULL when the bytes are not a cfg.bin. Free the result with nie_string_free.",
+        "x-ffi-symbol": "nie_cfgbin_to_sql"
       }
     }
   }

@@ -2,9 +2,9 @@
 
 use nie_cfgsql::Dialect;
 
-/// `rg_cfgbin_to_sql`
+/// `nie_cfgbin_to_sql`
 #[must_use]
-pub fn rg_cfgbin_to_sql(data: &[u8], dialect: i32) -> Option<String> {
+pub fn nie_cfgbin_to_sql(data: &[u8], dialect: i32) -> Option<String> {
     let dialect = if dialect == 0 {
         Dialect::Postgres
     } else {
@@ -19,6 +19,6 @@ mod tests {
 
     #[test]
     fn behaviours() {
-        assert!(rg_cfgbin_to_sql(b"nope", 0).is_none());
+        assert!(nie_cfgbin_to_sql(b"nope", 0).is_none());
     }
 }

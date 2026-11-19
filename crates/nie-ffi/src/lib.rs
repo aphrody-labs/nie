@@ -72,6 +72,15 @@
 
 #![warn(missing_docs)]
 
+// The contract-generated part of the ABI: `generated.rs` is produced from
+// `crates/nie-abi/contract.json` (regenerate with
+// `cargo run -p nie-abi -- crates/nie-ffi`), the behaviour lives in `impls.rs`.
+// The generated layer is the only place with unsafe code produced from the contract.
+#[allow(unsafe_code, unused_imports, missing_docs, clippy::missing_safety_doc)]
+#[rustfmt::skip]
+pub mod generated;
+pub mod impls;
+
 use core::ffi::{c_char, c_void};
 use std::cell::RefCell;
 use std::ffi::CStr;
@@ -1364,7 +1373,7 @@ pub unsafe extern "C" fn nie_build_info_json_out(out: *mut NieBytes) {
     }
     let info = serde_json::json!({
         "version": env!("CARGO_PKG_VERSION"),
-        "product": "iecode",
+        "product": "nie",
         "abiVersion": 1,
         "profile": "formats/textures/save/menu-setting/game-source/vfs-domain-query",
         "capabilities": [
@@ -2529,7 +2538,7 @@ mod tests {
         let bytes = unsafe { core::slice::from_raw_parts(out.ptr, out.len) };
         let parsed: serde_json::Value =
             serde_json::from_slice(bytes).expect("valid build info JSON");
-        assert_eq!(parsed["product"], "iecode");
+        assert_eq!(parsed["product"], "nie");
         assert!(parsed["capabilities"].is_array());
         unsafe { nie_bytes_free(out) };
 

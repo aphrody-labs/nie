@@ -1,6 +1,6 @@
 //! The committed generated files must equal what the contract produces.
 
-use rg_ffi_contract::{emit_c_header, emit_openapi, emit_rust, emit_ts, load};
+use nie_abi::{emit_c_header, emit_openapi, emit_rust, emit_ts, load};
 
 fn disk(rel: &str) -> String {
     std::fs::read_to_string(format!("{}/{rel}", env!("CARGO_MANIFEST_DIR")))
@@ -10,10 +10,10 @@ fn disk(rel: &str) -> String {
 #[test]
 fn generated_files_match_the_contract() {
     let c = load();
-    assert_eq!(disk("include/rg_ffi.h"), emit_c_header(&c));
+    assert_eq!(disk("include/nie_contract.h"), emit_c_header(&c));
     assert_eq!(disk("src/generated.rs"), emit_rust(&c));
-    assert_eq!(disk("bindings/rg_ffi.ts"), emit_ts(&c));
-    assert_eq!(disk("openapi/rg_ffi.openapi.json"), emit_openapi(&c));
+    assert_eq!(disk("bindings/nie_contract.ts"), emit_ts(&c));
+    assert_eq!(disk("openapi/nie_contract.openapi.json"), emit_openapi(&c));
 }
 
 #[test]

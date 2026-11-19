@@ -16,8 +16,8 @@ Five C ABIs exist today, and none of them is complete:
 
 | ABI | Location | Exports | Style |
 |---|---|---|---|
-| `nie_*` | `crates/nie-ffi/src/lib.rs` (3101 LOC, `[lib] name = "iecode"`, cdylib+rlib) | about 75 | Hand-written. Values returned by value or through `_out`. `NieBytes{ptr,len,cap}`. Thread-local `LAST_ERROR`. One `catch_unwind`, at line 661. |
-| `rg_*` | `crates/rg-ffi` (generated from `crates/rg-ffi-contract/contract.json`, `abi_version 2`) | 1 + `rg_ffi_abi_version` + `rg_string_free` | Contract-first. Emits a C header, a Rust extern layer, bun:ffi bindings and an OpenAPI document. Drift test in `crates/rg-ffi/tests/in_sync.rs`. |
+| `nie_*` | `crates/nie-ffi/src/lib.rs` (`[lib] name = "nie"`, cdylib+rlib) | about 75 | Hand-written. Values returned by value or through `_out`. `NieBytes{ptr,len,cap}`. Thread-local `LAST_ERROR`. One `catch_unwind`, at line 661. |
+| `nie_*` (generated) | `crates/nie-ffi/src/generated.rs`, generated from `crates/nie-abi/contract.json` (`abi_version 3`) | 1 + `nie_ffi_abi_version` + `nie_string_free` | Contract-first. `nie-abi-gen` emits a C header, the Rust extern layer, bun:ffi bindings and an OpenAPI document. Drift test in `crates/nie-ffi/tests/contract_in_sync.rs`. |
 | `iecode_*` | `apps/iecode-dotnet/Ffi/Native/IecodeNative.cs` (NativeAOT, `NativeLib=Shared`) | 10 | `UnmanagedCallersOnly`. Returns an int status. Uses `NativeMemory`. A second bridge, `NodeApiBridge.cs` (node-api-dotnet JSExport). |
 | C++ | `tools/iecode-cpp` (`iecode_core STATIC`, `src/include/iecode/export.h`) | no C ABI, C++ API only | vcpkg feature `iecode-cpp` pulls bgfx, capstone, directxtex, openssl, cpp-httplib, tree-sitter, zstd, libwebp and others. |
 | wasm-bindgen | `crates/nie-wasm/src/lib.rs` | 108 `#[wasm_bindgen]` items | A separate surface over the same crates. |
@@ -92,7 +92,7 @@ Naming:
 
 - The library is `nie`: `libnie.so`, `libnie.a`, `nie.dll`/`nie.lib`, `nie.wasm`.
 - The symbol prefix is `nie_`, and domains follow `nie_<domain>_<verb>` (`nie_cpk_*`, `nie_g4tx_*`, `nie_audio_*`, `nie_rank_*`, and so on).
-- The current `[lib] name = "iecode"` in `nie-ffi/Cargo.toml` is renamed.
+- `[lib] name = "iecode"` in `nie-ffi/Cargo.toml` is renamed to `nie` (done).
 - The old `iecode_*` and `rg_*` symbols survive for one minor release as generated aliases (contract `aliases: [...]`). They are removed in ABI 2.0.
 
 ### 2.2 C ABI rules (enforced by the generator)

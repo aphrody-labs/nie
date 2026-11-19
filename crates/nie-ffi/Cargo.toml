@@ -9,7 +9,7 @@ description = "Native C ABI for Inazuma Eleven binary-format inspection and extr
 
 [lib]
 crate-type = ["cdylib", "rlib"]
-name = "iecode"
+name = "nie"
 
 [lints]
 workspace = true
@@ -20,9 +20,13 @@ formats = []
 textures = ["formats", "nie-formats/textures"]
 
 [dependencies]
+nie-cfgsql = { path = "../nie-cfgsql", version = "1.4.8" }
 nie-explore = { workspace = true, features = ["host"] }
 nie-data = { workspace = true, features = ["serde", "std"] }
 nie-formats = { workspace = true, features = ["serde"] }
 nie-save = { workspace = true }
 serde_json = { workspace = true }
 image = { version = "0.25.10", default-features = false, features = ["png"] }
+
+[dev-dependencies]
+nie-abi = { path = "../nie-abi", version = "1.4.8" }

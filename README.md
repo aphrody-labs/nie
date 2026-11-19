@@ -17,7 +17,7 @@ crates/
   nie-cli nie-model-serve nie-explore nie-launcher    command line, services and mod tooling
   nie-shell     app and launcher contract for the aphrody native GPUI shell
   nie-re nie-steam nie-re-core   reverse engineering and Steam libraries (from rosegriffon)
-  rg-ffi*   generated C ABI
+  nie-ffi nie-abi   C ABI (lib `nie`) and its contract generator
 tools/steam-index
 contract/       nie-app.json and aphrody-store.toml (generated), openapi.json
 design/         design tokens

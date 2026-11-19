@@ -3935,6 +3935,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "nie-abi"
+version = "1.4.8"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "nie-assets"
 version = "1.4.8"
 dependencies = [
@@ -4097,6 +4105,8 @@ name = "nie-ffi"
 version = "1.4.8"
 dependencies = [
  "image",
+ "nie-abi",
+ "nie-cfgsql",
  "nie-data",
  "nie-explore",
  "nie-formats",
@@ -5777,22 +5787,6 @@ dependencies = [
  "wasm-bindgen-futures",
  "wasm-streams",
  "web-sys",
-]
-
-[[package]]
-name = "rg-ffi"
-version = "1.4.8"
-dependencies = [
- "nie-cfgsql",
- "rg-ffi-contract",
-]
-
-[[package]]
-name = "rg-ffi-contract"
-version = "1.4.8"
-dependencies = [
- "serde",
- "serde_json",
 ]
 
 [[package]]
