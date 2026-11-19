@@ -1,0 +1,13 @@
+[package]
+name = "nie-ostd-vfs"
+version = "0.1.0"
+edition = "2024"
+license = "MPL-2.0"
+description = "OSTD component that reads the Inazuma Eleven Victory Road CPK VFS from the guest side"
+
+[dependencies]
+ostd = "0.19.0"
+
+# unwinding 0.2.11 needs a newer nightly than the toolchain pinned for ostd 0.19.0; OSDK resolves
+# its generated base crate without the workspace lock, so the pin has to live in the manifest.
+unwinding = { version = "=0.2.10", default-features = false }

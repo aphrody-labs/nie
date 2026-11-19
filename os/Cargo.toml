@@ -1,0 +1,4 @@
+[workspace]
+resolver = "3"
+members = ["nie-os", "nie-ostd-vfs"]
+exclude = ["target/osdk/base", "target/osdk/test-base"]

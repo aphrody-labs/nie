@@ -1,0 +1,10 @@
+# Boot settings for nie-os and nie-ostd-vfs. The kernel with the Linux ABI is built from
+# vendor/asterinas by tools/boot-linux-abi.sh with the same QEMU arguments.
+[boot]
+method = "grub-rescue-iso"
+
+[grub]
+boot_protocol = "multiboot2"
+
+[qemu]
+args = "$(sh ./qemu-args.sh)"
