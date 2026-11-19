@@ -118,8 +118,6 @@ enum Cmd {
     New(nie_scaffold::Args),
     /// Generate the C, C++, Rust, Python, C#, Go, Bun and Zig bindings of a C ABI contract.
     Bindgen(nie_bindgen::Args),
-    /// Scaffold a nie application (`--template cli|serve|lib|ui|wasm`): `apps/<name>` or `--path`.
-    New(nie_scaffold::Args),
     /// Liste les plugins de ce build (exe, save, launcher, steam) et les commandes qu'ils portent.
     Plugins {
         /// Sortie JSON plutôt que texte.
@@ -2494,7 +2492,6 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
         Cmd::Wiki(args) => wiki_cmd::run(args),
         Cmd::New(args) => nie_scaffold::run(&args),
         Cmd::Bindgen(args) => nie_bindgen::run(&args),
-        Cmd::New(args) => nie_scaffold::run(&args),
         #[cfg(feature = "host")]
         Cmd::Mcp => {
             let runtime = tokio::runtime::Builder::new_multi_thread()
