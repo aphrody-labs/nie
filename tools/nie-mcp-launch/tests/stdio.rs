@@ -116,10 +116,9 @@ fn explicit_binary_round_trip() {
     assert_eq!(r.code, Some(0));
     assert!(r.has("argc:0"), "{:?}", r.lines);
     assert!(r.has("echo:hello") && r.has("echo:world"), "{:?}", r.lines);
-    assert_eq!(
-        r.value("cwd:").map(|c| c.trim_start_matches(r"\\?\")),
-        Some(canonical(root.path()).as_str())
-    );
+    // Windows may report the 8.3 short form of the temp dir: compare canonical paths.
+    let cwd = r.value("cwd:").expect("cwd line");
+    assert_eq!(canonical(Path::new(cwd)), canonical(root.path()));
 }
 
 fn exit_code_is_propagated() {
