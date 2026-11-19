@@ -81,7 +81,7 @@ fn initialize_list_and_call_stay_on_clean_stdio() {
         .filter(|tool| tool["name"].as_str().is_some_and(|n| n.starts_with("cli_")))
         .count();
     assert_eq!(
-        generes, 46,
+        generes, 47,
         "bindings generated from the public CLI commands"
     );
     assert_eq!(

@@ -13,19 +13,12 @@
 //!   `/tex/dx11/menu/200_icon/02_icon_item/icon_item05.g4tx/eq_ac0100101.png`)
 //! - `GET /health`                 — `200` JSON `{ok, service, vfsReady, entries, vfsError}`
 //!
-//! ## Résolution uniforme
+//! ## Entrées
 //!
-//! Pour les personnages, l'uniforme est résolu via :
-//! 1. `inagle_characters` (miroir SQLite) → `series` + `teams[0].id`
-//! 2. `inagle_teams` → `data.kits.<season_key>` → `kit_id`
-//! 3. `inagle_uniforms` (name_id=kit_id) → `models[0].uniformFielderModelIdCrc`
-//! 4. `var/model-crc-manifest.ndjson` → CRC → chemin G4MD dans CPK
-//! 5. VFS → g4md + g4mg bruts → primitives uniforme
-//!
-//! ## Body type
-//!
-//! Résolu depuis `var/body-type-manifest.ndjson` (généré par `nie body-map`).
-//! Fallback : `type_idx=0` (base_normal_00) si le code est absent.
+//! Tout vient du VFS : la table CRC32 → maillage est calculée depuis la liste des fichiers, les
+//! recettes de tenue et les fiches modèle depuis `chara_parts` et `chara_model`, l'uniforme,
+//! les chaussures et les gants depuis `CHARA_MODEL_INFO` (`var[5]`, `var[6]`, `var[7]`). Aucune
+//! route ne lit un fichier hors du VFS et du cache.
 //!
 //! ## Cache
 //!
@@ -36,10 +29,8 @@
 //! ## Usage
 //!
 //! ```text
-//! nie-model-serve --game-dir /home/ubuntu/.local/share/Steam/iecode/inazuma \
-//!                 --glb-dir  /home/ubuntu/.local/share/Steam/iecode/inazuma/data/dx11/model \
-//!                 --db       /path/to/mirror.sqlite \
-//!                 --port     8790
+//! nie-model-serve --source "ssh://prd/srv/nie/steam/steamapps/common/INAZUMA ELEVEN Victory Road" \
+//!                 --port 8790
 //! ```
 
 #![forbid(unsafe_code)]
@@ -57,15 +48,13 @@ use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
-use mirror::Mirror;
-use nie_sql::Value as SqlValue;
 use serde_json::Value;
 use tracing::{debug, error, info, warn};
 
 use nie_formats::assemble::{
     AuxTexture, CharacterAssemblyInput, CharacterUniformPart, EmbeddedTexture, GenericModelInput,
-    MeshComponent, RawPiece, SeasonKey, Skeleton, assemble_armed, assemble_character_model,
-    assemble_generic_model, assemble_keshin, avatar_texture_name, g4md_to_g4mg_path, load_manifest,
+    MeshComponent, RawPiece, Skeleton, assemble_armed, assemble_character_model,
+    assemble_generic_model, assemble_keshin, avatar_texture_name, g4md_to_g4mg_path,
     resolve_crc_to_g4md_path, texture_role_from_name, type_idx_to_glb_name,
 };
 
@@ -78,8 +67,6 @@ use nie_formats::vfs::Vfs;
 use nie_model_serve::catalog::{
     CatalogLimits, CharaModelCatalog, CharacterPartsCatalog, ResolvedPart,
 };
-
-use nie_model_serve::menu;
 
 // ── CLI ───────────────────────────────────────────────────────────────────────
 
@@ -97,33 +84,6 @@ struct Cli {
     #[arg(long, env = "NIE_GAME_DIR")]
     game_dir: Option<PathBuf>,
 
-    /// Répertoire des GLB pré-convertis. Défaut : `<game-dir>/data/dx11/model`.
-    #[arg(long)]
-    glb_dir: Option<PathBuf>,
-
-    /// Miroir inagle_* : fichier SQLite ou URL PostgreSQL (`NIE_PG_URL`, `INAGLE_DATABASE_URL`).
-    /// Résolution automatique si absent.
-    #[arg(long)]
-    db: Option<String>,
-
-    /// Manifeste CRC32→chemin G4MD (var/model-crc-manifest.ndjson).
-    #[arg(long)]
-    crc_manifest: Option<PathBuf>,
-
-    /// Manifeste uniforme CRC32→G4MD+G4TX (var/uniform-model-map.ndjson, généré depuis chara_parts).
-    #[arg(long)]
-    uniform_map: Option<PathBuf>,
-
-    /// Index global `[chemin, cpk]` (NDJSON, .gz accepté) des fichiers de TOUS les CPK,
-    /// y compris ceux hors `cpk_list.cfg.bin` (films, sound_asset…). Alimente l'index
-    /// supplémentaire du VFS pour les rendre lisibles. Vide/absent = ignoré.
-    #[arg(long)]
-    cpk_file_index: Option<PathBuf>,
-
-    /// Manifeste body_type_idx (var/body-type-manifest.ndjson, optionnel — fallback type_idx=0).
-    #[arg(long)]
-    body_manifest: Option<PathBuf>,
-
     /// Répertoire de cache GLB assemblés (`NIE_CACHE_DIR`).
     #[arg(long, env = "NIE_CACHE_DIR")]
     cache_dir: Option<PathBuf>,
@@ -136,19 +96,10 @@ struct Cli {
     #[arg(long, default_value_t = 128)]
     memory_cache_mib: usize,
 
-    /// Répertoire des layouts de menu (`<screen>.json`) pour le rendu serveur `/menu-render/`.
-    /// Vit dans le dépôt azalee : aucun défaut ne peut être juste, la route est inactive sans lui.
+    /// Print the OpenAPI description generated from the route table and exit
+    /// (`contract/openapi.json` is that output).
     #[arg(long)]
-    layout_dir: Option<PathBuf>,
-
-    /// Répertoire des `*_menu_setting.cfg.bin.json` (un par écran) pour l'arbre `/menu-tree.json`.
-    #[arg(long)]
-    menu_cfg_dir: Option<PathBuf>,
-
-    /// `data/asset-cross-reference.json` (nom de texture → data de jeu qui la référence :
-    /// `entries/*.json` + chaînes Lua). Alimente le champ `role` de `/tex-info`.
-    #[arg(long)]
-    asset_cross_ref: Option<PathBuf>,
+    print_openapi: bool,
 
     /// Port d'écoute (`NIE_PORT`, la même variable que `nie serve`).
     #[arg(long, env = "NIE_PORT", default_value_t = 8790)]
@@ -203,40 +154,13 @@ struct Cli {
     /// N'audite que les codes contenant cette sous-chaîne (ex. `c01`, `c11`).
     #[arg(long)]
     audit_filter: Option<String>,
-
-    /// Expose le **code du dépôt** en lecture seule sous `/depot/…` (lister, lire, trouver,
-    /// chercher), sur le même moteur que `nie find`/`grep`, le serveur MCP et l'app desktop.
-    ///
-    /// **Éteint par défaut, et il doit le rester sans décision explicite** : cette instance est
-    /// joignable publiquement (`cdn.rosegriffon.fr`). Le moteur refuse déjà la traversée, les
-    /// dossiers non-code et les fichiers de secrets, mais aucune de ces gardes ne remplace le
-    /// choix de publier, ou non, le code du projet.
-    #[arg(long)]
-    depot_code: bool,
-
-    /// Racine du dépôt nie servie par `--depot-code`. Défaut : le répertoire courant, ou le
-    /// premier ancêtre portant `Cargo.toml` et `crates/`.
-    #[arg(long)]
-    depot_racine: Option<PathBuf>,
 }
 
 // ── État partagé ──────────────────────────────────────────────────────────────
 
-/// Entrée du manifeste uniforme CRC→G4MD+G4TX (var/uniform-model-map.ndjson).
-///
-/// Chaque ligne : `{"crc":2636889360,"crc_hex":"0x9D2BBD10","code":"u010101_10",
-///                  "g4md":"data/common/chr/_uniform/u000101/u000101.g4md",
-///                  "g4tx":"data/dx11/chr/_uniform/u000101/u010101_10.g4tx"}`
-#[derive(Clone)]
-struct UniformMapEntry {
-    code: String,
-    g4md: String,
-    g4tx: String,
-}
-
 /// Liveness route.
 const HEALTH_PATH: &str = "/health";
-/// Route serving `contract/openapi.json`.
+/// Route serving the OpenAPI document generated from the route table.
 const OPENAPI_PATH: &str = "/openapi.json";
 
 /// Version de l'assembleur de personnages. À incrémenter à chaque changement de recette ou de
@@ -308,51 +232,25 @@ struct State {
     /// Why the game source could not be opened; the server then runs on an empty VFS and
     /// `/health` reports `vfsReady: false` instead of the process exiting.
     vfs_error: Option<String>,
-    glb_dir: PathBuf,
+    /// CRC32 du nom de fichier → chemin G4MD/G4MG, calculé depuis la liste des fichiers du VFS.
     crc_manifest: Vec<nie_formats::assemble::ManifestEntry>,
-    /// CRC uniforme → chemins G4MD+G4TX (depuis var/uniform-model-map.ndjson).
-    uniform_map: HashMap<u32, UniformMapEntry>,
     /// Recettes de pièces modulaires issues du `chara_parts*.cfg.bin` réel du VFS.
     chara_parts: CharacterPartsCatalog,
     /// Fiches modèle (visage, corps, tenue par défaut) issues du `chara_model*.cfg.bin` réel.
     chara_model: CharaModelCatalog,
-    /// internal_code → body_type_idx (depuis var/body-type-manifest.ndjson).
-    body_map: HashMap<String, u8>,
     cache_dir: PathBuf,
-    /// Miroir inagle_* (SQLite ou PostgreSQL) : résolution uniforme.
-    db_path: Option<Mirror>,
-    /// Répertoire des layouts de menu (`<screen>.json`).
-    layout_dir: PathBuf,
-    /// Répertoire des `*_menu_setting.cfg.bin.json` (arbre d'écrans `/menu-tree.json`).
-    menu_cfg_dir: PathBuf,
-    /// Nom de texture (basename sans extension) → sources qui la référencent (`entries/*.json`,
-    /// chaînes Lua), depuis `data/asset-cross-reference.json`. Alimente `/tex-info` `role`.
-    asset_roles: HashMap<String, Vec<AssetSource>>,
-    /// Accès au code du dépôt, `None` tant que `--depot-code` n'est pas passé.
-    ///
-    /// L'`Option` porte la décision de publier : une route absente ne peut pas fuiter, alors
-    /// qu'un drapeau lu à chaque requête finit par être oublié quelque part.
-    depot: Option<nie_explore::depot::Depot>,
+    /// Index des icônes, calculé depuis le VFS à la première requête.
+    icons_index: std::sync::OnceLock<String>,
+    /// Catalogue des cinématiques, construit depuis le VFS en arrière-plan.
+    video_catalog: Mutex<VideoCatalog>,
     /// Cache LRU vivant uniquement pendant le processus, après le cache disque.
     glb_memory: Mutex<GlbMemoryCache>,
-    /// Bearer token opening `/raw/`, `/depot/` and raw `/export/` (`NIE_RAW_VFS_TOKEN`);
+    /// Bearer token opening `/raw/` and raw `/export/` (`NIE_RAW_VFS_TOKEN`);
     /// `None` keeps them closed. See [`private_route`].
     raw_token: Option<nie_explore::raw_access::Token>,
     /// Canonical VFS manifest (`/vfs/index`, `/vfs/digest`): `(ndjson, header json)`, derived
     /// from the pack TOCs on first use and kept for the life of the process.
     manifest: std::sync::OnceLock<Result<(String, String), String>>,
-}
-
-/// Une source qui référence un asset, telle qu'écrite par
-/// `rg/scripts/inagle/pipeline/build-asset-cross-reference.ts`.
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
-struct AssetSource {
-    #[serde(rename = "entryFile")]
-    entry_file: String,
-    #[serde(rename = "entryId", skip_serializing_if = "Option::is_none")]
-    entry_id: Option<String>,
-    field: String,
-    value: String,
 }
 
 impl State {
@@ -391,58 +289,17 @@ impl State {
         Ok(glb)
     }
 
-    /// Charge le manifeste CRC→chemin depuis le fichier NDJSON.
-    fn load_crc_manifest(path: &Path) -> Result<Vec<nie_formats::assemble::ManifestEntry>> {
-        if !path.exists() {
-            warn!("manifeste CRC absent : {}", path.display());
-            return Ok(Vec::new());
-        }
-        let s = fs::read_to_string(path)
-            .with_context(|| format!("lecture manifeste CRC {}", path.display()))?;
-        let entries = load_manifest(&s);
-        info!("manifeste CRC : {} entrées", entries.len());
-        Ok(entries)
-    }
-
-    /// Charge le manifeste uniforme CRC→G4MD+G4TX depuis le fichier NDJSON.
-    fn load_uniform_map(path: &Path) -> HashMap<u32, UniformMapEntry> {
-        if !path.exists() {
-            warn!(
-                "manifeste uniforme absent : {} (uniforme non disponible)",
-                path.display()
-            );
-            return HashMap::new();
-        }
-        let Ok(content) = fs::read_to_string(path) else {
-            warn!("impossible de lire uniform-model-map : {}", path.display());
-            return HashMap::new();
-        };
-        let mut map = HashMap::new();
-        for line in content.lines() {
-            let line = line.trim();
-            if line.is_empty() {
-                continue;
-            }
-            let Ok(v): std::result::Result<Value, _> = serde_json::from_str(line) else {
-                continue;
-            };
-            let Some(crc) = v["crc"].as_u64().map(|c| c as u32) else {
-                continue;
-            };
-            let Some(g4md) = v["g4md"].as_str().map(str::to_string) else {
-                continue;
-            };
-            let Some(g4tx) = v["g4tx"].as_str().map(str::to_string) else {
-                continue;
-            };
-            let code = v["code"]
-                .as_str()
-                .map(str::to_string)
-                .unwrap_or_else(|| g4tx_decode::basename_of(&g4tx).to_string());
-            map.insert(crc, UniformMapEntry { code, g4md, g4tx });
-        }
-        info!("uniform-model-map : {} entrées", map.len());
-        map
+    /// Table CRC32 du nom de fichier → chemin des maillages `.g4md`/`.g4mg`, calculée depuis la
+    /// liste des fichiers du VFS (`nie_explore::uniform_map`).
+    fn crc_manifest_from_vfs(vfs: &Vfs) -> Vec<nie_formats::assemble::ManifestEntry> {
+        nie_explore::uniform_map::build(vfs)
+            .into_iter()
+            .map(|e| nie_formats::assemble::ManifestEntry {
+                crc: e.crc,
+                path: e.path,
+                cpk: e.cpk,
+            })
+            .collect()
     }
 
     /// Charge les recettes de tenue directement depuis le dernier `chara_parts*.cfg.bin`
@@ -522,189 +379,6 @@ impl State {
         let cfg = cfgbin::parse_t2b(&bytes).ok()?;
         Some((path, cfg))
     }
-
-    /// Charge le manifeste body_type_idx depuis le fichier NDJSON.
-    /// Format : `{"code":"c01000010","body_type_idx":0}` (une ligne par code).
-    fn load_body_map(path: &Path) -> HashMap<String, u8> {
-        if !path.exists() {
-            debug!(
-                "manifeste body_type absent : {} (fallback type_idx=0)",
-                path.display()
-            );
-            return HashMap::new();
-        }
-        let Ok(content) = fs::read_to_string(path) else {
-            warn!("impossible de lire body-type-manifest : {}", path.display());
-            return HashMap::new();
-        };
-        let mut map = HashMap::new();
-        for line in content.lines() {
-            let line = line.trim();
-            if line.is_empty() {
-                continue;
-            }
-            let Ok(v): std::result::Result<Value, _> = serde_json::from_str(line) else {
-                continue;
-            };
-            let Some(code) = v["code"].as_str() else {
-                continue;
-            };
-            let Some(idx) = v["body_type_idx"].as_u64() else {
-                continue;
-            };
-            map.insert(code.to_string(), idx as u8);
-        }
-        info!("body-type-manifest : {} entrées", map.len());
-        map
-    }
-
-    /// Charge `data/asset-cross-reference.json` (`rg/scripts/inagle/pipeline/
-    /// build-asset-cross-reference.ts`) : indexe par nom de texture (basename SANS extension) —
-    /// c'est ce qui s'aligne sur `G4txTexture::name`/`G4txSubTexture::name` (`abl_000001`, pas
-    /// `200_icon/02_icon_item/abl_000001.webp`). Un même basename peut apparaître sous plusieurs
-    /// `assetPath` (dossiers différents) : les sources de TOUS s'accumulent sous la même clé,
-    /// `/tex-info` reste correct même en cas d'ambiguïté (il montre tout, ne devine pas).
-    fn load_asset_roles(path: &Path) -> HashMap<String, Vec<AssetSource>> {
-        if !path.exists() {
-            debug!(
-                "asset-cross-reference absent : {} (rôle de texture non disponible)",
-                path.display()
-            );
-            return HashMap::new();
-        }
-        let Ok(content) = fs::read_to_string(path) else {
-            warn!(
-                "impossible de lire asset-cross-reference : {}",
-                path.display()
-            );
-            return HashMap::new();
-        };
-        #[derive(serde::Deserialize)]
-        struct Asset {
-            #[serde(rename = "assetPath")]
-            asset_path: String,
-            sources: Vec<AssetSource>,
-        }
-        #[derive(serde::Deserialize)]
-        struct CrossRef {
-            assets: Vec<Asset>,
-        }
-        let Ok(cr) = serde_json::from_str::<CrossRef>(&content) else {
-            warn!("asset-cross-reference illisible : {}", path.display());
-            return HashMap::new();
-        };
-        let mut map: HashMap<String, Vec<AssetSource>> = HashMap::new();
-        for a in cr.assets {
-            let Some(base) = a.asset_path.rsplit('/').next() else {
-                continue;
-            };
-            let base = base.rsplit_once('.').map_or(base, |(stem, _)| stem);
-            if base.is_empty() {
-                continue;
-            }
-            map.entry(base.to_string()).or_default().extend(a.sources);
-        }
-        info!(
-            "asset-cross-reference : {} noms de texture indexés",
-            map.len()
-        );
-        map
-    }
-
-    /// Résout body_type_idx depuis le manifeste, fallback 0.
-    fn body_type_idx(&self, internal_code: &str) -> u8 {
-        // Essai exact
-        if let Some(&idx) = self.body_map.get(internal_code) {
-            return idx;
-        }
-        // Essai sans suffixe de variante (_5000/_5100…)
-        let base = if let Some(pos) = internal_code.rfind('_') {
-            let suffix = &internal_code[pos + 1..];
-            if suffix.chars().all(|c| c.is_ascii_digit()) {
-                &internal_code[..pos]
-            } else {
-                internal_code
-            }
-        } else {
-            internal_code
-        };
-        *self.body_map.get(base).unwrap_or(&0)
-    }
-}
-
-// ── Résolution uniforme depuis SQLite ─────────────────────────────────────────
-
-/// CRC des modèles d'une tenue, tels que les porte `inagle_uniforms.models[typeId=0]`.
-#[derive(Clone, Debug, Default)]
-struct UniformCrcs {
-    /// `uniformFielderModelIdCrc` (0 si absent).
-    fielder: u32,
-    /// `shoesFielderModelIdCrc` (0 si absent).
-    shoes: u32,
-    /// `gloveModelIdCrc` (0 si absent).
-    glove: u32,
-    /// Identifiant du kit retenu (`inagle_uniforms.name_id`), pour le rapport.
-    kit_id: String,
-}
-
-/// Résolution de la tenue d'un personnage depuis le miroir SQLite.
-///
-/// Chaîne : series → season_key → inagle_teams.kits → kit_id → inagle_uniforms.models →
-/// CRC du haut, des chaussures et des gants (l'entrée `typeId = 0`, sinon la première).
-fn resolve_uniform_crcs(db: &Mirror, internal_code: &str) -> Option<UniformCrcs> {
-    // 1. Récupère series + team ID principal du personnage.
-    let result = db.query(
-        "SELECT series, substr(CAST(data AS TEXT),1,2000) FROM inagle_characters          WHERE internal_code=$1 ORDER BY is_primary DESC NULLS LAST LIMIT 1",
-        &[SqlValue::Text(internal_code.to_owned())],
-    )?;
-    let row = result.rows.into_iter().next()?;
-    let series_str = mirror::text(&row.values[0]);
-    let data_raw = mirror::text(&row.values[1]);
-    let team_id = serde_json::from_str::<Value>(&data_raw)
-        .ok()
-        .and_then(|v| {
-            v["teams"]
-                .as_array()
-                .and_then(|arr| arr.first())
-                .and_then(|t| t["id"].as_str().map(str::to_string))
-        })?;
-    let season = SeasonKey::from_series(&series_str);
-
-    // 2. Récupère le kit_id depuis inagle_teams.
-    let kit_id: String = db
-        .first_text(
-            "SELECT CAST(data AS TEXT) FROM inagle_teams WHERE id=$1 LIMIT 1",
-            &[SqlValue::Text(team_id)],
-        )
-        .and_then(|data_raw| {
-            serde_json::from_str::<Value>(&data_raw)
-                .ok()
-                .and_then(|v| v["kits"][season.as_str()].as_str().map(str::to_string))
-        })?;
-
-    // 3. Les CRC de modèles depuis inagle_uniforms (name_id = kit_id).
-    let models_raw = db.first_text(
-        "SELECT CAST(models AS TEXT) FROM inagle_uniforms WHERE name_id=$1 ORDER BY type_id ASC LIMIT 1",
-        &[SqlValue::Text(kit_id.clone())],
-    )?;
-    let models: Value = serde_json::from_str(&models_raw).ok()?;
-    let arr = models.as_array()?;
-    let entry = arr
-        .iter()
-        .find(|e| e["typeId"].as_u64() == Some(0))
-        .or_else(|| arr.first())?;
-    let crc_field = |name: &str| -> u32 {
-        entry[name]
-            .as_str()
-            .and_then(|s| u32::from_str_radix(s.strip_prefix("0x").unwrap_or(s), 16).ok())
-            .unwrap_or(0)
-    };
-    Some(UniformCrcs {
-        fielder: crc_field("uniformFielderModelIdCrc"),
-        shoes: crc_field("shoesFielderModelIdCrc"),
-        glove: crc_field("gloveModelIdCrc"),
-        kit_id,
-    })
 }
 
 // ── Décodage G4TX → PNG ───────────────────────────────────────────────────────
@@ -712,15 +386,19 @@ fn resolve_uniform_crcs(db: &Mirror, internal_code: &str) -> Option<UniformCrcs>
 // source unique du workspace — Phase 1b dédup). Ici, on n'expose que les helpers spécifiques
 // au serveur (résolution VFS, fallback de noms), qui appellent ce module partagé.
 
-/// Construit l'entrée JSON d'un écran de menu depuis son `*_menu_setting.cfg.bin.json` (dump
-/// T2B). `stem` = nom logique de l'écran (sans `_setting.cfg.bin.json`) ; la **nav-hash** de
-/// l'écran (ce que le manager `0x14109D190` / le Lua utilisent pour l'ouvrir) = `CRC32(stem)`.
-/// Chaque layer porte `hash == CRC32(name)` (invariant byte-exact, cf. `nie_data::menu_setting`).
-/// `None` si le fichier est illisible.
-fn menu_screen_entry(path: &Path, stem: &str) -> Option<serde_json::Value> {
+/// Dossier du VFS qui porte les `<écran>_setting.cfg.bin`.
+const MENU_CFG_DIR: &str = "data/common/gamedata/menu/cfg/";
+
+/// Construit l'entrée JSON d'un écran de menu depuis son `<stem>_setting.cfg.bin` du VFS. `stem`
+/// = nom logique de l'écran ; la **nav-hash** de l'écran (ce que le manager `0x14109D190` / le Lua
+/// utilisent pour l'ouvrir) = `CRC32(stem)`. Chaque layer porte `hash == CRC32(name)` (invariant
+/// byte-exact, cf. `nie_data::menu_setting`). `None` si le fichier est absent ou illisible.
+fn menu_screen_entry(vfs: &Vfs, stem: &str) -> Option<serde_json::Value> {
     use serde_json::json;
-    let txt = fs::read_to_string(path).ok()?;
-    let root: serde_json::Value = serde_json::from_str(&txt).ok()?;
+    let bytes = vfs
+        .read(&format!("{MENU_CFG_DIR}{stem}_setting.cfg.bin"))
+        .ok()?;
+    let root = cfgbin::to_iecode_json(&bytes)?;
     let ms = nie_data::menu_setting::parse(&root);
     let nav = nie_data::unlock_condition::crc32_str(stem);
     let layers: Vec<serde_json::Value> = ms
@@ -755,6 +433,35 @@ fn menu_screen_entry(path: &Path, stem: &str) -> Option<serde_json::Value> {
         "resources": resources,
         "commands": commands,
     }))
+}
+
+/// L'index des icônes du jeu en JSON : nom → atlas, texture, rectangle, taille, URL `/tex/…`.
+fn build_icons_index(vfs: &Vfs) -> String {
+    use nie_explore::menu_icons::{IconIndexPolicy, build_icon_index};
+    let policy = IconIndexPolicy::new(
+        "menu/200_icon/",
+        ".g4tx",
+        &["10_icon_chr", "01_icon_emblem"],
+    );
+    let index = build_icon_index(vfs, vfs.iter().map(|(path, _)| path), &policy);
+    let doc: std::collections::BTreeMap<&String, serde_json::Value> = index
+        .icons
+        .iter()
+        .map(|(name, icon)| {
+            (
+                name,
+                serde_json::json!({
+                    "atlas": icon.atlas,
+                    "texture": icon.texture,
+                    "rect": icon.rect.map(|r| serde_json::json!([r.x, r.y, r.w, r.h])),
+                    "w": icon.width,
+                    "h": icon.height,
+                    "url": format!("/tex/{}/{}.png", icon.atlas.trim_start_matches("data/"), name),
+                }),
+            )
+        })
+        .collect();
+    serde_json::to_string(&doc).unwrap_or_else(|_| "{}".to_string())
 }
 
 /// Décode un `cfg.bin`/`objbin`/`fxbin`/`mevbin` RDBN en JSON exploitable :
@@ -975,145 +682,6 @@ fn render_text_png(font_cfg: &[u8], font_g4tx: &[u8], texte: &str, fg: [u8; 4]) 
     la.blit_line(atlas, aw, &mut buf, largeur, 2, 2, texte, fg);
     let _ = ah;
     nie_formats::g4tx_decode::encode_rgba_to_png(&buf, largeur, hauteur)
-}
-
-fn compose_story_png(
-    font_cfg: &[u8],
-    font_g4tx: &[u8],
-    speaker: &str,
-    text: &str,
-) -> Option<Vec<u8>> {
-    use nie_formats::{cfgbin, font, g4tx};
-    const W: usize = 1280;
-    const H: usize = 720;
-    let speaker = fr_accents_to_ascii(speaker);
-    let speaker = speaker.as_str();
-    let text = fr_accents_to_ascii(text);
-    let text = text.as_str();
-
-    let cfg = cfgbin::parse_t2b(font_cfg).ok()?;
-    let metrics = font::parse_metrics(&cfg);
-    let tx = g4tx::parse(font_g4tx).ok()?;
-    let t = tx.textures.first()?;
-    let dds = font_g4tx.get(t.data_offset..)?;
-    let px_off = if dds.len() >= 88 && &dds[84..88] == b"DX10" {
-        148
-    } else {
-        128
-    };
-    let atlas = dds.get(px_off..)?;
-    let (aw, ah) = (t.width as usize, t.height as usize);
-    let cell_h = metrics.dims.cell_height;
-    let la = font::LatinAtlas::from_atlas(atlas, aw, ah, 946, cell_h);
-
-    // Fond dégradé bleu nuit (placeholder du rendu de scène 3D).
-    let mut buf = vec![0u8; W * H * 4];
-    for y in 0..H {
-        let tt = y as f32 / H as f32;
-        let (r, g, b) = (
-            (18.0 + 30.0 * tt) as u8,
-            (24.0 + 36.0 * tt) as u8,
-            (44.0 + 60.0 * (1.0 - tt)) as u8,
-        );
-        for x in 0..W {
-            let o = (y * W + x) * 4;
-            buf[o..o + 4].copy_from_slice(&[r, g, b, 255]);
-        }
-    }
-    let fill = |buf: &mut [u8], x0: i32, y0: i32, x1: i32, y1: i32, c: [u8; 4]| {
-        let a = f32::from(c[3]) / 255.0;
-        for y in y0.max(0)..y1.min(H as i32) {
-            for x in x0.max(0)..x1.min(W as i32) {
-                let o = (y as usize * W + x as usize) * 4;
-                for k in 0..3 {
-                    buf[o + k] = (f32::from(c[k]) * a + f32::from(buf[o + k]) * (1.0 - a)) as u8;
-                }
-                buf[o + 3] = 255;
-            }
-        }
-    };
-
-    // Wrap du texte par mots (gère `\n` littéral et réel).
-    let (bx0, bx1) = (60i32, W as i32 - 60);
-    let line_h = i32::from(cell_h) + 4;
-    let max_w = (bx1 - bx0 - 80) as u32;
-    let mut lines: Vec<String> = Vec::new();
-    for para in text.split('\n').flat_map(|p| p.split("\\n")) {
-        let mut cur = String::new();
-        for word in para.split_whitespace() {
-            let trial = if cur.is_empty() {
-                word.to_string()
-            } else {
-                format!("{cur} {word}")
-            };
-            if la.measure(&trial) <= max_w {
-                cur = trial;
-            } else {
-                if !cur.is_empty() {
-                    lines.push(std::mem::take(&mut cur));
-                }
-                cur = word.to_string();
-            }
-        }
-        lines.push(cur);
-    }
-    if lines.is_empty() {
-        lines.push(String::new());
-    }
-
-    let by1 = H as i32 - 28;
-    let by0 = by1 - (lines.len() as i32 * line_h + 36);
-    fill(&mut buf, bx0, by0, bx1, by1, [10, 14, 28, 220]);
-    fill(&mut buf, bx0, by0, bx1, by0 + 3, [90, 200, 255, 255]);
-    let name_w = (la.measure(speaker) as i32 + 40).min(440);
-    fill(
-        &mut buf,
-        bx0 + 20,
-        by0 - 40,
-        bx0 + 20 + name_w,
-        by0 + 2,
-        [30, 60, 110, 235],
-    );
-    fill(
-        &mut buf,
-        bx0 + 20,
-        by0 - 40,
-        bx0 + 20 + name_w,
-        by0 - 37,
-        [120, 220, 255, 255],
-    );
-    la.blit_line(
-        atlas,
-        aw,
-        &mut buf,
-        W,
-        bx0 + 38,
-        by0 - 32,
-        speaker,
-        [200, 235, 255, 255],
-    );
-    for (i, line) in lines.iter().enumerate() {
-        la.blit_line(
-            atlas,
-            aw,
-            &mut buf,
-            W,
-            bx0 + 40,
-            by0 + 22 + i as i32 * line_h,
-            line,
-            [240, 244, 250, 255],
-        );
-    }
-    fill(
-        &mut buf,
-        bx1 - 36,
-        by1 - 24,
-        bx1 - 20,
-        by1 - 8,
-        [120, 220, 255, 255],
-    );
-
-    g4tx_decode::encode_rgba_to_png(&buf, W, H)
 }
 
 /// Construit le chemin VFS d'un G4TX de face depuis le code personnage.
@@ -1612,17 +1180,12 @@ struct Tenue {
     capitaine: bool,
     /// Numéro de dossard choisi (0..=99). `None` = plaque non portée.
     numero: Option<u8>,
-    /// Gants du **kit** autorisés à compléter la fiche du personnage.
-    gants_du_kit: bool,
 }
 
 impl Tenue {
-    /// Lit la tenue d'une query string (`captain=1&number=9&gloves=1`).
+    /// Lit la tenue d'une query string (`captain=1&number=9`).
     ///
-    /// Rend `None` quand la requête ne porte **aucune** des trois clés : l'appelant retombe
-    /// alors sur la tenue attestée du personnage, s'il en existe une. Une requête qui dit
-    /// `captain=0` n'est pas silencieuse pour autant — elle affirme « pas capitaine » et gagne
-    /// donc sur l'attestation.
+    /// Rend `None` quand la requête ne porte aucune des clés `captain` et `number`.
     ///
     /// Une valeur illisible vaut « absente » plutôt qu'une erreur : la route sert un modèle, et
     /// refuser le modèle entier pour un paramètre de présentation mal tapé coûterait plus que
@@ -1636,10 +1199,6 @@ impl Tenue {
                     tenue.capitaine = matches!(valeur, "1" | "true");
                     vue = true;
                 }
-                "gloves" => {
-                    tenue.gants_du_kit = matches!(valeur, "1" | "true");
-                    vue = true;
-                }
                 "number" => {
                     tenue.numero = valeur.parse::<u8>().ok().filter(|n| *n < 100);
                     vue = true;
@@ -1648,22 +1207,6 @@ impl Tenue {
             }
         }
         vue.then_some(tenue)
-    }
-
-    /// Tenue attestée par `presentation.json` pour ce code, si le fichier en porte une.
-    ///
-    /// C'est une **preuve externe** (frames officiels du zukan), pas une déduction : elle ne
-    /// vaut que pour les codes explicitement relevés, et la requête la surclasse toujours.
-    fn attestee(code: &str) -> Option<Self> {
-        let preset = presentations().get(code)?;
-        Some(Self {
-            capitaine: preset["captain"] == true,
-            numero: preset["jersey_number"]
-                .as_u64()
-                .filter(|n| *n < 100)
-                .map(|n| n as u8),
-            gants_du_kit: preset["gloves"] == true,
-        })
     }
 
     /// Suffixe de clé de cache. **Vide pour la tenue par défaut**, afin que le chemin le plus
@@ -1680,28 +1223,14 @@ impl Tenue {
         if let Some(n) = self.numero {
             s.push_str(&format!("_n{n}"));
         }
-        if self.gants_du_kit {
-            s.push_str("_glv");
-        }
         s
     }
 }
 
-/// Tenue effective d'une requête : ce que la requête demande, sinon ce que l'attestation
-/// externe établit pour ce code, sinon la tenue par défaut — qui n'affirme rien.
-fn tenue_demandee(code: &str, query: &str) -> Tenue {
-    Tenue::depuis_query(query)
-        .or_else(|| Tenue::attestee(code))
-        .unwrap_or_default()
-}
-
-/// Presets attestés par une référence externe (frames officiels du zukan), chargés une fois.
-fn presentations() -> &'static Value {
-    static PRESETS: std::sync::LazyLock<Value> = std::sync::LazyLock::new(|| {
-        serde_json::from_str(include_str!("presentation.json"))
-            .expect("présentations JSON intégrées valides")
-    });
-    &PRESETS
+/// Tenue effective d'une requête : ce que la requête demande, sinon la tenue par défaut, qui
+/// n'affirme rien.
+fn tenue_demandee(_code: &str, query: &str) -> Tenue {
+    Tenue::depuis_query(query).unwrap_or_default()
 }
 
 /// Pose la [`Tenue`] sur le modèle assemblé : retire ce que le joueur ne porte pas, et place
@@ -1771,42 +1300,12 @@ fn appliquer_tenue(model: &mut nie_formats::assemble::AssembledModel, tenue: Ten
         }
     }
 
-    // L'expression de bouche reste attestée uniquement : aucune requête ne la choisit encore,
-    // et la déduire n'aurait pas de source.
-    let mut expressions = 0;
-    if let Some(slot) = presentations()
-        .get(&model.internal_code)
-        .and_then(|p| p["mouth_expression"].as_u64())
-        .filter(|n| *n < 8)
-    {
-        for primitive in model
-            .primitives
-            .iter_mut()
-            .filter(|p| p.piece == model.internal_code && p.material_name == "mouth_10")
-        {
-            if !primitive.uv0.is_empty()
-                && primitive
-                    .uv0
-                    .iter()
-                    .all(|uv| (0.0..=0.25).contains(&uv.u) && (0.0..=0.5).contains(&uv.v))
-            {
-                for uv in &mut primitive.uv0 {
-                    uv.u += (slot % 4) as f32 / 4.0;
-                    uv.v += (slot / 4) as f32 / 2.0;
-                }
-                expressions += 1;
-            }
-        }
-    }
-
     json!({
         "captain": tenue.capitaine,
         "jersey_number": tenue.numero,
-        "kit_gloves": tenue.gants_du_kit,
         "armband_primitives_hidden": brassards_retires,
         "nameplate_primitives_hidden": plaques_retirees,
         "nameplates_numbered": plaques_numerotees,
-        "mouth_expressions_selected": expressions,
     })
 }
 
@@ -1870,69 +1369,32 @@ fn assemble_chara(state: &State, code: &str, tenue: Tenue) -> Result<Assembled> 
         );
     }
 
-    let body_type_idx = body.map_or_else(
-        || state.body_type_idx(code),
-        |b| u8::try_from(b.type_idx).unwrap_or(0),
-    );
+    let body_type_idx = body.map_or_else(|| 0, |b| u8::try_from(b.type_idx).unwrap_or(0));
     let profile = body.map_or(0, |b| b.type_idx);
     let base_name = type_idx_to_glb_name(body_type_idx)
         .ok_or_else(|| anyhow::anyhow!("type corporel {body_type_idx} sans tête de base"))?;
 
     // ── Tenue : CRC du haut, des chaussures, des gants ─────────────────────────
-    let db = state
-        .db_path
-        .as_ref()
-        .and_then(|db| resolve_uniform_crcs(db, code));
-    let model_default = fiche.map_or(0, |r| r.uniform_crc);
-    let uniform_crc = db
-        .as_ref()
-        .map(|d| d.fielder)
-        .filter(|&c| c != 0)
-        .unwrap_or(model_default);
-    let uniform_source = match (&db, uniform_crc) {
-        (Some(d), c) if c == d.fielder && c != 0 => format!("inagle_uniforms kit {}", d.kit_id),
-        (_, c) if c == model_default && c != 0 => "CHARA_MODEL_INFO.var[5]".to_string(),
-        _ => "aucune".to_string(),
+    // Les trois viennent de la fiche `CHARA_MODEL_INFO` du VFS (`var[5]`, `var[6]`, `var[7]`,
+    // clés de `chara_parts`) ; aucune autre source n'existe dans le jeu pour un personnage seul.
+    let uniform_crc = fiche.map_or(0, |r| r.uniform_crc);
+    let uniform_source = if uniform_crc != 0 {
+        "CHARA_MODEL_INFO.var[5]"
+    } else {
+        "aucune"
     };
-    // Chaussures et gants : le kit d'équipe s'il est connu, sinon les défauts du modèle
-    // (`CHARA_MODEL_INFO.var[6]`/`var[7]`, clés de `CHARA_PARTS_SHOES_MODEL`/`GLOVE_MODEL`).
-    let pick = |db_val: Option<u32>, model_val: u32, role: &str| -> (u32, String) {
-        match db_val.filter(|&c| c != 0) {
-            Some(c) => (c, format!("{role} : kit d'équipe")),
-            None if model_val != 0 => (model_val, format!("{role} : défaut du modèle")),
-            None => (
-                0,
-                format!("{role} : aucun CRC (ni kit, ni défaut du modèle)"),
-            ),
-        }
-    };
-    let (shoes_crc, shoes_note) = pick(
-        db.as_ref().map(|d| d.shoes),
-        fiche.map_or(0, |r| r.shoes_crc),
-        "shoes",
-    );
-    // Les gants ne suivent PAS `pick` : `gloveModelIdCrc` est le créneau ganté du kit, sans
-    // qualificatif de rôle là où le maillot et les crampons en portent un (`…Fielder…`). Le
-    // laisser gagner mettait les gants du gardien à toute l'équipe. La fiche du personnage
-    // décide, et le kit ne complète que si la requête le demande.
-    let (glove_crc, glove_note) = match (
-        fiche.map_or(0, |r| r.glove_crc),
-        tenue
-            .gants_du_kit
-            .then(|| db.as_ref().map_or(0, |d| d.glove)),
-    ) {
-        (0, Some(kit)) if kit != 0 => (kit, "gloves : créneau ganté du kit, sur demande".into()),
-        (0, _) => (
-            0,
-            "gloves : la fiche du personnage n'en déclare pas".to_string(),
-        ),
-        (propre, _) => (propre, "gloves : défaut du modèle".to_string()),
-    };
-    notes.push(shoes_note);
-    notes.push(glove_note);
-    if db.is_none() {
-        notes.push("miroir SQLite muet : tenue et pièces par défaut du modèle".into());
-    }
+    let shoes_crc = fiche.map_or(0, |r| r.shoes_crc);
+    let glove_crc = fiche.map_or(0, |r| r.glove_crc);
+    notes.push(if shoes_crc != 0 {
+        "shoes : défaut du modèle".to_string()
+    } else {
+        "shoes : aucun CRC dans la fiche du personnage".to_string()
+    });
+    notes.push(if glove_crc != 0 {
+        "gloves : défaut du modèle".to_string()
+    } else {
+        "gloves : la fiche du personnage n'en déclare pas".to_string()
+    });
 
     // ── Visage ─────────────────────────────────────────────────────────────────
     // Trois formes dans `chara_model` : un `.g4md` libre (IE1…GO), un objbin dont le `Skeleton`
@@ -2110,11 +1572,9 @@ fn assemble_chara(state: &State, code: &str, tenue: Tenue) -> Result<Assembled> 
     let input = CharacterAssemblyInput {
         internal_code: code.to_string(),
         body_type_idx,
-        glb_dir: state.glb_dir.clone(),
         uniform_model_crc: uniform_crc,
         uniform_g4md,
         uniform_g4mg,
-        uniform_glb_path: None,
         uniform_parts,
         body_raw,
         face_raw,
@@ -2229,36 +1689,12 @@ struct UniformData {
     g4tx_path: Option<String>,
 }
 
-/// Charge les données G4MD+G4MG d'un uniforme depuis le VFS.
-///
-/// Priorité 1 : `uniform-model-map.ndjson` (CRC = crc32_std du code logique, couvre IE1/GO/VR).
-/// Priorité 2 : `model-crc-manifest.ndjson` (CRC = crc32_nie du stem fichier, couvre VR uniquement).
+/// Charge les données G4MD+G4MG d'un uniforme depuis le VFS : le CRC de la fiche du personnage
+/// (`CHARA_MODEL_INFO.var[5]`) est celui du nom de fichier du maillage (`crc32_nie`), retrouvé
+/// dans la table calculée depuis la liste des fichiers du VFS.
 fn load_uniform_from_vfs(state: &State, crc: u32) -> Result<UniformData> {
-    // Priorité 1 : manifeste uniforme (chara_parts).
-    if let Some(entry) = state.uniform_map.get(&crc) {
-        let g4md_path = &entry.g4md;
-        let g4mg_path = g4md_to_g4mg_path(g4md_path);
-        let g4tx_path = entry.g4tx.clone();
-
-        let vfs = &state.vfs;
-        let g4md = vfs
-            .read(g4md_path.as_str())
-            .with_context(|| format!("lecture G4MD uniforme {g4md_path}"))?;
-        let g4mg = vfs
-            .read(&g4mg_path)
-            .with_context(|| format!("lecture G4MG uniforme {g4mg_path}"))?;
-
-        return Ok(UniformData {
-            code: Some(entry.code.clone()),
-            g4md,
-            g4mg,
-            g4tx_path: Some(g4tx_path),
-        });
-    }
-
-    // Priorité 2 : manifeste CRC (fallback pour VR — espace CRC différent).
     let g4md_path = resolve_crc_to_g4md_path(&state.crc_manifest, crc)
-        .ok_or_else(|| anyhow::anyhow!("CRC uniforme {:#010x} absent des deux manifestes", crc))?;
+        .ok_or_else(|| anyhow::anyhow!("CRC uniforme {:#010x} absent du VFS", crc))?;
     let g4mg_path = g4md_to_g4mg_path(g4md_path);
 
     let vfs = &state.vfs;
@@ -2682,21 +2118,6 @@ fn decode_awb_entry(data: &[u8], vfs_path: &str, which: Option<usize>) -> anyhow
         .map_err(|e| anyhow::anyhow!("AWB {vfs_path}: {e}"))
 }
 
-/// Variante jumelle d'une vidéo : `data/dx11/movie/X` ↔ `data/common/movie/X`.
-///
-/// Le jeu livre chaque cinématique en double, sous deux racines. Ce ne sont pas des doublons :
-/// `dx11` est la variante PC, à débit nettement supérieur (16,1 Gio contre 3,7 Gio à l'échelle
-/// des 96 films, même définition 1920×1080). Mais l'une des deux peut manquer du disque ou ne
-/// pas être décodable, auquel cas l'autre sauve la lecture.
-fn variante_jumelle(vfs_path: &str) -> Option<String> {
-    if let Some(reste) = vfs_path.strip_prefix("data/dx11/movie/") {
-        return Some(format!("data/common/movie/{reste}"));
-    }
-    vfs_path
-        .strip_prefix("data/common/movie/")
-        .map(|reste| format!("data/dx11/movie/{reste}"))
-}
-
 /// Chemin du AWB frère d'un ACB : même chemin, extension `.awb`.
 fn awb_frere(vfs_path: &str) -> Option<String> {
     vfs_path
@@ -2860,31 +2281,6 @@ fn conteneur_web(usm_brut: &[u8], nom_fichier: &str) -> Result<(&'static str, Ve
     cinema::browser_video_container(usm_brut, nom_fichier).map(|video| (video.mime, video.bytes))
 }
 
-/// Thin JSON transport over the same resource resolver used by WebAssembly and Tauri.
-fn resolve_avatar_payload(catalog: &[u8], state: &str) -> Result<Vec<u8>, String> {
-    if catalog.len() > 2 * 1024 * 1024 || state.len() > 64 * 1024 {
-        return Err("Avatar composition input exceeds its size limit".to_string());
-    }
-    let catalog = serde_json::from_slice::<nie_data::avatar::AvatarCatalog>(catalog)
-        .map_err(|error| error.to_string())?;
-    let state = serde_json::from_str::<nie_data::avatar::AvatarState>(state)
-        .map_err(|error| error.to_string())?;
-    let composition =
-        nie_data::avatar::resolve_avatar(&catalog, &state).map_err(|error| error.to_string())?;
-    serde_json::to_vec(&composition).map_err(|error| error.to_string())
-}
-
-fn avatar_json_response(status: u16, body: &[u8]) -> Vec<u8> {
-    let reason = match status {
-        200 => "OK",
-        400 => "Bad Request",
-        _ => "Service Unavailable",
-    };
-    let mut response = format!("HTTP/1.1 {status} {reason}\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: {}\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nCross-Origin-Resource-Policy: cross-origin\r\nX-Content-Type-Options: nosniff\r\nConnection: close\r\n\r\n", body.len()).into_bytes();
-    response.extend_from_slice(body);
-    response
-}
-
 fn sha256_hex_slice(bytes: &[u8]) -> String {
     use std::fmt::Write as _;
     let mut s = String::with_capacity(bytes.len() * 2);
@@ -2998,48 +2394,70 @@ fn fiche_video(state: &State, chemin: &str) -> serde_json::Value {
     serde_json::to_value(&film).unwrap_or_else(|e| serde_json::json!({ "erreur": e.to_string() }))
 }
 
-/// Sert le catalogue des cinématiques, **depuis le cache disque uniquement**.
+/// État du catalogue des cinématiques : construit depuis le VFS dans un thread, une seule fois.
 ///
-/// Ce serveur ne le construit pas, et ne doit pas le construire : il vit collé à son
-/// `MemoryHigh` (cache CPK de 8 Gio plus le préchargement des modèles), et la moindre passe sur
-/// les 3,7 Gio de films pousse la pression mémoire du cgroup au-delà du seuil du watchdog, qui
-/// le redémarre — la construction repart alors de zéro, indéfiniment. Mesuré le 2/9/2026 :
-/// `memory.pressure full avg300=33 % > 20 %`, redémarrage, catalogue perdu.
-///
-/// Le catalogue est donc un **artefact produit hors ligne**, comme `--crc-manifest` ou
-/// `--uniform-map` :
-///
-/// ```text
-/// nie video catalogue --out <cache-dir>/video-catalog.json
-/// ```
-///
-/// L'empreinte du corpus (nombre de films et volume) est revérifiée à chaque requête : un
-/// catalogue qui ne décrit plus le jeu installé est refusé plutôt que servi.
-fn catalogue_video(state: &State) -> Result<String, String> {
+/// Parcourir les 97 films demande plusieurs gigaoctets de lecture : la requête qui le déclenche
+/// ne reste pas bloquée, elle reçoit un 503 `Retry-After` jusqu'à ce que le catalogue soit prêt.
+/// Le résultat est aussi écrit dans le cache disque, validé par l'empreinte du corpus (nombre de
+/// films et volume) : un catalogue qui ne décrit plus le jeu est reconstruit, jamais servi.
+enum VideoCatalog {
+    /// Pas encore demandé.
+    Idle,
+    /// Un thread le construit.
+    Building,
+    /// Prêt.
+    Ready(Arc<String>),
+    /// La construction a échoué.
+    Failed(String),
+}
+
+/// Lance la construction du catalogue si elle n'a pas encore eu lieu.
+fn start_video_catalog(state: &Arc<State>) {
+    {
+        let Ok(mut guard) = state.video_catalog.lock() else {
+            return;
+        };
+        if !matches!(*guard, VideoCatalog::Idle) {
+            return;
+        }
+        *guard = VideoCatalog::Building;
+    }
+    let state = Arc::clone(state);
+    thread::spawn(move || {
+        let result = build_video_catalog(&state);
+        if let Err(e) = &result {
+            warn!("catalogue vidéo : {e}");
+        }
+        if let Ok(mut guard) = state.video_catalog.lock() {
+            *guard = match result {
+                Ok(json) => VideoCatalog::Ready(Arc::new(json)),
+                Err(e) => VideoCatalog::Failed(e),
+            };
+        }
+    });
+}
+
+/// Le catalogue en JSON : le cache disque s'il décrit encore le VFS, sinon calculé et écrit.
+fn build_video_catalog(state: &State) -> Result<String, String> {
     let cache = state.cache_dir.join(FICHIER_CATALOGUE);
-    let texte = fs::read_to_string(&cache).map_err(|_| {
-        format!(
-            "catalogue absent — le produire avec `nie video catalogue --out {}`",
-            cache.display()
-        )
-    })?;
-    if texte.len() <= 2 {
-        return Err("catalogue vide".to_string());
-    }
     let attendue = cinema::empreinte(&state.vfs, cinema::DOSSIER_FILMS);
-    let lue = serde_json::from_str::<serde_json::Value>(&texte)
-        .ok()
-        .and_then(|v| {
-            v.get("empreinte")
-                .and_then(|e| e.as_str().map(str::to_string))
-        });
-    match lue {
-        Some(e) if e == attendue => Ok(texte),
-        Some(e) => Err(format!(
-            "catalogue périmé (empreinte {e} ≠ {attendue}) — le régénérer avec `nie video catalogue`"
-        )),
-        None => Err("catalogue sans empreinte — régénérer avec `nie video catalogue`".to_string()),
+    if let Ok(texte) = fs::read_to_string(&cache)
+        && serde_json::from_str::<serde_json::Value>(&texte)
+            .ok()
+            .and_then(|v| {
+                v.get("empreinte")
+                    .and_then(|e| e.as_str().map(str::to_string))
+            })
+            .is_some_and(|lue| lue == attendue)
+    {
+        return Ok(texte);
     }
+    let catalogue = cinema::catalogue(&state.vfs, cinema::DOSSIER_FILMS, false);
+    let json = serde_json::to_string(&catalogue).map_err(|e| e.to_string())?;
+    if let Err(e) = atomic_write(&cache, &json) {
+        warn!("écriture du cache du catalogue vidéo : {e}");
+    }
+    Ok(json)
 }
 
 /// Retourne les bytes du GLB : depuis le cache disque ou assemblage live + mise en cache.
@@ -4207,8 +3625,6 @@ fn spawn_preload(state: Arc<State>, workers: usize) {
 /// these initializers although both already are `const { … }` (it fired on `IS_HEAD` alone
 /// before `IS_PRIVATE` existed).
 #[allow(clippy::missing_const_for_thread_local)]
-mod mirror;
-
 mod request_flags {
     thread_local! {
         pub(super) static IS_HEAD: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
@@ -4235,8 +3651,8 @@ fn cache_control_for_status(status: u16) -> &'static str {
     }
 }
 
-/// True for the routes that hand out the game's own bytes or the repository's code: `/raw/`,
-/// `/depot/`, and `/export/` in an untouched (`raw`, the default) format.
+/// True for the routes that hand out the game's own bytes: `/raw/`,
+/// and `/export/` in an untouched (`raw`, the default) format.
 ///
 /// They answer only to `Authorization: Bearer <NIE_RAW_VFS_TOKEN>`
 /// (`nie_explore::raw_access`, the same rule as `nie-site`'s `/f` and `/b`). Every derived route
@@ -4258,7 +3674,7 @@ fn private_route(path: &str, query: &str) -> bool {
             .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
     };
     // `/vfs/hash` digests the game's own bytes (an oracle for known content): same gate as `/raw`.
-    if under("/raw") || under("/depot") || under("/vfs/hash") {
+    if under("/raw") || under("/vfs/hash") {
         return true;
     }
     let Some(rest) = path.strip_prefix("/export/") else {
@@ -4718,13 +4134,8 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
         return;
     }
     if path == OPENAPI_PATH {
-        respond(
-            &mut stream,
-            200,
-            "OK",
-            "application/json",
-            include_bytes!("../../../contract/openapi.json"),
-        );
+        let document = serde_json::to_vec(&nie_model_serve::routes::openapi()).unwrap_or_default();
+        respond(&mut stream, 200, "OK", "application/json", &document);
         return;
     }
 
@@ -4901,87 +4312,6 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
         };
         let bytes = serde_json::to_vec(&body).unwrap_or_default();
         respond(&mut stream, 200, "OK", "application/json", &bytes);
-        return;
-    }
-
-    // `/depot/…` — le CODE du dépôt, en lecture seule, sur `nie_explore::depot`.
-    //
-    // Quatrième façade du même moteur, après `nie find`/`grep`, le serveur MCP et l'app
-    // desktop : mêmes règles de confinement, mêmes exclusions, mêmes plafonds. Rien n'est
-    // réimplémenté ici, et il n'y a donc aucune politique d'accès à tenir à jour en double.
-    //
-    //   /depot/ls?path=<dir>                 entrées immédiates (dossiers d'abord)
-    //   /depot/read?path=<fichier>&max=      contenu texte, tronqué
-    //   /depot/find?q=<txt>&dir=&ext=&limit= recherche par chemin
-    //   /depot/grep?q=<regex>&dir=&ext=&limit= recherche dans le contenu
-    //
-    // La route n'existe QUE si `--depot-code` a été passé : sans lui, `state.depot` est `None`
-    // et l'on répond 404 comme pour n'importe quelle route inconnue — cette instance est
-    // joignable publiquement, et publier le code du projet est une décision, pas un défaut.
-    if let Some(rest) = path.strip_prefix("/depot/") {
-        let Some(depot) = state.depot.as_ref() else {
-            respond_text(&mut stream, 404, "Not Found", "route /depot inconnue");
-            return;
-        };
-        // `query` vient de la fonction : `path` en a déjà été débarrassé plus haut. La
-        // re-découper ici donnait une query VIDE, donc `ls?path=crates/engine` listait la
-        // racine et `read` répondait « chemin vide » — trouvé en appelant la route, pas en la
-        // relisant.
-        let route = rest;
-        let limite = param_usize(query, "limit", 200).min(5_000);
-        let extensions: Vec<String> = param(query, "ext")
-            .filter(|e| !e.is_empty())
-            .map(|e| e.split(',').map(str::to_string).collect())
-            .unwrap_or_default();
-        let options = nie_explore::depot::OptionsParcours {
-            sous_dossier: param(query, "dir").unwrap_or_default(),
-            extensions,
-            limite,
-            ..Default::default()
-        };
-
-        // Une erreur du moteur (chemin hors du dépôt, dossier interdit, regex invalide) est une
-        // faute de l'appelant : 400 avec son message, pas 500.
-        let resultat = match route {
-            "ls" => depot
-                .lister(&param(query, "path").unwrap_or_default())
-                .map(|v| serde_json::json!(v)),
-            // `chemin_absolu` est délibérément omis : il est utile en local (MCP, app desktop,
-            // où l'on veut ouvrir le fichier) mais divulgue l'arborescence de la machine à un
-            // client HTTP, qui n'en fera rien de bon.
-            "read" => depot
-                .lire(
-                    &param(query, "path").unwrap_or_default(),
-                    param(query, "max").and_then(|m| m.parse::<u64>().ok()),
-                )
-                .map(|f| {
-                    serde_json::json!({
-                        "chemin": f.chemin,
-                        "taille": f.taille,
-                        "tronque": f.tronque,
-                        "binaire": f.binaire,
-                        "contenu": f.contenu,
-                        "note": f.note,
-                    })
-                }),
-            "find" => depot
-                .trouver(&param(query, "q").unwrap_or_default(), &options)
-                .map(|v| serde_json::json!(v)),
-            "grep" => depot
-                .chercher(&param(query, "q").unwrap_or_default(), &options)
-                .map(|v| serde_json::json!(v)),
-            _ => {
-                respond_text(&mut stream, 404, "Not Found", "route /depot inconnue");
-                return;
-            }
-        };
-        match resultat {
-            Ok(body) => {
-                let bytes = serde_json::to_vec(&body).unwrap_or_default();
-                respond(&mut stream, 200, "OK", "application/json", &bytes);
-            }
-            Err(e) => respond_text(&mut stream, 400, "Bad Request", &e.to_string()),
-        }
         return;
     }
 
@@ -5191,7 +4521,6 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
                                 serde_json::json!({
                                     "name": r.name,
                                     "x": r.x, "y": r.y, "width": r.width, "height": r.height,
-                                    "role": state.asset_roles.get(&r.name),
                                 })
                             })
                             .collect();
@@ -5207,7 +4536,6 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
                             "path": format!("/tex/{rel}.g4tx/{}.png", t.name),
                             "regions": t.sub_textures.len(),
                             "regionsDetail": regions,
-                            "role": state.asset_roles.get(&t.name),
                         })
                     })
                     .collect();
@@ -5422,133 +4750,19 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
         return;
     }
 
-    // `/icons/index.json` — l'index des icônes du jeu (nom → atlas + rectangle + URL).
-    //
-    // Produit par `nie icons index`. Les icônes elles-mêmes ne sont PAS matérialisées : les
-    // atlas pèsent des centaines de mégaoctets, et chaque entrée porte l'URL `/tex/…` qui les
-    // décode à la demande.
+    // `/icons/index.json` — l'index des icônes du jeu (nom → atlas + rectangle + URL), calculé
+    // depuis les atlas G4TX du VFS à la première requête puis gardé en mémoire.
     if path == "/icons/index.json" || path == "/icons/index" {
-        let chemin = std::env::var("NIE_ICONS_INDEX")
-            .unwrap_or_else(|_| String::from("var/icons-index.json"));
-        match std::fs::read(&chemin) {
-            Ok(bytes) => respond(
-                &mut stream,
-                200,
-                "OK",
-                "application/json; charset=utf-8",
-                &bytes,
-            ),
-            Err(e) => respond_text(
-                &mut stream,
-                404,
-                "Not Found",
-                &format!("index absent ({chemin} : {e}) — le produire par `nie icons index`"),
-            ),
-        }
-        return;
-    }
-
-    // Bounded GET binding; existing catalogue and asset download routes remain compatible.
-    if path == "/avatar/resolve.json" {
-        use std::io::Read as _;
-        let Some(avatar_state) = param(query, "state").filter(|value| value.len() <= 64 * 1024)
-        else {
-            let _ = stream.write_all(&avatar_json_response(
-                400,
-                br#"{"error":"Invalid avatar selection"}"#,
-            ));
-            return;
-        };
-        let catalog_path = std::env::var("NIE_AVATAR_CATALOG")
-            .unwrap_or_else(|_| "var/avatar-resolved.json".to_string());
-        let catalog = fs::File::open(catalog_path).and_then(|file| {
-            let mut bytes = Vec::new();
-            file.take(2 * 1024 * 1024 + 1)
-                .read_to_end(&mut bytes)
-                .map(|_| bytes)
-        });
-        let response = match catalog {
-            Ok(bytes) => match resolve_avatar_payload(&bytes, &avatar_state) {
-                Ok(body) => avatar_json_response(200, &body),
-                Err(error) => {
-                    debug!("avatar composition rejected: {error}");
-                    avatar_json_response(400, br#"{"error":"Invalid avatar selection"}"#)
-                }
-            },
-            Err(_) => avatar_json_response(
-                503,
-                br#"{"error":"Avatar catalogue is temporarily unavailable"}"#,
-            ),
-        };
-        let _ = stream.write_all(&response);
-        return;
-    }
-
-    // `/avatar/catalog.json` — le catalogue résolu de l'éditeur d'avatar.
-    //
-    // Le fichier est **produit par `nie avatar export`**, pas recalculé ici : la résolution
-    // croise le VFS, la base de connaissance (noms d'icônes) et `menu_text`, et ce travail vit
-    // déjà dans `nie-cli`. Le servir tel quel évite d'en tenir deux versions.
-    if path == "/avatar/catalog.json" || path == "/avatar/catalog" {
-        let chemin = std::env::var("NIE_AVATAR_CATALOG")
-            .unwrap_or_else(|_| String::from("var/avatar-resolved.json"));
-        match std::fs::read(&chemin) {
-            Ok(bytes) => respond(
-                &mut stream,
-                200,
-                "OK",
-                "application/json; charset=utf-8",
-                &bytes,
-            ),
-            Err(e) => respond_text(
-                &mut stream,
-                404,
-                "Not Found",
-                &format!(
-                    "catalogue absent ({chemin} : {e}) — le produire par `nie avatar export -o {chemin}`"
-                ),
-            ),
-        }
-        return;
-    }
-
-    // `/avatar/layout/<ecran>.json` — le layout d'un écran de l'éditeur, positions comprises.
-    //
-    // Produit par `nie-game --menu <ecran> --from-setting --runtime --export-layout`, qui place
-    // chaque objet à partir des **points d'attache** déclarés par les `CMenuAttachLocator` de
-    // l'écran (`nie_formats::menu::attach_slots`) : les positions viennent donc des fichiers du
-    // jeu, pas d'un relevé sur capture. Servir le fichier tel quel évite de refaire ce calcul.
-    if let Some(rest) = path.strip_prefix("/avatar/layout/") {
-        let ecran = rest.strip_suffix(".json").unwrap_or(rest);
-        let invalide = ecran.is_empty()
-            || ecran.len() > 64
-            || !ecran
-                .bytes()
-                .all(|b| b.is_ascii_alphanumeric() || b == b'_');
-        if invalide {
-            respond_text(&mut stream, 400, "Bad Request", "nom d'écran invalide");
-            return;
-        }
-        let base = std::env::var("NIE_AVATAR_LAYOUTS")
-            .unwrap_or_else(|_| String::from("var/avatar-ui/layouts"));
-        let chemin = std::path::Path::new(&base).join(format!("{ecran}.json"));
-        match std::fs::read(&chemin) {
-            Ok(bytes) => respond(
-                &mut stream,
-                200,
-                "OK",
-                "application/json; charset=utf-8",
-                &bytes,
-            ),
-            Err(e) => respond_text(
-                &mut stream,
-                404,
-                "Not Found",
-                &format!(
-                    "layout {ecran} absent ({e}) — le produire par `nie-game --menu {ecran} --from-setting --runtime --export-layout`"
-                ),
-            ),
-        }
+        let index = state
+            .icons_index
+            .get_or_init(|| build_icons_index(&state.vfs));
+        respond(
+            &mut stream,
+            200,
+            "OK",
+            "application/json; charset=utf-8",
+            index.as_bytes(),
+        );
         return;
     }
 
@@ -5749,95 +4963,36 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
         return;
     }
 
-    // `/menu-render/<screen>.png` — rend un layout de menu (sprites) en PNG côté serveur.
-    // Remplace le renderer WebGPU navigateur (fragile). Déterministe + identique partout.
-    if let Some(rest) = path.strip_prefix("/menu-render/") {
-        let screen = rest.strip_suffix(".png").unwrap_or(rest);
-        if screen.is_empty()
-            || screen.len() > 64
-            || !screen
-                .chars()
-                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-        {
-            respond_text(&mut stream, 400, "Bad Request", "écran invalide");
-            return;
-        }
-        let layout_path = state.layout_dir.join(format!("{screen}.json"));
-        let Ok(txt) = fs::read_to_string(&layout_path) else {
-            respond_text(&mut stream, 404, "Not Found", "layout introuvable");
-            return;
-        };
-        let layout: menu::Layout = match serde_json::from_str(&txt) {
-            Ok(l) => l,
-            Err(e) => {
-                warn!("layout {screen} invalide : {e}");
-                respond_text(
-                    &mut stream,
-                    500,
-                    "Internal Server Error",
-                    "layout illisible",
-                );
-                return;
-            }
-        };
-        let png = menu::render_menu(&layout, |logical_path| {
-            let vfs_path = if logical_path.starts_with("data/") {
-                logical_path.to_string()
-            } else {
-                format!("data/{logical_path}")
-            };
-            let g4tx = {
-                let vfs = &state.vfs;
-                vfs.read(&vfs_path).ok()
-            }?;
-            g4tx_decode::decode_best_to_rgba(&g4tx, g4tx_decode::basename_of(&vfs_path))
-        });
-        match png {
-            Some(bytes) => respond(&mut stream, 200, "OK", "image/png", &bytes),
-            None => respond_text(&mut stream, 500, "Internal Server Error", "rendu échoué"),
-        }
-        return;
-    }
-
-    // `/menu-tree.json` — arbre de TOUS les écrans de menu (440 `*_setting`, dont 304 `*_menu_setting`
-    // + fenêtres/sélecteurs) ; `/menu-tree/<screen>.json` — un écran. Chaque écran : nav-hash
-    // `CRC32(stem)` + ses layers `{hash=CRC32(name), name, objbin}`, ressources et commandes (port
-    // `nie_data::menu_setting`). Source unique navigable du hub (débloque navigation + labels + rendu
-    // par écran). Données byte-exact : `consistent: true` ⇔ chaque `hash == CRC32(name)`.
+    // `/menu-tree.json` — arbre de TOUS les écrans de menu : un `*_setting.cfg.bin` par écran
+    // sous `data/common/gamedata/menu/cfg/` ; `/menu-tree/<screen>.json` — un écran. Chaque écran :
+    // nav-hash `CRC32(stem)` + ses layers `{hash=CRC32(name), name, objbin}`, ressources et
+    // commandes (`nie_data::menu_setting`). `consistent: true` ⇔ chaque `hash == CRC32(name)`.
     if let Some(rest) = path.strip_prefix("/menu-tree")
         && (rest.is_empty() || rest == ".json" || rest.starts_with('/'))
     {
-        let sel = rest
-            .strip_prefix('/')
-            .unwrap_or(rest)
-            .strip_suffix(".json")
-            .unwrap_or("")
-            .trim();
-        let dir = &state.menu_cfg_dir;
+        let sel = rest.strip_prefix('/').unwrap_or(rest);
+        let sel = sel.strip_suffix(".json").unwrap_or(sel).trim();
         if sel.is_empty() {
-            let mut paths: Vec<PathBuf> = match fs::read_dir(dir) {
-                Ok(rd) => rd.flatten().map(|e| e.path()).collect(),
-                Err(_) => Vec::new(),
-            };
-            paths.sort();
-            let mut screens: Vec<serde_json::Value> = Vec::new();
-            for p in &paths {
-                let Some(fname) = p.file_name().and_then(|s| s.to_str()) else {
-                    continue;
-                };
-                let Some(stem) = fname.strip_suffix("_setting.cfg.bin.json") else {
-                    continue;
-                };
-                if let Some(v) = menu_screen_entry(p, stem) {
-                    screens.push(v);
-                }
-            }
+            let mut stems: Vec<String> = state
+                .vfs
+                .iter()
+                .filter_map(|(p, _)| {
+                    p.strip_prefix(MENU_CFG_DIR)
+                        .and_then(|name| name.strip_suffix("_setting.cfg.bin"))
+                        .map(str::to_string)
+                })
+                .collect();
+            stems.sort();
+            let screens: Vec<serde_json::Value> = stems
+                .iter()
+                .filter_map(|stem| menu_screen_entry(&state.vfs, stem))
+                .collect();
             if screens.is_empty() {
                 respond_text(
                     &mut stream,
                     404,
                     "Not Found",
-                    "aucun menu_setting (dump absent ?)",
+                    "aucun *_setting.cfg.bin dans le VFS",
                 );
                 return;
             }
@@ -5854,87 +5009,12 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
             respond_text(&mut stream, 400, "Bad Request", "écran invalide");
             return;
         }
-        let p = dir.join(format!("{sel}_setting.cfg.bin.json"));
-        match menu_screen_entry(&p, sel) {
+        match menu_screen_entry(&state.vfs, sel) {
             Some(v) => {
                 let bytes = serde_json::to_vec(&v).unwrap_or_default();
                 respond(&mut stream, 200, "OK", "application/json", &bytes);
             }
-            None => respond_text(&mut stream, 404, "Not Found", "écran introuvable"),
-        }
-        return;
-    }
-
-    // `/story-scene[/<n>].png` — scène de dialogue du MODE HISTOIRE : un vrai dialogue
-    // (`inagle_event_subtitles`) rendu dans la VRAIE police + boîte + onglet locuteur. `<n>` =
-    // offset de ligne déterministe (défaut 0). Sert le mode histoire à azalee, sans dump.
-    if let Some(rest) = path.strip_prefix("/story-scene") {
-        let sel = rest
-            .trim_start_matches('/')
-            .strip_suffix(".png")
-            .unwrap_or("")
-            .trim();
-        let offset: i64 = sel.parse().unwrap_or(0).max(0);
-        let Some(db) = state.db_path.clone() else {
-            respond_text(
-                &mut stream,
-                503,
-                "Service Unavailable",
-                "miroir SQLite absent",
-            );
-            return;
-        };
-        let filter = "text_en IS NOT NULL AND length(text_en)>5";
-        let dialogue = db
-            .first_text(
-                &format!("SELECT CAST(COUNT(*) AS TEXT) FROM inagle_event_subtitles WHERE {filter}"),
-                &[],
-            )
-            .and_then(|n| n.parse::<i64>().ok())
-            .filter(|n| *n > 0)
-            .and_then(|n| {
-                let result = db.query(
-                    &format!(
-                        "SELECT COALESCE(line_label,'???'), COALESCE(text_fr, text_en)                          FROM inagle_event_subtitles WHERE {filter}                          ORDER BY event_id, line_index LIMIT 1 OFFSET $1"
-                    ),
-                    &[SqlValue::Integer(offset % n)],
-                )?;
-                let row = result.rows.into_iter().next()?;
-                Some((mirror::text(&row.values[0]), mirror::text(&row.values[1])))
-            });
-        let Some((speaker, text)) = dialogue else {
-            respond_text(
-                &mut stream,
-                404,
-                "Not Found",
-                "dialogue introuvable (table inagle absente ?)",
-            );
-            return;
-        };
-        let (cfg, g4tx) = {
-            let vfs = &state.vfs;
-            (
-                vfs.read("data/common/font/font/font_def/font.cfg.bin").ok(),
-                vfs.read("data/dx11/font/font_def/font.g4tx").ok(),
-            )
-        };
-        let (Some(cfg), Some(g4tx)) = (cfg, g4tx) else {
-            respond_text(
-                &mut stream,
-                500,
-                "Internal Server Error",
-                "police absente du VFS",
-            );
-            return;
-        };
-        match compose_story_png(&cfg, &g4tx, &speaker, &text) {
-            Some(png) => respond(&mut stream, 200, "OK", "image/png", &png),
-            None => respond_text(
-                &mut stream,
-                500,
-                "Internal Server Error",
-                "composition échouée",
-            ),
+            None => respond_text(&mut stream, 404, "Not Found", "écran absent du VFS"),
         }
         return;
     }
@@ -6323,22 +5403,27 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
     // Le WAV audio peut être récupéré en suffixant `?track=audio`.
     // `/video/catalog.json` — l'inventaire complet des cinématiques, pour la page Cinéma.
     if path == "/video/catalog.json" || path == "/video/catalog" {
-        match catalogue_video(&state) {
-            Ok(json) => {
-                respond(
-                    &mut stream,
-                    200,
-                    "OK",
-                    "application/json; charset=utf-8",
-                    json.as_bytes(),
-                );
+        start_video_catalog(&state);
+        let state_now = match state.video_catalog.lock() {
+            Ok(guard) => match &*guard {
+                VideoCatalog::Ready(json) => Ok(Some(Arc::clone(json))),
+                VideoCatalog::Failed(e) => Err(e.clone()),
+                VideoCatalog::Idle | VideoCatalog::Building => Ok(None),
+            },
+            Err(_) => Err("verrou empoisonné".to_string()),
+        };
+        match state_now {
+            Ok(Some(json)) => respond(
+                &mut stream,
+                200,
+                "OK",
+                "application/json; charset=utf-8",
+                json.as_bytes(),
+            ),
+            Ok(None) => {
+                let _ = stream.write_all(&video_unavailable_response());
             }
-            Err(e) => {
-                // Le construire ICI tiendrait la connexion une minute et ferait redémarrer le
-                // service par pression mémoire (cf. `catalogue_video`). On dit ce qui manque.
-                warn!("catalogue vidéo : {e}");
-                respond_text(&mut stream, 503, "Service Unavailable", &e);
-            }
+            Err(e) => respond_text(&mut stream, 500, "Internal Server Error", &e),
         }
         return;
     }
@@ -6364,19 +5449,10 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
         };
         let (chemin_reel, brut) = match lire(&vfs_path) {
             Ok(b) => (vfs_path.clone(), b),
-            Err(origine) => match variante_jumelle(&vfs_path).and_then(|j| match lire(&j) {
-                Ok(b) => Some((j, b)),
-                Err(_) => None,
-            }) {
-                Some((j, b)) => {
-                    info!("{vfs_path} absente — servie depuis {j}");
-                    (j, b)
-                }
-                None => {
-                    respond_text(&mut stream, 404, "Not Found", &format!("vidéo {origine}"));
-                    return;
-                }
-            },
+            Err(origine) => {
+                respond_text(&mut stream, 404, "Not Found", &format!("vidéo {origine}"));
+                return;
+            }
         };
         // `?info=1` — la fiche du film : métadonnées, bande-son, et ce que coûte le remux.
         if param(query, "info").is_some() {
@@ -6428,119 +5504,6 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
 
 // ── Résolution du miroir SQLite ───────────────────────────────────────────────
 
-/// Remonte jusqu'à un ancêtre qui ressemble à la racine du dépôt nie.
-///
-/// Même marqueur que la commande Tauri équivalente (`Cargo.toml` **et** `crates/`) : aucun
-/// chemin de machine en dur, c'est la doctrine de `resolve_game_dir` appliquée au dépôt.
-fn resolve_depot_racine() -> Result<PathBuf> {
-    let cwd = std::env::current_dir().context("répertoire courant")?;
-    let mut cur = Some(cwd.as_path());
-    while let Some(dir) = cur {
-        if dir.join("Cargo.toml").is_file() && dir.join("crates").is_dir() {
-            return Ok(dir.to_path_buf());
-        }
-        cur = dir.parent();
-    }
-    anyhow::bail!(
-        "racine du dépôt nie introuvable depuis {} — passer --depot-racine",
-        cwd.display()
-    )
-}
-
-/// `racine` est la racine du jeu **effective** (`--game-dir` compris) : chercher les backups
-/// sous `resolve_game_dir()` ignorait l'argument et regardait sous l'installation Steam, où
-/// `data/backups` n'existe pas — le miroir passait alors pour absent.
-fn resolve_db(racine: &Path, db_override: Option<&str>) -> Option<Mirror> {
-    if let Some(value) = db_override {
-        let mirror = Mirror::parse(value);
-        if mirror.is_none() {
-            warn!("DB spécifiée introuvable : {value}");
-        }
-        return mirror;
-    }
-
-    // Base PostgreSQL (Neon) : prioritaire sur les miroirs fichiers.
-    for var in &["NIE_PG_URL", "INAGLE_DATABASE_URL"] {
-        if let Some(mirror) = std::env::var(var).ok().and_then(|v| Mirror::parse(&v)) {
-            return Some(mirror);
-        }
-    }
-
-    // Variables d'environnement.
-    for var in &["NIE_WIKI_DB", "SQLITE_DB_PATH"] {
-        if let Ok(v) = std::env::var(var) {
-            let p = PathBuf::from(&v);
-            if p.exists() {
-                return Some(Mirror::Sqlite(p));
-            }
-        }
-    }
-
-    // Répertoire de backups nie.
-    let backups = racine.join("data/backups");
-    if backups.is_dir() {
-        let mut candidates: Vec<PathBuf> = fs::read_dir(&backups)
-            .into_iter()
-            .flatten()
-            .flatten()
-            .map(|e| e.path())
-            .filter(|p| {
-                p.extension().map(|e| e == "sqlite").unwrap_or(false)
-                    && p.file_name()
-                        .and_then(|n| n.to_str())
-                        .map(|s| s.starts_with("inagle-"))
-                        .unwrap_or(false)
-            })
-            .collect();
-        candidates.sort();
-        if let Some(p) = candidates.last() {
-            return Some(Mirror::Sqlite(p.clone()));
-        }
-    }
-
-    warn!("aucun miroir inagle trouvé — résolution uniforme désactivée");
-    None
-}
-
-/// Charge l'index global `[chemin, cpk]` (NDJSON, gzip si extension `.gz`) en paires
-/// `(chemin_interne, nom_cpk)` pour l'index supplémentaire du VFS. Le `.gz` est décompressé
-/// via `zcat` (pas de dépendance flate2). Chemin absent → `Ok(vec![])`.
-fn load_cpk_file_index(path: &std::path::Path) -> Result<Vec<(String, String)>> {
-    if !path.exists() {
-        return Ok(Vec::new());
-    }
-    let raw: Vec<u8> = if path.extension().and_then(|e| e.to_str()) == Some("gz") {
-        let out = std::process::Command::new("zcat")
-            .arg(path)
-            .output()
-            .with_context(|| format!("zcat {}", path.display()))?;
-        if !out.status.success() {
-            anyhow::bail!("zcat a échoué pour {}", path.display());
-        }
-        out.stdout
-    } else {
-        std::fs::read(path).with_context(|| format!("lecture {}", path.display()))?
-    };
-    let text = String::from_utf8_lossy(&raw);
-    let mut entries = Vec::new();
-    for line in text.lines() {
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-        // Chaque ligne : `["data/.../x.usm","<hash>.cpk"]`.
-        if let Ok(serde_json::Value::Array(arr)) = serde_json::from_str::<serde_json::Value>(line)
-            && let (Some(p), Some(c)) = (
-                arr.first().and_then(serde_json::Value::as_str),
-                arr.get(1).and_then(serde_json::Value::as_str),
-            )
-        {
-            entries.push((p.to_string(), c.to_string()));
-        }
-    }
-    Ok(entries)
-}
-
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 fn main() -> Result<()> {
@@ -6552,6 +5515,13 @@ fn main() -> Result<()> {
         .init();
 
     let cli = Cli::parse();
+
+    if cli.print_openapi {
+        let mut text = serde_json::to_string_pretty(&nie_model_serve::routes::openapi())?;
+        text.push('\n');
+        print!("{text}");
+        return Ok(());
+    }
 
     let source_override = cli
         .source
@@ -6589,39 +5559,10 @@ fn main() -> Result<()> {
         racine.display()
     );
     let var = racine.join("var");
-    let glb_dir = cli
-        .glb_dir
-        .clone()
-        .unwrap_or_else(|| racine.join("data/dx11/model"));
     let cache_dir = cli
         .cache_dir
         .clone()
         .unwrap_or_else(|| var.join("model-cache"));
-    let crc_manifest = cli
-        .crc_manifest
-        .clone()
-        .unwrap_or_else(|| var.join("model-crc-manifest.ndjson"));
-    let uniform_map_path = cli
-        .uniform_map
-        .clone()
-        .unwrap_or_else(|| var.join("uniform-model-map.ndjson"));
-    let body_manifest = cli
-        .body_manifest
-        .clone()
-        .unwrap_or_else(|| var.join("body-type-manifest.ndjson"));
-    let menu_cfg_dir = cli
-        .menu_cfg_dir
-        .clone()
-        .unwrap_or_else(|| racine.join("data/common/gamedata/menu/cfg"));
-    let asset_cross_ref = cli
-        .asset_cross_ref
-        .clone()
-        .unwrap_or_else(|| racine.join("data/asset-cross-reference.json"));
-    // Ces deux-là appartiennent au dépôt azalee : sans argument explicite, les routes qui en
-    // dépendent restent inactives plutôt que de pointer un chemin inventé.
-    let layout_dir = cli.layout_dir.clone().unwrap_or_default();
-    let cpk_file_index = cli.cpk_file_index.clone().unwrap_or_default();
-
     // Prépare le répertoire de cache.
     fs::create_dir_all(&cache_dir)
         .with_context(|| format!("création cache_dir {}", cache_dir.display()))?;
@@ -6633,7 +5574,7 @@ fn main() -> Result<()> {
         .as_deref()
         .map(str::to_owned)
         .unwrap_or_else(|| racine.display().to_string());
-    let (mut vfs, vfs_error) = match nie_formats::vfs::open_source(source_override.as_deref()) {
+    let (vfs, vfs_error) = match nie_formats::vfs::open_source(source_override.as_deref()) {
         Ok(vfs) => {
             info!("VFS initialisé ({} fichiers indexés)", vfs.asset_count());
             (vfs, None)
@@ -6645,63 +5586,23 @@ fn main() -> Result<()> {
         }
     };
 
-    // Index supplémentaire : rend lisibles les fichiers des CPK hors cpk_list.cfg.bin
-    // (films .usm, sound_asset .acb…) via l'index global [chemin, cpk].
-    match load_cpk_file_index(&cpk_file_index) {
-        Ok(entries) if !entries.is_empty() => {
-            let added = vfs.add_extra_index(entries);
-            info!("index VFS supplémentaire : +{added} fichiers (CPK hors cpk_list)");
-        }
-        Ok(_) => {}
-        Err(e) => warn!(
-            "index VFS supplémentaire ignoré ({}): {e}",
-            cpk_file_index.display()
-        ),
-    }
-
-    // Charge les manifestes.
-    let crc_manifest = State::load_crc_manifest(&crc_manifest)?;
-    let uniform_map = State::load_uniform_map(&uniform_map_path);
+    // Tout ce que le serveur dérive vient du VFS : la table CRC32 → chemin des maillages est
+    // calculée depuis la liste des fichiers, les recettes depuis `chara_parts` et `chara_model`.
+    let crc_manifest = State::crc_manifest_from_vfs(&vfs);
+    info!("table CRC32 → maillage : {} entrées", crc_manifest.len());
     let chara_parts = State::load_character_parts(&vfs);
     let chara_model = State::load_chara_model(&vfs);
-    let body_map = State::load_body_map(&body_manifest);
     purge_stale_cache(&cache_dir);
-    let asset_roles = State::load_asset_roles(&asset_cross_ref);
-
-    // Résout le miroir SQLite.
-    let db_path = resolve_db(&racine, cli.db.as_deref());
-    if let Some(ref p) = db_path {
-        info!("miroir inagle : {}", p.describe());
-    }
-
-    // Accès au code du dépôt : monté UNIQUEMENT sur `--depot-code`. Un échec d'ouverture est
-    // fatal plutôt que silencieux — on a demandé à publier le code, servir 404 sans rien dire
-    // laisserait croire que la route existe et qu'elle est vide.
-    let depot = if cli.depot_code {
-        let racine = match cli.depot_racine.clone() {
-            Some(r) => r,
-            None => resolve_depot_racine()?,
-        };
-        let d = nie_explore::depot::Depot::ouvrir(&racine)
-            .with_context(|| format!("--depot-code : racine {}", racine.display()))?;
-        info!(
-            "code du dépôt exposé sous /depot/ — racine {}",
-            d.racine().display()
-        );
-        Some(d)
-    } else {
-        None
-    };
 
     // Raw spaces: closed unless NIE_RAW_VFS_TOKEN holds a long enough token. Only whether it
     // is configured is logged, never the value.
     let raw_token = match nie_explore::raw_access::Token::from_env() {
         Ok(Some(token)) => {
-            info!("/raw, /depot, raw /export: bearer token configured");
+            info!("/raw and raw /export: bearer token configured");
             Some(token)
         }
         Ok(None) => {
-            info!("/raw, /depot, raw /export: closed (no NIE_RAW_VFS_TOKEN)");
+            info!("/raw and raw /export: closed (no NIE_RAW_VFS_TOKEN)");
             None
         }
         Err(e) => {
@@ -6713,18 +5614,12 @@ fn main() -> Result<()> {
     let state = Arc::new(State {
         vfs,
         vfs_error,
-        glb_dir: glb_dir.clone(),
         crc_manifest,
-        uniform_map,
         chara_parts,
         chara_model,
-        body_map,
         cache_dir: cache_dir.clone(),
-        db_path,
-        layout_dir: layout_dir.clone(),
-        menu_cfg_dir: menu_cfg_dir.clone(),
-        asset_roles,
-        depot,
+        icons_index: std::sync::OnceLock::new(),
+        video_catalog: Mutex::new(VideoCatalog::Idle),
         glb_memory: Mutex::new(GlbMemoryCache::new(
             cli.memory_cache_mib.saturating_mul(1024 * 1024),
         )),
@@ -6762,12 +5657,8 @@ fn main() -> Result<()> {
         spawn_preload(state.clone(), cli.threads);
     }
 
-    // Catalogue des cinématiques : artefact hors ligne. On dit au démarrage s'il manque, plutôt
-    // que de laisser la page /videos découvrir un 503 sans savoir quoi lancer.
-    match catalogue_video(&state) {
-        Ok(_) => info!("catalogue vidéo : présent et à jour"),
-        Err(e) => warn!("catalogue vidéo : {e}"),
-    }
+    // Le catalogue des cinématiques se construit depuis le VFS en arrière-plan.
+    start_video_catalog(&state);
 
     // Pool de threads BORNÉ : le thread principal n'accepte que des connexions, un nombre
     // FIXE de workers les traite. L'ancienne boucle faisait un `thread::spawn` par connexion,
@@ -7128,21 +6019,125 @@ fn audit_models(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use nie_model_serve::routes::{ROUTES, openapi, sample};
 
-    /// The routes handing out the game's own bytes or the repository's code are gated; every
+    const TEST_TOKEN: &str = "0123456789abcdef0123456789abcdef";
+
+    /// A server state on an empty VFS: every asset route answers "absent", none panics.
+    fn empty_state() -> Arc<State> {
+        Arc::new(State {
+            vfs: Vfs::new(),
+            vfs_error: Some("test".to_string()),
+            crc_manifest: Vec::new(),
+            chara_parts: CharacterPartsCatalog::default(),
+            chara_model: CharaModelCatalog::default(),
+            cache_dir: std::env::temp_dir().join("nie-model-serve-route-table-test"),
+            icons_index: std::sync::OnceLock::new(),
+            video_catalog: Mutex::new(VideoCatalog::Idle),
+            glb_memory: Mutex::new(GlbMemoryCache::new(0)),
+            raw_token: nie_explore::raw_access::Token::new(TEST_TOKEN),
+            manifest: std::sync::OnceLock::new(),
+        })
+    }
+
+    /// One GET through the real connection handler over loopback; returns the whole response.
+    fn get(state: &Arc<State>, path: &str, bearer: bool) -> String {
+        use std::io::Read as _;
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let state = Arc::clone(state);
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            handle_connection(stream, state);
+        });
+        let mut client = TcpStream::connect(address).unwrap();
+        let auth = if bearer {
+            format!("Authorization: Bearer {TEST_TOKEN}\r\n")
+        } else {
+            String::new()
+        };
+        write!(
+            client,
+            "GET {path} HTTP/1.1\r\nHost: test\r\n{auth}Connection: close\r\n\r\n"
+        )
+        .unwrap();
+        let mut bytes = Vec::new();
+        client.read_to_end(&mut bytes).unwrap();
+        server.join().unwrap();
+        String::from_utf8_lossy(&bytes).into_owned()
+    }
+
+    /// Every route of the table reaches its own handler: none falls through to the unknown-route
+    /// answer (404 `non trouvé`).
+    #[test]
+    fn every_route_of_the_table_has_a_handler() {
+        let state = empty_state();
+        for def in ROUTES {
+            let path = sample(def);
+            let response = get(&state, &path, def.private);
+            let unknown = response.starts_with("HTTP/1.1 404") && response.ends_with("non trouvé");
+            assert!(!unknown, "{path} falls through to the unknown-route answer");
+        }
+        let unknown = get(&state, "/not-a-route", false);
+        assert!(unknown.starts_with("HTTP/1.1 404") && unknown.ends_with("non trouvé"));
+    }
+
+    /// Every path the handler tests for is covered by the table: a new route cannot be served
+    /// without being documented.
+    #[test]
+    fn every_handled_path_is_in_the_table() {
+        let source = include_str!("main.rs");
+        let start = source.find("\nfn handle_connection(").unwrap();
+        let end = start + source[start..].find("\n}\n").unwrap();
+        let body = &source[start..end];
+        let mut literals = Vec::new();
+        for needle in ["strip_prefix(\"/", "path == \"/"] {
+            let mut rest = body;
+            while let Some(at) = rest.find(needle) {
+                let from = at + needle.len() - 1;
+                let tail = &rest[from..];
+                let literal = &tail[..tail.find('"').unwrap()];
+                literals.push(literal.to_string());
+                rest = &tail[literal.len()..];
+            }
+        }
+        assert!(
+            literals.len() > 20,
+            "the scan found {} handled paths",
+            literals.len()
+        );
+        for literal in literals {
+            let covered = ROUTES.iter().any(|def| {
+                def.pattern.starts_with(&literal)
+                    || def.alias.is_some_and(|a| a.starts_with(&literal))
+            });
+            assert!(
+                covered,
+                "the handler serves {literal}, which the route table does not list"
+            );
+        }
+    }
+
+    /// `contract/openapi.json` is the table's own description.
+    #[test]
+    fn the_checked_in_contract_is_the_generated_document() {
+        let mut generated = serde_json::to_string_pretty(&openapi()).unwrap();
+        generated.push('\n');
+        assert_eq!(
+            include_str!("../../../contract/openapi.json"),
+            generated,
+            "run `cargo run -p nie-model-serve --features host -- --print-openapi > contract/openapi.json`"
+        );
+    }
+
+    /// The routes handing out the game's own bytes are gated; every
     /// derived route stays public, and the gate uses the routing prefixes verbatim. `/vfs/` is
     /// public HERE by decision (see `private_route`): nginx restricts it one layer up.
     #[test]
-    fn only_raw_depot_and_raw_export_are_private() {
+    fn only_raw_and_raw_export_are_private() {
         use super::private_route;
-        for gated in [
-            "/raw/data/common/x.bin",
-            "/raw/common/x.bin",
-            "/raw",
-            "/depot/ls",
-            "/depot/read",
-            "/depot",
-        ] {
+        for gated in ["/raw/data/common/x.bin", "/raw/common/x.bin", "/raw"] {
             assert!(private_route(gated, ""), "{gated}");
         }
         // `/export/` is private only in an untouched format — `raw`, also the default.
@@ -7163,11 +6158,8 @@ mod tests {
             "/video/catalog.json",
             "/ui/theme.json",
             "/icons/index.json",
-            "/avatar/catalog.json",
             "/menu-tree.json",
-            "/menu-render/main_menu.png",
             "/rawx/a",
-            "/depotx",
             // Listing only, restricted by nginx instead — see `private_route`.
             "/vfs/ls",
             "/vfs/stat",
@@ -7193,33 +6185,6 @@ mod tests {
         ));
     }
 
-    /// La tenue par défaut n'affirme rien, et c'est elle qui garde le nom de cache historique.
-    #[test]
-    fn la_tenue_par_defaut_ne_porte_rien_et_ne_suffixe_pas_le_cache() {
-        let t = Tenue::default();
-        assert!(!t.capitaine);
-        assert_eq!(t.numero, None);
-        assert!(!t.gants_du_kit);
-        assert_eq!(t.suffixe_cache(), "");
-    }
-
-    /// Une requête sans aucune des trois clés laisse l'attestation décider ; une requête qui
-    /// porte `captain=0` affirme « pas capitaine » et doit donc surclasser l'attestation.
-    #[test]
-    fn une_requete_muette_se_distingue_d_une_requete_qui_dit_non() {
-        assert_eq!(Tenue::depuis_query(""), None);
-        assert_eq!(Tenue::depuis_query("v=3"), None);
-        assert_eq!(Tenue::depuis_query("captain=0"), Some(Tenue::default()));
-        assert_eq!(
-            Tenue::depuis_query("captain=1&number=9&gloves=1"),
-            Some(Tenue {
-                capitaine: true,
-                numero: Some(9),
-                gants_du_kit: true
-            })
-        );
-    }
-
     /// Un numéro hors de la planche 10×10 n'est pas un numéro : la plaque ne se porte pas,
     /// plutôt que de décaler les UV hors de la grille.
     #[test]
@@ -7242,8 +6207,32 @@ mod tests {
         );
     }
 
-    /// Deux tenues différentes ne doivent jamais partager un fichier de cache — sans quoi le
-    /// premier assemblage servi fixerait la tenue de tous les suivants.
+    /// La tenue par défaut n'affirme rien, et c'est elle qui garde le nom de cache historique.
+    #[test]
+    fn la_tenue_par_defaut_ne_porte_rien_et_ne_suffixe_pas_le_cache() {
+        let t = Tenue::default();
+        assert!(!t.capitaine);
+        assert_eq!(t.numero, None);
+        assert_eq!(t.suffixe_cache(), "");
+    }
+
+    /// Une requête sans `captain` ni `number` est muette ; `captain=0` affirme « pas capitaine ».
+    #[test]
+    fn une_requete_muette_se_distingue_d_une_requete_qui_dit_non() {
+        assert_eq!(Tenue::depuis_query(""), None);
+        assert_eq!(Tenue::depuis_query("v=3"), None);
+        assert_eq!(Tenue::depuis_query("captain=0"), Some(Tenue::default()));
+        assert_eq!(
+            Tenue::depuis_query("captain=1&number=9"),
+            Some(Tenue {
+                capitaine: true,
+                numero: Some(9)
+            })
+        );
+        assert_eq!(tenue_demandee("c01000010", ""), Tenue::default());
+    }
+
+    /// Deux tenues différentes ne partagent jamais un fichier de cache.
     #[test]
     fn chaque_tenue_a_sa_propre_cle_de_cache() {
         let tenues = [
@@ -7261,83 +6250,13 @@ mod tests {
                 ..Tenue::default()
             },
             Tenue {
-                gants_du_kit: true,
-                ..Tenue::default()
-            },
-            Tenue {
                 capitaine: true,
                 numero: Some(10),
-                gants_du_kit: true,
             },
         ];
         let cles: std::collections::BTreeSet<String> =
             tenues.iter().map(|t| t.suffixe_cache()).collect();
         assert_eq!(cles.len(), tenues.len(), "collision de clés : {cles:?}");
-    }
-
-    /// `presentation.json` est une preuve externe, pas une déduction : elle ne doit porter que
-    /// des codes réellement relevés, et le personnage attesté doit se lire tel quel.
-    #[test]
-    fn l_attestation_externe_se_lit_telle_quelle() {
-        let t = Tenue::attestee("c05024700").expect("c05024700 est attesté");
-        assert_eq!(
-            t.numero,
-            Some(9),
-            "frames officiels r0..r7 : numéro 9 au dos"
-        );
-        assert!(
-            !t.capitaine,
-            "frames officiels : sans brassard de capitaine"
-        );
-        assert_eq!(
-            Tenue::attestee("c01001900"),
-            None,
-            "non relevé = non attesté"
-        );
-    }
-
-    /// La requête gagne toujours sur l'attestation : c'est l'utilisateur qui porte la tenue.
-    #[test]
-    fn la_requete_surclasse_l_attestation() {
-        assert_eq!(tenue_demandee("c05024700", "").numero, Some(9));
-        assert_eq!(tenue_demandee("c05024700", "number=7").numero, Some(7));
-        assert!(tenue_demandee("c05024700", "captain=1").capitaine);
-        // `captain=1` seul n'hérite pas du numéro attesté : la requête décrit la tenue entière.
-        assert_eq!(tenue_demandee("c05024700", "captain=1").numero, None);
-    }
-    #[test]
-    fn avatar_http_binding_rejects_oversized_inputs_and_never_caches_user_selections() {
-        assert!(super::resolve_avatar_payload(&[], &" ".repeat(64 * 1024 + 1)).is_err());
-        assert!(super::resolve_avatar_payload(&vec![0; 2 * 1024 * 1024 + 1], "{}").is_err());
-        let body = br#"{"pieces":[{"directory":"_facebase","name":"face"}],"faceLayers":["00_face/base"]}"#;
-        let response = String::from_utf8(super::avatar_json_response(200, body)).unwrap();
-        assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
-        assert!(response.contains("Cache-Control: no-store\r\n"));
-        assert!(response.ends_with(std::str::from_utf8(body).unwrap()));
-    }
-
-    #[test]
-    #[ignore = "Requires NIE_AVATAR_CATALOG pointing to the real resolved catalogue"]
-    fn avatar_http_binding_matches_shared_native_composition() {
-        let catalog = std::fs::read(std::env::var("NIE_AVATAR_CATALOG").unwrap()).unwrap();
-        let body =
-            super::resolve_avatar_payload(&catalog, r#"{"gender":1,"morphology":0,"height":7}"#)
-                .unwrap();
-        let composition: nie_data::avatar::AvatarComposition =
-            serde_json::from_slice(&body).unwrap();
-        assert_eq!(composition.morphology, "female");
-        assert!(composition.pieces.len() >= 4);
-        assert_eq!(composition.face_layers.len(), 6);
-        let direct = nie_data::avatar::resolve_avatar(
-            &serde_json::from_slice(&catalog).unwrap(),
-            &nie_data::avatar::AvatarState {
-                gender: 1,
-                height: Some(7),
-                ..Default::default()
-            },
-        )
-        .unwrap();
-        assert_eq!(composition, direct);
     }
 
     #[test]

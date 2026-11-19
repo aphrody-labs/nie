@@ -755,19 +755,6 @@ pub fn export_avatar_oc_document_json(
     export_avatar_oc_document_json_impl(catalog_json, state_json, metadata_json)
 }
 
-/// Compile a measured native screen through the shared portable scene owner.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn menu_presentation_json(id: &str) -> Result<String, JsValue> {
-    nie_formats::menu_presentation::scene_json(id).map_err(|e| JsValue::from_str(&e))
-}
-
-/// Native counterpart of the browser scene compiler.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn menu_presentation_json(id: &str) -> Result<String, String> {
-    nie_formats::menu_presentation::scene_json(id)
-}
-
 fn menu_animation_bindings_json_impl(bytes: &[u8]) -> Result<String, String> {
     let bindings = nie_formats::g4ra::parse(bytes).map_err(|error| error.to_string())?;
     serde_json::to_string(&serde_json::json!({

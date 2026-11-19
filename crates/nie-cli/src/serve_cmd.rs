@@ -18,6 +18,7 @@ use crate::serve_wiki;
 const MAX_HEADER_BYTES: usize = 16 * 1024;
 const MAX_BODY_BYTES: usize = 32 * 1024 * 1024;
 const MAX_FIND_LIMIT: usize = 500;
+const MAX_LS_LIMIT: usize = 5000;
 
 #[derive(Debug, Args)]
 pub struct ServeArgs {
@@ -461,6 +462,59 @@ async fn route_request(
         );
     }
 
+    if route == Some(Route::VfsLs) {
+        let dir = query.get("path").map(String::as_str).unwrap_or("");
+        if dir.contains("..") || dir.contains('\\') || dir.contains('\0') {
+            return HttpResponse::json(400, "Bad Request", &json!({ "error": "invalid VFS path" }));
+        }
+        let dir = dir.to_owned();
+        let limit = query
+            .get("limit")
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(1000)
+            .clamp(1, MAX_LS_LIMIT);
+        let offset = query
+            .get("offset")
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(0);
+        return tokio::task::spawn_blocking(move || {
+            let listing = nie_explore::listing::ls_paged(&vfs, &dir, limit, offset);
+            if listing.dirs.is_empty()
+                && listing.file_total == 0
+                && !dir.trim_matches('/').is_empty()
+            {
+                return HttpResponse::json(404, "Not Found", &json!({ "error": "no such folder" }));
+            }
+            HttpResponse::json(
+                200,
+                "OK",
+                &json!({
+                    "dir": listing.dir,
+                    "dirs": listing
+                        .dirs
+                        .iter()
+                        .map(|d| json!({ "name": d.name, "files": d.count }))
+                        .collect::<Vec<_>>(),
+                    "files": listing
+                        .files
+                        .iter()
+                        .map(|f| json!({ "name": f.name, "ext": f.ext, "path": f.path, "size": f.size, "cpk": f.cpk }))
+                        .collect::<Vec<_>>(),
+                    "fileTotal": listing.file_total,
+                    "fileOffset": listing.file_offset,
+                }),
+            )
+        })
+        .await
+        .unwrap_or_else(|_| {
+            HttpResponse::json(
+                500,
+                "Internal Server Error",
+                &json!({ "error": "task failed" }),
+            )
+        });
+    }
+
     if route == Some(Route::VfsFind) {
         let q = query.get("q").map(String::as_str).unwrap_or("");
         let ext = query
@@ -793,6 +847,66 @@ mod tests {
             raw_token: raw_token.and_then(Token::new),
             wiki: OnceLock::new(),
         })
+    }
+
+    #[tokio::test]
+    async fn vfs_ls_mirrors_the_folders_and_files_of_the_vfs() {
+        let mut vfs = nie_formats::vfs::Vfs::new();
+        assert_eq!(
+            vfs.add_extra_index(vec![
+                ("data/common/probe.bin".to_owned(), "a.cpk".to_owned()),
+                ("data/dx11/other.g4tx".to_owned(), "b.cpk".to_owned()),
+            ]),
+            2
+        );
+        let st = Arc::new(ServerState {
+            vfs: Some(Arc::new(vfs)),
+            source_label: Some("synthetic".to_owned()),
+            vfs_error: None,
+            stateless: false,
+            raw_token: None,
+            wiki: OnceLock::new(),
+        });
+        let headers = HashMap::new();
+        let root = route_request(
+            "GET",
+            "/v1/vfs/ls?path=data",
+            &headers,
+            Vec::new(),
+            st.clone(),
+        )
+        .await;
+        assert_eq!(root.status, 200);
+        let root: Value = serde_json::from_slice(&root.body).expect("ls json");
+        assert_eq!(root["dir"], "data");
+        assert_eq!(root["dirs"][0]["name"], "common");
+        assert_eq!(root["dirs"][0]["files"], 1);
+        assert_eq!(root["dirs"][1]["name"], "dx11");
+        let common = route_request(
+            "GET",
+            "/v1/vfs/ls?path=data/common&limit=10",
+            &headers,
+            Vec::new(),
+            st.clone(),
+        )
+        .await;
+        let common: Value = serde_json::from_slice(&common.body).expect("ls json");
+        assert_eq!(common["fileTotal"], 1);
+        assert_eq!(common["files"][0]["name"], "probe.bin");
+        assert_eq!(common["files"][0]["path"], "data/common/probe.bin");
+        assert_eq!(common["files"][0]["cpk"], "a.cpk");
+        let missing = route_request(
+            "GET",
+            "/v1/vfs/ls?path=data/nowhere",
+            &headers,
+            Vec::new(),
+            st.clone(),
+        )
+        .await;
+        assert_eq!(missing.status, 404);
+        let traversal =
+            route_request("GET", "/v1/vfs/ls?path=../x", &headers, Vec::new(), st).await;
+        assert_eq!(traversal.status, 400);
     }
 
     #[tokio::test]

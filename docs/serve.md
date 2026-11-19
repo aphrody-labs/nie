@@ -85,6 +85,7 @@ All responses carry `Access-Control-Allow-Origin: *` and `X-Content-Type-Options
 | `POST /v1/formats/detect` | body = bytes; 200 `{format, size}` |
 | `POST /v1/formats/decode?name=&format=` | body = bytes; `format=png` returns `image/png` (G4TX), else the decoded structure as JSON; 422 when unreadable |
 | `GET /v1/vfs/info` | 200 `{source, entries, cpks, transport:{ioCalls, payloadBytes}}`; 503 without VFS |
+| `GET /v1/vfs/ls?path=&limit=&offset=` | 200 `{dir, dirs:[{name, files}], files:[{name, ext, path, size, cpk}], fileTotal, fileOffset}`: one folder of the VFS, exactly as `data/common` and `data/dx11` hold it; `limit` 1 to 5000 (default 1000); 404 for a folder with no entry, 400 invalid path |
 | `GET /v1/vfs/find?q=&ext=&limit=` | 200 `{count, items:[{path, size, cpk}]}`, `limit` 1 to 500 (default 50) |
 | `GET /v1/vfs/stat?path=` | 200 `{path, size, cpk}`; 400 invalid path, 404 unknown |
 | `GET /v1/vfs/read?path=&decode=` | `decode=json`: decoded structure (`application/json`, `max-age=300`); `decode=png`: texture as `image/png`; otherwise the raw bytes as `application/octet-stream`, which needs `Authorization: Bearer <NIE_RAW_VFS_TOKEN>` and is a 404 for everyone while no token is configured; 422 when not decodable |
@@ -106,7 +107,7 @@ VFS paths are relative, `/`-separated, without `..`, empty segments, backslashes
 
 ## `nie-model-serve` routes (CDN origin)
 
-Derived routes are public; `/raw/`, `/depot/`, `/vfs/hash` and `/export/` in the `raw` format need
+Derived routes are public; `/raw/`, `/vfs/hash` and `/export/` in the `raw` format need
 the bearer token and answer 404 without one. Paths after the prefix are VFS paths, with or
 without the leading `data/`. Successful responses are `public, max-age=31536000, immutable`
 (a Steam build id never changes a path's content; purge `NIE_CACHE_DIR` after a game update),
@@ -119,12 +120,21 @@ errors are `no-store`. Audio and video support `Range`.
 | `GET /tex-info/<path>.g4tx` | texture metadata, JSON |
 | `GET /cfg/<path>.cfg.bin.json`, `/typed/<path>.cfg.bin.json` | cfg.bin as generic JSON, or as typed game structures `{family, data}` |
 | `GET /audio/<path>.{hca,adx,acb,awb}[?cue=N\|id=N]`, `/audio-info/<path>` | `audio/wav`, or the bank's cue list as JSON |
-| `GET /video/<path>.usm[?track=audio\|info=1]`, `/video/catalog.json` | remuxed `video/mp4`, the soundtrack as WAV, the film's description, or the catalogue |
+| `GET /video/<path>.usm[?track=audio\|info=1]`, `/video/catalog.json` | remuxed `video/mp4`, the soundtrack as WAV, the film's description, or the catalogue of `data/common/movie`; the catalogue is built from the VFS in the background and answers 503 `Retry-After` until ready; a film is served only from the path asked for, 404 when the VFS has no such entry |
 | `GET /model-full/<code>.glb`, `/model-chr/`, `/model-avatar/`, `/model-edit/`, `/model-map/`, `/model-tree/`, `/model-report/` | assembled models as `model/gltf-binary`, reports as JSON |
-| `GET /avatar/catalog.json`, `/avatar/resolve.json`, `/avatar/layout/`, `/avatar/icon/` | avatar catalogue and icons |
-| `GET /menu-render/<screen>.png`, `/menu-tree`, `/story-scene`, `/lip/`, `/ui/theme.json`, `/ui/font-metrics.json`, `/ui/text.png`, `/icons/index.json` | menu, UI and story renderings |
+| `GET /avatar/icon/<name>.png` | an avatar editor thumbnail, decoded from its atlas |
+| `GET /menu-tree[.json]`, `/menu-tree/<screen>[.json]` | every menu screen (layers, resources, commands) from the `data/common/gamedata/menu/cfg/*_setting.cfg.bin` files |
+| `GET /lip/`, `/ui/theme.json`, `/ui/font-metrics.json`, `/ui/text.png`, `/icons/index.json` | lip-sync visemes, the FONT_COLOR palette and font families, the font metrics, a text in the game font, and the icon index computed from the menu atlases |
 | `GET /vfs/ls?path=&limit=&offset=`, `/vfs/find?q=&ext=&limit=&offset=`, `/vfs/stat?path=`, `/vfs/stats` | paged listing, search and stat (`readable`, `formats`, `describe`); expose only behind a trusted network |
 | `GET /export/<path>?format=<id>` | the file converted to `png`, `webp`, `json`, `wav`, `mp4`, `glb` and others (the list for a file is in `/vfs/stat` `formats`), as a download; `format=raw` (the default) is gated |
 | `GET /raw/<path>` | decompressed bytes of the entry (Lua scripts, cfg, any file), gated |
 
 Lua and other source-like entries are served through the gated `/raw/` or `/export/?format=raw`.
+
+Every route reads the VFS and nothing else: the CRC32 table of the mesh files, the outfit recipes
+and the character cards are computed from the VFS at start, the icon index and the video
+catalogue on first use. `GET /openapi.json` is generated from the route table
+(`crates/nie-model-serve/src/routes.rs`); `contract/openapi.json` is its checked-in output
+(`nie-model-serve --print-openapi`) and a test fails when they drift, and another when the
+handler serves a path the table does not list or the table lists one the handler does not
+serve.

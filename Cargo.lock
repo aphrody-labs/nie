@@ -4726,11 +4726,9 @@ dependencies = [
  "nie-data",
  "nie-explore",
  "nie-formats",
- "nie-sql",
  "serde",
  "serde_json",
  "sha2 0.11.1",
- "tokio",
  "tracing",
  "tracing-subscriber",
 ]

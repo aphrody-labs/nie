@@ -64,7 +64,7 @@
 //! os (TRS local de repos), `JOINTS_0`/`WEIGHTS_0` (+ `_1` si plus de quatre influences). Une
 //! pièce sans skinning résolu est émise dans un nœud `<Composant>_static` sans `skin`.
 //!
-//! Seuls les GLB pré-convertis `dx11/model/` (voie de repli) restent des mailles statiques.
+//! Un corps ou un visage absent du VFS est une erreur, jamais un repli sur un fichier.
 //!
 //! ## Limites documentées
 //!
@@ -85,7 +85,6 @@
 extern crate alloc;
 
 use alloc::{string::String, vec::Vec};
-use std::path::{Path, PathBuf};
 
 use crate::g4md;
 use crate::g4mg;
@@ -989,8 +988,8 @@ impl AssembledModel {
 /// Erreur lors de l'assemblage d'un personnage.
 #[derive(Debug)]
 pub enum AssembleError {
-    /// Lecture du fichier GLB impossible.
-    GlbNotFound(String),
+    /// Une pièce brute exigée (`"body"` ou `"face"`) n'a pas été fournie par l'appelant.
+    MissingRaw(&'static str),
     /// Données G4MD/G4MG invalides.
     Format(crate::FormatError),
     /// Le type corporel n'a pas de GLB base correspondant.
@@ -1003,7 +1002,7 @@ pub enum AssembleError {
 impl core::fmt::Display for AssembleError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::GlbNotFound(s) => write!(f, "fichier GLB introuvable ou illisible : {s}"),
+            Self::MissingRaw(piece) => write!(f, "pièce brute absente : {piece}"),
             Self::Format(e) => write!(f, "format invalide : {e}"),
             Self::NoBaseGlb(i) => write!(f, "type_idx={i} sans GLB base (animal/vehicle/inconnu)"),
             Self::Corrupt(s) => write!(f, "GLB corrompu : {s}"),
@@ -1024,312 +1023,6 @@ impl From<crate::FormatError> for AssembleError {
     fn from(e: crate::FormatError) -> Self {
         Self::Format(e)
     }
-}
-
-// ── Lecture GLB ──────────────────────────────────────────────────────────────
-
-/// Données extraites d'un GLB (JSON glTF + buffer binaire).
-struct GlbData {
-    gltf_json: serde_json::Value,
-    bin_buffer: Vec<u8>,
-}
-
-/// Lit un fichier `.glb` et renvoie le JSON glTF + le buffer binaire.
-fn read_glb(path: &Path) -> Result<GlbData, AssembleError> {
-    let data =
-        std::fs::read(path).map_err(|_| AssembleError::GlbNotFound(path.display().to_string()))?;
-
-    if data.len() < 12 {
-        return Err(AssembleError::Corrupt("GLB trop court".into()));
-    }
-    // Magic 0x46546c67 = "glTF"
-    let magic = u32::from_le_bytes([data[0], data[1], data[2], data[3]]);
-    if magic != 0x46546C67 {
-        return Err(AssembleError::Corrupt(format!(
-            "magic GLB invalide : {magic:#010x}"
-        )));
-    }
-
-    let mut offset = 12usize;
-    let mut json_bytes: Option<Vec<u8>> = None;
-    let mut bin_buffer: Vec<u8> = Vec::new();
-
-    while offset + 8 <= data.len() {
-        let chunk_len = u32::from_le_bytes([
-            data[offset],
-            data[offset + 1],
-            data[offset + 2],
-            data[offset + 3],
-        ]) as usize;
-        let chunk_type = u32::from_le_bytes([
-            data[offset + 4],
-            data[offset + 5],
-            data[offset + 6],
-            data[offset + 7],
-        ]);
-        let chunk_end = offset + 8 + chunk_len;
-        if chunk_end > data.len() {
-            break;
-        }
-        let chunk_data = &data[offset + 8..chunk_end];
-        match chunk_type {
-            0x4E4F534A => {
-                // JSON
-                json_bytes = Some(chunk_data.to_vec());
-            }
-            0x004E4942 => {
-                // BIN
-                bin_buffer = chunk_data.to_vec();
-            }
-            _ => {}
-        }
-        offset = chunk_end;
-    }
-
-    let json_bytes =
-        json_bytes.ok_or_else(|| AssembleError::Corrupt("chunk JSON absent".into()))?;
-
-    // Retire le padding NUL de fin (GLB spec : padding 0x20 ou 0x00).
-    let json_str_bytes: Vec<u8> = json_bytes.into_iter().filter(|&b| b != 0x00).collect();
-
-    let gltf_json: serde_json::Value = serde_json::from_slice(&json_str_bytes)
-        .map_err(|e| AssembleError::Corrupt(format!("JSON GLB invalide : {e}")))?;
-
-    Ok(GlbData {
-        gltf_json,
-        bin_buffer,
-    })
-}
-
-/// Extrait toutes les primitives d'un GLB et les convertit en [`MeshPrimitive`].
-///
-/// Chaque primitive glTF (POSITION + NORMAL + TEXCOORD_0 + indices) devient une [`MeshPrimitive`].
-fn extract_primitives_from_glb(
-    glb: &GlbData,
-    component: MeshComponent,
-) -> Result<Vec<MeshPrimitive>, AssembleError> {
-    let json = &glb.gltf_json;
-    let bin = &glb.bin_buffer;
-
-    let empty_arr: Vec<serde_json::Value> = Vec::new();
-    let meshes = json["meshes"].as_array().unwrap_or(&empty_arr);
-    let accessors = json["accessors"].as_array().unwrap_or(&empty_arr);
-    let buffer_views = json["bufferViews"].as_array().unwrap_or(&empty_arr);
-
-    let mut out = Vec::new();
-    let mut global_prim_idx = 0usize;
-
-    for mesh in meshes {
-        let primitives = mesh["primitives"].as_array().unwrap_or(&empty_arr);
-        for prim in primitives {
-            let attrs = &prim["attributes"];
-
-            // Matériau
-            let mat_idx = prim["material"].as_u64().unwrap_or(0) as u8;
-            let mat_name = String::new(); // résolution texture non implémentée ici
-
-            // Helper : lit un accessor dans bin_buffer.
-            let read_accessor = |acc_idx: usize| -> Option<(usize, usize, usize)> {
-                let acc = accessors.get(acc_idx)?;
-                let bv_idx = acc["bufferView"].as_u64()? as usize;
-                let bv = buffer_views.get(bv_idx)?;
-                let bv_offset = bv["byteOffset"].as_u64().unwrap_or(0) as usize;
-                let bv_stride = bv["byteStride"].as_u64().unwrap_or(0) as usize;
-                let acc_offset = acc["byteOffset"].as_u64().unwrap_or(0) as usize;
-                let count = acc["count"].as_u64()? as usize;
-                Some((bv_offset + acc_offset, bv_stride, count))
-            };
-
-            // Positions (VEC3 float32).
-            let positions = if let Some(pos_idx) = attrs["POSITION"].as_u64() {
-                if let Some((off, stride_hint, count)) = read_accessor(pos_idx as usize) {
-                    let stride = if stride_hint == 0 { 12 } else { stride_hint };
-                    let mut pos = Vec::with_capacity(count);
-                    for i in 0..count {
-                        let p = off + i * stride;
-                        if p + 12 > bin.len() {
-                            break;
-                        }
-                        let x = f32::from_le_bytes([bin[p], bin[p + 1], bin[p + 2], bin[p + 3]]);
-                        let y =
-                            f32::from_le_bytes([bin[p + 4], bin[p + 5], bin[p + 6], bin[p + 7]]);
-                        let z =
-                            f32::from_le_bytes([bin[p + 8], bin[p + 9], bin[p + 10], bin[p + 11]]);
-                        pos.push(g4mg::Vec3 { x, y, z });
-                    }
-                    pos
-                } else {
-                    Vec::new()
-                }
-            } else {
-                Vec::new()
-            };
-
-            if positions.is_empty() {
-                global_prim_idx += 1;
-                continue; // ignore les primitives sans position
-            }
-
-            // Normales (VEC3 float32).
-            let normals = if let Some(n_idx) = attrs["NORMAL"].as_u64() {
-                if let Some((off, stride_hint, count)) = read_accessor(n_idx as usize) {
-                    let stride = if stride_hint == 0 { 12 } else { stride_hint };
-                    let mut nrm = Vec::with_capacity(count);
-                    for i in 0..count {
-                        let p = off + i * stride;
-                        if p + 12 > bin.len() {
-                            break;
-                        }
-                        let x = f32::from_le_bytes([bin[p], bin[p + 1], bin[p + 2], bin[p + 3]]);
-                        let y =
-                            f32::from_le_bytes([bin[p + 4], bin[p + 5], bin[p + 6], bin[p + 7]]);
-                        let z =
-                            f32::from_le_bytes([bin[p + 8], bin[p + 9], bin[p + 10], bin[p + 11]]);
-                        nrm.push(g4mg::Vec3 { x, y, z });
-                    }
-                    nrm
-                } else {
-                    Vec::new()
-                }
-            } else {
-                Vec::new()
-            };
-
-            // UV0 (VEC2 float32).
-            let uv0 = if let Some(uv_idx) = attrs["TEXCOORD_0"].as_u64() {
-                if let Some((off, stride_hint, count)) = read_accessor(uv_idx as usize) {
-                    let stride = if stride_hint == 0 { 8 } else { stride_hint };
-                    let mut uvs = Vec::with_capacity(count);
-                    for i in 0..count {
-                        let p = off + i * stride;
-                        if p + 8 > bin.len() {
-                            break;
-                        }
-                        let u = f32::from_le_bytes([bin[p], bin[p + 1], bin[p + 2], bin[p + 3]]);
-                        let v =
-                            f32::from_le_bytes([bin[p + 4], bin[p + 5], bin[p + 6], bin[p + 7]]);
-                        uvs.push(g4mg::Vec2 { u, v });
-                    }
-                    uvs
-                } else {
-                    Vec::new()
-                }
-            } else {
-                Vec::new()
-            };
-
-            // COLOR_0 (VEC4 ou VEC3, float/ubyte/ushort).
-            let colors = if let Some(col_idx) = attrs["COLOR_0"].as_u64() {
-                if let Some((off, stride_hint, count)) = read_accessor(col_idx as usize) {
-                    let acc = &accessors[col_idx as usize];
-                    let attr_type = acc["type"].as_str().unwrap_or("VEC4");
-                    let comp_type = acc["componentType"].as_u64().unwrap_or(5126);
-                    let is_vec3 = attr_type == "VEC3";
-                    let num_components = if is_vec3 { 3 } else { 4 };
-                    let component_size = match comp_type {
-                        5126 => 4, // float
-                        5121 => 1, // unsigned byte
-                        5123 => 2, // unsigned short
-                        _ => 4,
-                    };
-                    let stride = if stride_hint == 0 {
-                        num_components * component_size
-                    } else {
-                        stride_hint
-                    };
-                    let mut cols = Vec::with_capacity(count);
-                    for i in 0..count {
-                        let p = off + i * stride;
-                        if p + num_components * component_size > bin.len() {
-                            break;
-                        }
-                        let read_component = |offset_idx: usize| -> f32 {
-                            let cop = p + offset_idx * component_size;
-                            match comp_type {
-                                5126 => f32::from_le_bytes([
-                                    bin[cop],
-                                    bin[cop + 1],
-                                    bin[cop + 2],
-                                    bin[cop + 3],
-                                ]),
-                                5121 => bin[cop] as f32 / 255.0,
-                                5123 => {
-                                    u16::from_le_bytes([bin[cop], bin[cop + 1]]) as f32 / 65535.0
-                                }
-                                _ => 1.0,
-                            }
-                        };
-                        let r = read_component(0);
-                        let g = read_component(1);
-                        let b = read_component(2);
-                        let a = if is_vec3 { 1.0 } else { read_component(3) };
-                        cols.push(g4mg::Vec4 {
-                            x: r,
-                            y: g,
-                            z: b,
-                            w: a,
-                        });
-                    }
-                    cols
-                } else {
-                    Vec::new()
-                }
-            } else {
-                Vec::new()
-            };
-
-            // Indices.
-            let indices = if let Some(idx_acc) = prim["indices"].as_u64() {
-                let acc = &accessors[idx_acc as usize];
-                let bv_idx = acc["bufferView"].as_u64().unwrap_or(0) as usize;
-                let bv = &buffer_views[bv_idx];
-                let bv_offset = bv["byteOffset"].as_u64().unwrap_or(0) as usize;
-                let acc_offset = acc["byteOffset"].as_u64().unwrap_or(0) as usize;
-                let off = bv_offset + acc_offset;
-                let count = acc["count"].as_u64().unwrap_or(0) as usize;
-                let component_type = acc["componentType"].as_u64().unwrap_or(5123);
-                let idx_size = if component_type == 5125 { 4usize } else { 2 }; // 5125=uint32, 5123=uint16
-                let mut idx = Vec::with_capacity(count);
-                for i in 0..count {
-                    let p = off + i * idx_size;
-                    let v = if idx_size == 4 {
-                        if p + 4 > bin.len() {
-                            break;
-                        }
-                        u32::from_le_bytes([bin[p], bin[p + 1], bin[p + 2], bin[p + 3]])
-                    } else {
-                        if p + 2 > bin.len() {
-                            break;
-                        }
-                        u32::from(u16::from_le_bytes([bin[p], bin[p + 1]]))
-                    };
-                    idx.push(v);
-                }
-                idx
-            } else {
-                Vec::new()
-            };
-
-            out.push(MeshPrimitive {
-                component,
-                source_index: global_prim_idx,
-                material_index: mat_idx,
-                material_name: mat_name,
-                texture_uri: String::new(), // résolu par resolve_texture_uris()
-                positions,
-                normals,
-                uv0,
-                colors,
-                indices,
-                skin: None,
-                piece: String::new(),
-            });
-
-            global_prim_idx += 1;
-        }
-    }
-
-    Ok(out)
 }
 
 /// Extrait des primitives depuis une paire G4MD/G4MG (uniforme depuis CPK).
@@ -1966,16 +1659,12 @@ pub struct CharacterAssemblyInput {
     pub internal_code: String,
     /// Indice de type corporel (0..17, 101, 201), issu de `CHARA_BODY_INFO.var[4]`.
     pub body_type_idx: u8,
-    /// Répertoire contenant les GLB pré-convertis (`dx11/model/`).
-    pub glb_dir: PathBuf,
     /// CRC du modèle uniforme sélectionné (`0` = pas d'uniforme / non résolu).
     pub uniform_model_crc: u32,
     /// Données G4MD brutes de l'uniforme (issues du CPK), si disponibles.
     pub uniform_g4md: Option<Vec<u8>>,
     /// Données G4MG brutes de l'uniforme (issues du CPK), si disponibles.
     pub uniform_g4mg: Option<Vec<u8>>,
-    /// GLB pré-converti de l'uniforme (chemin complet), si disponible.
-    pub uniform_glb_path: Option<PathBuf>,
     /// Pièces modulaires complémentaires de la tenue (chaussures, peau/cou/bras, gants,
     /// brassard et plaque de nom), résolues depuis `chara_parts` par l'appelant.
     ///
@@ -2012,64 +1701,23 @@ pub struct CharacterUniformPart {
     pub raw: RawPiece,
 }
 
-/// Redescend uniquement une face dont toute la géométrie commence trop haut.
-///
-/// Le minimum vertical ne peut pas servir à un recalage symétrique : les cheveux longs d'Aphrody
-/// descendent naturellement sous la tête de base. Les remonter détruit un modèle déjà aligné. Les
-/// défauts observés dans le corpus sont dans l'autre sens (face flottante, minimum trop haut), donc
-/// cette correction reste volontairement unidirectionnelle.
-fn recaler_face_flotante(body: &[MeshPrimitive], face: &mut [MeshPrimitive]) {
-    const SEUIL_RECALAGE_FACE: f32 = 0.05;
-
-    let base_y = |prims: &[MeshPrimitive]| -> Option<f32> {
-        prims
-            .iter()
-            .flat_map(|p| p.positions.iter())
-            .map(|p| p.y)
-            .fold(None::<f32>, |acc, y| Some(acc.map_or(y, |m| m.min(y))))
-    };
-
-    let (Some(base_corps), Some(base_face)) = (base_y(body), base_y(face)) else {
-        return;
-    };
-    let dy = base_corps - base_face;
-    if dy >= -SEUIL_RECALAGE_FACE {
-        return;
-    }
-
-    let translation = [
-        [1.0, 0.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0],
-        [0.0, dy, 0.0, 1.0],
-    ];
-    for prim in face {
-        appliquer_matrice(prim, &translation);
-    }
-}
-
 /// Assemble le modèle 3D complet d'un personnage IEVR.
 ///
 /// Charge et combine les composants :
-/// 1. **Corps** (tête de base) — `body_raw` (G4MD/G4MG du VFS, skinné) s'il est fourni, sinon
-///    `glb_dir/base_<classe>_NN.glb` (statique).
-/// 2. **Visage** — `face_raw` s'il est fourni, sinon `glb_dir/<internal_code>.glb`.
+/// 1. **Corps** (tête de base) — `body_raw` (G4MD/G4MG du VFS, skinné).
+/// 2. **Visage** — `face_raw` (G4MD/G4MG du VFS).
 /// 3. **Uniforme** — les `uniform_parts` (haut, plaque, peau, brassard, chaussures, gants) avec
-///    leur rôle ; à défaut, l'ancien couple `uniform_g4md`/`uniform_g4mg` ou `uniform_glb_path`.
+///    leur rôle ; à défaut, le couple `uniform_g4md`/`uniform_g4mg`.
 ///
 /// Quand `skeleton` est fourni, chaque pièce brute est skinnée : les indices locaux de ses
 /// palettes sont résolus par hachage de nom d'os contre ce squelette, et les os non trouvés
 /// sont abandonnés (jamais réattribués). Le squelette n'est retenu dans le modèle que si au moins
 /// une primitive est skinnée. Le `report` du modèle détaille chaque pièce.
 ///
-/// Le recalage vertical du visage ne s'applique qu'à un visage issu d'un GLB pré-converti : un
-/// visage brut est exprimé dans l'espace de bind du squelette, comme le corps.
-///
 /// # Erreurs
 ///
 /// - [`AssembleError::NoBaseGlb`] si `body_type_idx` n'a pas de tête de base (101/201/inconnu).
-/// - [`AssembleError::GlbNotFound`] si un fichier GLB de repli est manquant.
-/// - [`AssembleError::Corrupt`] si un GLB est malformé.
+/// - [`AssembleError::MissingRaw`] si ni le corps ni le visage bruts ne sont fournis.
 /// - [`AssembleError::Format`] si les données G4MD/G4MG sont invalides.
 pub fn assemble_character_model(
     input: &CharacterAssemblyInput,
@@ -2084,8 +1732,7 @@ pub fn assemble_character_model(
         .ok_or(AssembleError::NoBaseGlb(input.body_type_idx))?;
 
     // La tête de base (`_face/20_EDIT/_base`) est celle de l'éditeur d'avatar : un visage brut de
-    // personnage porte déjà sa tête. Elle n'est chargée que si l'appelant la fournit, ou, à
-    // défaut de visage brut, depuis le GLB pré-converti (ancien pipeline, qui la superposait).
+    // personnage porte déjà sa tête. Elle n'est chargée que si l'appelant la fournit.
     let body_primitives = match (&input.body_raw, &input.face_raw) {
         (Some(raw), _) => {
             let (prims, ex) = extract_piece(
@@ -2099,16 +1746,11 @@ pub fn assemble_character_model(
             prims
         }
         (None, Some(_)) => Vec::new(),
-        (None, None) => {
-            let path = input.glb_dir.join(format!("{body_glb_name}.glb"));
-            let prims = extract_primitives_from_glb(&read_glb(&path)?, MeshComponent::Body)?;
-            pieces_report.push(glb_report("body", &path, &prims));
-            prims
-        }
+        (None, None) => return Err(AssembleError::MissingRaw("body")),
     };
 
     // ── 2. Visage ─────────────────────────────────────────────────────────────
-    let (face_primitives, face_from_glb) = match &input.face_raw {
+    let face_primitives = match &input.face_raw {
         Some(raw) => {
             let (prims, ex) = extract_piece(
                 &raw.g4md,
@@ -2118,37 +1760,28 @@ pub fn assemble_character_model(
                 skeleton,
             )?;
             pieces_report.push(piece_report("face", &raw.g4md_path, &ex, &prims, skeleton));
-            (prims, false)
+            prims
         }
-        None => {
-            let path = input.glb_dir.join(format!("{}.glb", input.internal_code));
-            let prims = extract_primitives_from_glb(&read_glb(&path)?, MeshComponent::Face)?;
-            pieces_report.push(glb_report("face", &path, &prims));
-            (prims, true)
-        }
+        None => return Err(AssembleError::MissingRaw("face")),
     };
 
     // ── 3. Uniforme ───────────────────────────────────────────────────────────
-    let mut uniform_primitives = if let Some(glb_path) = &input.uniform_glb_path {
-        // Voie A : GLB pré-converti (rare, 2 fichiers disponibles sur 384 uniformes)
-        let prims = extract_primitives_from_glb(&read_glb(glb_path)?, MeshComponent::Uniform)?;
-        pieces_report.push(glb_report("uniform", glb_path, &prims));
-        prims
-    } else if let (Some(g4md_data), Some(g4mg_data)) = (&input.uniform_g4md, &input.uniform_g4mg) {
-        // Voie B : G4MD+G4MG bruts depuis CPK, sans provenance détaillée (ancien appelant).
-        let (prims, ex) = extract_piece(
-            g4md_data,
-            g4mg_data,
-            MeshComponent::Uniform,
-            "uniform",
-            skeleton,
-        )?;
-        pieces_report.push(piece_report("uniform", "", &ex, &prims, skeleton));
-        prims
-    } else {
-        // Voie C : l'uniforme arrive par `uniform_parts`, ou n'est pas disponible.
-        Vec::new()
-    };
+    let mut uniform_primitives =
+        if let (Some(g4md_data), Some(g4mg_data)) = (&input.uniform_g4md, &input.uniform_g4mg) {
+            // Voie B : G4MD+G4MG bruts depuis CPK, sans provenance détaillée (ancien appelant).
+            let (prims, ex) = extract_piece(
+                g4md_data,
+                g4mg_data,
+                MeshComponent::Uniform,
+                "uniform",
+                skeleton,
+            )?;
+            pieces_report.push(piece_report("uniform", "", &ex, &prims, skeleton));
+            prims
+        } else {
+            // Voie C : l'uniforme arrive par `uniform_parts`, ou n'est pas disponible.
+            Vec::new()
+        };
     for part in &input.uniform_parts {
         let (prims, ex) = extract_piece(
             &part.raw.g4md,
@@ -2185,7 +1818,7 @@ pub fn assemble_character_model(
     // visage.
     const LIMITE_PLAUSIBLE_M: f32 = 100.0;
 
-    let mut face_primitives: Vec<MeshPrimitive> = face_primitives
+    let face_primitives: Vec<MeshPrimitive> = face_primitives
         .into_iter()
         .filter(|prim| {
             prim.positions.iter().all(|p| {
@@ -2214,20 +1847,6 @@ pub fn assemble_character_model(
     //
     // Un visage brut du VFS est dans l'espace de bind du squelette : on ne le touche pas, une
     // translation calculée sur ses bornes le détacherait de ses os.
-    let mut face_recalee = false;
-    if face_from_glb {
-        let avant = face_primitives
-            .iter()
-            .flat_map(|p| p.positions.iter().map(|v| v.y))
-            .fold(f32::INFINITY, f32::min);
-        recaler_face_flotante(&body_primitives, &mut face_primitives);
-        let apres = face_primitives
-            .iter()
-            .flat_map(|p| p.positions.iter().map(|v| v.y))
-            .fold(f32::INFINITY, f32::min);
-        face_recalee = (avant - apres).abs() > 1e-6;
-    }
-
     // ── Assemblage ────────────────────────────────────────────────────────────
     let mut all_primitives = Vec::with_capacity(
         body_primitives.len() + face_primitives.len() + uniform_primitives.len(),
@@ -2265,8 +1884,6 @@ pub fn assemble_character_model(
         "mode": if skinned > 0 { "skinned" } else { "static" },
         "primitives": all_primitives.len(),
         "skinned_primitives": skinned,
-        "face_from_glb": face_from_glb,
-        "face_recalee": face_recalee,
         "skeleton": skeleton_report,
         "pieces": pieces_report,
     });
@@ -2347,23 +1964,6 @@ fn piece_report(
             "bones_used": bones_used,
             "max_influences": prims.iter().filter_map(|p| p.skin.as_ref()).map(PrimitiveSkin::max_influences).max().unwrap_or(0),
         }
-    })
-}
-
-/// Entrée de rapport pour un composant lu dans un GLB pré-converti (statique).
-fn glb_report(role: &str, path: &Path, prims: &[MeshPrimitive]) -> serde_json::Value {
-    use serde_json::json;
-    let (lo, hi) = bornes(prims).unwrap_or(([0.0; 3], [0.0; 3]));
-    json!({
-        "role": role,
-        "source": path.display().to_string(),
-        "origin": "glb",
-        "primitives_kept": prims.len(),
-        "vertices": prims.iter().map(MeshPrimitive::vertex_count).sum::<usize>(),
-        "triangles": prims.iter().map(MeshPrimitive::triangle_count).sum::<usize>(),
-        "bounds_min": lo,
-        "bounds_max": hi,
-        "skin": { "skinned_submeshes": 0, "static_submeshes": prims.len() }
     })
 }
 
@@ -4222,7 +3822,32 @@ fn png_is_opaque(bytes: &[u8]) -> Option<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
+
+    fn input_without_raw_pieces(body_type_idx: u8) -> CharacterAssemblyInput {
+        CharacterAssemblyInput {
+            internal_code: "c00000000".to_string(),
+            body_type_idx,
+            uniform_model_crc: 0,
+            uniform_g4md: None,
+            uniform_g4mg: None,
+            uniform_parts: Vec::new(),
+            body_raw: None,
+            face_raw: None,
+            skeleton: None,
+        }
+    }
+
+    #[test]
+    fn a_body_type_without_a_base_head_is_refused() {
+        let result = assemble_character_model(&input_without_raw_pieces(101));
+        assert!(matches!(result, Err(AssembleError::NoBaseGlb(101))));
+    }
+
+    #[test]
+    fn raw_body_and_face_come_from_the_caller_never_from_a_file() {
+        let result = assemble_character_model(&input_without_raw_pieces(0));
+        assert!(matches!(result, Err(AssembleError::MissingRaw("body"))));
+    }
 
     fn primitive_test(component: MeshComponent, material_name: &str, ys: &[f32]) -> MeshPrimitive {
         MeshPrimitive {
@@ -4293,27 +3918,6 @@ mod tests {
         );
     }
 
-    /// Dossier des GLB de référence, sous la racine de jeu résolue à l'exécution — aucun
-    /// chemin de poste en dur : `NIE_GAME_DIR`, sinon le répertoire courant ou un ancêtre.
-    /// Les GLB sont des artefacts **produits** par ce dépôt (`var/glb/`), pas des
-    /// fichiers livrés par le jeu : `data/dx11/model` ne contient pas de GLB.
-    /// `NIE_GLB_DIR` permet de pointer un autre répertoire de sortie.
-    fn glb_dir() -> PathBuf {
-        if let Ok(d) = std::env::var("NIE_GLB_DIR") {
-            return PathBuf::from(d);
-        }
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .and_then(|p| p.parent())
-            .and_then(|p| p.parent())
-            .expect("racine du dépôt")
-            .join("var/glb")
-    }
-
-    fn glb_exists(name: &str) -> bool {
-        glb_dir().join(format!("{name}.glb")).exists()
-    }
-
     // ── Tests unitaires (pas d'accès disque) ─────────────────────────────────
 
     #[test]
@@ -4381,146 +3985,7 @@ mod tests {
         assert_eq!(entry.crc_for_position(FieldPosition::Manager), 0x9D2BBD10);
     }
 
-    #[test]
-    fn assemble_error_no_base_glb() {
-        let input = CharacterAssemblyInput {
-            internal_code: "c01000010".into(),
-            body_type_idx: 101, // animal → pas de GLB
-            glb_dir: glb_dir(),
-            uniform_model_crc: 0,
-            uniform_g4md: None,
-            uniform_g4mg: None,
-            uniform_glb_path: None,
-            uniform_parts: Vec::new(),
-            body_raw: None,
-            face_raw: None,
-            skeleton: None,
-        };
-        let result = assemble_character_model(&input);
-        assert!(
-            matches!(result, Err(AssembleError::NoBaseGlb(101))),
-            "type_idx=101 doit renvoyer NoBaseGlb"
-        );
-    }
-
     // ── Tests d'intégration réels (nécessitent GLB sur le VPS) ───────────────
-
-    /// Vérifie que les GLBs de corps partagés existent pour les 4 meshes de base.
-    #[test]
-    fn glb_bodies_partagees_existent() {
-        if !glb_dir().exists() {
-            eprintln!("SKIP : répertoire GLB absent");
-            return;
-        }
-        for name in [
-            "base_normal_00",
-            "base_normal_01",
-            "base_normal_02",
-            "base_normal_03",
-            "base_tall_00",
-            "base_big_00",
-            "base_small_00",
-        ] {
-            assert!(glb_exists(name), "GLB manquant : {name}.glb");
-        }
-    }
-
-    /// Assemblage complet de c01000010 (Endou Mamoru IE1) sans uniforme.
-    ///
-    /// Vérifie :
-    /// - Corps (base_normal_00) + Visage (c01000010) chargés.
-    /// - Nombre de vertices cohérent avec les valeurs réelles mesurées.
-    /// - Pas de primitives uniforme (aucune donnée fournie).
-    /// - Export GLB valide (magic correct, non vide).
-    #[test]
-    fn assemblage_c01000010_corps_face_sans_uniforme() {
-        if !glb_dir().exists() {
-            eprintln!("SKIP : répertoire GLB absent ({})", glb_dir().display());
-            return;
-        }
-        if !glb_exists("c01000010") || !glb_exists("base_normal_00") {
-            eprintln!("SKIP : GLBs manquants");
-            return;
-        }
-
-        // c01000010 : type_idx=0 → base_normal_00
-        // (vérifié : CHARA_BODY_INFO[bodyInfoId=613579].var[4]=0)
-        let input = CharacterAssemblyInput {
-            internal_code: "c01000010".into(),
-            body_type_idx: 0,
-            glb_dir: glb_dir(),
-            uniform_model_crc: 0x9D2BBD10, // Raimon fielder (réel)
-            uniform_g4md: None,
-            uniform_g4mg: None,
-            uniform_glb_path: None,
-            uniform_parts: Vec::new(),
-            body_raw: None,
-            face_raw: None,
-            skeleton: None,
-        };
-
-        let model = assemble_character_model(&input).expect("assemblage c01000010");
-
-        // Corps : 2 primitives. Compte ancré sur le g4md du jeu
-        // (data/common/chr/_face/20_EDIT/_base/base_normal_00.g4md : sm[0] vtx=365,
-        // sm[1] vtx=38), et non sur un GLB non versionné. L'attente précédente
-        // (321+36=357) venait d'un exporteur qui soude les sommets ; le pipeline du
-        // dépôt (assemble_generic_model) préserve les comptes du g4md.
-        let body_verts: usize = model.body_primitives().map(|p| p.vertex_count()).sum();
-        assert_eq!(
-            body_verts, 403,
-            "corps base_normal_00 : 403 vertices attendus (365+38, cf. g4md)"
-        );
-
-        // Visage : 3 primitives. Compte ancré sur le g4md du jeu
-        // (data/common/chr/_face/01_IE1/c01000010/c01000010.g4md : 880+406+72).
-        let face_verts: usize = model.face_primitives().map(|p| p.vertex_count()).sum();
-        assert_eq!(
-            face_verts, 1358,
-            "visage c01000010 : 1358 vertices attendus (880+406+72, cf. g4md)"
-        );
-
-        // Aucun uniforme fourni.
-        assert_eq!(
-            model.uniform_primitives().count(),
-            0,
-            "pas d'uniforme fourni"
-        );
-
-        // Total = 403 + 1358 = 1761. Les triangles ci-dessous (1754) dérivent des
-        // mêmes g4md et n'ont pas bougé : la soudure de sommets de l'ancien
-        // exporteur ne changeait que les comptes de sommets.
-        assert_eq!(model.total_vertex_count(), 1761, "total vertices : 1761");
-
-        // Triangles du visage : 3390/3 + 1536/3 + 336/3 = 1130+512+112 = 1754
-        let face_tris: usize = model.face_primitives().map(|p| p.triangle_count()).sum();
-        assert_eq!(face_tris, 1754, "triangles visage : 1754");
-
-        // Métadonnées.
-        assert_eq!(model.internal_code, "c01000010");
-        assert_eq!(model.body_glb, "base_normal_00");
-        assert_eq!(model.uniform_crc, 0x9D2BBD10);
-
-        // Export GLB : magic "glTF" + taille non nulle.
-        let glb = model.to_glb();
-        assert!(glb.len() > 12, "GLB exporté non vide");
-        let magic = u32::from_le_bytes([glb[0], glb[1], glb[2], glb[3]]);
-        assert_eq!(magic, 0x46546C67, "magic GLB valide");
-
-        // Version 2.
-        let version = u32::from_le_bytes([glb[4], glb[5], glb[6], glb[7]]);
-        assert_eq!(version, 2);
-
-        // Total length cohérent.
-        let total_len = u32::from_le_bytes([glb[8], glb[9], glb[10], glb[11]]) as usize;
-        assert_eq!(total_len, glb.len(), "total_length GLB = taille buffer");
-
-        eprintln!(
-            "PASS c01000010 : corps={body_verts}v, face={face_verts}v, total={}v, glb={}B",
-            model.total_vertex_count(),
-            glb.len()
-        );
-    }
 
     /// Vérifie la chaîne de matching complète pour Endou Mamoru (c01000010, IE1) :
     ///
@@ -4989,127 +4454,6 @@ mod tests {
         assert_eq!(png_is_opaque(&opaque), Some(true));
         assert_eq!(png_is_opaque(&transparent), Some(false));
         assert_eq!(png_is_opaque(b"invalid"), None);
-    }
-
-    #[test]
-    fn recalage_ne_remonte_pas_une_coiffure_longue_deja_alignee() {
-        let body = vec![primitive_test(
-            MeshComponent::Body,
-            "",
-            &[1.291, 1.599, 1.45],
-        )];
-        let mut face = vec![primitive_test(
-            MeshComponent::Face,
-            "c01001900",
-            &[0.894, 1.30, 1.645],
-        )];
-
-        recaler_face_flotante(&body, &mut face);
-
-        assert_eq!(face[0].positions[0].y, 0.894);
-        assert_eq!(face[0].positions[2].y, 1.645);
-    }
-
-    #[test]
-    fn recalage_redescend_une_face_entierement_trop_haute() {
-        let body = vec![primitive_test(
-            MeshComponent::Body,
-            "",
-            &[1.291, 1.599, 1.45],
-        )];
-        let mut face = vec![primitive_test(
-            MeshComponent::Face,
-            "flottante",
-            &[1.741, 1.80, 2.10],
-        )];
-
-        recaler_face_flotante(&body, &mut face);
-
-        assert!((face[0].positions[0].y - 1.291).abs() < 1e-5);
-        assert!((face[0].positions[2].y - 1.65).abs() < 1e-5);
-    }
-
-    /// Test d'intégration : assemblage de c01000010 avec textures URI CDN.
-    ///
-    /// Vérifie que to_glb_textured injecte les images[] dans le JSON glTF quand
-    /// les primitives face ont une texture_uri renseignée.
-    #[test]
-    fn assemblage_c01000010_avec_textures_uri() {
-        if !glb_dir().exists() {
-            eprintln!("SKIP : répertoire GLB absent");
-            return;
-        }
-        if !glb_dir().join("c01000010.glb").exists()
-            || !glb_dir().join("base_normal_00.glb").exists()
-        {
-            eprintln!("SKIP : GLBs manquants");
-            return;
-        }
-
-        let input = CharacterAssemblyInput {
-            internal_code: "c01000010".into(),
-            body_type_idx: 0,
-            glb_dir: glb_dir(),
-            uniform_model_crc: 0,
-            uniform_g4md: None,
-            uniform_g4mg: None,
-            uniform_glb_path: None,
-            uniform_parts: Vec::new(),
-            body_raw: None,
-            face_raw: None,
-            skeleton: None,
-        };
-
-        let mut model = assemble_character_model(&input).expect("assemblage c01000010");
-        let cfg = TextureUriConfig::default();
-
-        // Avant resolve : toutes les texture_uri sont vides (GLBs pré-convertis).
-        // Les GLBs pré-convertis ont material_name = "" (pas de G4MD source).
-        let all_empty = model.primitives.iter().all(|p| p.texture_uri.is_empty());
-        assert!(all_empty, "texture_uri vides avant resolve");
-
-        // Appel de to_glb_textured.
-        let glb_textured = model.to_glb_textured(&cfg);
-        assert!(glb_textured.len() >= 12, "GLB textured non vide");
-
-        // Vérification magic.
-        let magic = u32::from_le_bytes([
-            glb_textured[0],
-            glb_textured[1],
-            glb_textured[2],
-            glb_textured[3],
-        ]);
-        assert_eq!(magic, 0x46546C67, "magic GLB textured valide");
-
-        // Le JSON doit contenir au moins les materials.
-        // On extrait le JSON du GLB pour vérification.
-        let json_len = u32::from_le_bytes([
-            glb_textured[12],
-            glb_textured[13],
-            glb_textured[14],
-            glb_textured[15],
-        ]) as usize;
-        assert!(
-            json_len > 0 && 20 + json_len <= glb_textured.len(),
-            "chunk JSON valide"
-        );
-        let json_bytes = &glb_textured[20..20 + json_len];
-        let json_str = std::str::from_utf8(json_bytes)
-            .unwrap()
-            .trim_end_matches('\0')
-            .trim();
-        let json_val: serde_json::Value = serde_json::from_str(json_str).expect("JSON glTF valide");
-        assert!(json_val["materials"].is_array(), "materials présents");
-        // Pour c01000010 depuis GLBs pré-convertis : pas de material_name → pas d'images URI.
-        // Un seul matériau Default attendu.
-        let mats = json_val["materials"].as_array().unwrap();
-        assert!(!mats.is_empty(), "au moins 1 matériau");
-
-        eprintln!(
-            "PASS textured c01000010 : {}B GLB, {} matériaux",
-            glb_textured.len(),
-            mats.len()
-        );
     }
 
     /// Test d'intégration : assemble_generic_model avec un vrai G4MD+G4MG de keshin
@@ -5665,96 +5009,6 @@ mod tests_byron {
                 assert!((s - 1.0).abs() < 1e-3, "somme {s}");
             }
         }
-    }
-
-    #[test]
-    fn byron_complet_est_assemble_skinne_et_exporte_avec_un_skin_glb() {
-        let (Some(body), Some(face), Some(skin_part), Some(shoes), Some(skdata)) = (
-            raw("base_normal_00", "_face/20_EDIT/_base"),
-            raw("c01001900", "_face/01_IE1/c01001900"),
-            raw("sk000101", "_uniform/sk000101"),
-            raw("s011001", "_uniform/s011001"),
-            chr("c000101/c000101.g4sk"),
-        ) else {
-            return;
-        };
-        let input = CharacterAssemblyInput {
-            internal_code: "c01001900".into(),
-            body_type_idx: 0,
-            glb_dir: PathBuf::new(),
-            uniform_model_crc: 0xF000_6501,
-            uniform_g4md: None,
-            uniform_g4mg: None,
-            uniform_glb_path: None,
-            uniform_parts: vec![
-                CharacterUniformPart {
-                    role: "skin".into(),
-                    raw: skin_part,
-                },
-                CharacterUniformPart {
-                    role: "shoes".into(),
-                    raw: shoes,
-                },
-            ],
-            body_raw: Some(body),
-            face_raw: Some(face),
-            skeleton: Some(Skeleton::from_g4sk("c000101.g4sk", &skdata).unwrap()),
-        };
-        let model = assemble_character_model(&input).expect("assemblage Byron");
-        assert_eq!(model.report["mode"], "skinned");
-        // Les niveaux de détail grossiers sont écartés par leur nom, positionnel dans la table :
-        // la peau garde sa maille pleine (1049 sommets), pas `sk000101_10_LOD` (728).
-        let peau = model
-            .primitives
-            .iter()
-            .filter(|p| p.piece == "sk000101")
-            .map(MeshPrimitive::vertex_count)
-            .collect::<Vec<_>>();
-        assert_eq!(peau, vec![1049]);
-        assert!(model.skeleton.is_some());
-        assert_eq!(model.report["face_recalee"], false);
-        let pieces = model.report["pieces"].as_array().unwrap();
-        assert_eq!(pieces.len(), 4);
-        for p in pieces {
-            assert_eq!(p["origin"], "vfs", "{p}");
-            assert_eq!(p["skin"]["vertices_without_bone"], 0, "{p}");
-            assert!(
-                p["skin"]["unresolved_hashes"]
-                    .as_array()
-                    .unwrap()
-                    .is_empty(),
-                "{p}"
-            );
-        }
-        // Les bornes restent celles d'un personnage debout : ~1,65 m de haut.
-        let (lo, hi) = bornes(&model.primitives).unwrap();
-        assert!(lo[1] > -0.05 && hi[1] < 1.8, "y ∈ [{}, {}]", lo[1], hi[1]);
-
-        let glb = model.to_glb_embedded();
-        let json_len = u32::from_le_bytes(glb[12..16].try_into().unwrap()) as usize;
-        let json: serde_json::Value = serde_json::from_slice(&glb[20..20 + json_len]).unwrap();
-        let skins = json["skins"].as_array().expect("skins présents");
-        assert_eq!(skins[0]["joints"].as_array().unwrap().len(), 165);
-        let nodes = json["nodes"].as_array().unwrap();
-        for mesh in json["meshes"].as_array().unwrap() {
-            for prim in mesh["primitives"].as_array().unwrap() {
-                assert!(
-                    !prim["attributes"]["JOINTS_0"].is_null(),
-                    "{}",
-                    mesh["name"]
-                );
-                assert!(!prim["attributes"]["WEIGHTS_0"].is_null());
-            }
-        }
-        let skinned_nodes = nodes.iter().filter(|n| !n["mesh"].is_null()).count();
-        assert_eq!(skinned_nodes, 3, "Body, Face, Uniform");
-        assert!(
-            nodes
-                .iter()
-                .filter(|n| !n["mesh"].is_null())
-                .all(|n| n["skin"] == 0)
-        );
-        assert!(nodes.iter().any(|n| n["name"] == "c_head_1_0"));
     }
 }
 

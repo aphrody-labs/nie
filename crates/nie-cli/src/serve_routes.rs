@@ -21,6 +21,7 @@ pub(crate) enum Route {
     FormatsDetect,
     FormatsDecode,
     VfsInfo,
+    VfsLs,
     VfsFind,
     VfsStat,
     VfsRead,
@@ -179,6 +180,28 @@ pub(crate) const ROUTES: &[RouteDef] = &[
         "vfs",
         "Mounted source, entry and pack counts, transport statistics",
         &[],
+        JSON_TYPE,
+    ),
+    def(
+        "GET",
+        "/v1/vfs/ls",
+        Route::VfsLs,
+        "vfs",
+        "One folder of the VFS: its sub-folders with their file counts and a page of its files, the structure of data/common and data/dx11 exactly",
+        &[
+            Param {
+                name: "path",
+                description: "Folder relative to the VFS root (data, data/common, ...); empty for the root",
+            },
+            Param {
+                name: "limit",
+                description: "Files per page, 1 to 5000 (default 1000)",
+            },
+            Param {
+                name: "offset",
+                description: "First file of the page (default 0)",
+            },
+        ],
         JSON_TYPE,
     ),
     def(

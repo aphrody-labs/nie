@@ -126,9 +126,6 @@ pub mod menu;
 /// Composition d'un layout de menu exporté par le runtime → image RGBA8 (feature `textures`).
 #[cfg(feature = "textures")]
 pub mod menu_layout;
-/// Portable, measured VFS presentations shared by native and browser hosts.
-#[cfg(all(feature = "std", feature = "serde"))]
-pub mod menu_presentation;
 /// Le layout d'un écran de menu, construit depuis les octets du jeu (feature `std`).
 #[cfg(feature = "std")]
 pub mod menu_screen;
