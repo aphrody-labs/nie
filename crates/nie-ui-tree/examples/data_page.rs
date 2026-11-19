@@ -2,7 +2,7 @@
 //! as an HTML page through the data-driven UI tree.
 
 use nie_formats::vfs::Vfs;
-use nie_ui_dioxus::{Theme, render_html, screen_from_dataset};
+use nie_ui_tree::{Theme, render_html, screen_from_dataset};
 
 fn main() {
     let a: Vec<String> = std::env::args().skip(1).collect();

@@ -22,7 +22,7 @@ crates/
   nie-re rg-steam nie-re-core   reverse engineering and Steam libraries (from rosegriffon)
   achillea-* azalee-app rg-ffi*   site, bot and FFI crates of the ecosystem
   nie-model nie-physics nie-input nie-ai nie-lockstep nie-sim   football simulation
-  nie-render nie-football nie-studio nie-web nie-craft          football frontends and craft tool
+  nie-render nie-football nie-studio nie-craft              football frontends and craft tool
 tools/steam-index
 games/          craft manifests, one TOML file per football game
 contract/       nie-app.json and aphrody-store.toml (generated), openapi.json
@@ -76,7 +76,7 @@ lists and reads a CPK of the real installation over SSH.
 The simulation (`nie-sim`) depends only on `bevy_app`, `bevy_ecs` and `bevy_math`. It has no
 window, no renderer and no wall-clock dependency: one run of the `SimTick` schedule is one
 tick. The same plugin runs headless in CI, inside the Bevy game on a fixed timestep, inside the
-Dioxus page compiled to WebAssembly, and in lockstep netplay, where peers exchange only inputs
+Bevy game compiled to WebAssembly, and in lockstep netplay, where peers exchange only inputs
 and compare a world checksum every tick.
 
 Determinism rules: integer-only random stream (`DetRng`), only `+ - * /` and `sqrt` on floats,
@@ -94,7 +94,7 @@ id = "pocket-derby"        # lowercase letters, digits, dashes
 name = "Pocket Derby"
 version = "0.1.0"
 mode = "exhibition"        # exhibition | series ([series] matches = N)
-frontend = "bevy3d"        # bevy3d | studio | dioxus_web | dioxus_desktop
+frontend = "bevy3d"        # bevy3d | studio | bevy_web
 
 [rules]                    # every field optional
 players_per_side = 5       # goalkeeper included, 2 to 11
@@ -125,8 +125,7 @@ The `frontend` field resolves to a cargo target:
 |------------------|--------------|---------------------------------------|
 | `bevy3d`         | `nie-football` | `cargo run -p nie-football -- --manifest` |
 | `studio`         | `nie-studio` | `cargo run -p nie-studio -- --manifest` |
-| `dioxus_desktop` | `nie-web`    | `cargo run -p nie-web --no-default-features --features desktop` |
-| `dioxus_web`     | `nie-web`    | `dx serve --package nie-web --platform web` |
+| `bevy_web`       | `nie-football` | `trunk serve crates/nie-football/index.html` (wasm32 and WebGPU, plays `games/web-cup.toml`) |
 
 ## The craft tool
 
@@ -148,8 +147,8 @@ A 5v5 match (goalkeeper plus four outfield players per side) on a 40 x 24 m pitc
 - `cargo test -p nie-sim` plays a full 3600-tick match headless and asserts the exact score and
   the world checksum, replays it twice, and runs two lockstep peers for 900 ticks without a desync.
 - `craft run` over the manifests runs in CI with an exact expected score.
-- `cargo check` covers the Bevy 3D game, the egui studio and the Dioxus app, plus the Dioxus app
-  for `wasm32-unknown-unknown`.
+- `cargo check` covers the Bevy 3D game and the egui studio, plus the Bevy game with the `webgpu`
+  feature for `wasm32-unknown-unknown`.
 
 Not in the slice yet: throw-ins, corners, fouls, player collisions, a networked transport (only
 the lockstep core and an in-process pipe exist), audio, and authored or generated art assets
@@ -157,7 +156,7 @@ beyond primitive meshes.
 
 ## Versions
 
-Bevy 0.20.1, Dioxus 0.8.0-alpha.3 and everything else come from crates.io. Rust 1.100.0 (`rust-toolchain.toml`).
+Bevy 0.20.1 and everything else come from crates.io. Rust 1.100.0 (`rust-toolchain.toml`).
 
 ## Build
 

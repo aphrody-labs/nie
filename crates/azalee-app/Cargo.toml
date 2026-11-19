@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.100"
 license = "Apache-2.0"
 publish = false
-description = "Azalee wiki server: pages rendered with Dioxus from the PostgreSQL import of the VFS, sitemap and assets from the VFS"
+description = "Azalee wiki server: pages rendered as plain HTML from the PostgreSQL import of the VFS, sitemap and assets from the VFS"
 
 [lints]
 workspace = true
@@ -18,7 +18,7 @@ path = "src/main.rs"
 axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
 nie-formats = { workspace = true, features = ["std", "serde", "remote-vfs", "textures"] }
 nie-sitemap = { path = "../nie-sitemap", version = "1.4.8" }
-nie-ui-dioxus = { path = "../nie-ui-dioxus", version = "1.4.8" }
+nie-ui-tree = { path = "../nie-ui-tree", version = "1.4.8" }
 serde_json = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "net", "macros"] }
 tokio-postgres = { version = "0.7.18", default-features = false, features = ["runtime"] }

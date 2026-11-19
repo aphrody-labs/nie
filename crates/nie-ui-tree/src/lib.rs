@@ -4,11 +4,10 @@
 //! it from a [`nie_cfgsql::Dataset`], i.e. from a `cfg.bin` read through the VFS. Two renderers
 //! consume the same tree and the same [`UiStyle`]:
 //!
-//! - Dioxus ([`NodeView`], [`render_html`]) emits CSS flexbox for the browser/desktop webview;
+//! - plain HTML ([`render_fragment`], [`render_html`]) emits CSS flexbox for the browser;
 //! - taffy ([`layout`]) computes absolute rectangles for the Bevy renderer (Bevy UI sits on taffy
 //!   too), so both agree on geometry because the style maps to the same flexbox model.
 
-use dioxus::prelude::*;
 use nie_cfgsql::{Cell, Dataset};
 use serde::{Deserialize, Serialize};
 use taffy::prelude::*;
@@ -474,66 +473,93 @@ pub fn page(theme: &Theme, children: Vec<UiNode>) -> UiNode {
     )
 }
 
-/// Dioxus view of a node; the same component serves SSR, web and desktop.
-#[component]
-pub fn NodeView(node: UiNode) -> Element {
-    match node {
-        UiNode::Box { style, children } => {
-            let css = style.css();
-            rsx! {
-                div { style: "{css}",
-                    for child in children {
-                        NodeView { node: child }
-                    }
-                }
-            }
-        }
-        UiNode::Text { style, text } => {
-            let css = style.css();
-            rsx! { span { style: "{css}", "{text}" } }
-        }
-        UiNode::Link { style, href, text } => {
-            let css = style.css();
-            rsx! { a { style: "{css}", href: "{href}", "{text}" } }
-        }
-        UiNode::Image {
-            src,
-            alt,
-            width,
-            height,
-        } => {
-            let _ = height; // height follows the image ratio in the browser; taffy uses the box height
-            rsx! { img { src: "{src}", alt: "{alt}", width: "{width}", style: "height:auto;image-rendering:pixelated" } }
+/// Appends `s` to `out` with the HTML special characters escaped.
+fn escape_into(out: &mut String, s: &str) {
+    for c in s.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&#x27;"),
+            c => out.push(c),
         }
     }
 }
 
+fn escape(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    escape_into(&mut out, s);
+    out
+}
+
+fn write_node(out: &mut String, node: &UiNode) {
+    match node {
+        UiNode::Box { style, children } => {
+            out.push_str("<div style=\"");
+            escape_into(out, &style.css());
+            out.push_str("\">");
+            for child in children {
+                write_node(out, child);
+            }
+            out.push_str("</div>");
+        }
+        UiNode::Text { style, text } => {
+            out.push_str("<span style=\"");
+            escape_into(out, &style.css());
+            out.push_str("\">");
+            escape_into(out, text);
+            out.push_str("</span>");
+        }
+        UiNode::Link { style, href, text } => {
+            out.push_str("<a style=\"");
+            escape_into(out, &style.css());
+            out.push_str("\" href=\"");
+            escape_into(out, href);
+            out.push_str("\">");
+            escape_into(out, text);
+            out.push_str("</a>");
+        }
+        UiNode::Image {
+            src, alt, width, ..
+        } => {
+            // The height follows the image ratio in the browser; taffy uses the box height.
+            out.push_str("<img src=\"");
+            escape_into(out, src);
+            out.push_str("\" alt=\"");
+            escape_into(out, alt);
+            out.push_str(&format!(
+                "\" width=\"{width}\" style=\"height:auto;image-rendering:pixelated\"/>"
+            ));
+        }
+    }
+}
+
+/// Renders a tree to an HTML fragment of nested flexbox elements.
+#[must_use]
+pub fn render_fragment(root: &UiNode) -> String {
+    let mut out = String::new();
+    write_node(&mut out, root);
+    out
+}
+
 /// Renders a tree to an HTML document.
-#[cfg(feature = "ssr")]
 #[must_use]
 pub fn render_html(root: &UiNode, title: &str) -> String {
     render_document(root, title, "en", &Theme::default())
 }
 
 /// Renders a tree to an HTML document in language `lang`, page colour from `theme`.
-#[cfg(feature = "ssr")]
 #[must_use]
 pub fn render_document(root: &UiNode, title: &str, lang: &str, theme: &Theme) -> String {
-    let mut dom = VirtualDom::new_with_props(NodeView, NodeViewProps { node: root.clone() });
-    dom.rebuild_in_place();
-    let body = dioxus_ssr::render(&dom);
-    let esc = |s: &str| {
-        s.replace('&', "&amp;")
-            .replace('<', "&lt;")
-            .replace('"', "&quot;")
-    };
+    let body = render_fragment(root);
     let [r, g, b, _] = theme.page;
     format!(
         "<!doctype html><html lang=\"{}\"><head><meta charset=\"utf-8\">\
          <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>{}</title>\
          <style>body{{margin:0;font-family:system-ui,sans-serif;background:rgb({r},{g},{b})}}</style></head><body>{body}</body></html>",
-        esc(lang),
-        esc(title)
+        escape(lang),
+        escape(title)
     )
 }
 
@@ -675,6 +701,31 @@ mod tests {
         assert!(!html.contains("n2"), "max_rows must cut the third row");
         assert!(html.contains("3 rows, 3 columns"));
         assert!(html.contains("flex-direction:row"));
+    }
+
+    #[test]
+    fn html_nodes_are_escaped_and_ordered() {
+        let tree = UiNode::boxed(
+            UiStyle::default(),
+            vec![
+                label(12.0, [1, 2, 3, 255], "a<b & \"c\""),
+                link(12.0, [1, 2, 3, 255], "/x?a=1&b=2", "go"),
+                UiNode::Image {
+                    src: "p.png".into(),
+                    alt: "it's".into(),
+                    width: 16.0,
+                    height: 16.0,
+                },
+            ],
+        );
+        let html = render_fragment(&tree);
+        assert!(html.starts_with("<div style=\"display:flex;flex-direction:column;"));
+        assert!(html.contains(">a&lt;b &amp; &quot;c&quot;</span>"));
+        assert!(html.contains("<a style=\"") && html.contains("\" href=\"/x?a=1&amp;b=2\">go</a>"));
+        assert!(html.contains(
+            "<img src=\"p.png\" alt=\"it&#x27;s\" width=\"16\" style=\"height:auto;image-rendering:pixelated\"/>"
+        ));
+        assert!(html.ends_with("</div>"));
     }
 
     #[test]

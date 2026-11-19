@@ -1,6 +1,6 @@
 //! The Bevy renderer of the shared UI tree: [`spawn_ui`] turns a [`UiNode`] (built by
-//! `nie-ui-dioxus` from `cfg.bin` data read through the VFS) into Bevy UI entities. Layout is
-//! left to Bevy UI, which runs on taffy like `nie_ui_dioxus::layout`, so the Dioxus page and the
+//! `nie-ui-tree` from `cfg.bin` data read through the VFS) into Bevy UI entities. Layout is
+//! left to Bevy UI, which runs on taffy like `nie_ui_tree::layout`, so the HTML page and the
 //! in-canvas Bevy screen come from one tree and one flexbox model.
 
 use bevy_color::Color;
@@ -8,7 +8,7 @@ use bevy_ecs::prelude::{Entity, World};
 use bevy_text::{FontSize, TextColor, TextFont};
 use bevy_ui::widget::Text;
 use bevy_ui::{BackgroundColor, FlexDirection, FlexWrap, Node, UiRect, Val};
-use nie_ui_dioxus::{Axis, Rgba, UiNode, UiStyle};
+use nie_ui_tree::{Axis, Rgba, UiNode, UiStyle};
 
 fn color(c: Rgba) -> Color {
     Color::srgba_u8(c[0], c[1], c[2], c[3])
@@ -87,7 +87,7 @@ pub fn spawn_ui(world: &mut World, tree: &UiNode) -> Entity {
 mod tests {
     use super::*;
     use bevy_ecs::hierarchy::Children;
-    use nie_ui_dioxus::{Theme, label, page, simple_table};
+    use nie_ui_tree::{Theme, label, page, simple_table};
 
     #[test]
     fn tree_becomes_entities_with_the_same_structure() {

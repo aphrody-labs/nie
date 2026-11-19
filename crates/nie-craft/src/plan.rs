@@ -37,17 +37,11 @@ impl Frontend {
                 cargo_target: None,
                 kind: TargetKind::Native,
             },
-            Frontend::DioxusWeb => Target {
-                package: "nie-web",
-                features: &["web"],
+            Frontend::BevyWeb => Target {
+                package: "nie-football",
+                features: &["webgpu"],
                 cargo_target: Some("wasm32-unknown-unknown"),
                 kind: TargetKind::Web,
-            },
-            Frontend::DioxusDesktop => Target {
-                package: "nie-web",
-                features: &["desktop"],
-                cargo_target: None,
-                kind: TargetKind::Native,
             },
         }
     }
@@ -98,13 +92,11 @@ impl Manifest {
                 ]);
                 cmd
             }
+            // trunk builds the page's `<link data-trunk rel="rust">` target and serves the bundle.
             TargetKind::Web => vec![
-                "dx".to_owned(),
+                "trunk".to_owned(),
                 "serve".to_owned(),
-                "--package".to_owned(),
-                target.package.to_owned(),
-                "--platform".to_owned(),
-                "web".to_owned(),
+                format!("crates/{}/index.html", target.package),
             ],
         };
         Ok(Plan {
@@ -128,7 +120,7 @@ id = "web-cup"
 name = "Web Cup"
 version = "0.1.0"
 mode = "exhibition"
-frontend = "dioxus_web"
+frontend = "bevy_web"
 [teams.home]
 [teams.away]
 "#;
@@ -138,17 +130,18 @@ frontend = "dioxus_web"
         let m = Manifest::from_toml(WEB).unwrap();
         let plan = m.plan(Path::new("games/web-cup.toml"), true).unwrap();
         assert_eq!(plan.target.kind, TargetKind::Web);
+        assert_eq!(plan.target.package, "nie-football");
         assert!(
             plan.build
                 .join(" ")
-                .contains("--target wasm32-unknown-unknown")
+                .contains("--features webgpu --target wasm32-unknown-unknown")
         );
-        assert_eq!(plan.launch[0], "dx");
+        assert_eq!(plan.launch[0], "trunk");
     }
 
     #[test]
     fn native_launch_passes_the_manifest() {
-        let m = Manifest::from_toml(&WEB.replace("dioxus_web", "bevy3d")).unwrap();
+        let m = Manifest::from_toml(&WEB.replace("bevy_web", "bevy3d")).unwrap();
         let plan = m.plan(Path::new("games/x.toml"), false).unwrap();
         assert_eq!(&plan.launch[1..4], ["run", "-p", "nie-football"]);
         assert!(

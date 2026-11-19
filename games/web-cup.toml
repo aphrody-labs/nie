@@ -1,4 +1,4 @@
-# Web Cup: a 4v4 quick match played in the browser through the Dioxus app.
+# Web Cup: a 4v4 quick match played in the browser by the Bevy game compiled to WebAssembly.
 schema = 1
 
 [game]
@@ -6,7 +6,7 @@ id = "web-cup"
 name = "Web Cup"
 version = "0.1.0"
 mode = "exhibition"
-frontend = "dioxus_web"
+frontend = "bevy_web"
 
 [rules]
 players_per_side = 4

@@ -88,7 +88,7 @@ jobs:
       - name: Toolchain
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2
-      - name: Dioxus app and asset source for WebAssembly
-        run: cargo check --locked --target wasm32-unknown-unknown -p nie-web -p nie-assets
+      - name: Bevy game and asset source for WebAssembly
+        run: cargo check --locked --target wasm32-unknown-unknown -p nie-football -p nie-assets --features nie-football/webgpu
       - name: Bevy renderer with WebGPU
         run: cargo check --locked --target wasm32-unknown-unknown -p nie-render --features webgpu

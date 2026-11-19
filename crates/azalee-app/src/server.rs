@@ -9,7 +9,7 @@ use axum::response::{Html, IntoResponse, Response};
 use axum::routing::get;
 use nie_formats::vfs::Vfs;
 use nie_sitemap::{Config, Sitemap};
-use nie_ui_dioxus::{Theme, UiNode, render_html};
+use nie_ui_tree::{Theme, UiNode, render_html};
 
 use crate::db::{Db, DbError};
 use crate::pages::{self, FileView, PREVIEW_ROWS};
@@ -104,7 +104,7 @@ async fn root_dir(State(s): State<Shared>) -> Response {
 pub struct Built {
     /// HTTP status.
     pub status: StatusCode,
-    /// The page as a UI tree (rendered to HTML, or sent as JSON for a client-side Dioxus app).
+    /// The page as a UI tree (rendered to HTML, or sent as JSON for a client-side renderer).
     pub ui: UiNode,
     /// Document title.
     pub title: String,
@@ -193,8 +193,8 @@ async fn files(State(s): State<Shared>, Path(raw): Path<String>) -> Response {
     }
 }
 
-/// `/api/ui/<path>`: the same page as JSON (`UiNode`), the data a client-side Dioxus app renders
-/// with the shared `NodeView` component.
+/// `/api/ui/<path>`: the same page as JSON (`UiNode`), the data a client-side renderer
+/// draws with the same flexbox style.
 async fn api_ui(State(s): State<Shared>, Path(raw): Path<String>) -> Response {
     match build_file(&s, &raw).await {
         Ok(b) => (
@@ -327,7 +327,7 @@ fn localized(
     lang: &'static str,
     theme: &Theme,
 ) -> Response {
-    let doc = nie_ui_dioxus::render_document(ui, title, lang, theme);
+    let doc = nie_ui_tree::render_document(ui, title, lang, theme);
     (
         status,
         [

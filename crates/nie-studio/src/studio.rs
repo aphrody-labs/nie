@@ -141,8 +141,7 @@ impl Studio {
                     for (value, label) in [
                         (Frontend::Bevy3d, "Bevy 3D"),
                         (Frontend::Studio, "Studio"),
-                        (Frontend::DioxusWeb, "Dioxus web"),
-                        (Frontend::DioxusDesktop, "Dioxus desktop"),
+                        (Frontend::BevyWeb, "Bevy web"),
                     ] {
                         ui.selectable_value(&mut manifest.game.frontend, value, label);
                     }

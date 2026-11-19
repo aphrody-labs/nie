@@ -53,10 +53,8 @@ pub enum Frontend {
     Bevy3d,
     /// Native GUI manager and editor.
     Studio,
-    /// Dioxus app compiled to WebAssembly.
-    DioxusWeb,
-    /// Dioxus app in a native desktop window.
-    DioxusDesktop,
+    /// The Bevy game compiled to WebAssembly and drawn on a WebGPU canvas.
+    BevyWeb,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

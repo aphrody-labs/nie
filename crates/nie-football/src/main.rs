@@ -3,48 +3,23 @@
 //! The simulation advances on Bevy's fixed timestep at the manifest's tick rate; the keyboard
 //! feeds the human-controlled team, the AI plays the rest.
 
-use std::path::PathBuf;
-
 use bevy::prelude::*;
-use clap::Parser;
 use nie_craft::{Controller, Manifest};
 use nie_input::{InputCommand, KeyScheme};
 use nie_model::Side;
 use nie_render::RenderPlugin;
 use nie_sim::{BallBody, Footballer, HumanInputs, MatchPlugin, PlayerBody, PlayerKey, SimTick};
 
-#[derive(Parser)]
-#[command(version, about)]
-struct Args {
-    /// Craft manifest to play.
-    #[arg(long, default_value = "games/pocket-derby.toml")]
-    manifest: PathBuf,
-    /// Play without a window and print the match report as JSON.
-    #[arg(long)]
-    headless: bool,
-    /// Cap the headless run at this many ticks.
-    #[arg(long)]
-    ticks: Option<u32>,
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Args::parse();
-    let manifest = Manifest::load(&args.manifest)?;
-
-    if args.headless {
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&manifest.play(args.ticks)?)?
-        );
-        return Ok(());
-    }
-
+/// Opens the window (or the canvas in a browser) and plays `manifest` until the window closes.
+fn play(manifest: &Manifest) -> Result<(), Box<dyn std::error::Error>> {
     let config = manifest.match_config(0)?;
     let human = (manifest.teams.home.controller == Controller::Human).then_some(Side::Home);
     let mut app = App::new();
     app.add_plugins(DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
             title: manifest.game.name.clone(),
+            canvas: cfg!(target_arch = "wasm32").then(|| "#nie-canvas".to_owned()),
+            fit_canvas_to_parent: true,
             ..default()
         }),
         ..default()
@@ -64,6 +39,45 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     app.run();
     Ok(())
+}
+
+/// Native entry point: the manifest comes from the command line.
+#[cfg(not(target_arch = "wasm32"))]
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    use clap::Parser;
+
+    #[derive(Parser)]
+    #[command(version, about)]
+    struct Args {
+        /// Craft manifest to play.
+        #[arg(long, default_value = "games/pocket-derby.toml")]
+        manifest: std::path::PathBuf,
+        /// Play without a window and print the match report as JSON.
+        #[arg(long)]
+        headless: bool,
+        /// Cap the headless run at this many ticks.
+        #[arg(long)]
+        ticks: Option<u32>,
+    }
+
+    let args = Args::parse();
+    let manifest = Manifest::load(&args.manifest)?;
+    if args.headless {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&manifest.play(args.ticks)?)?
+        );
+        return Ok(());
+    }
+    play(&manifest)
+}
+
+/// Browser entry point: a page has no file system, so the web manifest is compiled in.
+#[cfg(target_arch = "wasm32")]
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    play(&Manifest::from_toml(include_str!(
+        "../../../games/web-cup.toml"
+    ))?)
 }
 
 #[derive(Resource)]

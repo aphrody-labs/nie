@@ -1,6 +1,6 @@
 //! Page builders: SQL results to [`UiNode`] trees.
 
-use nie_ui_dioxus::{Theme, UiNode, UiStyle, label, link, page, simple_table};
+use nie_ui_tree::{Theme, UiNode, UiStyle, label, link, page, simple_table};
 
 use crate::db::{DirListing, FileRow, Stats};
 
@@ -53,7 +53,7 @@ fn crumbs(path: &str, t: &Theme) -> UiNode {
     }
     UiNode::boxed(
         UiStyle {
-            axis: nie_ui_dioxus::Axis::Row,
+            axis: nie_ui_tree::Axis::Row,
             gap: 6.0,
             wrap: true,
             ..UiStyle::default()
@@ -65,7 +65,7 @@ fn crumbs(path: &str, t: &Theme) -> UiNode {
 fn nav(t: &Theme) -> UiNode {
     UiNode::boxed(
         UiStyle {
-            axis: nie_ui_dioxus::Axis::Row,
+            axis: nie_ui_tree::Axis::Row,
             gap: 16.0,
             ..UiStyle::default()
         },
@@ -137,7 +137,7 @@ pub fn directory(path: &str, d: &DirListing, t: &Theme) -> UiNode {
         };
         kids.push(UiNode::boxed(
             UiStyle {
-                axis: nie_ui_dioxus::Axis::Row,
+                axis: nie_ui_tree::Axis::Row,
                 gap: 12.0,
                 ..UiStyle::default()
             },
@@ -244,7 +244,7 @@ fn series_nav(t: &Theme, lang: &str) -> UiNode {
     let q = format!("?lang={lang}");
     UiNode::boxed(
         UiStyle {
-            axis: nie_ui_dioxus::Axis::Row,
+            axis: nie_ui_tree::Axis::Row,
             gap: 16.0,
             wrap: true,
             ..UiStyle::default()
@@ -263,7 +263,7 @@ fn series_nav(t: &Theme, lang: &str) -> UiNode {
             link(14.0, t.muted, "/sitemap.xml", tr(lang, "nav.sitemap")),
             UiNode::boxed(
                 UiStyle {
-                    axis: nie_ui_dioxus::Axis::Row,
+                    axis: nie_ui_tree::Axis::Row,
                     gap: 10.0,
                     ..UiStyle::default()
                 },
@@ -284,10 +284,10 @@ fn series_nav(t: &Theme, lang: &str) -> UiNode {
 }
 
 /// Small pill label.
-fn badge(text: String, bg: nie_ui_dioxus::Rgba, fg: nie_ui_dioxus::Rgba) -> UiNode {
+fn badge(text: String, bg: nie_ui_tree::Rgba, fg: nie_ui_tree::Rgba) -> UiNode {
     UiNode::boxed(
         UiStyle {
-            axis: nie_ui_dioxus::Axis::Row,
+            axis: nie_ui_tree::Axis::Row,
             padding: 4.0,
             radius: 6.0,
             background: Some(bg),
@@ -309,7 +309,7 @@ fn badge(text: String, bg: nie_ui_dioxus::Rgba, fg: nie_ui_dioxus::Rgba) -> UiNo
 fn chips(platforms: &[String], t: &Theme, lang: &str) -> UiNode {
     UiNode::boxed(
         UiStyle {
-            axis: nie_ui_dioxus::Axis::Row,
+            axis: nie_ui_tree::Axis::Row,
             gap: 6.0,
             wrap: true,
             ..UiStyle::default()
@@ -364,7 +364,7 @@ pub fn game(g: &crate::i18n::Game, t: &Theme, lang: &str) -> UiNode {
         heading,
         UiNode::boxed(
             UiStyle {
-                axis: nie_ui_dioxus::Axis::Row,
+                axis: nie_ui_tree::Axis::Row,
                 ..UiStyle::default()
             },
             vec![badge(status, bg, fg)],
@@ -420,7 +420,7 @@ pub fn series(t: &Theme, lang: &str) -> UiNode {
         let chips = chips(&g.platforms, t, lang);
         let foot = UiNode::boxed(
             UiStyle {
-                axis: nie_ui_dioxus::Axis::Row,
+                axis: nie_ui_tree::Axis::Row,
                 gap: 12.0,
                 wrap: true,
                 ..UiStyle::default()
@@ -450,7 +450,7 @@ pub fn series(t: &Theme, lang: &str) -> UiNode {
     }
     let grid = UiNode::boxed(
         UiStyle {
-            axis: nie_ui_dioxus::Axis::Row,
+            axis: nie_ui_tree::Axis::Row,
             gap: 20.0,
             wrap: true,
             ..UiStyle::default()
@@ -553,7 +553,7 @@ pub fn chara_list(
             ),
             UiNode::boxed(
                 UiStyle {
-                    axis: nie_ui_dioxus::Axis::Row,
+                    axis: nie_ui_tree::Axis::Row,
                     gap: 12.0,
                     wrap: true,
                     ..UiStyle::default()
@@ -562,7 +562,7 @@ pub fn chara_list(
             ),
             UiNode::boxed(
                 UiStyle {
-                    axis: nie_ui_dioxus::Axis::Row,
+                    axis: nie_ui_tree::Axis::Row,
                     gap: 16.0,
                     ..UiStyle::default()
                 },

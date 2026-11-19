@@ -15,4 +15,4 @@ bevy_color = { workspace = true }
 bevy_ecs = { workspace = true }
 bevy_text = { workspace = true }
 bevy_ui = { workspace = true }
-nie-ui-dioxus = { path = "../nie-ui-dioxus", version = "1.4.8", default-features = false }
+nie-ui-tree = { path = "../nie-ui-tree", version = "1.4.8" }

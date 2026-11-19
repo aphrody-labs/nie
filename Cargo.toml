@@ -106,8 +106,6 @@ nie-ui = { path = "crates/nie-ui", version = "1.4.8" }
 # Same feature set as bevy_ui: taffy's default `float_layout`/`table` features add `Style` fields that bevy_ui
 # does not initialise, and Cargo unifies features across the workspace.
 taffy = { version = "0.15.1", default-features = false, features = ["std", "taffy_tree", "block_layout", "flexbox", "grid", "content_size"] }
-dioxus = { version = "0.8.0-alpha.3", default-features = false }
-dioxus-ssr = { version = "0.8.0-alpha.3" }
 winnow = { version = "1.0.5", default-features = false, features = [
   "alloc",
   "parser",
