@@ -1,0 +1,103 @@
+# Policy read by `nie deps upstream` (crates/nie-cli/src/deps_cmd.rs).
+# Every name list and licence list the command applies lives here, never in the code.
+# nie itself is licensed MIT OR Apache-2.0: a dependency must be usable under that licence.
+
+[licenses]
+# SPDX identifiers a dependency may carry. For an `A OR B` expression one allowed branch is enough,
+# for `A AND B` every branch must be allowed; `+` suffixes and `WITH <exception>` clauses are ignored.
+# MPL-2.0 is file-level copyleft and is accepted for an unmodified dependency (dirs-sys already pulls it).
+allow = [
+  "MIT",
+  "MIT-0",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "Unlicense",
+  "CC0-1.0",
+  "0BSD",
+  "BSL-1.0",
+  "MPL-2.0",
+  "Unicode-3.0",
+  "Unicode-DFS-2016",
+]
+# SPDX identifier prefixes that are incompatible with MIT OR Apache-2.0.
+deny = [
+  "GPL",
+  "AGPL",
+  "LGPL",
+  "SSPL",
+  "EUPL",
+  "BUSL",
+  "OSL",
+  "CC-BY-NC",
+  "CC-BY-SA",
+]
+
+[lua]
+# Lua virtual machines and their direct build or binding crates: nie runs its own native Lua,
+# so none of these is taken. Matching ignores case and `-` versus `_`.
+reason = "Lua VM: nie runs its own native Lua, no Lua VM crate is taken"
+crates = [
+  "mlua",
+  "mlua-sys",
+  "mlua_derive",
+  "mlua-derive",
+  "rlua",
+  "piccolo",
+  "piccolo-util",
+  "luster",
+  "hematita",
+  "lua-src",
+  "luajit-src",
+  "luau0-src",
+  "yazi-plugin",
+]
+
+[design_cited]
+# Crates with a copyleft licence from which only a design is cited (no code is taken):
+# they become `design-only` instead of `rejected`. Filled by hand next to the `Designs cited` section.
+reason = "copyleft licence: the design is cited, no code is taken"
+crates = []
+
+[render]
+# Longest table the Markdown summary prints; the JSON always holds every row.
+max_rows = 80
+
+# Per-repository scope, keyed by the lower-case `owner/name` GitHub resolves to.
+#   full         (default) members and every direct third-party dependency
+#   members      workspace member publication status and licence only
+#   design-only  no Cargo reading at all
+[repo."bevyengine/bevy"]
+scope = "members"
+
+[probe]
+# Crates whose exact latest crates.io version is recorded under `crates_io_probe`.
+crates = [
+  "ratatui",
+  "ratatui-image",
+  "nucleo",
+  "tree-house",
+  "ropey",
+  "globset",
+  "termina",
+  "ansi-to-tui",
+  "lru",
+  "notify",
+  "dirs",
+  "bevy_ratatui",
+  "sugarloaf",
+  "rio-backend",
+  "rio-window",
+  "rio-vt",
+  "teletypewriter",
+]
+
+[probe.requirement]
+# The `dependency` requirement published by the latest `crate` is tested against these versions,
+# plus the version `lock_package` has in nie's Cargo.lock and the latest `dependency` on crates.io.
+crate = "bevy_ratatui"
+dependency = "bevy"
+lock_package = "bevy"
+targets = ["0.20.1"]
