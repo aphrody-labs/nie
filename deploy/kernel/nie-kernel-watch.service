@@ -1,0 +1,12 @@
+[Unit]
+Description=nie kernel pipeline: watch kernel.org for a new mainline tag, build, boot-test
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Environment=NIE_KERNEL_BIN=/usr/local/bin/nie-kernel
+ExecStart=/opt/nie-kernel/nie-kernel-cycle.sh
+TimeoutStartSec=6h
+Nice=10

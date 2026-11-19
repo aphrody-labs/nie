@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: Apache-2.0
+# Standalone on purpose (own `[workspace]` and lock): the kernel pipeline runs from a timer on the build host and must
+# keep working while the nie workspace is mid-refactor; it is built with `cargo build --release` in this directory only.
+# Versions are the ones of the nie workspace (`[workspace.dependencies]` of the root Cargo.toml).
+[workspace]
+
+[package]
+name = "nie-kernel"
+version = "2.0.0"
+edition = "2024"
+rust-version = "1.100"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/aphrody-labs/nie"
+authors = ["nie contributors"]
+publish = false
+description = "Watches kernel.org for a new mainline tag (release candidate or release): two sources must agree before a build starts."
+
+[dependencies]
+anyhow = "1.0.104"
+clap = { version = "4", features = ["derive", "env"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "rustls"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+
+[dev-dependencies]
+tempfile = "3.27.0"
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
