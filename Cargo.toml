@@ -113,18 +113,8 @@ winnow = { version = "1.0.5", default-features = false, features = [
 wana_kana = "5.0.0"
 aho-corasick = "1.1.5"
 
-# Football layer (original games on the same Bevy fork).
-eframe = { version = "0.37.0", default-features = false }
 toml = "1.2.1"
-nie-ai = { path = "crates/nie-ai", version = "1.4.8" }
-nie-craft = { path = "crates/nie-craft", version = "1.4.8" }
-nie-input = { path = "crates/nie-input", version = "1.4.8" }
-nie-lockstep = { path = "crates/nie-lockstep", version = "1.4.8" }
-nie-model = { path = "crates/nie-model", version = "1.4.8" }
 nie-net = { default-features = false, path = "crates/nie-net", version = "1.4.8" }
-nie-physics = { path = "crates/nie-physics", version = "1.4.8" }
-nie-render = { path = "crates/nie-render", version = "1.4.8" }
-nie-sim = { path = "crates/nie-sim", version = "1.4.8" }
 
 [profile.dev]
 split-debuginfo = "unpacked"

@@ -18,32 +18,6 @@ env:
   CARGO_INCREMENTAL: "0"
 
 jobs:
-  engine:
-    name: football engine, craft, shell contract and headless match
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-      - name: Toolchain
-        # rust-toolchain.toml pins the compiler, its components and the wasm32 target.
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
-      - name: Format
-        run: cargo fmt --all --check
-      - name: Lint
-        run: cargo clippy --locked --all-targets -p nie-model -p nie-physics -p nie-input -p nie-ai -p nie-lockstep -p nie-sim -p nie-craft -p nie-shell -- -D warnings
-      - name: Test
-        # Includes the pinned 5v5 headless match, the two-peer lockstep netplay test and the
-        # drift check of contract/nie-app.json.
-        run: cargo test --locked -p nie-model -p nie-physics -p nie-input -p nie-ai -p nie-lockstep -p nie-sim -p nie-craft -p nie-shell
-      - name: Validate every manifest
-        run: for manifest in games/*.toml; do cargo run --locked -q -p nie-craft -- check "$manifest"; done
-      - name: Headless vertical slice
-        # Plays the Pocket Derby manifest for 1200 ticks and asserts the exact score.
-        run: cargo run --locked -q -p nie-craft -- run games/pocket-derby.toml --ticks 1200 --expect "${SLICE_SCORE}"
-        env:
-          SLICE_SCORE: "0-1"
-
   native:
     name: headless asset load (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -69,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: System libraries
-        # Bevy, winit and eframe link against ALSA, udev, Wayland and xkbcommon through pkg-config.
+        # Bevy and winit link against ALSA, udev, Wayland and xkbcommon through pkg-config.
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev libgl1-mesa-dev
       - name: Toolchain
         run: rustup show active-toolchain || rustup toolchain install
@@ -78,17 +52,3 @@ jobs:
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Bevy asset integration
         run: cargo check --locked -p nie-bevy --features bevy --all-targets
-
-  web:
-    name: wasm32 and WebGPU
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v4
-      - name: Toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
-      - name: Bevy game and asset source for WebAssembly
-        run: cargo check --locked --target wasm32-unknown-unknown -p nie-football -p nie-assets --features nie-football/webgpu
-      - name: Bevy renderer with WebGPU
-        run: cargo check --locked --target wasm32-unknown-unknown -p nie-render --features webgpu

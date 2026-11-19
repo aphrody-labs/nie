@@ -6,35 +6,6 @@
   "repository": "https://github.com/aphrody-labs/nie",
   "commands": [
     {
-      "id": "play",
-      "package": "nie-football",
-      "binary": "nie-football",
-      "args": [
-        "--manifest",
-        "{manifest}"
-      ],
-      "mode": "window",
-      "headless": false,
-      "platforms": [
-        "windows",
-        "linux",
-        "macos"
-      ]
-    },
-    {
-      "id": "studio",
-      "package": "nie-studio",
-      "binary": "nie-studio",
-      "args": [],
-      "mode": "window",
-      "headless": false,
-      "platforms": [
-        "windows",
-        "linux",
-        "macos"
-      ]
-    },
-    {
       "id": "game",
       "package": "nie-game",
       "binary": "nie-game",

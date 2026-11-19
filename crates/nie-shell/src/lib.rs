@@ -29,7 +29,7 @@ pub struct Command {
     pub package: &'static str,
     /// Binary name (`.exe` is added on Windows by the shell).
     pub binary: &'static str,
-    /// Arguments; `{manifest}` and `{config}` are replaced by the shell.
+    /// Arguments passed to the binary.
     pub args: &'static [&'static str],
     /// `window` opens its own GPU window, `stdio` speaks MCP on stdin/stdout, `service` serves HTTP.
     pub mode: &'static str,
@@ -102,24 +102,6 @@ pub fn contract() -> AppContract {
         version: env!("CARGO_PKG_VERSION"),
         repository: env!("CARGO_PKG_REPOSITORY"),
         commands: vec![
-            Command {
-                id: "play",
-                package: "nie-football",
-                binary: "nie-football",
-                args: &["--manifest", "{manifest}"],
-                mode: "window",
-                headless: false,
-                platforms: DESKTOP,
-            },
-            Command {
-                id: "studio",
-                package: "nie-studio",
-                binary: "nie-studio",
-                args: &[],
-                mode: "window",
-                headless: false,
-                platforms: DESKTOP,
-            },
             Command {
                 id: "game",
                 package: "nie-game",
