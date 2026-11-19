@@ -4492,6 +4492,7 @@ dependencies = [
  "nie-ocgen",
  "nie-pe",
  "nie-pkg",
+ "nie-plugin",
  "nie-queue",
  "nie-re-core",
  "nie-render3d",
@@ -4644,6 +4645,7 @@ dependencies = [
  "base64 0.23.1",
  "clap",
  "hmac 0.13.0",
+ "nie-plugin",
  "pbkdf2 0.13.0",
  "rand 0.10.4",
  "rusqlite",
@@ -4722,6 +4724,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "nie-plugin"
+version = "1.4.8"
+
+[[package]]
 name = "nie-queue"
 version = "1.4.8"
 dependencies = [
@@ -4775,6 +4781,7 @@ dependencies = [
  "hex",
  "iced-x86",
  "nie-index",
+ "nie-plugin",
  "nie-re",
  "redis",
  "serde_json",
@@ -4810,6 +4817,7 @@ name = "nie-save"
 version = "1.4.8"
 dependencies = [
  "nie-formats",
+ "nie-plugin",
  "serde",
  "tempfile",
  "thiserror 2.0.21",
@@ -6439,6 +6447,7 @@ dependencies = [
  "crc32fast",
  "dirs-next",
  "hex",
+ "nie-plugin",
  "reqwest",
  "serde",
  "serde_json",

@@ -143,6 +143,12 @@ define_cli_tools!(
         "Run Steam list, download, or sync operations. Download and sync mutate the selected installation."
     ),
     (
+        CliPlugins,
+        "cli_plugins",
+        "plugins",
+        "List the plugins compiled into this build and the commands each one owns."
+    ),
+    (
         CliInfo,
         "cli_info",
         "info",
@@ -1123,7 +1129,7 @@ mod tests {
         use clap::CommandFactory as _;
 
         let tools = NieMcpServer::all_tools().list_all();
-        assert_eq!(tools.len(), 65);
+        assert_eq!(tools.len(), 66);
         let commands = crate::Cli::command()
             .get_subcommands()
             .map(clap::Command::get_name)
@@ -1131,7 +1137,7 @@ mod tests {
             .filter(|name| !matches!(*name, "mcp" | "serve"))
             .map(str::to_owned)
             .collect::<Vec<_>>();
-        assert_eq!(commands.len(), 45);
+        assert_eq!(commands.len(), 46);
         for command in commands {
             let tool_name = format!("cli_{}", command.replace('-', "_"));
             assert!(

@@ -1,0 +1,13 @@
+[package]
+name = "nie-plugin"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+description = "Plugin contract of nie: what a feature crate declares and the registry that checks the declarations"
+
+[lints]
+workspace = true

@@ -30,6 +30,7 @@ yara = ["nie-re/yara"]
 worker = ["dep:anyhow", "dep:redis"]
 
 [dependencies]
+nie-plugin = { workspace = true }
 nie-re = { path = "../nie-re", version = "1.4.8", default-features = false, features = ["game"] }
 goblin = { version = "0.10", default-features = false, features = [
   "std",

@@ -11,6 +11,7 @@ description = "Native Rust launcher, save editor, and mod package manager for In
 workspace = true
 
 [dependencies]
+nie-plugin = { workspace = true }
 anyhow = "1.0.104"
 thiserror = "2.0.21"
 serde = { version = "1.0.229", features = ["std", "derive"] }

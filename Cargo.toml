@@ -83,6 +83,7 @@ nie-formats = { default-features = false, path = "crates/nie-formats", version =
 nie-index = { default-features = false, path = "crates/nie-index", version = "1.4.8" }
 nie-lua = { default-features = false, path = "crates/nie-lua", version = "1.4.8" }
 nie-model-serve = { default-features = false, path = "crates/nie-model-serve", version = "1.4.8" }
+nie-plugin = { path = "crates/nie-plugin", version = "1.4.8" }
 nie-pe = { default-features = false, path = "crates/nie-pe", version = "1.4.8" }
 nie-render3d = { default-features = false, path = "crates/nie-render3d", version = "1.4.8" }
 nie-save = { default-features = false, path = "crates/nie-save", version = "1.4.8" }

@@ -36,3 +36,18 @@ pub use ut::{
     open_pack_with_optional_seed, quick_sell_value,
 };
 pub use vfs::VfsServer;
+
+/// The launcher plugin: the Ultimate Team launcher, `.utmod` mod containers and the Viola
+/// archive operations.
+pub struct LauncherPlugin;
+
+impl nie_plugin::Plugin for LauncherPlugin {
+    fn info(&self) -> nie_plugin::PluginInfo {
+        nie_plugin::PluginInfo {
+            id: "launcher",
+            summary: "Ultimate Team launcher, .utmod mods and Viola archive operations",
+            package: "nie-launcher",
+            commands: &["launcher", "mod", "viola"],
+        }
+    }
+}

@@ -35,3 +35,34 @@ pub use nie_re::{
 
 pub mod game;
 pub mod nie;
+
+/// The nie.exe reverse-engineering plugin: indexing, RTTI, disassembly, `.pdata`, strings, the
+/// knowledge database and live process memory.
+pub struct ExePlugin;
+
+impl nie_plugin::Plugin for ExePlugin {
+    fn info(&self) -> nie_plugin::PluginInfo {
+        nie_plugin::PluginInfo {
+            id: "exe",
+            summary: "Reverse engineering of nie.exe: index, RTTI, disassembly, .pdata, strings, live memory",
+            package: "nie-re-core",
+            commands: &[
+                "index",
+                "rtti",
+                "disasm",
+                "pdata",
+                "rebuild",
+                "recover",
+                "propagate",
+                "strings",
+                "seed",
+                "seed-ui",
+                "queue",
+                "coverage",
+                "atlas",
+                "mem",
+                "computer-use",
+            ],
+        }
+    }
+}

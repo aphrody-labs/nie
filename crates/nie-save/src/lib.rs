@@ -973,6 +973,20 @@ pub fn summarize(container: &LivesContainer) -> SaveSummary {
 // Tests
 // ---------------------------------------------------------------------------
 
+/// The save plugin: decrypt, read and edit IEVR "Lives" saves.
+pub struct SavePlugin;
+
+impl nie_plugin::Plugin for SavePlugin {
+    fn info(&self) -> nie_plugin::PluginInfo {
+        nie_plugin::PluginInfo {
+            id: "save",
+            summary: "IEVR saves (Lives format): decrypt, read, edit",
+            package: "nie-save",
+            commands: &["save"],
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

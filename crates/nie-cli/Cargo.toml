@@ -95,6 +95,7 @@ nie-formats = { path = "../nie-formats", version = "1.4.8", default-features = f
 nie-explore = { path = "../nie-explore", version = "1.4.8", features = ["host"], optional = true }
 futures-util = { version = "0.3", optional = true }
 nie-save = { path = "../nie-save", version = "1.4.8", optional = true }
+nie-plugin = { workspace = true }
 nie-pkg = { path = "../nie-pkg", version = "1.4.8", optional = true }
 nie-render3d = { path = "../nie-render3d", version = "1.4.8", default-features = false, optional = true }
 clap = { workspace = true, features = ["color"], optional = true }

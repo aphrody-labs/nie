@@ -77,3 +77,17 @@ pub enum SteamError {
     #[error("registry: {0}")]
     Registry(String),
 }
+
+/// The Steam plugin: the game's Steam library, the Proton prefix and the live `nie.exe`.
+pub struct SteamPlugin;
+
+impl nie_plugin::Plugin for SteamPlugin {
+    fn info(&self) -> nie_plugin::PluginInfo {
+        nie_plugin::PluginInfo {
+            id: "steam",
+            summary: "Steam library and depots of the game, Proton prefix, live nie.exe",
+            package: "rg-steam",
+            commands: &["steam", "live"],
+        }
+    }
+}

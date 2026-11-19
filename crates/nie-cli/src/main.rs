@@ -5,6 +5,7 @@
 #![allow(clippy::pedantic)]
 
 mod output;
+mod plugins;
 #[cfg(feature = "host")]
 pub use output::CapturedCommand;
 #[cfg(feature = "host")]
@@ -119,6 +120,12 @@ enum Cmd {
     /// Serveur HTTP cloud-first (VFS distant, formats, requêtes game-data, sondes /health & /ready).
     #[command(name = "serve")]
     Serve(serve_cmd::ServeArgs),
+    /// Liste les plugins de ce build (exe, save, launcher, steam) et les commandes qu'ils portent.
+    Plugins {
+        /// Sortie JSON plutôt que texte.
+        #[arg(long)]
+        json: bool,
+    },
     /// Start the native Model Context Protocol server on stdio.
     #[cfg(feature = "host")]
     Mcp,
@@ -3071,6 +3078,7 @@ fn run() -> anyhow::Result<()> {
 fn dispatch(cli: Cli) -> anyhow::Result<()> {
     match cli.cmd {
         Cmd::Serve(args) => serve_cmd::run(args),
+        Cmd::Plugins { json } => plugins::run(json),
         #[cfg(feature = "host")]
         Cmd::Mcp => {
             let runtime = tokio::runtime::Builder::new_multi_thread()

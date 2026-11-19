@@ -17,6 +17,7 @@ real-saves = []
 serde = ["dep:serde", "nie-formats/serde"]
 
 [dependencies]
+nie-plugin = { workspace = true }
 nie-formats = { workspace = true, default-features = true }
 thiserror = { workspace = true }
 serde = { workspace = true, features = ["std", "derive"], optional = true }
