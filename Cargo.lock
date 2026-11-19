@@ -4498,6 +4498,7 @@ dependencies = [
  "nie-render3d",
  "nie-save",
  "nie-seed",
+ "nie-steam",
  "nie-trace",
  "nie-viola",
  "nie-wiki",
@@ -4506,7 +4507,6 @@ dependencies = [
  "rayon",
  "redis",
  "reqwest",
- "rg-steam",
  "rmcp",
  "schemars",
  "serde",
@@ -4873,11 +4873,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "nie-steam"
+version = "1.4.8"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "crc32fast",
+ "dirs-next",
+ "hex",
+ "nie-plugin",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "steamroom",
+ "steamroom-client",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "windows",
+ "zip 9.6.1",
+]
+
+[[package]]
 name = "nie-trace"
 version = "1.4.8"
 dependencies = [
  "libc",
- "rg-steam",
+ "nie-steam",
  "thiserror 2.0.21",
  "windows-sys 0.61.2",
 ]
@@ -4951,9 +4974,9 @@ dependencies = [
  "nie-render3d",
  "nie-save",
  "nie-seed",
+ "nie-steam",
  "nie-trace",
  "nie-zukan",
- "rg-steam",
  "serde",
  "serde_json",
  "wasm-bindgen",
@@ -6439,29 +6462,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rg-steam"
-version = "1.4.8"
-dependencies = [
- "anyhow",
- "bytes",
- "crc32fast",
- "dirs-next",
- "hex",
- "nie-plugin",
- "reqwest",
- "serde",
- "serde_json",
- "steamroom",
- "steamroom-client",
- "tempfile",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
- "windows",
- "zip 9.6.1",
-]
-
-[[package]]
 name = "ring"
 version = "0.17.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7270,7 +7270,7 @@ name = "steam-index"
 version = "1.4.8"
 dependencies = [
  "blake3",
- "rg-steam",
+ "nie-steam",
  "serde_json",
 ]
 

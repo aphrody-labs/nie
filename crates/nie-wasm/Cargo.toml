@@ -45,11 +45,11 @@ nie-forge = { workspace = true, default-features = false }
 nie-re-core.workspace = true
 # Credential-free Steam depot selection/collision planning; the `depot` client feature (network,
 # token cache) stays disabled.
-rg-steam = { workspace = true }
+nie-steam = { workspace = true }
 bevy_app = { workspace = true, optional = true }
 bevy_asset = { workspace = true, optional = true }
 bevy_ecs = { workspace = true, optional = true }
-nie-bevy = { path = "../nie-bevy", version = "1.4.8", optional = true }
+nie-bevy = { path = "../../plugins/bevy/nie-bevy", version = "1.4.8", optional = true }
 # Portable AOB scanning only; live process memory and patching remain behind the host feature.
 nie-trace = { workspace = true, default-features = false }
 # Pure official-encyclopedia matching; network, SQLite and CLI dependencies stay host-only.

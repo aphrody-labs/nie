@@ -18,10 +18,10 @@ use std::time::{Duration, Instant};
 
 use anyhow::Context;
 use nie_formats::vfs_remote::{RcloneExportOptions, rclone_export_packs_with_opts};
-use rg_steam::depot::depot_resolver::{proxied_from_app, read_manifest_gid, select_depot_ids};
-use rg_steam::depot::options::SteamDownloadOptions;
-use rg_steam::depot::planning::is_manifest_directory;
-use rg_steam::depot::session::SteamSession;
+use nie_steam::depot::depot_resolver::{proxied_from_app, read_manifest_gid, select_depot_ids};
+use nie_steam::depot::options::SteamDownloadOptions;
+use nie_steam::depot::planning::is_manifest_directory;
+use nie_steam::depot::session::SteamSession;
 use sha1::{Digest, Sha1};
 use steamroom::cdn::{CdnServer, CdnServerPool, lancache};
 use steamroom::depot::DepotKey;

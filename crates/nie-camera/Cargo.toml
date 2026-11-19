@@ -29,8 +29,8 @@ host = [
 
 [dependencies]
 nie-formats = { path = "../nie-formats", version = "1.4.8", default-features = true }
-nie-trace = { path = "../nie-trace", version = "1.4.8", optional = true, default-features = true }
-nie-index = { path = "../nie-index", version = "1.4.8", optional = true, default-features = true }
+nie-trace = { path = "../../plugins/exe/nie-trace", version = "1.4.8", optional = true, default-features = true }
+nie-index = { path = "../../plugins/exe/nie-index", version = "1.4.8", optional = true, default-features = true }
 sha2 = { workspace = true, optional = true }
 thiserror = { version = "2.0.21" }
 anyhow = { version = "1.0", optional = true }

@@ -10,9 +10,9 @@
 //!
 //! Credential artifacts are never parsed, except `loginusers.vdf` for `account`.
 
-use rg_steam::config::{library_folders, login_users};
-use rg_steam::install::scan_steam_libraries;
-use rg_steam::vdf::{BinValue, VdfValue, parse_appinfo, parse_packageinfo, parse_vdf};
+use nie_steam::config::{library_folders, login_users};
+use nie_steam::install::scan_steam_libraries;
+use nie_steam::vdf::{BinValue, VdfValue, parse_appinfo, parse_packageinfo, parse_vdf};
 use serde_json::{Value, json};
 use std::fs;
 use std::io::{self, BufRead, BufWriter, Read, Write};

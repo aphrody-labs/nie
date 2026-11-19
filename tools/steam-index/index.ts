@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Steam install index driver. Runs the Rust `steam-index` binary (rg-steam parsers) and stores
+ * Steam install index driver. Runs the Rust `steam-index` binary (nie-steam parsers) and stores
  * the result in SQLite with bun:sqlite. File hashing is resumable: rows whose size and mtime are
  * unchanged keep their blake3, so an interrupted run continues where it stopped.
  *

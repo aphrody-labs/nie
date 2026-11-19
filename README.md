@@ -16,7 +16,7 @@ crates/
   nie-render3d nie-gpu nie-camera nie-ui*   renderers and the wgpu host
   nie-cli nie-model-serve nie-explore nie-launcher    command line, services and mod tooling
   nie-shell     app and launcher contract for the aphrody native GPUI shell
-  nie-re rg-steam nie-re-core   reverse engineering and Steam libraries (from rosegriffon)
+  nie-re nie-steam nie-re-core   reverse engineering and Steam libraries (from rosegriffon)
   azalee-app rg-ffi*   site and FFI crates of the ecosystem
 tools/steam-index
 contract/       nie-app.json and aphrody-store.toml (generated), openapi.json

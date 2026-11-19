@@ -537,14 +537,14 @@ fn steam_select_depots_impl(depots_json: &str, selection_json: &str) -> Result<S
             "Steam planning JSON exceeds {MAX_STEAM_PLANNING_JSON_BYTES} bytes"
         ));
     }
-    let depots: Vec<rg_steam::depot::planning::DepotRecord> =
+    let depots: Vec<nie_steam::depot::planning::DepotRecord> =
         serde_json::from_str(depots_json).map_err(|error| error.to_string())?;
-    let selection: rg_steam::depot::planning::DepotSelection =
+    let selection: nie_steam::depot::planning::DepotSelection =
         serde_json::from_str(selection_json).map_err(|error| error.to_string())?;
-    let depot_ids = rg_steam::depot::planning::select_depot_ids(
+    let depot_ids = nie_steam::depot::planning::select_depot_ids(
         &depots,
         &selection,
-        rg_steam::depot::planning::PlanningLimits::default(),
+        nie_steam::depot::planning::PlanningLimits::default(),
     )
     .map_err(|error| error.to_string())?;
     Ok(serde_json::json!({

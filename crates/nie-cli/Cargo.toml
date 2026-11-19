@@ -33,7 +33,7 @@ workspace = true
 default = ["host"]
 # Self-hosted, pure-Rust cloud profile (Docker / Kubernetes / static musl): zero C++ ISPC, zero Lua C, zero desktop RE.
 cloud = [
-  "dep:rg-steam",
+  "dep:nie-steam",
   "dep:nie-data",
   "dep:nie-formats",
   "dep:nie-explore",
@@ -94,7 +94,7 @@ aho-corasick = { workspace = true }
 nie-formats = { path = "../nie-formats", version = "1.4.8", default-features = false, features = ["std", "serde", "textures", "audio-decode", "images", "remote-vfs"], optional = true }
 nie-explore = { path = "../nie-explore", version = "1.4.8", features = ["host"], optional = true }
 futures-util = { version = "0.3", optional = true }
-nie-save = { path = "../nie-save", version = "1.4.8", optional = true }
+nie-save = { path = "../../plugins/save/nie-save", version = "1.4.8", optional = true }
 nie-plugin = { workspace = true }
 nie-pkg = { path = "../nie-pkg", version = "1.4.8", optional = true }
 nie-render3d = { path = "../nie-render3d", version = "1.4.8", default-features = false, optional = true }
@@ -118,19 +118,19 @@ image = { version = "0.25.10", default-features = false, features = ["png", "jpe
 png = { workspace = true, optional = true }
 
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
-rg-steam = { workspace = true, features = ["depot"], optional = true }
+nie-steam = { workspace = true, features = ["depot"], optional = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "sync", "macros", "time", "net"], optional = true }
 tokio-tungstenite = { version = "0.30", optional = true }
 reqwest = { workspace = true, features = ["http2", "rustls", "stream"], optional = true }
 steamroom = { workspace = true, optional = true }
-nie-index = { path = "../nie-index", version = "1.4.8", features = ["host"], optional = true }
-nie-seed = { path = "../nie-seed", version = "1.4.8", features = ["host"], optional = true }
-nie-queue = { path = "../nie-queue", version = "1.4.8", features = ["host"], optional = true }
-nie-re-core = { path = "../nie-re-core", version = "1.4.8", default-features = false, features = ["nie"], optional = true }
-nie-trace = { path = "../nie-trace", version = "1.4.8", features = ["host"], optional = true }
-nie-computer-use = { path = "../nie-computer-use", version = "1.4.8", features = ["host"], optional = true }
-nie-viola = { path = "../nie-viola", version = "1.4.8", optional = true }
-nie-launcher = { path = "../nie-launcher", version = "1.4.8", optional = true }
+nie-index = { path = "../../plugins/exe/nie-index", version = "1.4.8", features = ["host"], optional = true }
+nie-seed = { path = "../../plugins/exe/nie-seed", version = "1.4.8", features = ["host"], optional = true }
+nie-queue = { path = "../../plugins/exe/nie-queue", version = "1.4.8", features = ["host"], optional = true }
+nie-re-core = { path = "../../plugins/exe/nie-re-core", version = "1.4.8", default-features = false, features = ["nie"], optional = true }
+nie-trace = { path = "../../plugins/exe/nie-trace", version = "1.4.8", features = ["host"], optional = true }
+nie-computer-use = { path = "../../plugins/exe/nie-computer-use", version = "1.4.8", features = ["host"], optional = true }
+nie-viola = { path = "../../plugins/launcher/nie-viola", version = "1.4.8", optional = true }
+nie-launcher = { path = "../../plugins/launcher/nie-launcher", version = "1.4.8", optional = true }
 nie-lua = { path = "../nie-lua", version = "1.4.8", features = ["host"], optional = true }
 nie-wiki = { path = "../nie-wiki", version = "1.4.8", optional = true }
 nie-zukan = { path = "../nie-zukan", version = "1.4.8", optional = true }

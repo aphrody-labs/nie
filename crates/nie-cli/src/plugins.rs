@@ -15,7 +15,7 @@ pub fn registry() -> Registry {
             .register(Box::new(nie_save::SavePlugin))
             .expect("save plugin");
         registry
-            .register(Box::new(rg_steam::SteamPlugin))
+            .register(Box::new(nie_steam::SteamPlugin))
             .expect("steam plugin");
     }
     #[cfg(feature = "host")]

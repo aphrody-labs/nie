@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "tools/steam-index"]
+members = ["crates/*", "plugins/*/*", "tools/steam-index"]
 
 [workspace.package]
 version = "1.4.8"
@@ -61,7 +61,7 @@ bevy_ui = { version = "0.20.1", default-features = false }
 bevy_mesh = { version = "0.20.1", default-features = false }
 bevy_reflect = { version = "0.20.1", default-features = false }
 bevy-wgpu-types = { package = "wgpu-types", version = "30.0.2", default-features = false }
-rg-steam = { path = "crates/rg-steam", version = "1.4.8", default-features = false }
+nie-steam = { path = "plugins/steam/nie-steam", version = "1.4.8", default-features = false }
 nie-gpu = { path = "crates/nie-gpu", version = "1.4.8" }
 clap = { version = "4", features = ["derive", "env"] }
 console_error_panic_hook = "0.1.7"
@@ -71,24 +71,24 @@ wasm-bindgen = { version = "0.2.130", default-features = false }
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3.107", default-features = false }
 crc32fast = { version = "1.5", default-features = false }
-nie-re-core = { path = "crates/nie-re-core", version = "1.4.8" }
+nie-re-core = { path = "plugins/exe/nie-re-core", version = "1.4.8" }
 image_dds = { version = "0.7", default-features = false }
 memmap2 = { version = "0.9" }
 nie-camera = { default-features = false, path = "crates/nie-camera", version = "1.4.8" }
-nie-computer-use = { default-features = false, path = "crates/nie-computer-use", version = "1.4.8" }
+nie-computer-use = { default-features = false, path = "plugins/exe/nie-computer-use", version = "1.4.8" }
 nie-data = { path = "crates/nie-data", version = "1.4.8" }
 nie-explore = { default-features = false, path = "crates/nie-explore", version = "1.4.8" }
-nie-forge = { default-features = false, path = "crates/nie-forge", version = "1.4.8" }
+nie-forge = { default-features = false, path = "plugins/exe/nie-forge", version = "1.4.8" }
 nie-formats = { default-features = false, path = "crates/nie-formats", version = "1.4.8" }
-nie-index = { default-features = false, path = "crates/nie-index", version = "1.4.8" }
+nie-index = { default-features = false, path = "plugins/exe/nie-index", version = "1.4.8" }
 nie-lua = { default-features = false, path = "crates/nie-lua", version = "1.4.8" }
 nie-model-serve = { default-features = false, path = "crates/nie-model-serve", version = "1.4.8" }
 nie-plugin = { path = "crates/nie-plugin", version = "1.4.8" }
-nie-pe = { default-features = false, path = "crates/nie-pe", version = "1.4.8" }
+nie-pe = { default-features = false, path = "plugins/exe/nie-pe", version = "1.4.8" }
 nie-render3d = { default-features = false, path = "crates/nie-render3d", version = "1.4.8" }
-nie-save = { default-features = false, path = "crates/nie-save", version = "1.4.8" }
-nie-seed = { default-features = false, path = "crates/nie-seed", version = "1.4.8" }
-nie-trace = { default-features = false, path = "crates/nie-trace", version = "1.4.8" }
+nie-save = { default-features = false, path = "plugins/save/nie-save", version = "1.4.8" }
+nie-seed = { default-features = false, path = "plugins/exe/nie-seed", version = "1.4.8" }
+nie-trace = { default-features = false, path = "plugins/exe/nie-trace", version = "1.4.8" }
 nie-wiki = { path = "crates/nie-wiki", version = "1.4.8" }
 nie-zukan = { default-features = false, path = "crates/nie-zukan", version = "1.4.8" }
 # Same feature set as bevy_ui: taffy's default `float_layout`/`table` features add `Style` fields that bevy_ui

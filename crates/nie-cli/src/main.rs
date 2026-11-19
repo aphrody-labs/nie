@@ -2416,7 +2416,7 @@ fn wiki_cmd(op: WikiOp) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Opérations Steam — mêmes noms et mêmes variables d'environnement que le binaire `rg-steam-depot`,
+/// Opérations Steam — mêmes noms et mêmes variables d'environnement que le binaire `nie-steam-depot`,
 /// dont c'est la façade en process.
 #[derive(Subcommand, Debug)]
 enum SteamOp {
@@ -2449,7 +2449,7 @@ enum SteamOp {
 
 /// Options partagées par les trois opérations Steam.
 ///
-/// Les noms de variables d'environnement sont ceux de `rg-steam-depot` et de `scripts/tools/data/sync-gamedata.ts`
+/// Les noms de variables d'environnement sont ceux de `nie-steam-depot` et de `scripts/tools/data/sync-gamedata.ts`
 /// : les changer casserait les appelants existants.
 #[derive(clap::Args, Debug, Clone)]
 struct SteamCommun {
@@ -2511,11 +2511,11 @@ struct SteamCommun {
 
 /// Exécute une opération Steam.
 ///
-/// L'API de `rg_steam::depot` est asynchrone alors que la CLI ne l'est pas : on monte un runtime le
+/// L'API de `nie_steam::depot` est asynchrone alors que la CLI ne l'est pas : on monte un runtime le
 /// temps de l'appel plutôt que de teinter tout `main` en `async` pour trois sous-commandes.
 fn steam_cmd(op: SteamOp) -> anyhow::Result<()> {
-    use rg_steam::depot::options::SteamDownloadOptions;
-    use rg_steam::{IEVR_STEAM_APP_ID, depot::downloader::SteamDepotDownloader};
+    use nie_steam::depot::options::SteamDownloadOptions;
+    use nie_steam::{IEVR_STEAM_APP_ID, depot::downloader::SteamDepotDownloader};
 
     let (app_id, out, c) = match &op {
         SteamOp::List { app_id, commun } => (
@@ -2548,17 +2548,17 @@ fn steam_cmd(op: SteamOp) -> anyhow::Result<()> {
         token_store_path: Some(
             c.token_store
                 .clone()
-                .unwrap_or_else(rg_steam::depot::token_store::default_path),
+                .unwrap_or_else(nie_steam::depot::token_store::default_path),
         ),
-        // Même sélection `STEAM_TOKEN_STORE` que `rg-steam-depot` (file par défaut).
-        token_backend: Some(rg_steam::depot::token_backend::from_env(
+        // Même sélection `STEAM_TOKEN_STORE` que `nie-steam-depot` (file par défaut).
+        token_backend: Some(nie_steam::depot::token_backend::from_env(
             c.token_store.clone(),
         )?),
         guard_provider: None,
         // Garde anti-blocage : un depot muet est interrompu au lieu de dormir
-        // indéfiniment (cf. rg_steam::depot::options::SteamDownloadOptions::stall_timeout).
+        // indéfiniment (cf. nie_steam::depot::options::SteamDownloadOptions::stall_timeout).
         stall_timeout: Some(std::time::Duration::from_secs(300)),
-        transfer: rg_steam::depot::options::TransferOptions {
+        transfer: nie_steam::depot::options::TransferOptions {
             max_depot_parallel: c.max_depot_parallel,
             cdn_pool_size: c.cdn_pool_size,
             ..Default::default()

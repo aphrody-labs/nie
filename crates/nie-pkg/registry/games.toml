@@ -625,7 +625,7 @@ releases = [
 ecosystem = [
   { kind = "data", name = "inagle (in-repo IEVR data API)", url = "packages/inagle" },
   { kind = "wiki", name = "Azalee (in-repo wiki library)", url = "packages/azalee" },
-  { kind = "tool", name = "nie-save", url = "crates/nie-save" },
+  { kind = "tool", name = "nie-save", url = "plugins/save/nie-save" },
   { kind = "store", name = "Steam", url = "https://store.steampowered.com/app/2799860" },
 ]
 internal_links = [
