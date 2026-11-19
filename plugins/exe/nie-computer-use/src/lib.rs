@@ -30,8 +30,8 @@ pub use offline_image::{
 /// Complete static reverse-engineering surface, available through Computer Use.
 #[cfg(feature = "host")]
 pub mod re {
-    pub use bun_re::nie::*;
-    pub use bun_re::propagate;
+    pub use nie_re_core::nie::*;
+    pub use nie_re_core::propagate;
 }
 
 /// Complete live-process tracing surface, available through Computer Use.

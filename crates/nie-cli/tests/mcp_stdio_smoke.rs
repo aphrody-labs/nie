@@ -55,7 +55,7 @@ fn initialize_list_and_call_stay_on_clean_stdio() {
         }),
     );
     let initialized = response_for(&mut reader, 1);
-    assert_eq!(initialized["result"]["serverInfo"]["name"], "nie-game");
+    assert_eq!(initialized["result"]["serverInfo"]["name"], "nie");
 
     request(
         &mut stdin,

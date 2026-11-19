@@ -71,13 +71,11 @@ pub enum Feature {
     SaveEdit,
     TeamBuilder,
     WikiData,
-    NieRuntime,
-    Netplay,
     ModLoader,
 }
 
 impl Feature {
-    pub const ALL: [Feature; 10] = [
+    pub const ALL: [Feature; 8] = [
         Feature::DumpVerify,
         Feature::AssetExtract,
         Feature::TextExtract,
@@ -85,8 +83,6 @@ impl Feature {
         Feature::SaveEdit,
         Feature::TeamBuilder,
         Feature::WikiData,
-        Feature::NieRuntime,
-        Feature::Netplay,
         Feature::ModLoader,
     ];
 
@@ -99,8 +95,6 @@ impl Feature {
             Feature::SaveEdit => "save_edit",
             Feature::TeamBuilder => "team_builder",
             Feature::WikiData => "wiki_data",
-            Feature::NieRuntime => "nie_runtime",
-            Feature::Netplay => "netplay",
             Feature::ModLoader => "mod_loader",
         }
     }

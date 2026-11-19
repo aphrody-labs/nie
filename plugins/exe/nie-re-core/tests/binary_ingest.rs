@@ -1,4 +1,4 @@
-use bun_re::bun_engine_binary::{
+use nie_re_core::bun_engine_binary::{
     Architecture, BinaryFamily, BinaryFormat, Endianness, OutputFormat, OutputStrategy,
     RuntimeRequirement, UnsupportedReason, inspect_binary, output_strategy,
 };

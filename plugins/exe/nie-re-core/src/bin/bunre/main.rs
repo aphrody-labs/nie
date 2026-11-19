@@ -24,7 +24,7 @@ fn main() -> ExitCode {
     };
     match command.to_str() {
         Some("cpu") => {
-            let cpu_info = bun_re::cpu::detect_cpu();
+            let cpu_info = nie_re_core::cpu::detect_cpu();
             match serde_json::to_string_pretty(&cpu_info) {
                 Ok(json) => {
                     println!("{json}");
@@ -37,7 +37,7 @@ fn main() -> ExitCode {
             }
         }
         Some("virtualization") => {
-            let virt_info = bun_re::virtualization::detect_virtualization();
+            let virt_info = nie_re_core::virtualization::detect_virtualization();
             match serde_json::to_string_pretty(&virt_info) {
                 Ok(json) => {
                     println!("{json}");

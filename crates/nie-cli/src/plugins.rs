@@ -21,7 +21,7 @@ pub fn registry() -> Registry {
     #[cfg(feature = "host")]
     {
         registry
-            .register(Box::new(bun_re::ExePlugin))
+            .register(Box::new(nie_re_core::ExePlugin))
             .expect("exe plugin");
         registry
             .register(Box::new(nie_launcher::LauncherPlugin))

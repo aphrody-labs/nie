@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-//! `bunre pipeline`: JSON CLI over `bun_re::pipeline`, driven by `re pipeline` (packages/re).
+//! `bunre pipeline`: JSON CLI over `nie_re_core::pipeline`, driven by `re pipeline` (packages/re).
 //!
 //! Subcommands: `run <input> --target os|bios|firmware --out DIR [--external] [--trace]
 //! [--max-functions N] [--max-insns N]`, `adapters [--stage S]`, `triage <input> [--strings N]`, `schema DIR`.
 
-use bun_re::pipeline::contract::{Stage, TargetKind};
-use bun_re::pipeline::recomp::{RecompTarget, Recompile};
-use bun_re::pipeline::registry::{Options, Registry};
-use bun_re::pipeline::{run, schema};
+use nie_re_core::pipeline::contract::{Stage, TargetKind};
+use nie_re_core::pipeline::recomp::{RecompTarget, Recompile};
+use nie_re_core::pipeline::registry::{Options, Registry};
+use nie_re_core::pipeline::{run, schema};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -95,10 +95,10 @@ pub fn main(args: Vec<String>) -> ExitCode {
             };
             let strings = flag(&args, "--strings")
                 .and_then(|v| v.parse().ok())
-                .unwrap_or(bun_re::STRINGS_SAMPLE_LIMIT);
+                .unwrap_or(nie_re_core::STRINGS_SAMPLE_LIMIT);
             match std::fs::read(input)
                 .map_err(|e| e.to_string())
-                .and_then(|b| bun_re::triage_bounded(&b, strings).map_err(|e| e.to_string()))
+                .and_then(|b| nie_re_core::triage_bounded(&b, strings).map_err(|e| e.to_string()))
             {
                 Ok(report) => {
                     println!("{}", serde_json::to_string(&report).unwrap_or_default());
@@ -177,7 +177,7 @@ pub fn recompile(args: Vec<String>) -> ExitCode {
             let ok = rep.stages.iter().any(|s| {
                 s.adapter == wanted.0
                     && s.stage == wanted.1
-                    && s.status == bun_re::pipeline::contract::StageStatus::Ok
+                    && s.status == nie_re_core::pipeline::contract::StageStatus::Ok
             });
             if ok {
                 ExitCode::SUCCESS

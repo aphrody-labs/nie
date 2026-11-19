@@ -63,7 +63,7 @@ pub fn disasm(args: impl Iterator<Item = std::ffi::OsString>) -> ExitCode {
         eprintln!("bunre disasm: --limit must be between 1 and {MAX_DISASSEMBLY}");
         return ExitCode::from(2);
     }
-    let result = bun_re::disasm(&bytes, rip, limit);
+    let result = nie_re_core::disasm(&bytes, rip, limit);
     println!("{}", serde_json::to_string(&result).unwrap_or_default());
     ExitCode::SUCCESS
 }
@@ -87,7 +87,7 @@ pub fn strings(args: impl Iterator<Item = std::ffi::OsString>) -> ExitCode {
         .map(|value| value.parse::<usize>())
         .transpose()
     {
-        Ok(value) => value.unwrap_or(bun_re::STRINGS_MIN_LEN),
+        Ok(value) => value.unwrap_or(nie_re_core::STRINGS_MIN_LEN),
         Err(error) => {
             eprintln!("bunre strings: invalid --min-length: {error}");
             return ExitCode::from(2);
@@ -97,7 +97,7 @@ pub fn strings(args: impl Iterator<Item = std::ffi::OsString>) -> ExitCode {
         .map(|value| value.parse::<usize>())
         .transpose()
     {
-        Ok(value) => value.unwrap_or(bun_re::STRINGS_SAMPLE_LIMIT),
+        Ok(value) => value.unwrap_or(nie_re_core::STRINGS_SAMPLE_LIMIT),
         Err(error) => {
             eprintln!("bunre strings: invalid --limit: {error}");
             return ExitCode::from(2);
@@ -116,7 +116,7 @@ pub fn strings(args: impl Iterator<Item = std::ffi::OsString>) -> ExitCode {
             return ExitCode::from(1);
         }
     };
-    let strings = bun_re::extract_strings(&bytes, min_length, limit);
+    let strings = nie_re_core::extract_strings(&bytes, min_length, limit);
     let result = serde_json::json!({
         "path": path,
         "size": bytes.len(),

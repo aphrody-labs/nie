@@ -8,7 +8,7 @@
 //! registered."` parle à CriWare. Sans `str`, ces ancres n'existent que dans le désassembleur.
 //!
 //! `func_str_ref`, elle, n'était pas vide : elle porte les références **héritées de l'index
-//! Ghidra**, repliées par inclusion sur les racines `.pdata` (`bun_re::nie::pdata::rebuild_from_pdata`).
+//! Ghidra**, repliées par inclusion sur les racines `.pdata` (`nie_re_core::nie::pdata::rebuild_from_pdata`).
 //! Ces lignes n'ont pas de provenance et sont massivement redondantes. Ce module en écrit d'autres,
 //! **dérivées du désassemblage réel**, sous l'étiquette [`SOURCE`] : elles cohabitent sans se
 //! confondre, et la colonne `source` permet de n'interroger que la vérité terrain.
@@ -24,7 +24,7 @@
 //!
 //!      La terminaison `NUL` obligatoire est le filtre décisif : le compilateur met en commun
 //!      des littéraux terminés, pas des fragments.
-//! 3. Bornes de fonction : `.pdata` (`bun_re::nie::pdata::parse_roots`), la vérité terrain — pas
+//! 3. Bornes de fonction : `.pdata` (`nie_re_core::nie::pdata::parse_roots`), la vérité terrain — pas
 //!    l'index Ghidra, dont les adresses sont désalignées.
 //! 4. Décodage `iced-x86` de chaque corps de fonction ; une référence n'est retenue que si sa
 //!    cible **coïncide exactement** avec le début d'une chaîne retenue :
@@ -423,7 +423,7 @@ fn resolve_binary(
 fn scan_text(
     text: &[u8],
     text_va: u64,
-    roots: &[bun_re::nie::pdata::RootFn],
+    roots: &[nie_re_core::nie::pdata::RootFn],
     found: &[FoundStr],
     known: &StrIndex,
     mapped: &HashSet<u64>,
@@ -561,7 +561,7 @@ pub fn run(db: &nie_index::Db, exe: &Path, opts: &Options) -> Result<Stats> {
     let mut hits: HashSet<(u64, u64)> = HashSet::new();
     let mut fid: HashMap<u64, i64> = HashMap::new();
     if !opts.no_xrefs {
-        let roots = bun_re::nie::pdata::parse_roots(&bytes)?;
+        let roots = nie_re_core::nie::pdata::parse_roots(&bytes)?;
         stats.roots = roots.len();
         {
             let mut q = conn.prepare("SELECT vaddr, id FROM function WHERE binary_id = ?1")?;

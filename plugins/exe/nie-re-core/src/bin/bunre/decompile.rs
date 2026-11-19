@@ -52,9 +52,9 @@ fn list_functions(
     discover: bool,
 ) -> Result<String, Box<dyn std::error::Error>> {
     let functions = if discover {
-        bun_re::decompile::discover_functions(path)?
+        nie_re_core::decompile::discover_functions(path)?
     } else {
-        bun_re::decompile::functions(path)?
+        nie_re_core::decompile::functions(path)?
     };
     let functions = functions
         .into_iter()
@@ -79,7 +79,7 @@ fn decompile_address(
     path: &std::path::Path,
     address: u64,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let c = bun_re::decompile::decompile(path, address)?;
+    let c = nie_re_core::decompile::decompile(path, address)?;
     Ok(serde_json::to_string_pretty(&serde_json::json!({
         "binary": path.display().to_string(),
         "address": format!("0x{address:x}"),

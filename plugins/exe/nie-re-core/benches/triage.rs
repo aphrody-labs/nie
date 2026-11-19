@@ -30,8 +30,8 @@
 
 use std::hint::black_box;
 
-use bun_re::{Format, extract_strings, triage};
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
+use nie_re_core::{Format, extract_strings, triage};
 
 // ---------------------------------------------------------------------------
 // Deterministic PRNG — xorshift64*, inline, zero external dependency.

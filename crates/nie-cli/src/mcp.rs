@@ -978,7 +978,7 @@ fn launch_game(args: Vec<String>) -> anyhow::Result<Value> {
         .spawn()?;
     let pid = child.id();
     let _ = std::thread::Builder::new()
-        .name(format!("nie-game-reaper-{pid}"))
+        .name(format!("nie-mcp-reaper-{pid}"))
         .spawn(move || {
             let _ = child.wait();
         });
@@ -1000,7 +1000,7 @@ impl NieMcpServer {
 impl ServerHandler for NieMcpServer {
     fn get_info(&self) -> rmcp::model::ServerConfig {
         let mut implementation = rmcp::model::Implementation::default();
-        "nie-game".clone_into(&mut implementation.name);
+        "nie".clone_into(&mut implementation.name);
         env!("CARGO_PKG_VERSION").clone_into(&mut implementation.version);
 
         let mut info = rmcp::model::ServerConfig::default();

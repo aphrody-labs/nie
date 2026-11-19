@@ -3734,7 +3734,7 @@ mod host_only_cmds {
         let bin: i64 = analysis_binary(db.conn())?;
 
         let stats =
-            bun_re::nie::loop_db::propagate_db(&mut db, bin, rounds).context("propagation")?;
+            nie_re_core::nie::loop_db::propagate_db(&mut db, bin, rounds).context("propagation")?;
 
         println!(
             "propagate rounds={} anchors(str/rtti/const)={}/{}/{} cov {:.2}%->{:.2}% (+{} fn)",
@@ -3764,8 +3764,8 @@ mod host_only_cmds {
         let bytes =
             std::fs::read(exe_path).with_context(|| format!("lecture {}", exe_path.display()))?;
 
-        let stats =
-            bun_re::nie::rtti::parse_and_ingest(&mut db, bin, &bytes).context("parsing RTTI")?;
+        let stats = nie_re_core::nie::rtti::parse_and_ingest(&mut db, bin, &bytes)
+            .context("parsing RTTI")?;
 
         println!(
             "rtti col={} td={} classes={} bases={}",
@@ -3786,8 +3786,8 @@ mod host_only_cmds {
             })
             .context("aucun binaire indexé — lancer `nie seed` d'abord")?;
 
-        let stats =
-            bun_re::nie::indexer::triage_into(&mut db, bin, exe_path).context("indexation PE")?;
+        let stats = nie_re_core::nie::indexer::triage_into(&mut db, bin, exe_path)
+            .context("indexation PE")?;
 
         println!(
             "index fmt={} sections={} imports={} exports={}",
@@ -3810,7 +3810,7 @@ mod host_only_cmds {
 
         // A/B : NIE_NO_INDIRECT=1 détecte les LEA (stats) mais ne les insère pas.
         let skip_lea = std::env::var("NIE_NO_INDIRECT").is_ok();
-        let stats = bun_re::nie::disasm::recover_call_edges(&mut db, bin, exe_path, skip_lea)
+        let stats = nie_re_core::nie::disasm::recover_call_edges(&mut db, bin, exe_path, skip_lea)
             .context("désassemblage des arêtes d'appel")?;
 
         println!(
@@ -3841,7 +3841,7 @@ mod host_only_cmds {
             })
             .context("aucun binaire indexé — lancer `nie seed` d'abord")?;
 
-        let stats = bun_re::nie::pdata::discover_into(&mut db, bin, exe_path)
+        let stats = nie_re_core::nie::pdata::discover_into(&mut db, bin, exe_path)
             .context("découverte .pdata")?;
 
         let pct_aligned = if stats.ghidra_total > 0 {
@@ -3887,10 +3887,10 @@ mod host_only_cmds {
         let mut db = nie_index::Db::open(db_path).context("ouverture base")?;
         let bin = pdata_binary_id(&db)?;
         let mut observe = |step| eprintln!("recover: étape terminée: {step:?}");
-        let report = bun_re::nie::workflow::recover_with_observer(
+        let report = nie_re_core::nie::workflow::recover_with_observer(
             &mut db,
             exe_path,
-            &bun_re::nie::workflow::RecoverOptions {
+            &nie_re_core::nie::workflow::RecoverOptions {
                 binary_id: bin,
                 dry_run,
                 ghidra_csv: ghidra_csv.map(std::path::Path::to_path_buf),
@@ -3990,10 +3990,10 @@ mod host_only_cmds {
                 row.get(0)
             })
             .context("aucun binaire indexé — lancer `nie seed` d'abord")?;
-        let report = bun_re::nie::workflow::rebuild(
+        let report = nie_re_core::nie::workflow::rebuild(
             &mut db,
             exe_path,
-            bun_re::nie::workflow::RebuildOptions {
+            nie_re_core::nie::workflow::RebuildOptions {
                 source_binary_id,
                 image_base: NIE_IMAGE_BASE,
                 rounds,

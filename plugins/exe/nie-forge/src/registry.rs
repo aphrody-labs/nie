@@ -167,7 +167,7 @@ mod tests {
     fn adresse_et_identifiant_d_unite() {
         let e = RegistryEntry {
             va: "0x141334600".into(),
-            rust: Some("nie_core::ball::ParabolaMove::step".into()),
+            rust: Some("crate::module::function".into()),
             status: MatchStatus::Semantic,
             proof: None,
             object: None,

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-//! `nie-re-core` (`bun_re`) — thin façade re-exporting [`nie_re`].
+//! `nie-re-core` (`nie_re_core`) — thin façade re-exporting [`nie_re`].
 //!
 //! All generic RE primitives (PE/ELF/Mach-O triage, strings, x86-64 disassembly,
 //! headers, minidump, `.pdata`, pipeline, Ghidra decompile, Magika, LevelDB, YARA,

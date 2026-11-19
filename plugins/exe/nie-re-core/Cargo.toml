@@ -5,14 +5,12 @@ version = "1.4.8"
 edition = "2024"
 rust-version = "1.100"
 license = "Apache-2.0"
-homepage = "https://rosegriffon.fr"
-repository = "https://github.com/rose-griffon/rosegriffon"
-keywords = ["reverse-engineering", "pe64", "disassembly", "dbxv2", "rosegriffon"]
+repository.workspace = true
+keywords = ["reverse-engineering", "pe64", "disassembly", "nie"]
 categories = ["development-tools::debugging", "parser-implementations"]
 description = "Consolidated reverse engineering core (façade over nie-re): PE/ELF/Mach-O triage, strings, x86-64 disassembly, ASAR/Electron/Go/Adobe/Android/SteamStub/minidump inspection, AOB scanning, live memory recovery."
 
 [lib]
-name = "bun_re"
 crate-type = ["rlib", "cdylib"]
 
 [lints]
@@ -59,11 +57,11 @@ serde_json = "1.0.154"
 criterion = { version = "0.8.2", features = ["html_reports"] }
 
 [[bin]]
-name = "bunre"
+name = "nie-re-core"
 path = "src/bin/bunre/main.rs"
 
 [[bin]]
-name = "yre-worker"
+name = "nie-re-worker"
 path = "src/bin/yre-worker.rs"
 required-features = ["worker"]
 

@@ -94,21 +94,21 @@ impl BridgeControl {
             Ok(listener) => listener,
             Err(error) => {
                 eprintln!(
-                    "[nie-game] explorer bridge unavailable on {}: {error}",
+                    "[nie-mcp] explorer bridge unavailable on {}: {error}",
                     self.url()
                 );
                 return;
             }
         };
         self.inner.listening.store(true, Ordering::Release);
-        eprintln!("[nie-game] explorer bridge listening on {}", self.url());
+        eprintln!("[nie-mcp] explorer bridge listening on {}", self.url());
         let control = self.clone();
         tokio::spawn(async move {
             while let Ok((stream, _)) = listener.accept().await {
                 let control = control.clone();
                 tokio::spawn(async move {
                     if let Err(error) = control.accept(stream).await {
-                        eprintln!("[nie-game] explorer bridge connection failed: {error}");
+                        eprintln!("[nie-mcp] explorer bridge connection failed: {error}");
                     }
                 });
             }
