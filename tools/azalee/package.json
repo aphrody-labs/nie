@@ -1,0 +1,100 @@
+{
+  "name": "@rosegriffon/azalee",
+  "version": "1.4.4",
+  "private": false,
+  "description": "Bibliothèque Bun du wiki Azalée (toute la saga Inazuma Eleven : IE1 à Victory Road, Cross, RE, Bold Revolution) — accès PostgreSQL, index CPK, recherche et CLI.",
+  "keywords": [
+    "azalee",
+    "bun",
+    "game-data",
+    "ievr",
+    "inazuma-eleven",
+    "victory-road",
+    "wiki"
+  ],
+  "homepage": "https://github.com/rose-griffon/rosegriffon/tree/main/packages/azalee#readme",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rose-griffon/rosegriffon.git",
+    "directory": "packages/azalee"
+  },
+  "bin": {
+    "azalee": "./src/cli.ts"
+  },
+  "files": [
+    ".gitignore",
+    "README.md",
+    "scripts",
+    "src",
+    "test",
+    "tsconfig.build.json",
+    "tsconfig.json",
+    "types"
+  ],
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./config": "./src/config.ts",
+    "./db": "./src/db/index.ts",
+    "./db/*": "./src/db/*.ts",
+    "./wiki": "./src/wiki/index.ts",
+    "./wiki/*": "./src/wiki/*.ts",
+    "./game-text": "./src/game-text/index.ts",
+    "./game-text/*": "./src/game-text/*.ts",
+    "./cross": "./src/cross/index.ts",
+    "./cross/*": "./src/cross/*.ts",
+    "./images": "./src/images/index.ts",
+    "./search": "./src/search/index.ts",
+    "./search/*": "./src/search/*.ts",
+    "./text/*": "./src/text/*.ts",
+    "./game/*": "./src/game/*.ts",
+    "./games": "./src/games.ts",
+    "./news": "./src/news/index.ts",
+    "./news/*": "./src/news/*.ts",
+    "./bot": "./src/bot/index.ts",
+    "./bot/*": "./src/bot/*.ts",
+    "./remote": "./src/remote/index.ts",
+    "./remote/*": "./src/remote/*.ts",
+    "./server": "./src/server/index.ts",
+    "./server/*": "./src/server/*.ts",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "bun check -p tsconfig.build.json",
+    "cli": "bun src/cli.ts",
+    "compile": "bun build src/cli.ts --compile --minify --sourcemap --bytecode --format esm --outfile dist/azalee",
+    "serve": "bun src/cli.ts serve",
+    "test": "bun test",
+    "lint:fix": "oxlint -A style -A pedantic -A restriction --fix src",
+    "type-check": "bun check --noEmit",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "prepublishOnly": "bun run build",
+    "typecheck": "bun check --noEmit"
+  },
+  "dependencies": {
+    "@rosegriffon/config": "workspace:*",
+    "@rosegriffon/db": "workspace:*",
+    "@rosegriffon/inagle": "workspace:*",
+    "commander": "catalog:",
+    "google-translate-api-x": "catalog:",
+    "kysely": "catalog:",
+    "wanakana": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "catalog:"
+  },
+  "engines": {
+    "bun": ">=1.4.5"
+  },
+  "bugs": {
+    "url": "https://github.com/rose-griffon/rosegriffon/issues"
+  }
+}
