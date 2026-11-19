@@ -8,7 +8,7 @@ rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Steam plugin of nie: VDF text/binary parser and writer, install and library discovery, client configuration, Proton launch tuning, Remote Play state, native depot client over steamroom."
+description = "Steam plugin of nie: VDF text/binary parser and writer, install and library discovery, client configuration, Proton launch tuning, Remote Play state, native depot client over steamroom, read-only SQLite index of a local install."
 
 [lints]
 workspace = true
@@ -27,6 +27,7 @@ depot = [
   "dep:tracing",
   "dep:zip",
 ]
+index = ["dep:blake3", "dep:dirs-next", "dep:rayon", "dep:rusqlite"]
 
 [dependencies]
 nie-plugin = { workspace = true }
@@ -36,8 +37,11 @@ thiserror = { workspace = true }
 crc32fast = { workspace = true, features = ["std"] }
 anyhow = { workspace = true, features = ["std"], optional = true }
 bytes = { version = "1.12.1", features = ["serde"], optional = true }
+blake3 = { workspace = true, optional = true }
 dirs-next = { version = "2.0.0", optional = true }
 hex = { version = "0.4.3", optional = true }
+rayon = { workspace = true, optional = true }
+rusqlite = { workspace = true, features = ["bundled"], optional = true }
 tokio = { workspace = true, features = ["fs", "macros", "rt-multi-thread", "sync", "time"], optional = true }
 tracing = { workspace = true, features = ["std"], optional = true }
 zip = { version = "9.6.0", default-features = false, features = ["deflate"], optional = true }

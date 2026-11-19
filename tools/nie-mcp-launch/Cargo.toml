@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: Apache-2.0
+# Standalone on purpose (own `[workspace]`, no dependencies, no registry access): the launcher runs
+# on the PC through `cargo run --manifest-path` without resolving, or even downloading, the
+# dependency graph of the nie workspace, which is only ever built on the build host.
+[workspace]
+
+[package]
+name = "nie-mcp-launch"
+version = "2.0.0"
+edition = "2024"
+rust-version = "1.100"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/aphrody-labs/nie"
+authors = ["nie contributors"]
+publish = false
+description = "Zero-dependency stdio launcher of the native nie MCP server: local build, else the build host over SSH."
+
+[[test]]
+name = "stdio"
+harness = false
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"

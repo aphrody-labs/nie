@@ -11,6 +11,8 @@
 //! - [`proton`]: compatibility tool discovery and the Proton launch environment (ntsync,
 //!   DXVK / vkd3d-proton / Mesa caches, llvmpipe threads, gamemode, official anti-cheat runtimes).
 //! - [`remote_play`]: Remote Play paired clients (`remoteclients.vdf`) without secrets.
+//! - `index` (feature `index`): read-only SQLite index of a local install: libraries, apps,
+//!   depots, compat tools, resumable blake3 of every game file.
 //! - [`launch`]: `steam://` URIs.
 //! - [`depot`]: depot planning (always) and, with feature `depot`, the native CM depot client.
 //!
@@ -22,6 +24,8 @@ use thiserror::Error;
 
 pub mod config;
 pub mod depot;
+#[cfg(feature = "index")]
+pub mod index;
 pub mod install;
 pub mod launch;
 pub mod proton;
@@ -76,6 +80,11 @@ pub enum SteamError {
     /// Windows registry access failed.
     #[error("registry: {0}")]
     Registry(String),
+
+    /// SQLite failure while writing the install index.
+    #[cfg(feature = "index")]
+    #[error("sqlite: {0}")]
+    Sqlite(#[from] rusqlite::Error),
 }
 
 /// The Steam plugin: the game's Steam library, the Proton prefix and the live `nie.exe`.

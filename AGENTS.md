@@ -47,8 +47,10 @@ Built binaries on the build host: `/srv/xbuild/nie/target/release/{nie,nie-mcp,n
   `main`, no AI attribution, check `gh run list -R aphrody-labs/nie` after pushing.
 - Claude Code setup is generated: edit `tools/claude/profile.toml` (MCP servers, plugins, skills
   kept for nie) and run `bun ~/.claude/scripts/profile.ts` (the engine of aphrody-labs/claude, also
-  re-applied at SessionStart); `--check` reports drift. `.mcp.json` starts the
-  native `nie-mcp` server (local build, else the build host over SSH). Never hand-edit
+  re-applied at SessionStart); `--check` reports drift. `.mcp.json` runs `tools/nie-mcp-launch`
+  (standalone zero-dependency crate with its own `[workspace]` and lock, so the PC never resolves the
+  workspace graph), which starts the native `nie-mcp` server: `NIE_MCP_BIN`, else the newest local
+  build, else the build host over SSH. Never hand-edit
   `.claude/settings.json`.
 - nie is a standalone deployed service; consumers such as rosegriffon call it over HTTP and never
   embed its Rust.

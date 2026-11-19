@@ -29,7 +29,7 @@ wasm = ["dep:wasm-bindgen"]
 
 [dependencies]
 # Core workspace dependencies (all crates.io-backed)
-blake3 = { version = "1.8.7", features = ["mmap", "rayon"] }
+blake3 = { workspace = true, features = ["mmap", "rayon"] }
 goblin = "0.10.7"
 iced-x86 = { version = "1.22.0", features = ["std", "decoder", "intel", "fast_fmt", "instr_info"] }
 rustc-hash = "2.1.3"

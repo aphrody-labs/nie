@@ -36,6 +36,23 @@ jobs:
         # `game://`. No game file is involved.
         run: cargo test --locked -p nie-assets -p nie-formats --lib --tests
 
+  launcher:
+    name: nie-mcp-launch (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - name: Resolution order and stdio round trips against a fake nie-mcp
+        run: cargo test --locked --manifest-path tools/nie-mcp-launch/Cargo.toml
+      - name: Lint, warnings denied
+        run: cargo clippy --locked --manifest-path tools/nie-mcp-launch/Cargo.toml --all-targets -- -D warnings
+
   workspace:
     name: workspace (every crate, every target)
     runs-on: ubuntu-latest

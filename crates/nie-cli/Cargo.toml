@@ -116,7 +116,7 @@ image = { version = "0.25.10", default-features = false, features = ["png", "jpe
 png = { workspace = true, optional = true }
 
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
-nie-steam = { workspace = true, features = ["depot"], optional = true }
+nie-steam = { workspace = true, features = ["depot", "index"], optional = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "sync", "macros", "time", "net"], optional = true }
 tokio-tungstenite = { version = "0.30", optional = true }
 reqwest = { workspace = true, features = ["http2", "rustls", "stream"], optional = true }

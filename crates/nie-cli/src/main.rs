@@ -1756,6 +1756,30 @@ enum SteamOp {
         #[command(flatten)]
         commun: SteamCommun,
     },
+    /// Index a local Steam install into SQLite: libraries, apps, depots, compat tools, blake3 of game files.
+    Index(SteamIndexArgs),
+}
+
+/// Options of `nie steam index`. Read-only: nothing in the Steam install is modified, and credential
+/// artifacts (`ssfn*`, `loginusers.vdf`, `local.vdf`, `config.vdf`) are recorded by path, size and
+/// blake3 only.
+#[derive(clap::Args, Debug)]
+struct SteamIndexArgs {
+    /// Steam root to index (default: the discovered Steam install).
+    #[arg(long)]
+    steam: Option<PathBuf>,
+    /// SQLite database (default: `<user data dir>/nie/steam-index.sqlite`).
+    #[arg(long)]
+    db: Option<PathBuf>,
+    /// Print the scan as JSON and exit without touching the database.
+    #[arg(long)]
+    json: bool,
+    /// Hash every game file with blake3 (resumable: unchanged files keep their hash).
+    #[arg(long)]
+    hash: bool,
+    /// Set STEAM_ACCOUNT_NAME and STEAM_ID (most recent `loginusers.vdf` account) in this dotenv file.
+    #[arg(long, value_name = "FILE")]
+    env_file: Option<PathBuf>,
 }
 
 /// Options partagées par les trois opérations Steam.
@@ -1820,6 +1844,76 @@ struct SteamCommun {
     token_store: Option<PathBuf>,
 }
 
+/// `nie steam index`: scan, store, inventory and optionally hash a local Steam install.
+fn steam_index(args: &SteamIndexArgs) -> anyhow::Result<()> {
+    use nie_steam::index;
+
+    let root = args
+        .steam
+        .clone()
+        .or_else(nie_steam::find_steam_dir)
+        .context("no Steam install found; pass --steam <root>")?;
+    let scan = index::scan(&root);
+    if args.json {
+        println!("{}", serde_json::to_string(&scan)?);
+        return Ok(());
+    }
+    let mut db = index::open(&args.db.clone().unwrap_or_else(index::default_db_path))?;
+    index::store(&mut db, &scan)?;
+    println!(
+        "scan: {} libraries, {} apps, {} pics apps, {} packages",
+        scan.libraries.len(),
+        scan.apps.len(),
+        scan.appinfo.as_ref().map_or(0, |i| i.apps.len()),
+        scan.packageinfo.as_ref().map_or(0, |i| i.packages.len()),
+    );
+    if let Some(env_file) = &args.env_file {
+        match index::account(&root) {
+            Some(account) => {
+                upsert_env_key(env_file, "STEAM_ACCOUNT_NAME", &account.account_name)?;
+                upsert_env_key(env_file, "STEAM_ID", &account.steam_id)?;
+                println!("env: set STEAM_ACCOUNT_NAME, STEAM_ID");
+            }
+            None => println!("env: no account found in loginusers.vdf"),
+        }
+    }
+    println!(
+        "inventory: {} files (paths + sizes)",
+        index::inventory(&mut db, &scan.apps)?
+    );
+    if args.hash {
+        let report =
+            index::hash_pending(&mut db, |done, pending| println!("hash: {done}/{pending}"))?;
+        println!(
+            "hash: {} pending, {} hashed, {} errors",
+            report.pending, report.hashed, report.errors
+        );
+    }
+    Ok(())
+}
+
+/// Sets `KEY=value` in a dotenv file: replaces the line, else appends it. The value is never printed.
+fn upsert_env_key(path: &std::path::Path, key: &str, value: &str) -> anyhow::Result<()> {
+    let text = std::fs::read_to_string(path).unwrap_or_default();
+    let line = format!("{key}={value}");
+    let prefix = format!("{key}=");
+    let mut replaced = false;
+    let mut lines: Vec<&str> = Vec::new();
+    for existing in text.lines() {
+        if !replaced && existing.starts_with(&prefix) {
+            lines.push(&line);
+            replaced = true;
+        } else {
+            lines.push(existing);
+        }
+    }
+    if !replaced {
+        lines.push(&line);
+    }
+    std::fs::write(path, lines.join("\n") + "\n")
+        .with_context(|| format!("write {}", path.display()))
+}
+
 /// Exécute une opération Steam.
 ///
 /// L'API de `nie_steam::depot` est asynchrone alors que la CLI ne l'est pas : on monte un runtime le
@@ -1840,6 +1934,7 @@ fn steam_cmd(op: SteamOp) -> anyhow::Result<()> {
             commun,
         } => (app_id.unwrap_or(IEVR_STEAM_APP_ID), out.clone(), commun),
         SteamOp::Sync { out, commun } => (IEVR_STEAM_APP_ID, out.clone(), commun),
+        SteamOp::Index(args) => return steam_index(args),
     };
 
     let opts = SteamDownloadOptions {
