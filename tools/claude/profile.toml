@@ -32,3 +32,13 @@ on = [
   "aphrody:claude-live-bridge",
 ]
 name_only = []
+
+# Written verbatim into .claude/settings.json: the nie output style and the auto-restart goal hook.
+[settings]
+outputStyle = "nie"
+
+[[settings.hooks.Stop]]
+[[settings.hooks.Stop.hooks]]
+type = "command"
+command = "bun --no-install --no-env-file tools/claude/goal-stop.ts"
+timeout = 10

@@ -1,4 +1,18 @@
 {
+  "outputStyle": "nie",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun --no-install --no-env-file tools/claude/goal-stop.ts",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "disableClaudeAiConnectors": true,
   "enabledMcpjsonServers": [
