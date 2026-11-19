@@ -18,13 +18,20 @@ setfacl -d -m u:10001:rx "$game"
 install -m 0644 "$here/../compose.yaml" /srv/nie/deploy/compose.yaml
 printf 'NIE_TAG=%s\n' "$tag" > /etc/nie/stack.env
 
-systemctl disable --now rg-nie-xvfb.service 2>/dev/null || true
 install -m 0755 "$here/bin/nie-xvfb" /usr/local/bin/nie-xvfb
 install -m 0755 "$here/bin/nie-run" /usr/local/bin/nie-run
-install -m 0644 "$here"/systemd/*.service /etc/systemd/system/
+install -m 0644 "$here"/systemd/*.service "$here"/systemd/*.timer /etc/systemd/system/
 systemctl daemon-reload
 
 docker compose -f /srv/nie/deploy/compose.yaml --env-file /etc/nie/stack.env pull
+# nie owns the game-side units that Rose Griffon ran before 2026-11-19.
+for u in rg-nie-xvfb.service rg-steam-depot.timer rg-steam-depot.service rg-steam-fill.service; do
+  systemctl disable --now "$u" 2>/dev/null || true
+done
+if [ -n "${NIE_RELEASE_TARBALL:-}" ]; then
+  d=$(mktemp -d); tar xzf "$NIE_RELEASE_TARBALL" -C "$d"; install -m 0755 "$d"/*/nie /usr/local/bin/nie; rm -rf "$d"
+fi
 systemctl enable --now nie-stack.service nie-xvfb.service
+if [ -f /srv/nie/steam/steam-tokens.json ] && [ -f /etc/nie/steam.env ]; then systemctl enable --now nie-steam-update.timer; fi
 if [ -f /etc/nie/cloudflared.token ]; then systemctl enable --now nie-cloudflared.service; fi
 systemctl restart nie-stack.service
