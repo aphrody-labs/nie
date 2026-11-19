@@ -5,8 +5,8 @@
 //!
 //! Port 1:1 d'inagle `inagle` (`parseEntries` l.68-136).
 //! Vérité terrain : valeurs extraites du vrai dump par un exemple jetable, non versionné.
-//! La fixture reproduit la forme iecode/T2B **frère** (en-tête `*_INFO` suivi de son
-//! `*_DATA_LIST_BEG`) que produit `cfgbin_to_t2b_iecode_root`, et qui est appariée par le parseur.
+//! La fixture reproduit la forme étiquetée/T2B **frère** (en-tête `*_INFO` suivi de son
+//! `*_DATA_LIST_BEG`) que produit `cfgbin_to_t2b_tagged_root`, et qui est appariée par le parseur.
 
 use nie_data::capsule::{RankRate, WeaponColorRate, parse_capsule_database};
 use nie_data::hash::HashId;

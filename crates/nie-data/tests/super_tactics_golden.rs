@@ -97,14 +97,14 @@ const REF_EFFECTS: [[i64; 2]; 6] = [[0, 2], [2, 2], [4, 2], [6, 3], [9, 1], [10,
 /// Les 6 `__SORT_INDEX_*` (1 Int).
 const SORT_INDEX: [i64; 6] = [3, 0, 4, 2, 1, 5];
 
-/// Construit une variable Int au format iecode `{type:"Int", value:"<n>"}`.
+/// Construit une variable Int au format étiquetée `{type:"Int", value:"<n>"}`.
 fn int_vars(vals: &[i64]) -> Vec<Value> {
     vals.iter()
         .map(|v| json!({ "type": "Int", "value": v.to_string() }))
         .collect()
 }
 
-/// Reconstruit le noeud racine iecode exact du dump (2 entries, enfants suffixés `_<i>`).
+/// Reconstruit le noeud racine étiquetée exact du dump (2 entries, enfants suffixés `_<i>`).
 fn fixture() -> Value {
     // Enfants de la liste d'effets.
     let mut effect_children = Vec::new();

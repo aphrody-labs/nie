@@ -50,6 +50,11 @@
       "role": "official-spec sync and host spec records"
     },
     {
+      "package": "nie-bindgen",
+      "path": "crates/nie-bindgen",
+      "role": "language bindings (C, C++, Rust, Python, C#, Go, Bun, Zig) generated from a C ABI contract"
+    },
+    {
       "package": "nie-scaffold",
       "path": "crates/nie-scaffold",
       "role": "nie new: app scaffolds and the nie.toml manifest"
@@ -60,14 +65,34 @@
       "role": "example app generated from the cli template"
     },
     {
-      "package": "nie-bindgen",
-      "path": "crates/nie-bindgen",
-      "role": "language bindings (C, C++, Rust, Python, C#, Go, Bun, Zig) generated from a C ABI contract"
-    },
-    {
       "package": "nie-browser",
       "path": "crates/nie-browser",
       "role": "the kitesurf engine crates (vendor/kitesurf) behind a Rust host; `deps` reports each vendored crate against crates.io"
+    },
+    {
+      "package": "nie-tls",
+      "path": "crates/nie-tls",
+      "role": "process-wide rustls provider (graviola), installed by every binary"
+    },
+    {
+      "package": "nie-ssh",
+      "path": "crates/nie-ssh",
+      "role": "SSH client and CLI on russh: config, agent, known_hosts, exec, sftp, forwarding"
+    },
+    {
+      "package": "nie-sshd",
+      "path": "crates/nie-sshd",
+      "role": "SSH server on russh: public-key auth, exec, sftp, forwarding"
+    },
+    {
+      "package": "nie-comp",
+      "path": "crates/nie-comp",
+      "role": "Wayland session compositor on smithay"
+    },
+    {
+      "package": "nie-syscalls",
+      "path": "crates/nie-syscalls",
+      "role": "strace workloads matched against the Asterinas compat tables"
     }
   ],
   "app": [
@@ -210,6 +235,12 @@
       "note": "plugin of the IEVR app"
     },
     {
+      "package": "nie-xtask",
+      "path": "xtask",
+      "app": "ievr",
+      "note": "repository tasks behind the justfile; kernel, os and libernt-closure serve the IEVR host fleet, app-pack and web build its browser app"
+    },
+    {
       "package": "nie-queue",
       "path": "plugins/exe/nie-queue",
       "app": "ievr",
@@ -280,6 +311,18 @@
       "path": "plugins/shell-desktop/nie-shell-desktop",
       "app": "ievr",
       "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-app",
+      "path": "crates/nie-app",
+      "app": "ievr",
+      "note": "the browser app over the game VFS (explorer, wiki, viewer)"
+    },
+    {
+      "package": "nie-tui",
+      "path": "plugins/tui/nie-tui",
+      "app": "ievr",
+      "note": "terminal file manager and previewers for the game VFS"
     }
   ],
   "plans": [

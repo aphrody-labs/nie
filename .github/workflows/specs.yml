@@ -1,0 +1,42 @@
+name: Specs
+
+# Re-reads the official sources declared in docs/specs/sources.toml (wasm, WebGPU, WGSL, PE/COFF,
+# Direct3D 11, DXBC, CUDA, RTX 4070) and commits docs/specs when a version, hash or fact changed.
+# Host specs (prd, fr1, PC) are not collected here: GitHub runners cannot reach the fleet. The
+# nie-specs-hosts timer on fr1 refreshes docs/specs/hosts over ssh (crates/nie-specs/deploy).
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "crates/nie-specs/**"
+      - "docs/specs/sources.toml"
+      - "justfile"
+      - ".github/workflows/specs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: specs
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: never
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
+        with:
+          tool: just@1.59.0
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: just ci-specs

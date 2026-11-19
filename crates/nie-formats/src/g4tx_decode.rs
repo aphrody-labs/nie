@@ -286,6 +286,14 @@ pub fn decode_named_to_png(g4tx_data: &[u8], nom: &str) -> Option<Vec<u8>> {
     encode_rgba_to_png(&rgba, w as usize, h as usize)
 }
 
+/// Comme [`decode_named_to_png`], encodé par [`encode_rgba_to_png_fast`] : pour un PNG qui n'est
+/// qu'un intermédiaire (atlas embarqué dans un GLB), jamais pour l'oracle de référence.
+#[must_use]
+pub fn decode_named_to_png_fast(g4tx_data: &[u8], nom: &str) -> Option<Vec<u8>> {
+    let (w, h, rgba) = decode_named_to_rgba(g4tx_data, nom)?;
+    encode_rgba_to_png_fast(&rgba, w as usize, h as usize)
+}
+
 /// Rogne un rectangle dans un buffer RGBA8 `(w, h)`.
 ///
 /// Les rectangles d'atlas viennent du fichier : ils sont signés (`i16`) et peuvent déborder la
@@ -324,14 +332,29 @@ fn crop_rgba(
     Some((cw, ch, out))
 }
 
-/// Encode un buffer RGBA8 brut en PNG (8 bits, RGBA).
+/// Encode un buffer RGBA8 brut en PNG (8 bits, RGBA), au niveau de compression par défaut de la
+/// crate `png` : c'est l'encodage **byte-exact** des références publiées, qu'aucun autre niveau
+/// ne reproduit.
 #[must_use]
 pub fn encode_rgba_to_png(rgba: &[u8], w: usize, h: usize) -> Option<Vec<u8>> {
+    encode_png(rgba, w, h, png::Compression::default())
+}
+
+/// Même PNG, compression `Fast` : les mêmes pixels une fois décodé, un encodage plus rapide et un
+/// fichier plus gros. Pour les PNG intermédiaires (atlas embarqués dans un GLB), pas pour
+/// l'oracle byte-exact de [`encode_rgba_to_png`].
+#[must_use]
+pub fn encode_rgba_to_png_fast(rgba: &[u8], w: usize, h: usize) -> Option<Vec<u8>> {
+    encode_png(rgba, w, h, png::Compression::Fast)
+}
+
+fn encode_png(rgba: &[u8], w: usize, h: usize, compression: png::Compression) -> Option<Vec<u8>> {
     let mut out_buf: Vec<u8> = Vec::with_capacity(w * h);
     {
         let mut encoder = png::Encoder::new(std::io::Cursor::new(&mut out_buf), w as u32, h as u32);
         encoder.set_color(png::ColorType::Rgba);
         encoder.set_depth(png::BitDepth::Eight);
+        encoder.set_compression(compression);
         let mut writer = encoder.write_header().ok()?;
         writer.write_image_data(rgba).ok()?;
     }
@@ -354,6 +377,25 @@ mod tests {
             h[off..off + 4].copy_from_slice(&val.to_le_bytes());
         }
         h
+    }
+
+    #[test]
+    fn le_png_fast_decode_aux_memes_pixels_que_le_png_par_defaut() {
+        let (w, h) = (37usize, 19usize);
+        let rgba: Vec<u8> = (0..w * h * 4).map(|i| (i * 31 % 251) as u8).collect();
+        let defaut = encode_rgba_to_png(&rgba, w, h).expect("png par défaut");
+        let fast = encode_rgba_to_png_fast(&rgba, w, h).expect("png fast");
+        let pixels = |png_bytes: &[u8]| {
+            let mut reader = png::Decoder::new(std::io::Cursor::new(png_bytes))
+                .read_info()
+                .expect("png valide");
+            let mut buf = vec![0u8; reader.output_buffer_size().expect("taille")];
+            let info = reader.next_frame(&mut buf).expect("image");
+            buf.truncate(info.buffer_size());
+            buf
+        };
+        assert_eq!(pixels(&defaut), rgba);
+        assert_eq!(pixels(&fast), rgba);
     }
 
     #[test]

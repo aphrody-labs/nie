@@ -13,27 +13,20 @@
 //!
 //! L'API publique ([`read`], [`find_pid_by_name`], [`find_module_base`], [`module_range`],
 //! [`enumerate_regions`]) dispatch vers le backend de la plateforme courante. Les helpers neutres
-//! ([`scan_regions`], [`dump_regions`], [`patch_eac`]) s'appuient dessus.
-//!
-//! ## EAC
-//!
-//! [`patch_eac`] neutralise la **modale fatale** d'init EAC (NOP du `call` @ [`EAC_PATCH_OFFSET`])
-//! sur une **copie** : permet de lancer `nie.exe` **directement** (sans `EACLauncher.exe`), donc
-//! sans driver EAC kernel → `ReadProcessMemory` autorisé. RE single-player offline d'un jeu possédé.
+//! ([`scan_regions`], [`dump_regions`]) s'appuient dessus.
 //!
 //! ## `unsafe`
 //!
 //! Seul crate de nie à faire de la FFI OS (libc / windows-sys), confinée aux backends et
-//! documentée `SAFETY`. Le reste (types, scan, patch) est sûr. Pas de `forbid(unsafe_code)`.
+//! documentée `SAFETY`. Le reste (types, scan) est sûr. Pas de `forbid(unsafe_code)`.
 //!
 //! Building with `--no-default-features` keeps only the portable [`aob`] scanner and [`catalog`]
-//! lookup surface. The default `host` feature preserves the process-memory, launch, recipe,
-//! dump, and patch APIs used by the native binaries.
+//! lookup surface. The default `host` feature preserves the process-memory, recipe,
+//! dump APIs used by the native binaries.
 
 #[cfg(feature = "host")]
 use std::fs;
 #[cfg(feature = "host")]
-use std::io::{Read, Seek, SeekFrom, Write as _};
 #[cfg(feature = "host")]
 use std::path::Path;
 
@@ -42,13 +35,6 @@ use thiserror::Error;
 
 pub mod aob;
 pub mod catalog;
-#[cfg(feature = "host")]
-pub mod lancement;
-// Lancement sous Proton : seul chemin viable vers un `nie.exe` vivant sur cet hôte Linux, où
-// `lancement::lancer_chaine` ne peut pas exécuter le PE directement. Linux uniquement — sur
-// Windows le jeu est natif et n'a aucune couche de compatibilité à traverser.
-#[cfg(all(feature = "host", target_os = "linux"))]
-pub mod proton;
 #[cfg(feature = "host")]
 pub mod recette;
 #[cfg(all(feature = "host", windows))]
@@ -400,78 +386,8 @@ fn add_offset(addr: u64, off: i64) -> u64 {
     }
 }
 
-// ─── EAC patch (port de scripts/patch-eac.sh) ──────────────────────────────────────
-
-/// File offset du `call` vers le constructeur de modale fatale (VA `0x14114ea02`,
-/// image base `0x140000000`). NOP-er ces 5 octets rend l'échec d'init EAC non-fatal.
-#[cfg(feature = "host")]
-pub const EAC_PATCH_OFFSET: u64 = 0x0114_DE02;
-/// Octets d'origine attendus : `call 0x140afa1a0` (`e8 99 b7 9a ff`). Garde-fou anti-mauvais-build.
-#[cfg(feature = "host")]
-pub const EAC_PATCH_ORIG: [u8; 5] = [0xE8, 0x99, 0xB7, 0x9A, 0xFF];
-/// 5× `nop`.
-#[cfg(feature = "host")]
-pub const EAC_PATCH_NOP: [u8; 5] = [0x90, 0x90, 0x90, 0x90, 0x90];
-
-/// Erreur du patch EAC.
-#[derive(Debug, Error)]
-#[cfg(feature = "host")]
-pub enum EacPatchError {
-    #[error("E/S sur le patch EAC : {0}")]
-    Io(#[from] std::io::Error),
-    #[error("octets @0x{offset:X} = {got}, attendu {want} — build de nie.exe différent, abandon")]
-    Mismatch {
-        offset: u64,
-        got: String,
-        want: String,
-    },
-}
-
-/// Compte-rendu d'un patch EAC réussi.
-#[derive(Debug, Clone)]
-#[cfg(feature = "host")]
-pub struct EacPatchReport {
-    pub offset: u64,
-    pub original: [u8; 5],
-    pub patched: [u8; 5],
-    pub dst_len: u64,
-}
-
-/// Crée `dst` comme **copie** de `src` puis NOP le `call` de modale fatale EAC @ [`EAC_PATCH_OFFSET`].
-/// Vérifie que les 5 octets valent [`EAC_PATCH_ORIG`] avant d'écrire. **Ne touche jamais `src`**.
-#[cfg(feature = "host")]
-pub fn patch_eac(src: &Path, dst: &Path) -> Result<EacPatchReport, EacPatchError> {
-    fs::copy(src, dst)?;
-    let mut f = fs::OpenOptions::new().read(true).write(true).open(dst)?;
-
-    f.seek(SeekFrom::Start(EAC_PATCH_OFFSET))?;
-    let mut got = [0u8; 5];
-    f.read_exact(&mut got)?;
-    if got != EAC_PATCH_ORIG {
-        return Err(EacPatchError::Mismatch {
-            offset: EAC_PATCH_OFFSET,
-            got: hex5(&got),
-            want: hex5(&EAC_PATCH_ORIG),
-        });
-    }
-
-    f.seek(SeekFrom::Start(EAC_PATCH_OFFSET))?;
-    f.write_all(&EAC_PATCH_NOP)?;
-    f.flush()?;
-    let dst_len = f.metadata()?.len();
-
-    Ok(EacPatchReport {
-        offset: EAC_PATCH_OFFSET,
-        original: EAC_PATCH_ORIG,
-        patched: EAC_PATCH_NOP,
-        dst_len,
-    })
-}
-
-#[cfg(feature = "host")]
-fn hex5(b: &[u8; 5]) -> String {
-    b.iter().map(|x| format!("{x:02x}")).collect()
-}
+/// Nom du process du jeu (`/proc/<pid>/comm` sous Linux, nom d'image sous Windows).
+pub const GAME_COMM: &str = "nie.exe";
 
 // ─── Dump / scan de plages ──────────────────────────────────────────────────────────
 
@@ -616,13 +532,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn eac_constants_are_self_consistent() {
-        assert_eq!(EAC_PATCH_OFFSET, 0x0114_DE02);
-        assert_eq!(hex5(&EAC_PATCH_ORIG), "e899b79aff");
-        assert_eq!(hex5(&EAC_PATCH_NOP), "9090909090");
-    }
-
-    #[test]
     fn map_entry_perms() {
         let e = MapEntry {
             start: 0x1000,
@@ -633,48 +542,6 @@ mod tests {
         };
         assert!(e.is_readable() && !e.is_writable() && e.is_executable());
         assert_eq!(e.size(), 0x1000);
-    }
-
-    #[test]
-    fn patch_eac_nops_only_when_bytes_match() {
-        let dir = std::env::temp_dir().join(format!("nie-trace-eac-{}", std::process::id()));
-        let _ = fs::create_dir_all(&dir);
-        let src = dir.join("src.bin");
-        let dst = dir.join("dst.bin");
-
-        // Faux binaire assez grand pour contenir l'offset EAC (~18 Mo), avec le `call` à l'offset.
-        let size = EAC_PATCH_OFFSET as usize + 0x1000;
-        let mut data = vec![0u8; size];
-        data[EAC_PATCH_OFFSET as usize..EAC_PATCH_OFFSET as usize + 5]
-            .copy_from_slice(&EAC_PATCH_ORIG);
-        fs::write(&src, &data).unwrap();
-
-        let report = patch_eac(&src, &dst).expect("patch ok");
-        assert_eq!(report.original, EAC_PATCH_ORIG);
-        assert_eq!(report.patched, EAC_PATCH_NOP);
-
-        let src_after = fs::read(&src).unwrap();
-        assert_eq!(
-            &src_after[EAC_PATCH_OFFSET as usize..EAC_PATCH_OFFSET as usize + 5],
-            &EAC_PATCH_ORIG
-        );
-        let dst_after = fs::read(&dst).unwrap();
-        assert_eq!(
-            &dst_after[EAC_PATCH_OFFSET as usize..EAC_PATCH_OFFSET as usize + 5],
-            &EAC_PATCH_NOP
-        );
-
-        let bad_src = dir.join("bad.bin");
-        let bad_dst = dir.join("bad_dst.bin");
-        let mut bad = vec![0u8; size];
-        bad[EAC_PATCH_OFFSET as usize] = 0xCC;
-        fs::write(&bad_src, &bad).unwrap();
-        assert!(matches!(
-            patch_eac(&bad_src, &bad_dst),
-            Err(EacPatchError::Mismatch { .. })
-        ));
-
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

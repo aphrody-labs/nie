@@ -11,7 +11,7 @@
 //!   (extrait du VFS Steam `INAZUMA ELEVEN Victory Road/data` via l'exemple jetable
 //!   `nie-game/examples/extract_special_tactics.rs`, depuis supprimé).
 //! - Format **T2B `entries`** (noeuds nommés à variables positionnelles, suffixées `_<i>`
-//!   par occurrence — même convention iecode que `super_tactics.rs` / `boost_grp.rs`).
+//!   par occurrence — même convention étiquetée que `super_tactics.rs` / `boost_grp.rs`).
 //! - Port 1:1 de `inagle` (`parseEntries`).
 //!   Comme pour `super_tactics.rs`, on **sépare** proprement infos et liens de référence
 //!   en listes parallèles (alignées par rang) là où inagle agrège les refs dans la tactique.
@@ -348,7 +348,7 @@ impl SpecialTacticsConfig {
 
 // ─── Parseur principal ─────────────────────────────────────────────────────────
 
-/// Parse un `special_tactics_config_*.cfg.bin.json` complet (forme iecode `entries`).
+/// Parse un `special_tactics_config_*.cfg.bin.json` complet (forme étiquetée `entries`).
 ///
 /// Comptes réels (`special_tactics_config_1.04.09.10`) : 192 effets, 126 conditions,
 /// 3 conditions de réussite, 86 tactiques (et 86 de chaque liste de refs + sort_index).

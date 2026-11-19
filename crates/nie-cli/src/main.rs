@@ -31,6 +31,14 @@ mod atlas_cmd;
 #[cfg(feature = "host")]
 mod avatar_cmd;
 mod decode_cmd;
+mod deps_audit;
+mod deps_cmd;
+#[cfg(feature = "host")]
+mod exe_lint;
+#[cfg(feature = "host")]
+mod fm_cmd;
+#[cfg(feature = "term")]
+mod term_cmd;
 #[cfg(feature = "host")]
 mod icons_cmd;
 #[cfg(feature = "host")]
@@ -59,6 +67,7 @@ mod render_cmd;
 mod search_cmd;
 #[cfg(feature = "host")]
 mod seed_ui;
+mod serve_app;
 mod serve_cmd;
 mod serve_routes;
 mod serve_wiki;
@@ -68,10 +77,13 @@ mod strings_cmd;
 #[cfg(feature = "host")]
 pub mod vfs_bundle;
 #[cfg(feature = "host")]
+mod vfs_lint;
+#[cfg(feature = "host")]
 mod video_cmd;
 #[cfg(feature = "host")]
 mod vn_cmd;
 mod wiki_cmd;
+mod wiki_verify;
 
 #[cfg(feature = "host")]
 use std::io::Write;
@@ -118,6 +130,14 @@ enum Cmd {
     New(nie_scaffold::Args),
     /// Generate the C, C++, Rust, Python, C#, Go, Bun and Zig bindings of a C ABI contract.
     Bindgen(nie_bindgen::Args),
+    /// Dependency decisions for upstream sources (GitHub and crates.io read live).
+    Deps(deps_cmd::DepsArgs),
+    /// Terminal explorer of the game VFS: three columns, fuzzy search, previews of textures, sprite sheets, films, tables, scripts and models.
+    #[cfg(feature = "host")]
+    Fm(fm_cmd::FmArgs),
+    /// GPU terminal window (rio): hosts `nie fm` with native kitty graphics, or any command after `--`; `--screenshot <png>` renders one frame offscreen.
+    #[cfg(feature = "term")]
+    Term(term_cmd::TermArgs),
     /// Liste les plugins de ce build (exe, save, launcher, steam) et les commandes qu'ils portent.
     Plugins {
         /// Sortie JSON plutôt que texte.
@@ -181,7 +201,7 @@ enum Cmd {
         quiet: bool,
     },
     /// Régénère, à côté de chaque `*.cfg.bin` d'une arborescence, le `*.cfg.bin.json` en forme
-    /// **iecode** (`{entries}`/`{lists}`) — celle que lisent les parseurs typés de `nie-data`
+    /// **étiquetée** (`{entries}`/`{lists}`) — celle que lisent les parseurs typés de `nie-data`
     /// (golden tests, `export_*`), PAS celle de `nie decode` (structure brute, générique).
     /// Idempotent : saute un `.json` déjà plus récent que son `.cfg.bin` sauf `--force`.
     #[cfg(feature = "host")]
@@ -206,7 +226,7 @@ enum Cmd {
     },
     /// Dit ce qu'est cette installation du jeu : binaire, VFS, couverture.
     ///
-    /// Superset de `iecode info` : ajoute le sha256 du binaire et le volume du VFS, que le C#
+    /// Superset de `info` de l'outil de référence : ajoute le sha256 du binaire et le volume du VFS, que le C#
     /// ne sait pas voir.
     Info {
         /// Racine du jeu (défaut : résolution automatique).
@@ -239,7 +259,7 @@ enum Cmd {
         /// Dossier de sortie pour les fichiers `<lang>.json` (hashes `0x...` + clés UI seedées).
         #[arg(long)]
         locales_out: Option<PathBuf>,
-        /// Dossier existant contenant `<lang>.json` à préserver/fusionner (ex: apps/rg-website/public/locales).
+        /// Dossier existant contenant `<lang>.json` à préserver/fusionner (ex: public/locales).
         #[arg(long)]
         seed_locales: Option<PathBuf>,
         /// Catégories TEXT_FILES à exporter séparées par des virgules (défaut : toutes les catégories utiles).
@@ -546,13 +566,13 @@ enum Cmd {
         #[arg(long, default_value_t = 16)]
         rounds: usize,
     },
-    /// Extrait les classes RTTI MSVC depuis nie_eacpatched.exe et les ingère dans la base.
+    /// Extrait les classes RTTI MSVC depuis nie.exe et les ingère dans la base.
     #[cfg(feature = "host")]
     Rtti {
         /// Base sqlite cible.
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
-        /// Chemin vers nie_eacpatched.exe (ou nie.exe).
+        /// Chemin vers nie.exe.
         #[arg(long)]
         exe: PathBuf,
     },
@@ -572,7 +592,7 @@ enum Cmd {
         /// Base sqlite cible.
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
-        /// Binaire à désassembler (nie_eacpatched.exe ou nie.exe).
+        /// Binaire à désassembler (nie.exe).
         #[arg(long)]
         exe: PathBuf,
     },
@@ -582,7 +602,7 @@ enum Cmd {
         /// Base sqlite cible.
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
-        /// Binaire PE x64 (nie_eacpatched.exe ou nie.exe).
+        /// Binaire PE x64 (nie.exe).
         #[arg(long)]
         exe: PathBuf,
     },
@@ -687,6 +707,12 @@ enum Cmd {
         #[command(subcommand)]
         op: VfsOp,
     },
+    /// Checks of the game binary nie.exe against the typed Rust code.
+    #[cfg(feature = "host")]
+    Exe {
+        #[command(subcommand)]
+        op: ExeOp,
+    },
 
     /// Alimente le visual novel `nie-vn-engine` avec les assets réels du jeu (voix, textures,
     /// musique) : produit un catalogue local, jamais versionné.
@@ -709,12 +735,9 @@ enum Cmd {
         game_dir: Option<PathBuf>,
     },
 
-    /// Le vrai `nie.exe`, vivant : préparer Proton, le lancer, lire sa mémoire.
+    /// Le vrai `nie.exe`, déjà lancé par Steam : décrire son process (PID, base du module, ptrace).
     ///
-    /// Joint les trois surfaces que `nie` tenait séparées — `steam` pose le jeu sur le disque,
-    /// Proton le fait tourner, `mem` le lit. Le lancement passe par le Proton livré AVEC le jeu
-    /// (`<racine>/files`), jamais par le Wine de la distribution : lui n'a ni DXVK ni
-    /// vkd3d-proton.
+    /// `nie` ne lance pas le jeu : Steam le démarre, `nie live attach` le décrit et `nie mem` le lit.
     #[cfg(feature = "host")]
     Live {
         #[command(subcommand)]
@@ -745,7 +768,7 @@ enum ModeOp {
         #[arg(long)]
         strict: bool,
     },
-    /// Exporte le catalogue en JSON (destiné à azalée).
+    /// Exporte le catalogue en JSON (destiné à wiki).
     Export {
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
@@ -1051,15 +1074,6 @@ enum MemOp {
         #[arg(long)]
         fusionner: bool,
     },
-    /// Patche EAC : crée une copie `--dst` de `--src` avec le call de modale fatale NOPé.
-    PatchEac {
-        /// nie.exe d'origine (jamais modifié).
-        #[arg(long)]
-        src: PathBuf,
-        /// Sortie patchée (ex. nie_eacpatched.exe).
-        #[arg(long)]
-        dst: PathBuf,
-    },
     /// Affiche le catalogue de signatures AOB et offsets dérivés du dump mémoire (nie-trace::catalog).
     Catalog {
         /// Filtrer par catégorie (player, match, shop, spirit, passive).
@@ -1081,6 +1095,14 @@ enum MemOp {
         #[arg(long)]
         force: bool,
     },
+}
+
+/// Subcommands of `nie exe`.
+#[cfg(feature = "host")]
+#[derive(Subcommand)]
+enum ExeOp {
+    /// Which classes and functions of nie.exe have a typed Rust equivalent (reads the `nie index` database).
+    Lint(exe_lint::ExeOptions),
 }
 
 /// Sous-commandes de `nie vfs` (explorateur CPK / VFS).
@@ -1220,6 +1242,9 @@ enum VfsOp {
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
+    /// Every format parser against the VFS, read in place: parse coverage per format.
+    #[cfg(feature = "host")]
+    Lint(vfs_lint::VfsOptions),
     /// Search native VFS characters by localized name, hash or internal code.
     /// puis liste ses fichiers dans le VFS (modèles, textures, animations…).
     Chara {
@@ -1269,7 +1294,7 @@ enum VfsOp {
     },
     /// Liste les remotes rclone configurés (R2, S3, Google Drive, SSH, etc.).
     Remotes {
-        /// Sortie JSON brute issue de `rg_rclone_go`.
+        /// Sortie JSON brute issue de `rclone`.
         #[arg(long, short = 'j')]
         json: bool,
     },
@@ -1302,7 +1327,7 @@ enum VfsOp {
         /// Planifie et calcule le manifeste sans copier les octets.
         #[arg(long)]
         dry_run: bool,
-        /// Sortie JSON brute issue de `rg_rclone_go`.
+        /// Sortie JSON brute issue de `rclone`.
         #[arg(long, short = 'j')]
         json: bool,
     },
@@ -1310,8 +1335,7 @@ enum VfsOp {
 
 /// Les quatre opérations de modding LEVEL-5, servies par `nie_viola` **en process**.
 ///
-/// Les opérations sont natives et ne dépendent d'aucun toolkit externe
-/// (cf. `docs/IECODE-MIGRATION.md`).
+/// Les opérations sont natives et ne dépendent d'aucun toolkit externe.
 #[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum ViolaOp {
@@ -1449,11 +1473,6 @@ pub enum LauncherOp {
         #[command(subcommand)]
         cmd: LauncherSaveOp,
     },
-    /// Analyse et patch de contournement Easy Anti-Cheat (EAC bypass de nie.exe).
-    Eac {
-        #[command(subcommand)]
-        cmd: LauncherEacOp,
-    },
     /// Consultation des 142 cartes d'esprit et 1 299 techniques spéciales (ievrsaveeditor).
     Spirit {
         #[command(subcommand)]
@@ -1548,27 +1567,6 @@ pub enum LauncherSpiritOp {
         /// Format JSON plutôt que liste texte.
         #[arg(long)]
         json: bool,
-    },
-}
-
-#[cfg(feature = "host")]
-#[derive(Subcommand)]
-pub enum LauncherEacOp {
-    /// Analyse un exécutable ou un binaire pour repérer les sites de contrôle EAC.
-    Scan {
-        /// Chemin vers nie.exe ou binaire.
-        file: std::path::PathBuf,
-        /// Sortie JSON détaillée.
-        #[arg(long)]
-        json: bool,
-    },
-    /// Patche les sauts conditionnels EAC en sauts inconditionnels (0x74 -> 0xeb).
-    Patch {
-        /// Chemin vers nie.exe original.
-        file: std::path::PathBuf,
-        /// Fichier de sortie (sinon écriture directe ou nie_eacpatched.exe).
-        #[arg(long, short = 'o')]
-        out: Option<std::path::PathBuf>,
     },
 }
 
@@ -1793,10 +1791,10 @@ struct SteamIndexArgs {
 #[derive(clap::Args, Debug, Clone)]
 struct SteamCommun {
     /// Compte Steam (vide = login anonyme).
-    #[arg(short = 'u', long, env = "STEAM_USER")]
+    #[arg(short = 'u', long, env = "NIE_STEAM_USER")]
     username: Option<String>,
     /// Mot de passe (ignoré si un refresh token est en cache).
-    #[arg(short = 'p', long, env = "STEAM_PASSWORD")]
+    #[arg(short = 'p', long, env = "NIE_STEAM_PASSWORD")]
     password: Option<String>,
     /// Branche Steam.
     #[arg(short = 'b', long, default_value = "public")]
@@ -1817,13 +1815,13 @@ struct SteamCommun {
     #[arg(long = "depot", value_name = "ID")]
     depot_ids: Vec<u32>,
     /// Chunks concurrents.
-    #[arg(long, env = "STEAM_MAX_DOWNLOADS", default_value_t = 64)]
+    #[arg(long, env = "NIE_STEAM_MAX_DOWNLOADS", default_value_t = 64)]
     max_downloads: usize,
     /// Depots téléchargés en parallèle.
-    #[arg(long, env = "STEAM_MAX_DEPOT_PARALLEL", default_value_t = 6)]
+    #[arg(long, env = "NIE_STEAM_MAX_DEPOT_PARALLEL", default_value_t = 6)]
     max_depot_parallel: usize,
     /// Taille du pool de connexions HTTP/2 par hôte CDN.
-    #[arg(long, env = "STEAM_CDN_POOL_SIZE", default_value_t = 128)]
+    #[arg(long, env = "NIE_STEAM_CDN_POOL_SIZE", default_value_t = 128)]
     cdn_pool_size: usize,
     /// Désactive le pipeline multi-fichiers/HTTP2 turbo et revient au client séquentiel `steam-depot`.
     #[arg(long)]
@@ -1960,7 +1958,7 @@ fn steam_cmd(op: SteamOp) -> anyhow::Result<()> {
                 .clone()
                 .unwrap_or_else(nie_steam::depot::token_store::default_path),
         ),
-        // Même sélection `STEAM_TOKEN_STORE` que `nie-steam-depot` (file par défaut).
+        // Même sélection `NIE_STEAM_TOKEN_STORE` que `nie-steam-depot` (file par défaut).
         token_backend: Some(nie_steam::depot::token_backend::from_env(
             c.token_store.clone(),
         )?),
@@ -2039,295 +2037,34 @@ fn steam_cmd(op: SteamOp) -> anyhow::Result<()> {
     })
 }
 
-/// Sous-commandes de `nie live` — Proton et le `nie.exe` vivant.
-///
-/// `--game-dir` n'est PAS `NIE_GAME_DIR`. Deux racines distinctes coexistent : `NIE_GAME_DIR`
-/// désigne l'arbre dont `nie` lit le VFS (sur cette machine, le dépôt lui-même), tandis que
-/// `NIE_GAME_PATH` désigne l'installation Steam, seule à porter `files/` et donc Proton. Les
-/// confondre rend un « wine introuvable » sur une racine par ailleurs parfaitement valide.
+/// Sous-commandes de `nie live` — le `nie.exe` déjà vivant.
 #[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum LiveOp {
-    /// Affiche l'environnement résolu — chemins, Proton, display — sans rien lancer.
-    Env {
-        /// Racine de l'installation Steam (défaut : `NIE_GAME_PATH`).
-        #[arg(long)]
-        game_dir: Option<PathBuf>,
-        #[arg(long, short = 'j')]
-        json: bool,
-    },
-    /// Mesure chaque prérequis et dit lequel manque. Sort non nul si l'un d'eux échoue.
-    Doctor {
-        #[arg(long)]
-        game_dir: Option<PathBuf>,
-        #[arg(long, short = 'j')]
-        json: bool,
-    },
-    /// Prépare le préfixe Wine à partir de celui de Proton (idempotent).
-    Setup {
-        #[arg(long)]
-        game_dir: Option<PathBuf>,
-        /// Remplace un préfixe existant. DESTRUCTEUR : sans ce drapeau, un préfixe déjà en
-        /// place est conservé et seuls les liens et DLL sont réappliqués.
-        #[arg(long)]
-        recreate: bool,
-    },
-    /// Lance `nie.exe` sous Proton et attend qu'il réponde à une lecture mémoire.
-    Run {
-        /// Exécutable à lancer (défaut : `<racine>/nie_eacpatched.exe`, sinon `nie.exe`).
-        #[arg(long)]
-        exe: Option<PathBuf>,
-        #[arg(long)]
-        game_dir: Option<PathBuf>,
-        /// Secondes d'attente avant d'abandonner.
-        #[arg(long, default_value_t = 120)]
-        wait: u64,
-        /// Lance sur l'affichage nu, sans le bureau virtuel Wine.
-        ///
-        /// À NE FAIRE QUE sur un vrai serveur X. Sous Xvfb, le taux de rafraîchissement rapporté
-        /// est nul, DXVK divise par ce taux et le jeu meurt dans dxgi avant la première image.
-        #[arg(long)]
-        no_desktop: bool,
-        #[arg(long, short = 'j')]
-        json: bool,
-    },
     /// Décrit le `nie.exe` déjà vivant : PID, base du module, permission ptrace.
     Attach {
         #[arg(long, short = 'j')]
         json: bool,
     },
-    /// Lance le jeu ET lit sa mémoire **dans le même processus**.
-    ///
-    /// C'est la seule forme qui fonctionne sous `kernel.yama.ptrace_scope=1` : la permission
-    /// exige que le LECTEUR soit un ancêtre de la cible au moment de la lecture. Un `live run`
-    /// suivi d'un `mem read` séparé échoue, parce que le second processus n'est l'ancêtre de
-    /// rien — c'est exactement le piège que le montage en scripts shell cachait.
-    Probe {
-        /// Adresse relative à la base du module (`0x…` ou décimal).
-        #[arg(long, value_parser = parse_addr)]
-        rva: i64,
-        /// Nombre d'octets à lire.
-        #[arg(long, short = 'n', default_value_t = 64)]
-        len: usize,
-        #[arg(long)]
-        exe: Option<PathBuf>,
-        #[arg(long)]
-        game_dir: Option<PathBuf>,
-        #[arg(long, default_value_t = 120)]
-        wait: u64,
-        /// Lance sur l'affichage nu, sans le bureau virtuel Wine (cf. `run --no-desktop`).
-        #[arg(long)]
-        no_desktop: bool,
-    },
 }
 
 /// Exécute une opération `nie live`.
 ///
-/// Proton est une couche de compatibilité Linux ; sur un hôte Windows le jeu est natif et n'a
-/// rien à traverser. La sous-commande reste néanmoins déclarée sur toutes les plateformes, pour
-/// que la surface de la CLI — et donc celle du serveur MCP qui la réexpose — ne dépende pas de
-/// la machine qui a compilé le binaire.
+/// `nie` ne lance pas le jeu : ni Proton, ni Wine, ni bureau virtuel. Il lit un `nie.exe` que le
+/// lancement officiel (Steam, puis EAC) a déjà démarré. La lecture passe par `ptrace` : sous Linux
+/// seulement ; sur un hôte Windows, `nie mem` lit le process natif.
 #[cfg(all(feature = "host", target_os = "linux"))]
 fn live_cmd(op: LiveOp) -> anyhow::Result<()> {
-    use nie_trace::proton;
-
-    /// Racine Steam : l'argument s'il est donné, sinon celle que l'environnement désigne.
-    fn disposition(game_dir: Option<PathBuf>) -> proton::Layout {
-        let base = proton::Layout::from_env();
-        match game_dir {
-            Some(dir) => proton::Layout::rooted(dir, base.runtime_base, base.display),
-            None => base,
-        }
-    }
-
-    /// Exécutable par défaut : la copie sans EAC si elle existe, sinon le binaire d'origine.
-    ///
-    /// L'ordre compte. La chaîne officielle charge le pilote anti-triche, et un process lancé
-    /// sous ce pilote n'est pas lisible depuis un outil tiers ; `nie mem patch-eac` produit
-    /// précisément cette copie.
-    /// Taille du bureau virtuel Wine, ou `None` si l'appelant l'a explicitement refusé.
-    ///
-    /// Le bureau est le DÉFAUT parce que l'affichage nu ne marche pas ici : Xvfb rapporte 0 Hz et
-    /// DXVK divise par ce taux. Le refuser est donc une décision, pas une option de confort.
-    fn bureau_virtuel(layout: &proton::Layout, no_desktop: bool) -> Option<String> {
-        if no_desktop {
-            None
-        } else {
-            Some(layout.resolution.clone())
-        }
-    }
-
-    fn executable(layout: &proton::Layout, exe: Option<PathBuf>) -> PathBuf {
-        if let Some(e) = exe {
-            return e;
-        }
-        let sans_eac = layout.game_dir.join("nie_eacpatched.exe");
-        if sans_eac.is_file() {
-            sans_eac
-        } else {
-            layout.game_dir.join("nie.exe")
-        }
-    }
-
     match op {
-        LiveOp::Env { game_dir, json } => {
-            let l = disposition(game_dir);
-            let wine = l.proton_files().join("bin/wine");
-            if json {
-                let env: serde_json::Map<String, serde_json::Value> =
-                    match proton::Runtime::locate(&l) {
-                        Ok(r) => proton::launch_env(&l, &r)
-                            .into_iter()
-                            .map(|(k, v)| {
-                                (
-                                    k.to_string_lossy().into_owned(),
-                                    serde_json::Value::String(v.to_string_lossy().into_owned()),
-                                )
-                            })
-                            .collect(),
-                        Err(_) => serde_json::Map::new(),
-                    };
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&serde_json::json!({
-                        "gameDir": l.game_dir,
-                        "runtimeBase": l.runtime_base,
-                        "compatData": l.compat_data,
-                        "prefix": l.prefix,
-                        "logs": l.logs,
-                        "dxvkCache": l.dxvk_cache,
-                        "display": l.display,
-                        "wine": wine,
-                        "env": env,
-                    }))?
-                );
-            } else {
-                println!("game_dir      {}", l.game_dir.display());
-                println!("runtime_base  {}", l.runtime_base.display());
-                println!("compat_data   {}", l.compat_data.display());
-                println!("prefix        {}", l.prefix.display());
-                println!("logs          {}", l.logs.display());
-                println!("dxvk_cache    {}", l.dxvk_cache.display());
-                println!("display       {}", l.display);
-                println!("wine          {}", wine.display());
-            }
-            Ok(())
-        }
-
-        LiveOp::Doctor { game_dir, json } => {
-            let l = disposition(game_dir);
-            let checks = proton::doctor(&l);
-            let manquants = checks.iter().filter(|c| !c.ok).count();
-            if json {
-                let rows: Vec<_> = checks
-                    .iter()
-                    .map(|c| serde_json::json!({ "name": c.name, "ok": c.ok, "detail": c.detail }))
-                    .collect();
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&serde_json::json!({
-                        "checks": rows,
-                        "failed": manquants,
-                    }))?
-                );
-            } else {
-                for c in &checks {
-                    println!(
-                        "{} {:<24} {}",
-                        if c.ok { "ok " } else { "MAN" },
-                        c.name,
-                        c.detail
-                    );
-                }
-                println!("{manquants} prérequis sur {} manquent", checks.len());
-            }
-            anyhow::ensure!(manquants == 0, "{manquants} prérequis manquent");
-            Ok(())
-        }
-
-        LiveOp::Setup { game_dir, recreate } => {
-            let l = disposition(game_dir);
-            let r = proton::Runtime::locate(&l)?;
-            proton::prepare_prefix(&l, &r, recreate)?;
-            println!("préfixe prêt : {}", l.prefix.display());
-            Ok(())
-        }
-
-        LiveOp::Run {
-            exe,
-            game_dir,
-            wait,
-            no_desktop,
-            json,
-        } => {
-            let l = disposition(game_dir);
-            let r = proton::Runtime::locate(&l)?;
-            let exe = executable(&l, exe);
-            let bureau = bureau_virtuel(&l, no_desktop);
-            let mut lancement = proton::launch_and_wait(
-                &l,
-                &r,
-                &exe,
-                std::time::Duration::from_secs(wait),
-                bureau.as_deref(),
-            )?;
-            let scope = nie_trace::read_ptrace_scope();
-            // Mesure ce qui distingue « mort au démarrage » de « plus lent que le délai » : sans
-            // elle, les deux rendent le même `game_pid: None`.
-            let sorti = lancement.exited();
-            if json {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&serde_json::json!({
-                        "exe": exe,
-                        "desktop": bureau,
-                        "launcherPid": lancement.launcher_pid(),
-                        "gamePid": lancement.game_pid,
-                        "launcherExited": sorti.map(|s| s.to_string()),
-                        "log": lancement.log,
-                        "ptraceScope": scope,
-                    }))?
-                );
-            } else {
-                println!("exe           {}", exe.display());
-                println!(
-                    "bureau        {}",
-                    bureau.as_deref().unwrap_or("(aucun — affichage nu)")
-                );
-                println!("launcher_pid  {}", lancement.launcher_pid());
-                match lancement.game_pid {
-                    Some(pid) => println!("game_pid      {pid}"),
-                    None => println!("game_pid      (pas de réponse avant {wait}s)"),
-                }
-                if let Some(statut) = sorti {
-                    println!("launcher      DÉJÀ SORTI ({statut}) — le jeu n'a pas démarré");
-                }
-                println!("log           {}", lancement.log.display());
-                if scope >= 1 {
-                    println!(
-                        "note          ptrace_scope={scope} : un `nie mem` LANCÉ À PART sera \
-                         refusé, faute d'être un ancêtre. Utilise `nie live probe`, qui lance \
-                         et lit dans le même processus."
-                    );
-                }
-            }
-            anyhow::ensure!(
-                lancement.game_pid.is_some(),
-                "le jeu n'a pas répondu — voir {}",
-                lancement.log.display()
-            );
-            Ok(())
-        }
-
         LiveOp::Attach { json } => {
             let pid =
-                nie_trace::find_pid_by_name(nie_trace::proton::GAME_COMM).ok_or_else(|| {
+                nie_trace::find_pid_by_name(nie_trace::GAME_COMM).ok_or_else(|| {
                     anyhow::anyhow!(
-                        "aucun process « {} » — lance le jeu avec `nie live run`",
-                        nie_trace::proton::GAME_COMM
+                        "aucun process « {} » — lance le jeu par Steam",
+                        nie_trace::GAME_COMM
                     )
                 })?;
-            let base = nie_trace::find_module_base(pid, nie_trace::proton::GAME_COMM);
+            let base = nie_trace::find_module_base(pid, nie_trace::GAME_COMM);
             let permis = nie_trace::likely_permitted(pid);
             if json {
                 println!(
@@ -2353,65 +2090,14 @@ fn live_cmd(op: LiveOp) -> anyhow::Result<()> {
             }
             Ok(())
         }
-
-        LiveOp::Probe {
-            rva,
-            len,
-            exe,
-            game_dir,
-            wait,
-            no_desktop,
-        } => {
-            let l = disposition(game_dir);
-            let r = proton::Runtime::locate(&l)?;
-            let exe = executable(&l, exe);
-            let bureau = bureau_virtuel(&l, no_desktop);
-            // `lancement` reste VIVANT jusqu'à la fin de ce bloc : c'est lui qui tient le rôle de
-            // parent dont `process_vm_readv` dépend sous ptrace_scope=1. Le relâcher avant la
-            // lecture rendrait EPERM.
-            let lancement = proton::launch_and_wait(
-                &l,
-                &r,
-                &exe,
-                std::time::Duration::from_secs(wait),
-                bureau.as_deref(),
-            )?;
-            let pid = lancement.game_pid.ok_or_else(|| {
-                anyhow::anyhow!("le jeu n'a pas répondu — voir {}", lancement.log.display())
-            })?;
-            let base = nie_trace::find_module_base(pid, nie_trace::proton::GAME_COMM)
-                .ok_or_else(|| anyhow::anyhow!("module introuvable dans le process {pid}"))?;
-            // Mesuré avant la lecture, pas déduit après son échec : si Proton ré-exécute le jeu
-            // hors de l'arbre de `nie`, la descendance est rompue et `process_vm_readv` rend
-            // EPERM. Le dire ici distingue « pas ancêtre » de « mauvaise adresse ».
-            if !nie_trace::likely_permitted(pid) {
-                println!(
-                    "attention    ptrace_scope={} et le process {pid} n'est pas un descendant \
-                     de celui-ci : la lecture va être refusée.",
-                    nie_trace::read_ptrace_scope()
-                );
-            }
-            #[allow(clippy::cast_sign_loss)]
-            let addr = base.wrapping_add(rva as u64);
-            let octets = nie_trace::read_exact(pid, addr, len)?;
-            println!(
-                "pid {pid}  base {base:#x}  addr {addr:#x}  len {}",
-                octets.len()
-            );
-            for (i, ligne) in octets.chunks(16).enumerate() {
-                let hex: Vec<String> = ligne.iter().map(|b| format!("{b:02x}")).collect();
-                println!("{:016x}  {}", addr as usize + i * 16, hex.join(" "));
-            }
-            Ok(())
-        }
     }
 }
 
 #[cfg(all(feature = "host", not(target_os = "linux")))]
 fn live_cmd(_op: LiveOp) -> anyhow::Result<()> {
     anyhow::bail!(
-        "`nie live` pilote Proton, qui n'existe que sous Linux. Sur un hôte Windows le jeu est \
-         natif : lance-le, puis lis-le avec `nie mem`."
+        "`nie live` lit un process par ptrace, ce qui n'existe que sous Linux. Sur un hôte Windows, \
+         lis le jeu avec `nie mem`."
     )
 }
 
@@ -2461,6 +2147,8 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString>,
 {
+    nie_tls::install();
+    nie_tls::install();
     let args = args.into_iter().map(Into::into).collect::<Vec<_>>();
     std::thread::Builder::new()
         .stack_size(PILE_CLI)
@@ -2473,6 +2161,8 @@ where
 }
 
 fn run() -> anyhow::Result<()> {
+    nie_tls::install();
+    nie_tls::install();
     // CLI interne (consommé par l'agent) : sortie minimale. `RUST_LOG=info` réactive les traces.
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -2492,6 +2182,11 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
         Cmd::Wiki(args) => wiki_cmd::run(args),
         Cmd::New(args) => nie_scaffold::run(&args),
         Cmd::Bindgen(args) => nie_bindgen::run(&args),
+        Cmd::Deps(args) => deps_cmd::run(args),
+        #[cfg(feature = "host")]
+        Cmd::Fm(args) => fm_cmd::run(args),
+        #[cfg(feature = "term")]
+        Cmd::Term(args) => term_cmd::run(args),
         #[cfg(feature = "host")]
         Cmd::Mcp => {
             let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -3033,6 +2728,10 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
         } => menu_predecode_cmd(&racine_jeu(game_dir), &redis_url),
         Cmd::Vfs { op } => vfs_cmd(op),
         #[cfg(feature = "host")]
+        Cmd::Exe { op } => match op {
+            ExeOp::Lint(options) => exe_lint::run(&options),
+        },
+        #[cfg(feature = "host")]
         Cmd::Vn { op, game_dir } => {
             let vfs = open_vfs(game_dir)?;
             vn_cmd::run(&op, &vfs)
@@ -3136,7 +2835,6 @@ mod host_only_cmds {
                 output,
                 fusionner,
             } => mem_palettes(&catalogue, pid, &addr, len, output.as_deref(), fusionner),
-            MemOp::PatchEac { src, dst } => mem_patch_eac(&src, &dst),
             MemOp::Catalog { category, json } => mem_catalog(category.as_deref(), json),
             MemOp::Recette {
                 file,
@@ -3330,7 +3028,7 @@ mod host_only_cmds {
                 std::fs::write(p, &buf[..got])?;
                 println!("  {got} octets @ 0x{address:x} → {}", p.display());
             }
-            None => mem_hexdump(&buf[..got], address),
+            None => crate::print_hexdump(&buf[..got], address),
         }
         Ok(())
     }
@@ -3428,27 +3126,6 @@ mod host_only_cmds {
             String::new()
         };
         println!("\n  {} hit(s) pour {label}{capped}", hits.len());
-        Ok(())
-    }
-
-    fn mem_patch_eac(src: &std::path::Path, dst: &std::path::Path) -> anyhow::Result<()> {
-        let report = nie_trace::patch_eac(src, dst).context("patch EAC")?;
-        println!(
-            "  OK  offset 0x{:X}: {} -> {}  ({} octets)  {}",
-            report.offset,
-            report
-                .original
-                .iter()
-                .map(|b| format!("{b:02x}"))
-                .collect::<String>(),
-            report
-                .patched
-                .iter()
-                .map(|b| format!("{b:02x}"))
-                .collect::<String>(),
-            report.dst_len,
-            dst.display()
-        );
         Ok(())
     }
 
@@ -3630,31 +3307,6 @@ mod host_only_cmds {
                 .join("-")
         );
         Ok((bytes, label))
-    }
-
-    fn mem_hexdump(data: &[u8], base: u64) {
-        for (i, line) in data.chunks(16).enumerate() {
-            let off = base + (i * 16) as u64;
-            let mut hex = String::new();
-            for j in 0..16 {
-                if j < line.len() {
-                    hex.push_str(&format!("{:02x} ", line[j]));
-                } else {
-                    hex.push_str("   ");
-                }
-            }
-            let ascii: String = line
-                .iter()
-                .map(|&b| {
-                    if (0x20..0x7f).contains(&b) {
-                        b as char
-                    } else {
-                        '.'
-                    }
-                })
-                .collect();
-            println!("  0x{off:012x}  {hex} {ascii}");
-        }
     }
 
     pub(crate) fn seed(
@@ -4652,54 +4304,6 @@ mod host_launcher_and_maps {
                     launcher_save_inject_team(&save, &team, out.as_deref())?;
                 }
             },
-            LauncherOp::Eac { cmd } => match cmd {
-                LauncherEacOp::Scan { file, json } => {
-                    let bytes = std::fs::read(&file)
-                        .with_context(|| format!("lecture {}", file.display()))?;
-                    let report = nie_launcher::scan_eac_sites(&bytes)
-                        .map_err(|e| anyhow::anyhow!("scan EAC : {e}"))?;
-                    if json {
-                        println!("{}", serde_json::to_string_pretty(&report)?);
-                    } else {
-                        println!(
-                            "EAC scan {}: {} sites trouvés ({} non-patchés, {} déjà patchés)",
-                            file.display(),
-                            report.total_sites_found,
-                            report.unpatched_count,
-                            report.patched_count
-                        );
-                        for s in &report.sites {
-                            println!(
-                                "  [{}] match=0x{:X} patch=0x{:X} byte=0x{:02X} (patché={})",
-                                s.pattern_name,
-                                s.match_offset,
-                                s.patch_offset,
-                                s.current_byte,
-                                s.is_patched
-                            );
-                        }
-                    }
-                }
-                LauncherEacOp::Patch { file, out } => {
-                    let target_out = out.unwrap_or_else(|| {
-                        if let Some(stem) = file.file_stem().and_then(|s| s.to_str()) {
-                            let ext = file.extension().and_then(|s| s.to_str()).unwrap_or("exe");
-                            file.with_file_name(format!("{stem}_eacpatched.{ext}"))
-                        } else {
-                            file.with_extension("eacpatched.exe")
-                        }
-                    });
-                    let report = nie_launcher::patch_eac_file(&file, &target_out)
-                        .map_err(|e| anyhow::anyhow!("patch EAC : {e}"))?;
-                    println!(
-                        "EAC patch {} -> {}: {} sites traités ({} patchés)",
-                        file.display(),
-                        target_out.display(),
-                        report.total_sites_found,
-                        report.patched_count
-                    );
-                }
-            },
             LauncherOp::Spirit { cmd } => match cmd {
                 LauncherSpiritOp::Cards { query, json } => {
                     let cards: Vec<&nie_launcher::SpiritCard> = if let Some(q) = query {
@@ -5384,7 +4988,7 @@ fn export_vfs_locales(
             let Ok(bytes) = vfs.read(&vfs_path) else {
                 continue;
             };
-            let Some(root) = nie_formats::cfgbin::to_iecode_json(&bytes) else {
+            let Some(root) = nie_formats::cfgbin::to_tagged_json(&bytes) else {
                 continue;
             };
             let parsed = nie_data::text::parse_text_file(&root);
@@ -6221,6 +5825,8 @@ fn vfs_cmd(op: VfsOp) -> anyhow::Result<()> {
             game_dir,
         } => vfs_extract(&path, &out, ext.as_deref(), game_dir),
         VfsOp::Stats { top, game_dir } => vfs_stats(top, game_dir),
+        #[cfg(feature = "host")]
+        VfsOp::Lint(options) => vfs_lint::run(&options),
         VfsOp::Formats {
             parse,
             prefix,
@@ -6607,10 +6213,12 @@ fn vfs_extract(
         ))
     );
 
-    let mut ok = 0usize;
-    let mut failed = 0usize;
-    for p in &matches {
-        match vfs.read(p) {
+    // One rayon task per file: the CRILAYLA decode and the disk write overlap across cores, and
+    // the VFS reads each pack through one shared positioned-read handle.
+    use rayon::prelude::*;
+    let (ok, failed) = matches
+        .par_iter()
+        .map(|p| match vfs.read(p) {
             Ok(data) => {
                 let rel = p.strip_prefix(prefix).unwrap_or(p).trim_start_matches('/');
                 let dest = out.join(rel);
@@ -6618,13 +6226,13 @@ fn vfs_extract(
                     std::fs::create_dir_all(parent).ok();
                 }
                 match std::fs::write(&dest, &data) {
-                    Ok(()) => ok += 1,
-                    Err(_) => failed += 1,
+                    Ok(()) => (1usize, 0usize),
+                    Err(_) => (0, 1),
                 }
             }
-            Err(_) => failed += 1,
-        }
-    }
+            Err(_) => (0, 1),
+        })
+        .reduce(|| (0, 0), |a, b| (a.0 + b.0, a.1 + b.1));
     println!(
         "  {ok} fichier(s) extrait(s) sous {} ({failed} échec(s))",
         out.display()

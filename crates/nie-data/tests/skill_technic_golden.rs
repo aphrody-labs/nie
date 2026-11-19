@@ -3,7 +3,7 @@
 //! `data/common/gamedata/skill/skill_technic_config_1.01.28.00.cfg.bin` (VFS du jeu, RDBN).
 //!
 //! Extraction : `cargo run -p nie-model-serve --example extract_skill_technic` (jetable),
-//! qui décode le RDBN via `nie_formats::cfgbin` puis le projette en JSON iecode
+//! qui décode le RDBN via `nie_formats::cfgbin` puis le projette en JSON tagged
 //! (`Hash → "0x........"`, `Byte`/`Float → nombre`). Port 1:1 d'inagle
 //! `inagle` (`parseContent`, l.44-66).
 //!

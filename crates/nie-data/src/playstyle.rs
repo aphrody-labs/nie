@@ -123,7 +123,7 @@ pub fn parse_playstyle_node(node: &Node<'_>) -> Option<PlaystyleEntry> {
 
 /// Parse tous les styles de jeu d'un `chara_param_*.cfg.bin.json` désérialisé.
 ///
-/// Port de `parseAllPlaystyles` : retient les noeuds nommés `CHARA_PARAM_INFO_*` (forme iecode
+/// Port de `parseAllPlaystyles` : retient les noeuds nommés `CHARA_PARAM_INFO_*` (forme étiquetée
 /// suffixée `_<i>`), en excluant les noeuds de liste (`*LIST*` / `*BEG*`).
 #[must_use]
 pub fn parse_all_playstyles(root: &Value) -> Vec<PlaystyleEntry> {

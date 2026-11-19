@@ -1,7 +1,7 @@
 //! Where the pipeline reads from: the decoded editor tables and the character's own references.
 //!
 //! Everything here comes from files already in the checkout. The editor tables are the `*.cfg.bin`
-//! dumps converted to iecode JSON under `data/common/`; the references are the character's own
+//! dumps converted to tagged JSON under `data/common/`; the references are the character's own
 //! sheets under `data/oc/<slug>/source/`. Nothing in this module opens the game's VFS, so the
 //! whole chain runs on a machine where the game is not installed — which is the state this one is
 //! in, and the reason the generation stage is separated from the assembly stage.

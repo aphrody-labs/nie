@@ -1,6 +1,6 @@
 //! Parseur de fichiers `.objbin` (OBJB — définitions d'objets-menu IEVR).
 //!
-//! Port Rust fidèle de `IECODE.Core/Formats/Menu/ObjbParser.cs` (790 lignes).
+//! Port Rust fidèle de `ObjbParser.cs` (790 lignes).
 //!
 //! ## Format
 //!
@@ -1105,7 +1105,7 @@ fn build_unknown_component(
 /// Normalise un chemin de texture `.g4tx` : remplace le préfixe `"#/"` par `"dx11/"`.
 ///
 /// Le préfixe `#/` est une convention Level-5 pour les chemins résolus depuis la racine
-/// du VFS. Le serveur d'assets azalee/CDN attend le préfixe `"dx11/"`.
+/// du VFS. Le serveur d'assets wiki/CDN attend le préfixe `"dx11/"`.
 fn normalize_g4tx_path(path: Option<String>) -> Option<String> {
     path.map(|p| {
         if let Some(rest) = p.strip_prefix("#/") {

@@ -42,10 +42,10 @@ pub struct UtPlayer {
     pub weight: f64,
     /// Legendary tier classification ("Elite", "Supremo", etc.).
     pub legendary_tier: Option<String>,
-    /// Optional English name from Azalée mirror.
+    /// Optional English name from legacy mirror.
     #[serde(default)]
     pub name_en: Option<String>,
-    /// Optional Japanese name from Azalée mirror.
+    /// Optional Japanese name from legacy mirror.
     #[serde(default)]
     pub name_ja: Option<String>,
     /// Internal character code (e.g. "c01000010").
@@ -56,7 +56,7 @@ pub struct UtPlayer {
     pub stat_total: Option<u32>,
 }
 
-/// Special move from Azalée mirror database (`inagle_skills`).
+/// Special move from legacy mirror database (`inagle_skills`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct UtSkillRecord {
     pub id: String,
@@ -71,7 +71,7 @@ pub struct UtSkillRecord {
     pub tension_cost: Option<u32>,
 }
 
-/// Team uniform from Azalée mirror database (`inagle_uniforms`).
+/// Team uniform from legacy mirror database (`inagle_uniforms`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct UtUniformRecord {
     pub id: String,
@@ -82,7 +82,7 @@ pub struct UtUniformRecord {
     pub image_url: Option<String>,
 }
 
-/// Stadium from Azalée mirror database (`inagle_stadiums`).
+/// Stadium from legacy mirror database (`inagle_stadiums`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct UtStadiumRecord {
     pub id: String,
@@ -92,7 +92,7 @@ pub struct UtStadiumRecord {
     pub image_url: Option<String>,
 }
 
-/// Formation from Azalée mirror database (`inagle_formations`).
+/// Formation from legacy mirror database (`inagle_formations`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct UtFormationRecord {
     pub id: String,
@@ -1154,7 +1154,7 @@ pub fn calculate_squad_valuation(lineup: &TeamLineup, _db: Option<&UtDatabase>) 
 pub struct UtDatabase {
     conn: Connection,
     path: PathBuf,
-    has_azalee: bool,
+    has_mirror: bool,
 }
 
 impl UtDatabase {
@@ -1182,7 +1182,7 @@ impl UtDatabase {
     }
 
     /// Open a connection to an explicit database file path, automatically attaching
-    /// Azalée's complete mirror database (`var/mirror.sqlite`) if present.
+    /// The complete legacy mirror database (`var/mirror.sqlite`) if present.
     pub fn open(path: &Path) -> Result<Self> {
         let conn = Connection::open_with_flags(
             path,
@@ -1196,12 +1196,12 @@ impl UtDatabase {
             "../var/mirror.sqlite",
             "../../var/mirror.sqlite",
         ];
-        let mut has_azalee = false;
+        let mut has_mirror = false;
         for mc in &mirror_candidates {
             if Path::new(mc).exists() {
-                let attach_sql = format!("ATTACH DATABASE 'file:{}?mode=ro' AS azalee", mc);
+                let attach_sql = format!("ATTACH DATABASE 'file:{}?mode=ro' AS mirror", mc);
                 if conn.execute_batch(&attach_sql).is_ok() {
-                    has_azalee = true;
+                    has_mirror = true;
                     break;
                 }
             }
@@ -1210,7 +1210,7 @@ impl UtDatabase {
         Ok(Self {
             conn,
             path: path.to_path_buf(),
-            has_azalee,
+            has_mirror,
         })
     }
 
@@ -1219,12 +1219,12 @@ impl UtDatabase {
         &self.path
     }
 
-    /// Returns true if the Azalée mirror database was successfully attached.
-    pub fn has_azalee(&self) -> bool {
-        self.has_azalee
+    /// Returns true if the legacy mirror database was successfully attached.
+    pub fn has_mirror(&self) -> bool {
+        self.has_mirror
     }
 
-    /// Load all players fusing FUT (`jugadores`) and Azalée mirror (`inagle_characters`).
+    /// Load all players fusing FUT (`jugadores`) and legacy mirror (`inagle_characters`).
     pub fn get_players(&self) -> Result<Vec<UtPlayer>> {
         let mut players = Vec::new();
         let mut seen_names = std::collections::HashSet::new();
@@ -1262,11 +1262,11 @@ impl UtDatabase {
             players.push(p);
         }
 
-        // 2. If Azalée mirror is attached, fuse inagle_characters!
-        if self.has_azalee
+        // 2. If legacy mirror is attached, fuse inagle_characters!
+        if self.has_mirror
             && let Ok(mut stmt_az) = self.conn.prepare(
                 "SELECT id, chara_id, internal_code, name_fr, name_en, name_ja, element, position, rarity_label, image_url, stat_total, hero_type, nickname, series
-                 FROM azalee.inagle_characters
+                 FROM mirror.inagle_characters
                  WHERE name_fr IS NOT NULL AND name_fr != '' AND name_fr != '\\N'",
             )
         {
@@ -1455,7 +1455,7 @@ impl UtDatabase {
         Ok(packs.into_iter().find(|p| p.id == id))
     }
 
-    /// Load all teams fusing FUT (`equipos`) and Azalée mirror (`inagle_teams`).
+    /// Load all teams fusing FUT (`equipos`) and legacy mirror (`inagle_teams`).
     pub fn get_teams(&self) -> Result<Vec<UtTeam>> {
         let mut teams = Vec::new();
         let mut seen_team_names = std::collections::HashSet::new();
@@ -1484,10 +1484,10 @@ impl UtDatabase {
             teams.push(t);
         }
 
-        if self.has_azalee
+        if self.has_mirror
             && let Ok(mut stmt_az) = self.conn.prepare(
                 "SELECT id, name_fr, name_en, name_ja, emblem_url, series
-                 FROM azalee.inagle_teams
+                 FROM mirror.inagle_teams
                  WHERE name_fr IS NOT NULL AND name_fr != '' AND name_fr != '\\N'",
             )
         {
@@ -1530,14 +1530,14 @@ impl UtDatabase {
         Ok(teams)
     }
 
-    /// Load special moves from Azalée mirror (`inagle_skills`).
+    /// Load special moves from legacy mirror (`inagle_skills`).
     pub fn get_skills(&self, category: Option<&str>, limit: usize) -> Result<Vec<UtSkillRecord>> {
-        if !self.has_azalee {
+        if !self.has_mirror {
             return Ok(Vec::new());
         }
 
         let sql = "SELECT id, name_fr, name_en, name_ja, category, element, tp_cost, power_min, power_max, tension_cost
-                   FROM azalee.inagle_skills
+                   FROM mirror.inagle_skills
                    WHERE name_fr IS NOT NULL AND name_fr != '' AND name_fr != '\\N'";
 
         let mut stmt = self
@@ -1593,9 +1593,9 @@ impl UtDatabase {
         Ok(skills)
     }
 
-    /// Load uniforms from Azalée mirror (`inagle_uniforms`).
+    /// Load uniforms from legacy mirror (`inagle_uniforms`).
     pub fn get_uniforms(&self, limit: usize) -> Result<Vec<UtUniformRecord>> {
-        if !self.has_azalee {
+        if !self.has_mirror {
             return Ok(Vec::new());
         }
 
@@ -1603,7 +1603,7 @@ impl UtDatabase {
             .conn
             .prepare(
                 "SELECT id, name_fr, name_en, name_ja, category, image_url
-                 FROM azalee.inagle_uniforms
+                 FROM mirror.inagle_uniforms
                  WHERE name_fr IS NOT NULL AND name_fr != '' AND name_fr != '\\N'",
             )
             .map_err(|e| LauncherError::Io(std::io::Error::other(e)))?;
@@ -1638,9 +1638,9 @@ impl UtDatabase {
         Ok(list)
     }
 
-    /// Load stadiums from Azalée mirror (`inagle_stadiums`).
+    /// Load stadiums from legacy mirror (`inagle_stadiums`).
     pub fn get_stadiums(&self, limit: usize) -> Result<Vec<UtStadiumRecord>> {
-        if !self.has_azalee {
+        if !self.has_mirror {
             return Ok(Vec::new());
         }
 
@@ -1648,7 +1648,7 @@ impl UtDatabase {
             .conn
             .prepare(
                 "SELECT id, name_fr, name_en, name_ja, image_url
-                 FROM azalee.inagle_stadiums
+                 FROM mirror.inagle_stadiums
                  WHERE name_fr IS NOT NULL AND name_fr != '' AND name_fr != '\\N'",
             )
             .map_err(|e| LauncherError::Io(std::io::Error::other(e)))?;
@@ -1785,10 +1785,10 @@ mod tests {
                 players.len() >= 497,
                 "Expected at least 497 players from FUT"
             );
-            if db.has_azalee() {
+            if db.has_mirror() {
                 assert!(
                     players.len() > 2000,
-                    "Fused database should contain thousands of characters from Azalée"
+                    "Fused database should contain thousands of characters from wiki"
                 );
                 let teams = db.get_teams().expect("failed to load fused teams");
                 assert!(

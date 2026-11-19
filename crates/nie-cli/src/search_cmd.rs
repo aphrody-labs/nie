@@ -17,47 +17,16 @@
 //! Parcours parallèle, respect de `.gitignore`, recherche ligne à ligne sans allocation par
 //! ligne. Rien de maison : le but est d'égaler l'outil de référence, pas de le réécrire.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result};
-use globset::{Glob, GlobSet, GlobSetBuilder};
 use grep_regex::RegexMatcher;
 use grep_searcher::sinks::UTF8;
 use grep_searcher::{BinaryDetection, SearcherBuilder};
-use ignore::{WalkBuilder, WalkState};
-
-/// Construit l'ensemble de globs à partir des motifs `--glob` et des extensions `--ext`.
-fn build_globset(globs: &[String], exts: &[String]) -> Result<Option<GlobSet>> {
-    if globs.is_empty() && exts.is_empty() {
-        return Ok(None);
-    }
-    let mut b = GlobSetBuilder::new();
-    for g in globs {
-        b.add(Glob::new(g).with_context(|| format!("glob invalide : {g}"))?);
-    }
-    for e in exts {
-        let e = e.trim_start_matches('.');
-        b.add(
-            Glob::new(&format!("**/*.{e}")).with_context(|| format!("extension invalide : {e}"))?,
-        );
-    }
-    Ok(Some(b.build().context("construction du GlobSet")?))
-}
-
-/// Prépare un parcours : racine, fichiers cachés, respect de `.gitignore`, profondeur.
-fn walker(dir: &Path, hidden: bool, no_ignore: bool, depth: Option<usize>) -> WalkBuilder {
-    let mut w = WalkBuilder::new(dir);
-    w.hidden(!hidden) // `hidden(true)` = **exclure** les cachés : on inverse le drapeau utilisateur.
-        .git_ignore(!no_ignore)
-        .git_global(!no_ignore)
-        .git_exclude(!no_ignore)
-        .ignore(!no_ignore)
-        .parents(!no_ignore)
-        .max_depth(depth);
-    w
-}
+use ignore::WalkState;
+use nie_explore::depot::{construire_globs, parcours_disque};
 
 /// Options de `nie find`.
 pub struct FindArgs {
@@ -87,7 +56,7 @@ pub struct FindArgs {
 
 /// Cherche des fichiers par chemin. Renvoie le nombre de correspondances.
 pub fn find(args: &FindArgs) -> Result<usize> {
-    let set = build_globset(&args.globs, &args.exts)?;
+    let set = construire_globs(&args.globs, &args.exts)?;
     let needle = if args.case_sensitive {
         args.pattern.clone()
     } else {
@@ -99,7 +68,7 @@ pub fn find(args: &FindArgs) -> Result<usize> {
     let hits: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
     let seen = Arc::new(AtomicUsize::new(0));
 
-    walker(&args.dir, args.hidden, args.no_ignore, args.depth)
+    parcours_disque(&args.dir, args.hidden, args.no_ignore, args.depth)
         .build_parallel()
         .run(|| {
             let hits = Arc::clone(&hits);
@@ -194,7 +163,7 @@ pub struct GrepArgs {
 /// Cherche un motif dans le contenu des fichiers. Renvoie le nombre de lignes correspondantes
 /// (ou de fichiers en mode `files_with_matches`).
 pub fn grep(args: &GrepArgs) -> Result<usize> {
-    let set = build_globset(&args.globs, &args.exts)?;
+    let set = construire_globs(&args.globs, &args.exts)?;
     let matcher = RegexMatcher::new_line_matcher(&if args.ignore_case {
         format!("(?i){}", args.pattern)
     } else {
@@ -205,7 +174,7 @@ pub fn grep(args: &GrepArgs) -> Result<usize> {
     let out: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
     let seen = Arc::new(AtomicUsize::new(0));
 
-    walker(&args.dir, args.hidden, args.no_ignore, None)
+    parcours_disque(&args.dir, args.hidden, args.no_ignore, None)
         .build_parallel()
         .run(|| {
             let out = Arc::clone(&out);

@@ -208,8 +208,8 @@ fn v5_decide_et_exceptions() {
 
 #[cfg(feature = "serde")]
 #[test]
-fn dispatch_typed_atteint_azalee() {
-    // Chemin azalee : `family_key` dérive la clé du nom de fichier versionné, puis
+fn dispatch_typed_atteint_wiki() {
+    // Chemin wiki : `family_key` dérive la clé du nom de fichier versionné, puis
     // `decode_by_key` route vers le parseur typé → JSON servable (route /typed, nie-wasm).
     use nie_data::typed::{decode_by_key, family_key};
     let Some(root) = load_json(V5) else { return };

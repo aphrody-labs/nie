@@ -25,7 +25,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 
 /// Budget for archive bytes and parsed metadata (`NIE_CPK_CACHE_BUDGET_GIB`, default 2 GiB).
-/// Kept safely below `rg-core.service` MemoryHigh=10G / MemoryMax=12G by default; override via env.
+/// Kept safely below the service's MemoryHigh=10G / MemoryMax=12G by default; override via env.
 fn cpk_cache_budget() -> usize {
     let gib = std::env::var("NIE_CPK_CACHE_BUDGET_GIB")
         .ok()
@@ -35,8 +35,22 @@ fn cpk_cache_budget() -> usize {
     gib.saturating_mul(1024 * 1024 * 1024)
 }
 
+/// Open pack handles the cache keeps at once (`NIE_CPK_OPEN_FILES`, default 256): one per cached
+/// local pack, bounded so the 936 packs of an installation never exhaust a 1024 descriptor limit.
+/// A pack cached beyond the bound is read through a short-lived handle per entry.
+fn cpk_open_files() -> usize {
+    std::env::var("NIE_CPK_OPEN_FILES")
+        .ok()
+        .and_then(|s| s.trim().parse::<usize>().ok())
+        .unwrap_or(256)
+}
+
+/// A cached pack: its parsed table of contents and, for a local pack, the one handle every read
+/// of it shares (positioned reads, so concurrent readers never race on a file offset).
+type CachedPack = (CpkReader, Option<File>);
+
 struct LruSlot {
-    arc: Arc<(CpkReader, Vec<u8>)>,
+    arc: Arc<CachedPack>,
     size: usize,
     prev: Option<String>,
     next: Option<String>,
@@ -49,17 +63,18 @@ struct CpkCache {
     tail: Option<String>,
     bytes: usize,
     budget: usize,
+    /// Cached packs holding an open handle, and the bound on that count.
+    open: usize,
+    max_open: usize,
 }
 
 impl CpkCache {
-    fn size(arc: &(CpkReader, Vec<u8>)) -> usize {
-        arc.1.len()
-            + arc
-                .0
-                .entries
-                .iter()
-                .map(|e| std::mem::size_of_val(e) + e.filename.len() + e.directory.len())
-                .sum::<usize>()
+    fn size(arc: &CachedPack) -> usize {
+        arc.0
+            .entries
+            .iter()
+            .map(|e| std::mem::size_of_val(e) + e.filename.len() + e.directory.len())
+            .sum::<usize>()
     }
 
     fn new(budget: usize) -> Self {
@@ -69,6 +84,21 @@ impl CpkCache {
             tail: None,
             bytes: 0,
             budget,
+            open: 0,
+            max_open: cpk_open_files(),
+        }
+    }
+
+    /// Whether the next local pack inserted may keep an open handle. Checked and used under the
+    /// same lock guard as the insertion.
+    fn wants_handle(&self) -> bool {
+        self.open < self.max_open
+    }
+
+    fn release(&mut self, slot: &LruSlot) {
+        self.bytes = self.bytes.saturating_sub(slot.size);
+        if slot.arc.1.is_some() {
+            self.open = self.open.saturating_sub(1);
         }
     }
 
@@ -113,7 +143,7 @@ impl CpkCache {
     }
 
     /// Récupère un CPK et le marque comme récemment utilisé en O(1).
-    fn get(&mut self, key: &str) -> Option<Arc<(CpkReader, Vec<u8>)>> {
+    fn get(&mut self, key: &str) -> Option<Arc<CachedPack>> {
         let arc = self.map.get(key)?.arc.clone();
         if self.tail.as_deref() != Some(key) {
             let owned = key.to_string();
@@ -124,15 +154,18 @@ impl CpkCache {
     }
 
     /// Insère un CPK et évince les moins récents tant que le budget est dépassé.
-    fn insert(&mut self, key: String, arc: Arc<(CpkReader, Vec<u8>)>) {
+    fn insert(&mut self, key: String, arc: Arc<CachedPack>) {
         let size = Self::size(&arc);
         if self.map.contains_key(&key) {
             self.detach(&key);
             if let Some(old) = self.map.remove(&key) {
-                self.bytes = self.bytes.saturating_sub(old.size);
+                self.release(&old);
             }
         }
         self.bytes += size;
+        if arc.1.is_some() {
+            self.open += 1;
+        }
         self.map.insert(
             key.clone(),
             LruSlot {
@@ -157,7 +190,7 @@ impl CpkCache {
             };
             self.detach(&old_key);
             if let Some(old) = self.map.remove(&old_key) {
-                self.bytes = self.bytes.saturating_sub(old.size);
+                self.release(&old);
             }
         }
     }
@@ -169,6 +202,7 @@ impl CpkCache {
         self.head = None;
         self.tail = None;
         self.bytes = 0;
+        self.open = 0;
         liberes
     }
 }
@@ -214,6 +248,59 @@ pub(crate) fn read_file_range(
     Ok(buffer)
 }
 
+/// Handle shared by every read of a cached local pack. `None` where positioned reads are not
+/// available, which falls back to one short-lived handle per read.
+fn open_pack_handle(path: &Path) -> Option<File> {
+    if cfg!(any(unix, windows)) {
+        File::open(path).ok()
+    } else {
+        None
+    }
+}
+
+/// Read `size` bytes at `offset` of a local pack, on its shared handle when it has one.
+fn read_pack_range(
+    file: Option<&File>,
+    path: &Path,
+    offset: u64,
+    size: usize,
+) -> Result<Vec<u8>, FormatError> {
+    #[cfg(any(unix, windows))]
+    if let Some(file) = file {
+        let mut buffer = vec![0u8; size];
+        read_exact_at(file, &mut buffer, offset)
+            .map_err(|_| FormatError::TooShort { got: 0, need: size })?;
+        return Ok(buffer);
+    }
+    #[cfg(not(any(unix, windows)))]
+    let _ = file;
+    read_file_range(path, offset, size)
+}
+
+/// `pread`: no seek, so the handle is safe to share between threads.
+#[cfg(unix)]
+fn read_exact_at(file: &File, buffer: &mut [u8], offset: u64) -> std::io::Result<()> {
+    std::os::unix::fs::FileExt::read_exact_at(file, buffer, offset)
+}
+
+/// Positioned read through `seek_read` (the file cursor moves, but nothing reads through it).
+#[cfg(windows)]
+fn read_exact_at(file: &File, buffer: &mut [u8], offset: u64) -> std::io::Result<()> {
+    let mut done = 0;
+    while done < buffer.len() {
+        let read = std::os::windows::fs::FileExt::seek_read(
+            file,
+            &mut buffer[done..],
+            offset + done as u64,
+        )?;
+        if read == 0 {
+            return Err(std::io::ErrorKind::UnexpectedEof.into());
+        }
+        done += read;
+    }
+    Ok(())
+}
+
 /// Parse the header and TOC of a local pack without reading its payload.
 pub(crate) fn open_local_toc(path: &Path, name: &str) -> Result<CpkReader, FormatError> {
     CpkReader::from_reader(name, |offset, size| read_file_range(path, offset, size))
@@ -228,6 +315,15 @@ pub struct VfsEntry {
     pub internal_path: String,
     pub cpk_filename: String,
     pub file_size: u32,
+}
+
+/// A byte range of an installation file and the file's total length ([`Vfs::raw_range`]).
+#[derive(Debug, Clone)]
+pub struct RawRange {
+    /// Length of the whole file.
+    pub total: u64,
+    /// The bytes of the range, clamped to the end of the file.
+    pub bytes: Vec<u8>,
 }
 
 /// Borrowed view of one servable entry (main index or extra pack), see [`Vfs::iter_all`].
@@ -267,6 +363,20 @@ pub struct Vfs {
     overlays: HashMap<String, PathBuf>,
     #[cfg(feature = "remote-vfs")]
     remote: Option<crate::vfs_remote::RemoteStorage>,
+}
+
+impl crate::vfs_read::VfsRead for Vfs {
+    fn read(&self, path: &str) -> Result<Vec<u8>, FormatError> {
+        Vfs::read(self, path)
+    }
+
+    fn contains(&self, path: &str) -> bool {
+        self.find_any(path).is_some()
+    }
+
+    fn entries(&self) -> Box<dyn Iterator<Item = (&str, u64)> + '_> {
+        Box::new(self.iter_all().map(|entry| (entry.path, entry.size)))
+    }
 }
 
 impl Default for Vfs {
@@ -408,7 +518,7 @@ impl Vfs {
                 })?;
                 self.register_extra_pack(&name, &reader);
                 if let Ok(mut cache) = self.cpk_cache.lock() {
-                    cache.insert(name, Arc::new((reader, Vec::new())));
+                    cache.insert(name, Arc::new((reader, None)));
                 }
             }
             self.game_data_dir = PathBuf::from(source);
@@ -437,67 +547,22 @@ impl Vfs {
     }
 
     fn index_cpk_list(&mut self, data: &[u8]) -> Result<(), FormatError> {
-        // Déchiffrement du cpk_list.cfg.bin — DEUX variantes coexistent selon le build :
-        //   - builds Steam récents : AES-256-CBC (clé/IV reversés de nie.exe) → `decrypt_cpk_list` ;
-        //   - dumps plus anciens : enveloppe à clé fixe Viola → `decrypt_block(_, 0, VIOLA_FIXED_KEY)`.
-        // On tente l'AES d'abord, puis Viola en repli, en VALIDANT chaque résultat par
-        // `cfgbin_parse` (durci contre les en-têtes chiffrés/corrompus : renvoie Err sans
-        // paniquer). Le premier déchiffrement produisant un cfg.bin valide gagne. Indispensable :
-        // un seul des deux déchiffre correctement un fichier donné (l'autre rend du garbage).
-        let cfg = crate::cpk::decrypt_cpk_list(data)
-            .ok()
-            .and_then(|aes| crate::cfgbin::cfgbin_parse(&aes).ok())
-            .or_else(|| {
-                let mut viola = data.to_vec();
-                crate::cpk::decrypt_block(&mut viola, 0, crate::cpk::VIOLA_FIXED_KEY);
-                crate::cfgbin::cfgbin_parse(&viola).ok()
-            })
-            .ok_or(FormatError::Corrupt(
-                "echec de parsing du cpk_list.cfg.bin (ni AES-256-CBC ni clé Viola)",
-            ))?;
-
-        // Parcourir les entrées et indexer les fichiers
-        for root_entry in &cfg.entries {
-            for child in &root_entry.children {
-                if child.variables.len() < 5 {
-                    continue;
-                }
-                let directory = match &child.variables[0] {
-                    crate::cfgbin::Value::String(s) => s,
-                    _ => continue,
-                };
-                let filename = match &child.variables[1] {
-                    crate::cfgbin::Value::String(s) => s,
-                    _ => continue,
-                };
-                let cpk_hash = match &child.variables[3] {
-                    crate::cfgbin::Value::String(s) => s,
-                    _ => continue,
-                };
-                // `Value::Int` is an `i32`: a negative size is corrupt, not a 4 GiB file.
-                let file_size = match child.variables.get(4) {
-                    Some(crate::cfgbin::Value::Int(v)) => u32::try_from(*v).unwrap_or(0),
-                    _ => 0,
-                };
-
-                let internal_path = crate::vfs_manifest::join_canonical(directory, filename);
-
-                let entry = VfsEntry {
-                    internal_path: internal_path.clone(),
-                    cpk_filename: cpk_hash.clone(),
-                    file_size,
-                };
-
-                // Les entrées avec un nom CPK non vide sont des fichiers dans un pack.
-                // Les entrées avec un nom CPK vide sont des fichiers loose (ex. vidéos d'intro
-                // `IE_15th.usm`, `L5logo.usm`, config `app_config_6.00.23.00.cfg.bin`) :
-                // le jeu les charge directement depuis le disque. On les enregistre quand même
-                // afin que `read()` puisse les servir en fallback disque (cf. gestion en aval).
-                if !cpk_hash.is_empty() {
-                    self.cpk_names.insert(cpk_hash.clone());
-                }
-                self.index.insert(internal_path, entry);
+        // Decryption and decoding live in `cpk_list::parse`, shared with the asynchronous mounts.
+        for entry in crate::cpk_list::parse(data)? {
+            // Entries with a pack name are files in a pack. Entries with an empty one are loose
+            // files (intro videos `IE_15th.usm`, `L5logo.usm`, `app_config_*.cfg.bin`): the game
+            // loads them from disk, and they are registered so `read()` can serve them from it.
+            if !entry.pack.is_empty() {
+                self.cpk_names.insert(entry.pack.clone());
             }
+            self.index.insert(
+                entry.path.clone(),
+                VfsEntry {
+                    internal_path: entry.path,
+                    cpk_filename: entry.pack,
+                    file_size: entry.size,
+                },
+            );
         }
 
         Ok(())
@@ -896,7 +961,12 @@ impl Vfs {
             arc
         } else {
             let reader = open_local_toc(&cpk_path, cpk_filename)?;
-            let arc = Arc::new((reader, Vec::new()));
+            let file = if cache.wants_handle() {
+                open_pack_handle(&cpk_path)
+            } else {
+                None
+            };
+            let arc = Arc::new((reader, file));
             cache.insert(cpk_filename.clone(), arc.clone());
             arc
         };
@@ -905,18 +975,18 @@ impl Vfs {
         // our `Arc` keeps alive even if another thread evicts this pack meanwhile).
         drop(cache);
 
-        let (reader, _) = &*reader_arc;
+        let (reader, file) = &*reader_arc;
 
         // Full path (`directory/filename`) first: same-named files of different directories of
         // the SAME pack (`common/text/fr/skill_text.cfg.bin` vs `.../de/...`) must not collide.
         // `find_file` then falls back to a case-insensitive / basename match for the extra index
-        // whose paths may have been lowercased by the azalee scan.
+        // whose paths may have been lowercased by the wiki scan.
         let cpk_entry = reader
             .find_file(internal_path)
             .ok_or(FormatError::Corrupt("fichier non trouve dans le CPK"))?;
 
         reader.extract_from_reader(cpk_entry, |offset, size| {
-            read_file_range(&cpk_path, offset, size)
+            read_pack_range(file.as_ref(), &cpk_path, offset, size)
         })
     }
 
@@ -970,7 +1040,7 @@ impl Vfs {
             let reader = CpkReader::from_reader(cpk, |offset, length| {
                 remote.range(&format!("packs/{cpk}"), offset, length)
             })?;
-            let reader = Arc::new((reader, Vec::new()));
+            let reader = Arc::new((reader, None));
             cache.insert(cpk.clone(), reader.clone());
             reader
         };
@@ -984,6 +1054,50 @@ impl Vfs {
         reader.0.extract_from_reader(entry, |offset, length| {
             remote.range(&format!("packs/{cpk}"), offset, length)
         })
+    }
+
+    /// A byte range of one file of the installation's data folder, with the file's total length:
+    /// the index (`cpk_list.cfg.bin`), a pack (`packs/<pack>`) or a loose file the index declares.
+    ///
+    /// This is how a host serves the packs to a client that decodes them itself (the browser
+    /// app): the client reads the same bytes this VFS reads. Local installations only, and only
+    /// those three kinds of file, so a caller cannot reach anything else on the disk.
+    ///
+    /// # Errors
+    ///
+    /// The mount is remote, the path is none of the three kinds, or the file cannot be read.
+    pub fn raw_range(&self, relative: &str, offset: u64, len: usize) -> Result<RawRange, FormatError> {
+        #[cfg(feature = "remote-vfs")]
+        if self.remote.is_some() {
+            return Err(FormatError::Corrupt(
+                "raw byte ranges need a local installation",
+            ));
+        }
+        let parts: Vec<&str> = relative.split('/').collect();
+        let plain = relative == "cpk_list.cfg.bin"
+            || (parts.len() == 2 && parts[0] == "packs" && parts[1].to_ascii_lowercase().ends_with(".cpk"))
+            || self
+                .find(&format!("data/{relative}"))
+                .is_some_and(|entry| entry.cpk_filename.is_empty());
+        if !plain
+            || self.loose_files
+            || relative.starts_with('/')
+            || relative.contains(['\\', '\0'])
+            || parts.iter().any(|p| p.is_empty() || *p == ".." || *p == ".")
+        {
+            return Err(FormatError::Corrupt("not a servable installation file"));
+        }
+        let path = self.game_data_dir.join(relative);
+        let total = std::fs::metadata(&path)
+            .map_err(|_| FormatError::Corrupt("installation file not found"))?
+            .len();
+        let end = offset.saturating_add(len as u64).min(total);
+        let bytes = if end <= offset {
+            Vec::new()
+        } else {
+            read_file_range(&path, offset, usize::try_from(end - offset).unwrap_or(0))?
+        };
+        Ok(RawRange { total, bytes })
     }
 
     /// Rend un chemin logique accessible comme **fichier sur disque**, pour les consommateurs
@@ -1203,7 +1317,7 @@ impl Vfs {
         Ok(Manifest::new(game, rows))
     }
 
-    fn toc_for_manifest(&self, pack: &str) -> Result<Arc<(CpkReader, Vec<u8>)>, FormatError> {
+    fn toc_for_manifest(&self, pack: &str) -> Result<Arc<CachedPack>, FormatError> {
         if let Ok(mut cache) = self.cpk_cache.lock()
             && let Some(hit) = cache.get(pack)
         {
@@ -1214,10 +1328,10 @@ impl Vfs {
             let reader = CpkReader::from_reader(pack, |offset, length| {
                 remote.range(&format!("packs/{pack}"), offset, length)
             })?;
-            return Ok(Arc::new((reader, Vec::new())));
+            return Ok(Arc::new((reader, None)));
         }
         let path = self.game_data_dir.join("packs").join(pack);
-        Ok(Arc::new((open_local_toc(&path, pack)?, Vec::new())))
+        Ok(Arc::new((open_local_toc(&path, pack)?, None)))
     }
 
     /// Ajoute un fichier d'overlay au VFS associant un chemin logique interne à un fichier réel sur disque.
@@ -1701,15 +1815,11 @@ pub fn resolve_game_dir() -> PathBuf {
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local/share")));
     if let Some(base) = base_donnees {
-        let steam = base.join("Steam");
-        for suffixe in [
-            "iecode/inazuma",
-            "steamapps/common/INAZUMA ELEVEN Victory Road",
-        ] {
-            let chemin = steam.join(suffixe);
-            if chemin.join(MARQUEUR_RACINE).is_file() {
-                return chemin;
-            }
+        let chemin = base
+            .join("Steam")
+            .join("steamapps/common/INAZUMA ELEVEN Victory Road");
+        if chemin.join(MARQUEUR_RACINE).is_file() {
+            return chemin;
         }
     }
     // Aucune installation en vue : un dump extrait sert les mêmes chemins logiques et suffit
@@ -1726,6 +1836,58 @@ pub fn resolve_game_dir() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// One pack, files of several sizes, read through the shared handle from many threads: every
+    /// read returns exactly the bytes that were packed, and the cache keeps one handle per pack.
+    #[test]
+    fn la_poignee_partagee_sert_les_memes_octets_a_tous_les_lecteurs() {
+        use crate::cpk_encode::{CpkWriteEntry, encode_cpk};
+        use crate::cpk_list::{CpkListEntry, encode};
+
+        let base = std::env::temp_dir().join(format!("nie-vfs-handle-{}", std::process::id()));
+        let data = base.join("data");
+        std::fs::create_dir_all(data.join("packs")).expect("arborescence");
+        let files: Vec<CpkWriteEntry> = (0..40usize)
+            .map(|i| CpkWriteEntry {
+                directory: "data/common/menu".into(),
+                filename: format!("f{i:02}.bin"),
+                data: (0..(100 + i * 331)).map(|b| (b * 7 + i) as u8).collect(),
+            })
+            .collect();
+        std::fs::write(data.join("packs/h.cpk"), encode_cpk(&files).expect("cpk")).expect("pack");
+        let entries: Vec<CpkListEntry> = files
+            .iter()
+            .map(|f| CpkListEntry {
+                path: format!("{}/{}", f.directory, f.filename),
+                pack: "h.cpk".to_owned(),
+                size: f.data.len() as u32,
+            })
+            .collect();
+        std::fs::write(data.join("cpk_list.cfg.bin"), encode(&entries)).expect("cpk_list");
+
+        let mut vfs = Vfs::new();
+        vfs.init(&data).expect("init");
+        std::thread::scope(|scope| {
+            for _ in 0..4 {
+                scope.spawn(|| {
+                    for _ in 0..3 {
+                        for f in &files {
+                            let path = format!("{}/{}", f.directory, f.filename);
+                            assert_eq!(vfs.read(&path).expect("read"), f.data, "{path}");
+                        }
+                    }
+                });
+            }
+        });
+        {
+            let cache = vfs.cpk_cache.lock().expect("lock");
+            assert_eq!(cache.map.len(), 1);
+            assert_eq!(cache.open, 1, "one open handle for the cached pack");
+        }
+        vfs.vider_cache();
+        assert_eq!(vfs.cpk_cache.lock().expect("lock").open, 0);
+        std::fs::remove_dir_all(&base).ok();
+    }
 
     /// Le `cpk_list` annonce les vidéos d'introduction sous `common/movie/` alors que le disque
     /// les range sous `dx11/movie/`. Sans repli, `read` et tout dump les déclaraient

@@ -78,7 +78,7 @@ fn main() {
     let f = pk.files.iter().find(|f| f.name.ends_with(".g4mt")).unwrap();
     let g4mt_bytes = &pk_bytes[f.offset..f.offset + f.size];
     let motion = g4mt::Motion::parse(g4mt_bytes).unwrap();
-    let clip_selector: usize = std::env::var("CLIP")
+    let clip_selector: usize = std::env::var("NIE_EXAMPLE_CLIP")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(0);

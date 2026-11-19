@@ -23,6 +23,7 @@ use anyhow::{Context, Result};
 use nie_gpu::wgpu;
 use nie_gpu::{DeviceLimits, DeviceRequest, request_adapter, request_device};
 use wgpu::util::{DeviceExt, StagingBelt};
+use wgpu_profiler::{GpuProfiler, GpuProfilerSettings, GpuTimerQueryResult};
 
 use crate::glb::Model;
 use crate::render::bounds;
@@ -128,6 +129,10 @@ pub struct GpuOptions {
     pub backend: Backend,
     /// Autorise un adaptateur logiciel de la même API, jamais un repli vers une autre API.
     pub allow_software: bool,
+    /// Demande `TIMESTAMP_QUERY` quand l'adaptateur l'offre, pour que
+    /// [`GpuRenderer::gpu_pass_ms`] rende le temps GPU de la passe. Désactivé par défaut : un
+    /// viewport interactif n'a pas à payer la résolution des requêtes à chaque image.
+    pub timestamps: bool,
 }
 
 impl Default for GpuOptions {
@@ -135,6 +140,7 @@ impl Default for GpuOptions {
         Self {
             backend: Backend::default(),
             allow_software: true,
+            timestamps: false,
         }
     }
 }
@@ -178,12 +184,9 @@ fn srgb_vers_lineaire(c: u8) -> f32 {
 /// Le tampon est reconstruit à chaque appel plutôt que mis à jour en place : une grille et un
 /// gizmo pèsent quelques kilo-octets, et un tampon persistant obligerait à gérer son
 /// redimensionnement pour un gain qui ne se mesure pas.
-#[allow(dead_code)]
 pub struct GpuLines {
-    #[allow(dead_code)]
     buffer: wgpu::Buffer,
     /// Nombre de SOMMETS (deux par segment).
-    #[allow(dead_code)]
     vertex_count: u32,
 }
 
@@ -422,13 +425,14 @@ pub struct GpuRenderer {
     /// les arêtes des TRIANGLES du modèle, alors qu'une grille et un gizmo sont une géométrie
     /// propre qui n'existe dans aucun maillage. Il partage l'uniforme de caméra du premier, ce
     /// qui est la condition pour que les deux se superposent au pixel près.
-    #[allow(dead_code)]
     line_pipeline: wgpu::RenderPipeline,
     /// Uniforme et groupe de liaison réemployés à chaque image. Seules ses données changent avec
     /// la caméra ; aucun objet GPU n'est donc alloué dans la boucle des primitives.
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     camera_layout: wgpu::BindGroupLayout,
+    /// Temps GPU des passes par requêtes d'horodatage ; inerte sans `TIMESTAMP_QUERY` sur le device.
+    profiler: GpuProfiler,
     /// One uniform buffer + bind group per scene instance, grown on demand and reused.
     scene_uniforms: Vec<(wgpu::Buffer, wgpu::BindGroup)>,
     texture_layout: wgpu::BindGroupLayout,
@@ -565,7 +569,12 @@ impl GpuRenderer {
             DeviceRequest::new(
                 Some("nie-render3d gpu"),
                 DeviceLimits::DownlevelWithAdapterResolution,
-            ),
+            )
+            .with_features(if options.timestamps {
+                nie_gpu::timestamp_features(&adapter)
+            } else {
+                wgpu::Features::empty()
+            }),
         )
         .await
         .context("création du device wgpu")?;
@@ -768,6 +777,16 @@ impl GpuRenderer {
             cache: None,
         });
 
+        let profiler = GpuProfiler::new(
+            &device,
+            GpuProfilerSettings {
+                enable_timer_queries: device.features().contains(wgpu::Features::TIMESTAMP_QUERY),
+                enable_debug_groups: false,
+                max_num_pending_frames: 3,
+            },
+        )
+        .expect("constant profiler settings are valid");
+
         Self {
             adapter_info,
             device,
@@ -777,6 +796,7 @@ impl GpuRenderer {
             camera_buffer,
             camera_bind_group,
             camera_layout,
+            profiler,
             scene_uniforms: Vec::new(),
             texture_layout,
             sampler,
@@ -790,6 +810,16 @@ impl GpuRenderer {
     #[must_use]
     pub fn adapter_info(&self) -> &wgpu::AdapterInfo {
         &self.adapter_info
+    }
+
+    /// Temps GPU, en millisecondes, de la plus ancienne passe dont les requêtes sont revenues ;
+    /// `None` sans `TIMESTAMP_QUERY` sur le device (voir [`GpuOptions::timestamps`]) ou tant
+    /// qu'aucune image n'est terminée. À appeler après une attente du device (`poll`) : les
+    /// résultats arrivent par `map_async`, jamais par un blocage de ce renderer.
+    pub fn gpu_pass_ms(&mut self) -> Option<f64> {
+        let period = self.queue.get_timestamp_period();
+        let frame = self.profiler.process_finished_frame(period)?;
+        frame.iter().find_map(pass_ms)
     }
 
     /// Device partagé avec l'hôte de présentation ; les textures ne doivent pas changer de device.
@@ -1138,7 +1168,8 @@ impl GpuRenderer {
         self.staging_belt.finish();
 
         {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut frame = self.profiler.scope("frame", &mut encoder);
+            let mut pass = frame.scoped_render_pass("viewport", wgpu::RenderPassDescriptor {
                 label: Some("viewport"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &targets.color_view,
@@ -1186,7 +1217,10 @@ impl GpuRenderer {
             }
         }
 
+        self.profiler.resolve_queries(&mut encoder);
         self.queue.submit(Some(encoder.finish()));
+        // `end_frame` only reports queries left open, which the scopes above never leave.
+        let _ = self.profiler.end_frame();
         self.staging_belt.recall();
         Ok(&targets.color_view)
     }
@@ -1537,7 +1571,8 @@ impl GpuRenderer {
                 label: Some("scene"),
             });
         {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut frame = self.profiler.scope("frame", &mut encoder);
+            let mut pass = frame.scoped_render_pass("scene", wgpu::RenderPassDescriptor {
                 label: Some("scene"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &targets.color_view,
@@ -1575,9 +1610,20 @@ impl GpuRenderer {
                 }
             }
         }
+        self.profiler.resolve_queries(&mut encoder);
         self.queue.submit(Some(encoder.finish()));
+        let _ = self.profiler.end_frame();
         Ok(&targets.color_view)
     }
+}
+
+/// Duration of the first timed scope found depth-first in a profiler frame, in milliseconds.
+fn pass_ms(query: &GpuTimerQueryResult) -> Option<f64> {
+    query
+        .time
+        .as_ref()
+        .map(|time| (time.end - time.start) * 1e3)
+        .or_else(|| query.nested_queries.iter().find_map(pass_ms))
 }
 
 #[cfg(test)]

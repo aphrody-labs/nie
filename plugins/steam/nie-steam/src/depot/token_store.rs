@@ -1,6 +1,6 @@
 //! Cache JSON des jetons d'authentification Steam par compte.
 //!
-//! Port de `IECODE.Core/Steam/Content/SteamTokenStore.cs` (C#).
+//! Port de `SteamTokenStore.cs` (C#).
 //! Chaque entrée stocke un `refresh_token` (re-login sans mot de passe) et
 //! optionnellement un `guard_data` (remembered machine, évite le 2FA répété).
 //!
@@ -24,10 +24,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use tracing::warn;
 
-/// Chemin par défaut du token store : `$STEAM_HOME/steam-tokens.json` si `STEAM_HOME` est défini,
+/// Chemin par défaut du token store : `$NIE_STEAM_HOME/steam-tokens.json` si `NIE_STEAM_HOME` est défini,
 /// sinon `~/.local/share/nie/steam-tokens.json`.
 pub fn default_path() -> PathBuf {
-    if let Some(home) = std::env::var_os("STEAM_HOME").filter(|v| !v.is_empty()) {
+    if let Some(home) = std::env::var_os("NIE_STEAM_HOME").filter(|v| !v.is_empty()) {
         return PathBuf::from(home).join("steam-tokens.json");
     }
     dirs_next::data_dir()

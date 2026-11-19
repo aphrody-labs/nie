@@ -20,6 +20,7 @@ extern crate alloc;
 use alloc::vec::Vec;
 
 use crate::FormatError;
+use crate::level5::read_u32_le;
 
 /// Magic « DXBC » en little-endian.
 const MAGIC: u32 = 0x4342_5844;
@@ -66,7 +67,7 @@ impl Dxbc {
 /// `true` si les 4 premiers octets sont le magic « DXBC ».
 #[must_use]
 pub fn is_dxbc(data: &[u8]) -> bool {
-    read_u32(data, 0).is_ok_and(|m| m == MAGIC)
+    read_u32_le(data, 0).is_ok_and(|m| m == MAGIC)
 }
 
 /// Parse le conteneur DXBC : en-tête + table de chunks (fourcc/offset/taille), tout borné.
@@ -86,9 +87,9 @@ pub fn parse(data: &[u8]) -> Result<Dxbc, FormatError> {
     }
     let mut digest = [0u8; 16];
     digest.copy_from_slice(&data[4..20]);
-    let version = read_u32(data, 0x14)?;
-    let total_size = read_u32(data, 0x18)?;
-    let chunk_count = read_u32(data, 0x1C)? as usize;
+    let version = read_u32_le(data, 0x14)?;
+    let total_size = read_u32_le(data, 0x18)?;
+    let chunk_count = read_u32_le(data, 0x1C)? as usize;
 
     // La table d'offsets (chunk_count × u32) doit tenir juste après l'en-tête.
     let table_end = 0x20usize
@@ -104,14 +105,14 @@ pub fn parse(data: &[u8]) -> Result<Dxbc, FormatError> {
 
     let mut chunks = Vec::with_capacity(chunk_count.min(64));
     for i in 0..chunk_count {
-        let off = read_u32(data, 0x20 + i * 4)? as usize;
+        let off = read_u32_le(data, 0x20 + i * 4)? as usize;
         // en-tête de chunk : fourcc(4) + size(4)
         if off.checked_add(8).is_none_or(|e| e > data.len()) {
             return Err(FormatError::Corrupt("dxbc: en-tête de chunk hors limites"));
         }
         let mut fourcc = [0u8; 4];
         fourcc.copy_from_slice(&data[off..off + 4]);
-        let size = read_u32(data, off + 4)? as usize;
+        let size = read_u32_le(data, off + 4)? as usize;
         let data_offset = off + 8;
         if data_offset.checked_add(size).is_none_or(|e| e > data.len()) {
             return Err(FormatError::Corrupt("dxbc: données de chunk hors limites"));
@@ -130,15 +131,6 @@ pub fn parse(data: &[u8]) -> Result<Dxbc, FormatError> {
         chunks,
         file_size: data.len(),
     })
-}
-
-fn read_u32(data: &[u8], off: usize) -> Result<u32, FormatError> {
-    data.get(off..off + 4)
-        .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
-        .ok_or(FormatError::TooShort {
-            got: data.len(),
-            need: off + 4,
-        })
 }
 
 #[cfg(test)]

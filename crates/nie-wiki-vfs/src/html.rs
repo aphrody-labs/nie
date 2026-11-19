@@ -6,7 +6,9 @@ use std::fmt::Write as _;
 use serde_json::Value;
 
 use crate::model::{
-    Character, Coded, Emblem, Language, Localized, NoSource, Provenance, Skill, Team,
+    CatalogEntry, Character, CharacterClass, ClassCount, ClassRole, Coded, Emblem, Language,
+    LearnedSkill, Localized, NoSource, Provenance, RefSlice, Skill, SkillFamily, TableInfo,
+    TableRecord, Team,
 };
 use crate::wiki::{Page, Source};
 
@@ -75,7 +77,7 @@ fn layout(ctx: Option<&Ctx<'_>>, languages: &[Language], title: &str, body: &str
     let tag = ctx.map_or("en", |c| c.lang.tag.as_str());
     let mut nav = String::from("<a href=\"/wiki\">Wiki</a>");
     if let Some(ctx) = ctx {
-        for family in ["characters", "skills", "teams"] {
+        for family in ["characters", "skills", "teams", "tables"] {
             let _ = write!(
                 nav,
                 "<a href=\"/wiki/{}/{family}\">{family}</a>",
@@ -134,7 +136,14 @@ fn label<'a>(localized: Option<&'a Localized>, lang: &Language) -> Option<&'a st
 }
 
 fn name_or_code(c: &Character, lang: &Language) -> String {
-    label(c.name.as_ref(), lang).map_or_else(|| c.internal_code.clone(), str::to_owned)
+    label(c.name.as_ref(), lang).map_or_else(
+        || {
+            c.internal_code
+                .clone()
+                .unwrap_or_else(|| c.chara_base_id.to_string())
+        },
+        str::to_owned,
+    )
 }
 
 fn coded(value: &Coded, lang: &Language) -> String {
@@ -242,9 +251,34 @@ fn search(base: &str, params: &ListParams) -> String {
     )
 }
 
-/// `/wiki`: the languages, the families, their backing tables and the families without a source.
+/// The page key of a character: the `chara_param` id, else `base-<n>` of its `chara_base` entry.
 #[must_use]
-pub fn index(languages: &[Language], sources: &[Source], unsourced: &[NoSource]) -> String {
+pub fn character_key(c: &Character) -> String {
+    match (c.chara_param_id, &c.base_source) {
+        (Some(id), _) => id.to_string(),
+        (None, Some(base)) => format!("base-{}", base.index),
+        (None, None) => c.chara_base_id.to_string(),
+    }
+}
+
+fn class_text(class: CharacterClass) -> &'static str {
+    match class {
+        CharacterClass::ParamAndBase => "param and base",
+        CharacterClass::ParamWithoutBase => "param without base",
+        CharacterClass::BaseWithoutParam => "base without param",
+    }
+}
+
+/// `/wiki`: the languages, the tables behind each family, the classes of characters, the
+/// families without a source, and every gamedata file with its status.
+#[must_use]
+pub fn index(
+    languages: &[Language],
+    sources: &[Source],
+    classes: &[ClassCount],
+    unsourced: &[NoSource],
+    catalog: &[CatalogEntry],
+) -> String {
     let mut body = String::from(
         "<h1>Inazuma Eleven: Victory Road</h1>\
 <p>The game's own data, read from its VFS. Choose a language.</p><ul>",
@@ -255,26 +289,51 @@ pub fn index(languages: &[Language], sources: &[Source], unsourced: &[NoSource])
             body,
             "<li lang=\"{0}\"><strong>{0}</strong> (<code>{1}</code>): \
 <a href=\"/wiki/{tag}/characters\">characters</a>, <a href=\"/wiki/{tag}/skills\">skills</a>, \
-<a href=\"/wiki/{tag}/teams\">teams</a></li>",
+<a href=\"/wiki/{tag}/teams\">teams</a>, <a href=\"/wiki/{tag}/tables\">tables</a></li>",
             esc(&language.tag),
             esc(&language.folder)
         );
     }
-    body.push_str("</ul><h2>Backing tables</h2><table><thead><tr><th>Family</th><th>VFS path</th><th>Table</th><th>Entries</th></tr></thead><tbody>");
+    body.push_str("</ul><h2>Backing tables</h2><table><thead><tr><th>Family</th><th>VFS path</th><th>Class</th><th>Entries</th></tr></thead><tbody>");
     for source in sources {
         let _ = write!(
             body,
             "<tr><td>{}</td><td><code>{}</code></td><td><code>{}</code></td><td>{}</td></tr>",
             esc(source.family),
             esc(&source.vfs_path),
-            esc(source.table),
+            esc(&source.table),
             source.entries
+        );
+    }
+    body.push_str("</tbody></table><h2>Character records by class</h2><table><thead><tr><th>Class</th><th>Records</th><th>Meaning</th></tr></thead><tbody>");
+    for class in classes {
+        let _ = write!(
+            body,
+            "<tr><td><code>{}</code></td><td>{}</td><td>{}</td></tr>",
+            class_text(class.class),
+            class.count,
+            esc(class.description)
         );
     }
     body.push_str("</tbody></table><h2>Families without a source</h2>");
     for state in unsourced {
         body.push_str(&empty(state));
     }
+    let decoded = catalog.iter().filter(|e| e.status == "decoded").count();
+    let _ = write!(
+        body,
+        "<h2>Gamedata files</h2><p>{} files under <code>data/common/gamedata</code>; {decoded} decoded by a family above, the others present and not decoded.</p><details><summary>List</summary><table><thead><tr><th>VFS path</th><th>Status</th></tr></thead><tbody>",
+        catalog.len()
+    );
+    for entry in catalog {
+        let _ = write!(
+            body,
+            "<tr><td><code>{}</code></td><td>{}</td></tr>",
+            esc(&entry.vfs_path),
+            esc(entry.status)
+        );
+    }
+    body.push_str("</tbody></table></details>");
     layout(None, languages, "Wiki", &body)
 }
 
@@ -291,41 +350,156 @@ pub fn not_found(languages: &[Language], what: &str) -> String {
 
 /// `/wiki/<lang>/characters`.
 #[must_use]
-pub fn characters(ctx: &Ctx<'_>, page: &Page<Character>, params: &ListParams) -> String {
+pub fn characters(
+    ctx: &Ctx<'_>,
+    page: &Page<Character>,
+    params: &ListParams,
+    classes: &[ClassCount],
+) -> String {
     let base = format!("/wiki/{}/characters", seg(&ctx.lang.tag));
     let mut body = format!("<h1>Characters</h1>{}", search(&base, params));
+    body.push_str("<p class=\"prov\">");
+    for class in classes {
+        let _ = write!(
+            body,
+            "<a href=\"{base}?class={0}&amp;limit={1}\"><code>{0}</code></a>: {2} &mdash; {3}<br>",
+            class_slug(class.class),
+            params.limit,
+            class.count,
+            esc(class.description)
+        );
+    }
+    body.push_str("</p>");
     body.push_str(&pager(&base, params, page.total, page.items.len()));
-    body.push_str("<table><thead><tr><th>Name</th><th>Code</th><th>Element</th><th>Main position</th><th>Sub position</th><th>Team</th></tr></thead><tbody>");
+    body.push_str("<table><thead><tr><th>Name</th><th>Romanized</th><th>Code</th><th>Class</th><th>Element</th><th>Main position</th><th>Sub position</th><th>Team</th></tr></thead><tbody>");
     for c in &page.items {
         let team = c.team.as_ref().map_or_else(String::new, |team| {
             let text = label(team.name.as_ref(), ctx.lang)
-                .map_or_else(|| format!("{}", team.belong_team_id), str::to_owned);
+                .map_or_else(|| team.belong_team_id.to_string(), str::to_owned);
             format!(
-                "<a href=\"/wiki/{}/teams/0x{:08X}\">{}</a>",
+                "<a href=\"/wiki/{}/teams/{}\">{}</a>",
                 seg(&ctx.lang.tag),
-                team.belong_team_id.0,
+                team.belong_team_id,
                 esc(&text)
             )
         });
+        let optional = |value: &Option<Coded>| {
+            value
+                .as_ref()
+                .map_or_else(String::new, |v| coded(v, ctx.lang))
+        };
         let _ = write!(
             body,
-            "<tr><td><a href=\"{base}/0x{:08X}\">{}</a></td><td><code>{}</code></td><td>{}</td><td>{}</td><td>{}</td><td>{team}</td></tr>",
-            c.chara_param_id.0,
+            "<tr><td><a href=\"{base}/{}\">{}</a></td><td>{}</td><td><code>{}</code></td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{team}</td></tr>",
+            seg(&character_key(c)),
             esc(&name_or_code(c, ctx.lang)),
-            esc(&c.internal_code),
-            coded(&c.element, ctx.lang),
-            coded(&c.main_position, ctx.lang),
-            coded(&c.sub_position, ctx.lang),
+            esc(label(c.name_roma.as_ref(), ctx.lang).unwrap_or("")),
+            esc(c.internal_code.as_deref().unwrap_or("")),
+            class_text(c.class),
+            optional(&c.element),
+            optional(&c.main_position),
+            optional(&c.sub_position),
         );
     }
     body.push_str("</tbody></table>");
-    body.push_str("<h2>Sources</h2><p class=\"prov\">Rows are <code>chara_param</code> entries joined to <code>chara_base</code>; each page names its entries.</p>");
+    body.push_str("<h2>Sources</h2><p class=\"prov\">Every <code>chara_param</code> entry and every <code>chara_base</code> entry is one record; each page names its entries.</p>");
     layout(
         Some(ctx),
         ctx.languages,
         &format!("Characters ({})", ctx.lang.tag),
         &body,
     )
+}
+
+fn class_slug(class: CharacterClass) -> &'static str {
+    match class {
+        CharacterClass::ParamAndBase => "param_and_base",
+        CharacterClass::ParamWithoutBase => "param_without_base",
+        CharacterClass::BaseWithoutParam => "base_without_param",
+    }
+}
+
+fn family_stem(family: SkillFamily) -> &'static str {
+    match family {
+        SkillFamily::Skill => "skill_config",
+        SkillFamily::Aura => "aura_skill_config",
+        SkillFamily::Passive => "passive_skill_config",
+    }
+}
+
+fn learned_row(ctx: &Ctx<'_>, skill: &LearnedSkill) -> String {
+    let tag = seg(&ctx.lang.tag);
+    let name = label(skill.name.as_ref(), ctx.lang);
+    let shown = name.map_or_else(|| skill.skill_id.to_string(), str::to_owned);
+    let (link, status) = match (&skill.family, &skill.entry) {
+        (Some(SkillFamily::Skill), _) => (
+            format!("/wiki/{tag}/skills/{}", skill.skill_id),
+            String::new(),
+        ),
+        (Some(family), Some(entry)) => (
+            format!(
+                "/wiki/{tag}/tables/{}/{}/{}",
+                family_stem(*family),
+                seg(&entry.table),
+                entry.index
+            ),
+            String::new(),
+        ),
+        _ => (String::new(), String::new()),
+    };
+    let note = match (&skill.family, skill.name_text_id, &skill.name) {
+        (None, _, _) => {
+            "no entry with this id in skill_config, aura_skill_config or passive_skill_config"
+                .to_owned()
+        }
+        (Some(_), None, _) => "the entry has no name text key".to_owned(),
+        (Some(_), Some(key), None) => {
+            format!("text key {key} has no row in skill_text, in any language")
+        }
+        (Some(_), Some(_), Some(_)) => status,
+    };
+    let family = skill.family.map_or("none", |f| family_stem(f));
+    let cell = if link.is_empty() {
+        esc(&shown)
+    } else {
+        format!("<a href=\"{}\">{}</a>", esc(&link), esc(&shown))
+    };
+    let note = if note.is_empty() {
+        String::new()
+    } else {
+        format!("<span class=\"empty\">{}</span>", esc(&note))
+    };
+    format!(
+        "<tr><td>{cell} {note}</td><td>{}</td><td><code>{}</code></td><td>{}</td></tr>",
+        skill.learn_level,
+        skill.skill_id,
+        esc(family)
+    )
+}
+
+fn slice_block(heading: &str, slice: &RefSlice) -> String {
+    let mut out = format!(
+        "<h3>{}</h3><p class=\"prov\">entries {}..{} of <code>{}</code></p>",
+        esc(heading),
+        slice.offset,
+        slice.offset + slice.count,
+        esc(&slice.class)
+    );
+    if slice.items.is_empty() {
+        out.push_str("<p class=\"empty\">No entry in the slice.</p>");
+    } else {
+        out.push_str("<table><thead><tr><th>Entry</th><th>Variables</th></tr></thead><tbody>");
+        for item in &slice.items {
+            let _ = write!(
+                out,
+                "<tr><td>{}</td><td><code>{}</code></td></tr>",
+                item.index,
+                esc(&serde_json::to_string(&item.variables).unwrap_or_default())
+            );
+        }
+        out.push_str("</tbody></table>");
+    }
+    out
 }
 
 /// `/wiki/<lang>/characters/<key>`; `c` carries every language's labels.
@@ -337,15 +511,24 @@ pub fn character(ctx: &Ctx<'_>, c: &Character) -> String {
     let mut row = |term: &str, value: String| {
         let _ = write!(body, "<dt>{}</dt><dd>{value}</dd>", esc(term));
     };
-    row(
-        "Internal code",
-        format!("<code>{}</code>", esc(&c.internal_code)),
-    );
-    row(
-        "chara_param id",
-        format!("<code>{}</code>", c.chara_param_id),
-    );
+    row("Class", format!("<code>{}</code>", class_text(c.class)));
+    if let Some(code) = &c.internal_code {
+        row("Internal code", format!("<code>{}</code>", esc(code)));
+    }
+    match c.chara_param_id {
+        Some(id) => row("chara_param id", format!("<code>{id}</code>")),
+        None => row(
+            "chara_param id",
+            "<span class=\"empty\">no chara_param entry names this chara_base entry</span>".into(),
+        ),
+    }
     row("chara_base id", format!("<code>{}</code>", c.chara_base_id));
+    if c.base_source.is_none() {
+        row(
+            "chara_base entry",
+            "<span class=\"empty\">no chara_base entry has this id</span>".into(),
+        );
+    }
     match &c.gender {
         Some(gender) => row("Gender", coded(gender, ctx.lang)),
         None => row(
@@ -353,24 +536,50 @@ pub fn character(ctx: &Ctx<'_>, c: &Character) -> String {
             "<span class=\"empty\">absent from the entry</span>".into(),
         ),
     }
-    row("Element", coded(&c.element, ctx.lang));
-    row("Main position", coded(&c.main_position, ctx.lang));
-    row("Sub position", coded(&c.sub_position, ctx.lang));
-    row(
-        "Growth pattern",
-        format!("<code>{}</code>", c.growth_pattern),
-    );
-    if let Some(series) = c.series_id {
-        row("Series id", format!("<code>{series}</code>"));
+    for (term, value) in [
+        ("Element", &c.element),
+        ("Main position", &c.main_position),
+        ("Sub position", &c.sub_position),
+    ] {
+        match value {
+            Some(value) => row(term, coded(value, ctx.lang)),
+            None => row(
+                term,
+                "<span class=\"empty\">no chara_param entry</span>".into(),
+            ),
+        }
+    }
+    if let Some(growth) = c.growth_pattern {
+        row("Growth pattern", format!("<code>{growth}</code>"));
+    }
+    if let Some(sort) = c.sort_index {
+        row("Sort index", format!("<code>{sort}</code>"));
+    }
+    if let Some(series) = &c.series {
+        let text = label(series.name.as_ref(), ctx.lang);
+        row(
+            "Series",
+            format!(
+                "{} <code>{}</code>{}",
+                text.map_or_else(
+                    || "<span class=\"empty\">no name text</span>".to_owned(),
+                    esc
+                ),
+                series.series_id,
+                series
+                    .series_type
+                    .map_or_else(String::new, |t| format!(" type <code>{t}</code>"))
+            ),
+        );
     }
     if let Some(team) = &c.team {
         let text = label(team.name.as_ref(), ctx.lang)
-            .map_or_else(|| format!("{}", team.belong_team_id), str::to_owned);
+            .map_or_else(|| team.belong_team_id.to_string(), str::to_owned);
         row(
             "Team",
             format!(
-                "<a href=\"/wiki/{tag}/teams/0x{:08X}\">{}</a>",
-                team.belong_team_id.0,
+                "<a href=\"/wiki/{tag}/teams/{}\">{}</a>",
+                team.belong_team_id,
                 esc(&text)
             ),
         );
@@ -388,20 +597,9 @@ pub fn character(ctx: &Ctx<'_>, c: &Character) -> String {
     if c.skills.is_empty() {
         body.push_str("<p class=\"empty\">No skill in the <code>chara_param</code> entry.</p>");
     } else {
-        body.push_str(
-            "<table><thead><tr><th>Skill</th><th>Level</th><th>Id</th></tr></thead><tbody>",
-        );
+        body.push_str("<table><thead><tr><th>Skill</th><th>Level</th><th>Id</th><th>Table</th></tr></thead><tbody>");
         for skill in &c.skills {
-            let text = label(skill.name.as_ref(), ctx.lang)
-                .map_or_else(|| format!("{}", skill.skill_id), str::to_owned);
-            let _ = write!(
-                body,
-                "<tr><td><a href=\"/wiki/{tag}/skills/0x{:08X}\">{}</a></td><td>{}</td><td><code>{}</code></td></tr>",
-                skill.skill_id.0,
-                esc(&text),
-                skill.learn_level,
-                skill.skill_id
-            );
+            body.push_str(&learned_row(ctx, skill));
         }
         body.push_str("</tbody></table>");
     }
@@ -409,9 +607,28 @@ pub fn character(ctx: &Ctx<'_>, c: &Character) -> String {
     body.push_str("<h2>Texts in every language</h2>");
     body.push_str(&localized_block("Name", c.name.as_ref()));
     body.push_str(&localized_block("Family name", c.family_name.as_ref()));
+    body.push_str(&localized_block(
+        "Family name, variable 5",
+        c.family_name_variant.as_ref(),
+    ));
+    body.push_str(&localized_block("Name, romanized", c.name_roma.as_ref()));
+    body.push_str(&localized_block(
+        "Family name, romanized",
+        c.family_name_roma.as_ref(),
+    ));
+    body.push_str(&localized_block(
+        "Family name variable 5, romanized",
+        c.family_name_variant_roma.as_ref(),
+    ));
     body.push_str(&localized_block("Description", c.description.as_ref()));
-    if let Some(label) = &c.element.label {
+    if let Some(label) = c.element.as_ref().and_then(|e| e.label.as_ref()) {
         body.push_str(&localized_block("Element", Some(label)));
+    }
+    if let Some(name) = c.series.as_ref().and_then(|s| s.name.as_ref()) {
+        body.push_str(&localized_block("Series", Some(name)));
+    }
+    if let Some(battle) = &c.battle {
+        body.push_str(&slice_block("Battle entries", battle));
     }
 
     let _ = write!(
@@ -421,12 +638,11 @@ pub fn character(ctx: &Ctx<'_>, c: &Character) -> String {
         esc(&serde_json::to_string(&c.param_raw).unwrap_or_default()),
         esc(&serde_json::to_string(&c.base_raw).unwrap_or_default()),
     );
-    let _ = write!(
-        body,
-        "<h2>Provenance</h2><ul><li>{}</li><li>{}</li></ul>",
-        prov(&c.param_source),
-        prov(&c.base_source)
-    );
+    body.push_str("<h2>Provenance</h2><ul>");
+    for source in [&c.param_source, &c.base_source].into_iter().flatten() {
+        let _ = write!(body, "<li>{}</li>", prov(source));
+    }
+    body.push_str("</ul>");
     layout(Some(ctx), ctx.languages, &title, &body)
 }
 
@@ -621,6 +837,164 @@ pub fn team(ctx: &Ctx<'_>, t: &Team) -> String {
         body,
         "<h2>Provenance</h2><ul><li>{}</li></ul>",
         prov(&t.source)
+    );
+    layout(Some(ctx), ctx.languages, &title, &body)
+}
+
+fn role_text(role: ClassRole) -> &'static str {
+    match role {
+        ClassRole::Records => "records",
+        ClassRole::SortIndex => "sort index of the records of",
+        ClassRole::Reference => "slice references into",
+    }
+}
+
+/// `/wiki/<lang>/tables`: every decoded table with its classes.
+#[must_use]
+pub fn tables(ctx: &Ctx<'_>, tables: &[TableInfo]) -> String {
+    let tag = seg(&ctx.lang.tag);
+    let mut body = String::from(
+        "<h1>Tables</h1><p>Every node class or list of the decoded gamedata tables, as stored. \
+A T2B file stores positional variables with no field names; an RDBN file stores named fields.</p>",
+    );
+    for table in tables {
+        let _ = write!(
+            body,
+            "<h2><code>{}</code></h2><p class=\"prov\"><code>{}</code> ({})</p><table><thead><tr><th>Class</th><th>Role</th><th>Entries</th><th>Rendered richly by</th></tr></thead><tbody>",
+            esc(&table.table),
+            esc(&table.vfs_path),
+            table.format
+        );
+        for class in &table.classes {
+            let name = match class.role {
+                ClassRole::Records => format!(
+                    "<a href=\"/wiki/{tag}/tables/{}/{}\"><code>{}</code></a>",
+                    seg(&table.table),
+                    seg(&class.name),
+                    esc(&class.name)
+                ),
+                _ => format!("<code>{}</code>", esc(&class.name)),
+            };
+            let role = match &class.target {
+                Some(target) => format!("{} <code>{}</code>", role_text(class.role), esc(target)),
+                None => role_text(class.role).to_owned(),
+            };
+            let _ = write!(
+                body,
+                "<tr><td>{name}</td><td>{role}</td><td>{}</td><td>{}</td></tr>",
+                class.entries,
+                esc(class.rich_family.unwrap_or(""))
+            );
+        }
+        body.push_str("</tbody></table>");
+    }
+    layout(
+        Some(ctx),
+        ctx.languages,
+        &format!("Tables ({})", ctx.lang.tag),
+        &body,
+    )
+}
+
+fn labels_cell(record: &TableRecord, lang: &Language) -> String {
+    record
+        .labels
+        .iter()
+        .filter_map(|(name, l)| Some(format!("{}: {}", esc(name), esc(label(Some(l), lang)?))))
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+fn stored(record: &TableRecord) -> String {
+    match (&record.fields, &record.variables) {
+        (Some(fields), _) => esc(&serde_json::to_string(fields).unwrap_or_default()),
+        (None, Some(variables)) => esc(&serde_json::to_string(variables).unwrap_or_default()),
+        (None, None) => String::new(),
+    }
+}
+
+/// `/wiki/<lang>/tables/<table>/<class>`.
+#[must_use]
+pub fn table_list(
+    ctx: &Ctx<'_>,
+    table: &str,
+    class: &str,
+    page: &Page<TableRecord>,
+    params: &ListParams,
+) -> String {
+    let base = format!(
+        "/wiki/{}/tables/{}/{}",
+        seg(&ctx.lang.tag),
+        seg(table),
+        seg(class)
+    );
+    let mut body = format!(
+        "<h1><code>{}</code> / <code>{}</code></h1>{}",
+        esc(table),
+        esc(class),
+        search(&base, params)
+    );
+    body.push_str(&pager(&base, params, page.total, page.items.len()));
+    body.push_str(
+        "<table><thead><tr><th>Entry</th><th>Stored</th><th>Labels</th></tr></thead><tbody>",
+    );
+    for record in &page.items {
+        let _ = write!(
+            body,
+            "<tr><td><a href=\"{base}/{0}\">{0}</a></td><td><code>{1}</code></td><td>{2}</td></tr>",
+            record.index,
+            stored(record),
+            labels_cell(record, ctx.lang)
+        );
+    }
+    body.push_str("</tbody></table>");
+    layout(
+        Some(ctx),
+        ctx.languages,
+        &format!("{table} {class} ({})", ctx.lang.tag),
+        &body,
+    )
+}
+
+/// `/wiki/<lang>/tables/<table>/<class>/<index>`; `r` carries every language's labels.
+#[must_use]
+pub fn table_record(ctx: &Ctx<'_>, r: &TableRecord) -> String {
+    let title = format!("{} {} #{}", r.table, r.class, r.index);
+    let mut body = format!("<h1>{}</h1>", esc(&title));
+    match (&r.fields, &r.variables) {
+        (Some(fields), _) => {
+            body.push_str("<h2>Stored fields</h2>");
+            body.push_str(&fields_table(fields));
+        }
+        (None, Some(variables)) => {
+            let _ = write!(
+                body,
+                "<h2>Stored variables</h2><p class=\"prov\">The file stores no field names; positions are as stored.</p><pre>{}</pre>",
+                esc(&serde_json::to_string(variables).unwrap_or_default())
+            );
+        }
+        (None, None) => {}
+    }
+    if let Some(sort) = r.sort_index {
+        let _ = write!(body, "<p>Sort index <code>{sort}</code></p>");
+    }
+    for (target, slice) in &r.refs {
+        body.push_str(&slice_block(&format!("Entries of {target}"), slice));
+    }
+    if !r.children.is_empty() {
+        let _ = write!(
+            body,
+            "<h2>Nested nodes</h2><pre>{}</pre>",
+            esc(&serde_json::to_string(&r.children).unwrap_or_default())
+        );
+    }
+    for (name, labelled) in &r.labels {
+        body.push_str(&localized_block(name, Some(labelled)));
+    }
+    let _ = write!(
+        body,
+        "<h2>Provenance</h2><ul><li>{}</li></ul>",
+        prov(&r.source)
     );
     layout(Some(ctx), ctx.languages, &title, &body)
 }

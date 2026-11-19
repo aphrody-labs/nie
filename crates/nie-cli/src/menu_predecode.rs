@@ -160,7 +160,9 @@ pub fn run(
                 })
                 .collect();
 
-            for sprite_path in &sprite_paths {
+            // Sprites of one archive decode in parallel too: a few large archives would
+            // otherwise leave most cores idle (BCn decode and PNG encode dominate).
+            sprite_paths.par_iter().for_each(|sprite_path| {
                 // sprite_path = "dx11/menu/..."
                 let png_out =
                     dump_root.join(format!("{}.png", sprite_path.trim_end_matches(".g4tx")));
@@ -170,7 +172,7 @@ pub fn run(
                     let meta = std::fs::metadata(&png_out).ok();
                     if meta.is_some_and(|m| m.len() > 0) {
                         skipped.fetch_add(1, Ordering::Relaxed);
-                        continue;
+                        return;
                     }
                 }
 
@@ -187,7 +189,7 @@ pub fn run(
                     None => {
                         eprintln!("warn: entrée introuvable dans CPK {cpk_name}: {cpk_inner}");
                         failed.fetch_add(1, Ordering::Relaxed);
-                        continue;
+                        return;
                     }
                 };
 
@@ -197,7 +199,7 @@ pub fn run(
                     Err(e) => {
                         eprintln!("error: extraction {sprite_path}: {e}");
                         failed.fetch_add(1, Ordering::Relaxed);
-                        continue;
+                        return;
                     }
                 };
 
@@ -215,7 +217,7 @@ pub fn run(
                         failed.fetch_add(1, Ordering::Relaxed);
                     }
                 }
-            }
+            });
         });
 
     Ok(PredecodeStats {
@@ -258,11 +260,21 @@ fn g4tx_to_png(data: &[u8], debug_path: &str) -> anyhow::Result<Vec<u8>> {
     let rgba_image =
         image_dds::image_from_dds(&dds, 0).with_context(|| format!("decode DDS {debug_path}"))?;
 
-    // Encode en PNG lossless.
+    // Encode en PNG lossless, deflate au niveau rapide : ces PNG sont un cache disque relu par
+    // le service, la taille compte moins que le temps de pré-décodage.
     let mut png_bytes: Vec<u8> = Vec::new();
-    rgba_image
-        .write_to(&mut Cursor::new(&mut png_bytes), image::ImageFormat::Png)
-        .with_context(|| format!("encode PNG {debug_path}"))?;
+    image::ImageEncoder::write_image(
+        image::codecs::png::PngEncoder::new_with_quality(
+            Cursor::new(&mut png_bytes),
+            image::codecs::png::CompressionType::Fast,
+            image::codecs::png::FilterType::Adaptive,
+        ),
+        rgba_image.as_raw(),
+        rgba_image.width(),
+        rgba_image.height(),
+        image::ExtendedColorType::Rgba8,
+    )
+    .with_context(|| format!("encode PNG {debug_path}"))?;
 
     Ok(png_bytes)
 }

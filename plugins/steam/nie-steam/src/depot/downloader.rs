@@ -1,6 +1,6 @@
 //! Orchestration du téléchargement de contenu Steam (depots → disque).
 //!
-//! Port de `IECODE.Core/Steam/Content/SteamDepotDownloader.cs` (C#, SteamKit2)
+//! Port de `SteamDepotDownloader.cs` (C#, SteamKit2)
 //! réécrit sur la fondation `steamroom` / `steamroom-client`.
 //!
 //! Flux de `download_app` :

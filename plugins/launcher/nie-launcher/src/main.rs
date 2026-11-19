@@ -35,11 +35,6 @@ enum Commands {
         #[command(subcommand)]
         cmd: SaveCommands,
     },
-    /// Easy Anti-Cheat scan and patch operations
-    Eac {
-        #[command(subcommand)]
-        cmd: EacCommands,
-    },
     /// Spirit cards (142) and special moves (1,299) roster
     Spirit {
         #[command(subcommand)]
@@ -83,26 +78,6 @@ enum SaveCommands {
         live_save: PathBuf,
         /// Mod save path
         mod_save: PathBuf,
-    },
-}
-
-#[derive(Subcommand)]
-enum EacCommands {
-    /// Scan binary for EAC conditional check sites
-    Scan {
-        /// Path to executable
-        file: PathBuf,
-        /// Output formatted JSON
-        #[arg(long)]
-        json: bool,
-    },
-    /// Patch EAC checks in-place or to a new destination file
-    Patch {
-        /// Source executable
-        file: PathBuf,
-        /// Destination path (defaults to <name>_eacpatched.exe)
-        #[arg(long, short = 'o')]
-        out: Option<PathBuf>,
     },
 }
 
@@ -176,43 +151,6 @@ fn main() -> anyhow::Result<()> {
                 session.is_active = true;
                 session.restore_original_save()?;
                 println!("Original save restored successfully.");
-            }
-        },
-        Commands::Eac { cmd } => match cmd {
-            EacCommands::Scan { file, json } => {
-                let bytes = std::fs::read(&file)?;
-                let report = nie_launcher::scan_eac_sites(&bytes)
-                    .map_err(|e| anyhow::anyhow!("EAC scan error: {e}"))?;
-                if json {
-                    println!("{}", serde_json::to_string_pretty(&report)?);
-                } else {
-                    println!(
-                        "EAC scan {}: {} sites found ({} unpatched, {} patched)",
-                        file.display(),
-                        report.total_sites_found,
-                        report.unpatched_count,
-                        report.patched_count
-                    );
-                }
-            }
-            EacCommands::Patch { file, out } => {
-                let target = out.unwrap_or_else(|| {
-                    if let Some(stem) = file.file_stem().and_then(|s| s.to_str()) {
-                        let ext = file.extension().and_then(|s| s.to_str()).unwrap_or("exe");
-                        file.with_file_name(format!("{stem}_eacpatched.{ext}"))
-                    } else {
-                        file.with_extension("eacpatched.exe")
-                    }
-                });
-                let report = nie_launcher::patch_eac_file(&file, &target)
-                    .map_err(|e| anyhow::anyhow!("EAC patch error: {e}"))?;
-                println!(
-                    "EAC patch {} -> {}: {} sites processed ({} patched)",
-                    file.display(),
-                    target.display(),
-                    report.total_sites_found,
-                    report.patched_count
-                );
             }
         },
         Commands::Spirit { cmd } => match cmd {

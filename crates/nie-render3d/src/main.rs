@@ -448,6 +448,7 @@ fn main() -> Result<()> {
             nie_render3d::gpu::GpuRenderer::with_options(nie_render3d::gpu::GpuOptions {
                 backend: cli.backend.unwrap_or_default(),
                 allow_software: !cli.hardware_only,
+                ..nie_render3d::gpu::GpuOptions::default()
             })?;
         let adapter = renderer.adapter_info();
         println!(

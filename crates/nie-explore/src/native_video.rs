@@ -88,7 +88,7 @@ fn game_movie_links(vfs: &Vfs) -> HashMap<String, (Option<String>, Option<String
             || path.contains("gamedata/event/event_movie_config")
     }) {
         let Ok(bytes) = vfs.read(&path) else { continue };
-        let Some(root) = nie_formats::cfgbin::rdbn_to_iecode_json(&bytes) else {
+        let Some(root) = nie_formats::cfgbin::rdbn_to_tagged_json(&bytes) else {
             continue;
         };
         let Some(lists) = root.get("lists").and_then(serde_json::Value::as_array) else {

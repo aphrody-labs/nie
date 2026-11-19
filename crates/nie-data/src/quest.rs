@@ -6,10 +6,10 @@
 //! (isolé parmi les ~65 fichiers `qsa/qsb*_trigger` du dossier `quest/`, non concernés).
 //!
 //! Format **`entries`** (arbre T2B). La racine contient plusieurs listes `*_LIST_BEG` ;
-//! seule `QUEST_DATA_CFG_LIST_BEG_0` (forme iecode, suffixe `_0` ajouté à la conversion)
+//! seule `QUEST_DATA_CFG_LIST_BEG_0` (forme étiquetée, suffixe `_0` ajouté à la conversion)
 //! nous intéresse. Ses 546 enfants se répartissent en :
 //!
-//! | Nom enfant (iecode)               | Nombre | Traitement       |
+//! | Nom enfant (référence)               | Nombre | Traitement       |
 //! |-----------------------------------|--------|------------------|
 //! | `QUEST_DATA_CFG_<i>`              | 182    | quête parsée     |
 //! | `QUEST_DATA_CFG_REF_PHASE_<i>`   | 182    | sauté (`_REF_`)  |
@@ -150,7 +150,7 @@ impl ParsedQuest {
     }
 }
 
-/// Parse un `quest_config_*.cfg.bin.json` (forme iecode) en liste de quêtes.
+/// Parse un `quest_config_*.cfg.bin.json` (forme étiquetée) en liste de quêtes.
 ///
 /// Port 1:1 de `loadQuestConfig` (`parsers/quest-config.ts`) : parcours récursif des
 /// `entries`, repérage du noeud exact `QUEST_DATA_CFG_LIST_BEG_0`, itération de ses

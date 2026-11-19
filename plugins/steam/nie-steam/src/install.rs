@@ -290,7 +290,7 @@ pub fn find_steam_installations() -> Vec<SteamInstallation> {
     let home = std::env::var("HOME").ok().map(PathBuf::from);
 
     // 1. Environment variable overrides
-    if let Ok(dir) = std::env::var("STEAM_DIR").or_else(|_| std::env::var("STEAM_HOME")) {
+    if let Ok(dir) = std::env::var("NIE_STEAM_DIR").or_else(|_| std::env::var("NIE_STEAM_HOME")) {
         let p = PathBuf::from(dir);
         if p.exists()
             && let Some(inst) = probe_steam_installation(p, SteamPlatform::Custom)

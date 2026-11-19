@@ -11,10 +11,9 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use nie_trace::lancement::lancer_chaine;
 use nie_trace::recette;
 use nie_trace::{
-    dump_regions, find_module_base, find_pid_by_name, module_regions, patch_eac, read_exact,
+    dump_regions, find_module_base, find_pid_by_name, module_regions, read_exact,
     scan_regions, write_exact,
 };
 
@@ -107,14 +106,9 @@ USAGE:
   nie-mem write  <0xADDR | module+0xRVA> <hex '48 8B' | str:Texte> [--in FICHIER] [--pid N] --force
   nie-mem dump   [--pid N] [--module nie.exe] [--all] [--out DOSSIER=./memdump]
   nie-mem scan   <hex '48 8B 0D' | str:Texte | wstr:Titre> [--pid N] [--module nie.exe] [--all] [--limit N=20]
-  nie-mem patch-eac <src nie.exe> <dst nie_eacpatched.exe>
 
 LIVE MODDING
   nie-mem apply  <recette.txt> [--pid N] [--force]
-  nie-mem live   [recette.txt] --game <chemin/nie.exe> [--repo DOSSIER] [--save-editor EXE]
-                 [--no-save-editor] [--wait SECS=120] [--force]
-      Lance l'editeur de sauvegarde puis le jeu SANS EAC (nie.exe direct), attend que le
-      process reponde, puis applique la recette. Sans --force, tout est a blanc.
 
 --pid 0 (défaut) auto-détecte nie.exe.";
 
@@ -230,65 +224,6 @@ fn run(args: &[String]) -> Result<(), String> {
             }
             Ok(())
         }
-        // Chaîne complète de live modding : éditeur de sauvegarde → jeu (sans EAC) → recette.
-        // C'est le mode « je relance et tout se réapplique » : les adresses changent à chaque
-        // lancement, la recette s'exprime en valeurs, donc elle survit au redémarrage.
-        "live" => {
-            let racine = flags.get("repo").and_then(Clone::clone).map_or_else(
-                || std::env::current_dir().unwrap_or_default(),
-                PathBuf::from,
-            );
-            let editeur = flags.get("save-editor").and_then(Clone::clone).map_or_else(
-                || racine.join("InazumaElevenVRSaveEditor.exe"),
-                PathBuf::from,
-            );
-            let jeu = flags
-                .get("game")
-                .and_then(Clone::clone)
-                .map(PathBuf::from)
-                .ok_or("--game <chemin de nie.exe> est requis")?;
-            let attente =
-                std::time::Duration::from_secs(flag_num(&flags, "wait").unwrap_or(120) as u64);
-            let sans_editeur = flags.contains_key("no-save-editor");
-
-            let l = lancer_chaine(
-                (!sans_editeur).then_some(editeur.as_path()),
-                Some(jeu.as_path()),
-                attente,
-            );
-            for d in &l.demarres {
-                println!("  démarré  {}", d.display());
-            }
-            for a in &l.absents {
-                println!("  ABSENT   {}", a.display());
-            }
-            for e in &l.echecs {
-                println!(
-                    "  ÉCHEC    {} (démarrage refusé, même via le shell)",
-                    e.display()
-                );
-            }
-            let Some(pid) = l.pid else {
-                return Err(format!(
-                    "le jeu n'a pas répondu en {} s — rien n'a été appliqué",
-                    attente.as_secs()
-                ));
-            };
-            println!("  jeu prêt (pid {pid})");
-
-            // Sans recette, on s'arrête au lancement : `live` sert alors juste à démarrer la
-            // chaîne sans EAC.
-            let Some(chemin) = positionals.first() else {
-                println!("\n  aucune recette donnée — chaîne lancée, rien appliqué");
-                return Ok(());
-            };
-            appliquer_recette_fichier(
-                pid,
-                &module_of(&flags),
-                chemin,
-                !flags.contains_key("force"),
-            )
-        }
         // Applique une recette au jeu déjà lancé.
         "apply" => {
             let pid = resolve_pid(&flags)?;
@@ -340,20 +275,6 @@ fn run(args: &[String]) -> Result<(), String> {
                 String::new()
             };
             println!("\n  {} hit(s) pour {label}{capped}", hits.len());
-            Ok(())
-        }
-        "patch-eac" => {
-            let src = positionals.first().ok_or("src manquant")?;
-            let dst = positionals.get(1).ok_or("dst manquant")?;
-            let r =
-                patch_eac(&PathBuf::from(src), &PathBuf::from(dst)).map_err(|e| e.to_string())?;
-            println!(
-                "  OK  offset 0x{:X}: {} -> {}  ({} octets)  {dst}",
-                r.offset,
-                hexs(&r.original),
-                hexs(&r.patched),
-                r.dst_len
-            );
             Ok(())
         }
         other => Err(format!("commande inconnue « {other} »\n\n{USAGE}")),
@@ -504,10 +425,6 @@ fn hexdump(data: &[u8], base: u64) {
     }
 }
 
-fn hexs(b: &[u8; 5]) -> String {
-    b.iter().map(|x| format!("{x:02x}")).collect()
-}
-
 fn hexs_join(b: &[u8]) -> String {
     b.iter()
         .map(|x| format!("{x:02X}"))
@@ -598,14 +515,13 @@ mod tests {
     }
 
     #[test]
-    fn hexdump_and_hexs_helpers() {
+    fn hexdump_and_hexs_join_helpers() {
         // 20 octets → 2e ligne partielle (couvre le padding) ; octets imprimables et non imprimables.
         let sample: [u8; 20] = [
             0x00, 0x41, 0x7e, 0x7f, 0x20, 0x1f, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49,
             0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f,
         ];
         hexdump(&sample, 0x1_4000_0000);
-        assert_eq!(hexs(&nie_trace::EAC_PATCH_NOP), "9090909090");
         assert_eq!(hexs_join(&[0xDE, 0xAD]), "DE-AD");
     }
 
@@ -627,37 +543,6 @@ mod tests {
         // Le défaut est "nie.exe" : il ÉCHOUE si le jeu n'est pas lancé, RÉUSSIT s'il l'est.
         // Assener l'échec ferait rougir la suite pendant toute session de RE en direct.
         let _ = r(&["find-pid"]);
-    }
-
-    #[test]
-    fn run_patch_eac_paths() {
-        let dir = tmp_path("eac");
-        let _ = std::fs::create_dir_all(&dir);
-        let src = dir.join("nie.exe");
-        let dst = dir.join("nie_eacpatched.exe");
-        let off = nie_trace::EAC_PATCH_OFFSET as usize;
-        let mut data = vec![0u8; off + 0x1000];
-        data[off..off + 5].copy_from_slice(&nie_trace::EAC_PATCH_ORIG);
-        std::fs::write(&src, &data).unwrap();
-
-        r(&["patch-eac", src.to_str().unwrap(), dst.to_str().unwrap()]).unwrap(); // succès
-        assert!(r(&["patch-eac"]).is_err()); // src manquant
-        assert!(r(&["patch-eac", src.to_str().unwrap()]).is_err()); // dst manquant
-
-        // erreur de patch : src trop petit → read_exact échoue à l'offset EAC.
-        let small = dir.join("small.exe");
-        std::fs::write(&small, b"tiny").unwrap();
-        let small_dst = dir.join("small_out.exe");
-        assert!(
-            r(&[
-                "patch-eac",
-                small.to_str().unwrap(),
-                small_dst.to_str().unwrap()
-            ])
-            .is_err()
-        );
-
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

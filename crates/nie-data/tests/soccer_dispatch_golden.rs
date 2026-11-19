@@ -1,5 +1,5 @@
 #![allow(clippy::pedantic)]
-//! Golden : les parseurs soccer existants (golden-testés) atteignent désormais azalee via le
+//! Golden : les parseurs soccer existants (golden-testés) atteignent désormais wiki via le
 //! dispatch typé (étaient parsés mais non routés). Data-gated.
 #![cfg(feature = "serde")]
 

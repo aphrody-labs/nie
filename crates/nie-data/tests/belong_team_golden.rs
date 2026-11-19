@@ -5,7 +5,7 @@
 //!
 //! Port 1:1 d'inagle `inagle` (interface `BelongTeamInfo`
 //! l.24-45, lecture `lists[0].values` l.227-233). Valeurs ci-dessous extraites telles quelles
-//! du dump (via `nie_formats::cfgbin::read_values` → forme iecode), aucune valeur inventée.
+//! du dump (via `nie_formats::cfgbin::read_values` → forme étiquetée), aucune valeur inventée.
 
 mod common;
 
@@ -63,7 +63,7 @@ fn belong_teams_head() -> Vec<Value> {
     ]
 }
 
-/// Fixture iecode complète : la liste unique (4 entrées réelles).
+/// Fixture étiquetée complète : la liste unique (4 entrées réelles).
 fn node_fixture() -> Value {
     json!({
         "lists": [

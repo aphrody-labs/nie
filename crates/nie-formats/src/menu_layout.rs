@@ -77,11 +77,11 @@ pub type FontPalette = BTreeMap<u32, [u8; 3]>;
 
 /// Lit la palette de texte depuis les octets de `font_color.cfg.bin`.
 ///
-/// Passe par `cfgbin::to_iecode_json` plutôt que par l'ordre des champs de la ligne : les noms
+/// Passe par `cfgbin::to_tagged_json` plutôt que par l'ordre des champs de la ligne : les noms
 /// (`fontColorId`, `red`, `green`, `blue`) sont stables, une position ne l'est pas.
 #[must_use]
 pub fn parse_font_palette(bytes: &[u8]) -> FontPalette {
-    let Some(root) = cfgbin::to_iecode_json(bytes) else {
+    let Some(root) = cfgbin::to_tagged_json(bytes) else {
         return FontPalette::new();
     };
     let mut palette = FontPalette::new();

@@ -142,7 +142,7 @@ fn real_subtitle_file_six_lignes_byte_exact() {
 
 #[cfg(feature = "serde")]
 #[test]
-fn dispatch_typed_par_prefixe_atteint_azalee() {
+fn dispatch_typed_par_prefixe_atteint_wiki() {
     use nie_data::typed::{decode_by_key, family_key};
     let Some(root) = load_sub() else { return };
     // family_key strippe le suffixe `_04800` (vu comme une version) → clé par-événement.

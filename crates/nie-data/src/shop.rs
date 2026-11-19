@@ -11,7 +11,7 @@
 //! Côté **inagle** (son convertisseur `config-parser.ts`), l'item-list est un *enfant* du
 //! shop : `SHOP_INFO_LIST_BEG_x > SHOP_INFO_x > SHOP_INFO_ITEM_LIST_BEG_x > SHOP_INFO_ITEM_y`.
 //!
-//! Côté **nie** (`cfgbin_to_t2b_iecode_root`, qui imbrique sur les marqueurs `_BEG`/`_END`),
+//! Côté **nie** (`cfgbin_to_t2b_tagged_root`, qui imbrique sur les marqueurs `_BEG`/`_END`),
 //! le noeud `SHOP_INFO_x` n'a **pas** de marqueur `_BEG` : il est donc une feuille, et son
 //! item-list `SHOP_INFO_ITEM_LIST_BEG_x` est un **frère** placé juste après lui :
 //!

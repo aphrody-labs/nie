@@ -9,10 +9,14 @@ repository.workspace = true
 authors.workspace = true
 publish = false
 
+[lib]
+crate-type = ["rlib", "staticlib", "cdylib"]
+
 [lints]
 workspace = true
 
 [features]
+crlib = []
 default = ["host"]
 # Native mounts: local installs, SFTP (russh), rclone.conf remotes (opendal: R2, S3, Google Drive) and HTTP range reads.
 host = ["nie-formats/remote-vfs"]

@@ -17,7 +17,6 @@ use nie_index::atlas::{Atlas, ScanConfig, ToolRecord};
 const BINARIES: &[(&str, &str)] = &[
     ("nie.exe", "reference"),
     ("dist/nie.exe", "produced"),
-    ("nie_eacpatched.exe", "patched"),
 ];
 
 #[derive(Debug, Subcommand)]
@@ -657,7 +656,7 @@ fn docs(db: &Path, orphans: bool, limit: usize) -> Result<()> {
 }
 
 /// Doublons stricts : même sha256, plusieurs chemins. Le dépôt en porte par construction
-/// (`refs/iecode-re/` et `data/re/50-source/upstream-iecode/` sont deux copies du même
+/// (`refs/re/` et `data/re/50-source/upstream/` sont deux copies du même
 /// corpus) ; les mesurer est la condition pour décider laquelle fait autorité.
 fn dupes(db: &Path, zone: Option<&str>, limit: usize) -> Result<()> {
     let atlas = Atlas::open(db)?;
@@ -708,20 +707,36 @@ fn link(db: &Path, root: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Chemins suivis par git, pour distinguer versionné et matière locale (`data/re/`).
+/// Chemins suivis par git sous `root` (relatifs à `root`), lus dans l'index du dépôt : distingue
+/// versionné et matière locale (`data/re/`). Vide hors d'un dépôt.
 fn git_tracked(root: &Path) -> HashSet<String> {
-    let Ok(out) = std::process::Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(["ls-files", "-z"])
-        .output()
-    else {
+    let Some(top) = root.ancestors().find(|dir| dir.join(".git").is_dir()) else {
         return HashSet::new();
     };
-    String::from_utf8_lossy(&out.stdout)
-        .split('\0')
-        .filter(|s| !s.is_empty())
-        .map(str::to_string)
+    let Ok(index) = gix_index::File::at(
+        top.join(".git").join("index"),
+        gix_hash::Kind::Sha1,
+        false,
+        gix_index::decode::Options::default(),
+    ) else {
+        return HashSet::new();
+    };
+    let prefix = root
+        .strip_prefix(top)
+        .map(|p| p.to_string_lossy().replace('\\', "/"))
+        .unwrap_or_default();
+    let state: &gix_index::State = &index;
+    state
+        .entries()
+        .iter()
+        .filter_map(|entry| {
+            let path = entry.path(state).to_string();
+            if prefix.is_empty() {
+                Some(path)
+            } else {
+                path.strip_prefix(&format!("{prefix}/")).map(str::to_owned)
+            }
+        })
         .collect()
 }
 

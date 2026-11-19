@@ -1,0 +1,24 @@
+ path /data/common/script  [(loose)]
+ data/common ────┐ script ────────────────────────────┐ preview ──────────────────────────────────────────────
+ event_cfg/    1 │ intro.lua.bin                 88 B │path       data/common/script/intro.lua.bin
+ menu/         1 │                                    │size       88 B
+ misc/         2 │                                    │format     Lua 5.2 bytecode
+ script/       1 │                                    │view       disassembly in call syntax
+ text/         2 │                                    │lines      5
+                 │                                    │-- Lua 0x52 bytecode, 1 prototype(s), 2 instruction(s)
+                 │                                    │local function main() -- 0 param(s), 0 upvalue(s), line
+                 │                                    │  LOADK(0, 0) -- 0: "hello"
+                 │                                    │  RETURN(0, 1, 0) -- 1
+                 │                                    │end
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+ 1/1                                                                                 lua  halfblocks  9 files

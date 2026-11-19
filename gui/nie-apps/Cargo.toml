@@ -47,8 +47,11 @@ web-sys = { workspace = true }
 gpui_platform = { workspace = true, features = ["wayland", "x11"] }
 nie-explore = { workspace = true, features = ["fm"] }
 nie-wiki-vfs = { workspace = true }
+nie-lua = { workspace = true }
 
 [dev-dependencies]
+image = { workspace = true }
+nie-data = { workspace = true, features = ["serde", "std"] }
 nie-ui = { workspace = true, features = ["test-support"] }
 gpui = { workspace = true, features = ["test-support"] }
 gpui_platform = { workspace = true, features = ["test-support"] }

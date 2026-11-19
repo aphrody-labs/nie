@@ -1,6 +1,6 @@
 # nie-model-serve
 
-Ports the full IEVR model asset service from `bun-os/crates/nie-model-serve`.
+The IEVR model asset service.
 
 - Default build exposes the offline `nie-model-core` catalog and menu API, without enabling host facilities.
 - `--features host` builds the local HTTP service, live VFS/CPK-backed GLB assembly and texture/audio routes, bounded local asset reads, and SQLite/PostgreSQL mirror integration.

@@ -6,7 +6,7 @@
 //! Port 1:1 d'inagle `inagle`
 //! (`parseTelopWazaContent`, l.101-135) : `eldoradoId == 0x00000000` → `None`, index
 //! `blankSizeInfo` hors borne → marges nulles. Valeurs ci-dessous extraites telles quelles
-//! du dump (via `cfgbin::read_values` → forme iecode), aucune valeur inventée.
+//! du dump (via `cfgbin::read_values` → forme étiquetée), aucune valeur inventée.
 
 mod common;
 

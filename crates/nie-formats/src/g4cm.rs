@@ -496,24 +496,6 @@ pub struct CameraAnim {
     pub trailer: Vec<u8>,
 }
 
-fn u16_at(d: &[u8], at: usize) -> Result<u16> {
-    d.get(at..at + 2)
-        .map(|b| u16::from_le_bytes([b[0], b[1]]))
-        .ok_or(FormatError::TooShort {
-            got: d.len(),
-            need: at + 2,
-        })
-}
-
-fn u32_at(d: &[u8], at: usize) -> Result<u32> {
-    d.get(at..at + 4)
-        .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
-        .ok_or(FormatError::TooShort {
-            got: d.len(),
-            need: at + 4,
-        })
-}
-
 /// `true` si le tampon commence par le magic « G4CM ».
 #[must_use]
 pub fn is_g4cm(data: &[u8]) -> bool {
@@ -550,7 +532,7 @@ pub fn decode(data: &[u8]) -> Result<CameraAnim> {
 
     let mut counters = [0u16; COUNTER_COUNT];
     for (i, c) in counters.iter_mut().enumerate() {
-        *c = u16_at(data, 0x20 + i * 2)?;
+        *c = level5::read_u16_le(data, 0x20 + i * 2)?;
     }
     let nobj = counters[0] as usize;
     let shift = u32::from(counters[11]);
@@ -577,10 +559,10 @@ pub fn decode(data: &[u8]) -> Result<CameraAnim> {
             need: at + 16,
         })?);
         clips.push(Clip {
-            start: u16_at(data, at)?,
-            end: u16_at(data, at + 2)?,
-            index: u16_at(data, at + 4)?,
-            flags: u16_at(data, at + 6)?,
+            start: level5::read_u16_le(data, at)?,
+            end: level5::read_u16_le(data, at + 2)?,
+            index: level5::read_u16_le(data, at + 4)?,
+            flags: level5::read_u16_le(data, at + 6)?,
             tail,
         });
     }
@@ -602,7 +584,7 @@ pub fn decode(data: &[u8]) -> Result<CameraAnim> {
     let mut names = Vec::with_capacity(nobj);
     let mut names_end = o_names_header;
     for i in 0..nobj {
-        let off = usize::from(u16_at(data, o_names_header + i * 2)?);
+        let off = usize::from(level5::read_u16_le(data, o_names_header + i * 2)?);
         let at = o_names_header + off;
         let raw = data.get(at..).ok_or(FormatError::TooShort {
             got: data.len(),
@@ -629,9 +611,9 @@ pub fn decode(data: &[u8]) -> Result<CameraAnim> {
     for i in 0..n_entries {
         let at = o_objects + i * OBJECT_ENTRY_LEN;
         objects.push(AnimObject {
-            field0: u16_at(data, at)?,
-            first_channel: u16_at(data, at + 2)?,
-            channel_count: u32_at(data, at + 4)?,
+            field0: level5::read_u16_le(data, at)?,
+            first_channel: level5::read_u16_le(data, at + 2)?,
+            channel_count: level5::read_u32_le(data, at + 4)?,
         });
     }
     let objects_end = o_objects + n_entries * OBJECT_ENTRY_LEN;
@@ -674,9 +656,9 @@ pub fn decode(data: &[u8]) -> Result<CameraAnim> {
             s2: hdr[5],
             scale_index: hdr[6],
             target_index: hdr[7],
-            time_index: u32_at(data, at + 8)?,
-            value_offset: u32_at(data, at + 12)?,
-            count: u32_at(data, at + 16)?,
+            time_index: level5::read_u32_le(data, at + 8)?,
+            value_offset: level5::read_u32_le(data, at + 12)?,
+            count: level5::read_u32_le(data, at + 16)?,
         });
     }
     let channels_end = o_channels + total * CHANNEL_ENTRY_LEN;
@@ -714,7 +696,7 @@ pub fn decode(data: &[u8]) -> Result<CameraAnim> {
     }
     let mut times = Vec::with_capacity(ntimes);
     for i in 0..ntimes {
-        times.push(u16_at(data, o_times + i * 2)?);
+        times.push(level5::read_u16_le(data, o_times + i * 2)?);
     }
 
     // Section valeurs : la fin de la dernière valeur doit tomber dans le fichier, et tout ce qui
@@ -736,14 +718,14 @@ pub fn decode(data: &[u8]) -> Result<CameraAnim> {
             4 => {
                 let mut v = Vec::with_capacity(n);
                 for i in 0..n {
-                    v.push(f32::from_bits(u32_at(data, base + i * 4)?));
+                    v.push(f32::from_bits(level5::read_u32_le(data, base + i * 4)?));
                 }
                 Track::F32(v)
             }
             2 => {
                 let mut v = Vec::with_capacity(n);
                 for i in 0..n {
-                    v.push(u16_at(data, base + i * 2)?);
+                    v.push(level5::read_u16_le(data, base + i * 2)?);
                 }
                 Track::Raw16(v)
             }

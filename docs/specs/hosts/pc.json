@@ -1,0 +1,51 @@
+{
+  "name": "pc",
+  "os": "windows",
+  "kernel": "10.0.28120",
+  "kernel_version": "build 28120",
+  "distro": "Microsoft Windows 11 Professionnel Insider Preview",
+  "arch": "AMD64",
+  "cpu_model": "13th Gen Intel(R) Core(TM) i7-13700F",
+  "cpu_vendor": "GenuineIntel",
+  "logical_cpus": 24,
+  "cpu_flags": [
+    "sse4.2",
+    "avx",
+    "avx2",
+    "fma",
+    "bmi1",
+    "bmi2",
+    "popcnt",
+    "aes",
+    "pclmulqdq",
+    "sha",
+    "rdrand",
+    "rdseed",
+    "adx",
+    "f16c",
+    "lzcnt",
+    "movbe"
+  ],
+  "memory_mib": 32581,
+  "swap_mib": 0,
+  "hypervisor": "present",
+  "kvm_device": false,
+  "filesystems": [
+    {
+      "mount": "C:\\",
+      "fstype": "NTFS"
+    }
+  ],
+  "gpus": [
+    "NVIDIA GeForce RTX 4070"
+  ],
+  "nvidia": [
+    {
+      "name": "NVIDIA GeForce RTX 4070",
+      "driver": "621.14",
+      "compute_cap": "8.9",
+      "memory_mib": 12282
+    }
+  ],
+  "libc": ""
+}

@@ -28,7 +28,7 @@ fn crc32(data: &[u8]) -> u32 {
     !crc
 }
 
-/// Construit un noeud iecode `MENU_LAYER_INFO_<idx>` (forme T2B `{name, variables, children}`).
+/// Construit un noeud étiquetée `MENU_LAYER_INFO_<idx>` (forme T2B `{name, variables, children}`).
 fn layer(idx: usize, id: i64, name: &str, objbin: &str, params: &[i64]) -> Value {
     let mut variables = vec![
         json!({ "type": "Int", "value": id.to_string() }),

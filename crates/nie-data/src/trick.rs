@@ -22,7 +22,7 @@
 //!
 //! `failEventIDName` est un champ `Condition` (chaîne). Quand la trick **n'a pas** d'événement
 //! d'échec, sa valeur brute est la sentinelle `0xFFFFFFFF` : l'offset ne résout aucune chaîne,
-//! et le décodage iecode la rend telle quelle en `"0xFFFFFFFF"` (cf. `read_condition_value` de
+//! et le décodage étiqueté la rend telle quelle en `"0xFFFFFFFF"` (cf. `read_condition_value` de
 //! `nie-formats`). Quand la trick **a** un échec (blocs/arrêts contestés, ex. `ev62_0010_2`), la
 //! chaîne réelle est résolue. On porte **1:1** inagle qui conserve cette valeur sans la
 //! réécrire ; [`TrickInfo::has_fail_event`] teste la sentinelle via `failEventID`.

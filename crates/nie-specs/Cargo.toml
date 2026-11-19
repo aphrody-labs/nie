@@ -1,0 +1,32 @@
+[package]
+name = "nie-specs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+description = "Specs sync: records the official source, version, content hash and the extracted facts nie relies on (wasm, WebGPU, WGSL, PE/COFF, Direct3D 11, DXBC, CUDA, RTX 4070) plus live host specs of the fleet and the PC."
+
+[lints]
+workspace = true
+
+[lib]
+name = "nie_specs"
+path = "src/lib.rs"
+
+[[bin]]
+name = "nie-specs"
+path = "src/main.rs"
+
+[dependencies]
+nie-tls = { workspace = true }
+anyhow = { workspace = true, features = ["std"] }
+base64 = { workspace = true }
+nie-ssh = { workspace = true }
+regex = { workspace = true, features = ["std", "unicode-perl", "perf"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+toml = { workspace = true, features = ["parse", "serde", "std"] }
+ureq = { workspace = true, features = ["rustls-no-provider", "rustls-webpki-roots"] }

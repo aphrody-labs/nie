@@ -33,7 +33,8 @@
 //! - `bytes` — le codegen rustc de l'implémentation **coïncide** avec les octets
 //!   originaux (hors champs relogés) : l'unité est produite par Rust.
 
-#![forbid(unsafe_code)]
+#![cfg_attr(not(feature = "crlib"), forbid(unsafe_code))]
+#![cfg_attr(feature = "crlib", deny(unsafe_code))]
 #![warn(missing_docs)]
 
 pub mod asmsrc;
@@ -58,3 +59,7 @@ pub use redb::ReNames;
 pub use registry::{MatchStatus, Registry, RegistryEntry};
 pub use report::Report;
 pub use store::ForgeStore;
+
+#[cfg(feature = "crlib")]
+#[allow(unsafe_code)]
+mod abi_generated;

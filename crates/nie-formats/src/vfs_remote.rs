@@ -65,13 +65,7 @@ fn find_nie_rclone_bin() -> Option<PathBuf> {
             return Some(sibling);
         }
     }
-    for base in [
-        std::env::current_dir().ok(),
-        Some(PathBuf::from(env!("CARGO_MANIFEST_DIR"))),
-    ]
-    .into_iter()
-    .flatten()
-    {
+    if let Ok(base) = std::env::current_dir() {
         for ancestor in base.ancestors().take(6) {
             let candidate = ancestor
                 .join("native")
@@ -211,7 +205,7 @@ pub fn rclone_export_packs_with_opts(
 // ---------------------------------------------------------------------------
 
 #[derive(Clone)]
-pub(crate) struct RemoteStorage {
+pub struct RemoteStorage {
     worker: Arc<Worker>,
     bytes: Arc<AtomicU64>,
     calls: Arc<AtomicU64>,
@@ -231,28 +225,6 @@ impl Drop for Worker {
     }
 }
 
-fn validate_uri(source: &str) -> std::result::Result<(), FormatError> {
-    let (_, rest) = source
-        .split_once("://")
-        .ok_or(FormatError::Corrupt("invalid game source URI"))?;
-    let authority = rest.split('/').next().unwrap_or_default();
-    let is_ssh = source.starts_with("ssh://") || source.starts_with("sftp://");
-    if authority.is_empty()
-        || authority.contains(['%', '\\'])
-        || source.chars().any(char::is_control)
-        || source.contains(['?', '#'])
-        || authority
-            .split_once('@')
-            .is_some_and(|(user, _)| user.contains(':'))
-        || (!is_ssh && authority.contains('@'))
-    {
-        return Err(FormatError::Corrupt(
-            "URI credentials/query/fragment are unsupported; use SSH config, rclone.conf, env vars, or NIE_HTTP_AUTH_TOKEN",
-        ));
-    }
-    Ok(())
-}
-
 impl RemoteStorage {
     pub fn connect(source: &str) -> std::result::Result<Self, FormatError> {
         Self::connect_in(source, ssh::home_dir())
@@ -260,7 +232,9 @@ impl RemoteStorage {
 
     /// Like [`Self::connect`], with the home directory that holds `~/.ssh`.
     fn connect_in(source: &str, home: Option<PathBuf>) -> std::result::Result<Self, FormatError> {
-        validate_uri(source)?;
+        nie_tls::install();
+        nie_tls::install();
+        crate::game_source::validate_remote_uri(source)?;
         let normalized = source.trim_end_matches("/nie.exe").to_owned();
         let (sender, receiver) = mpsc::channel();
         let (ready, start) = mpsc::channel();

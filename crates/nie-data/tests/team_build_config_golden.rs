@@ -3,7 +3,7 @@
 //! extraites du VFS du jeu :
 //! `data/common/gamedata/skill/team_build_config_6.00.23.cfg.bin`
 //! (monté depuis `/mnt/c/Program Files (x86)/Steam/steamapps/common/INAZUMA ELEVEN
-//! Victory Road`, décodé via `nie_formats::cfgbin` → forme iecode `entries`/`children`).
+//! Victory Road`, décodé via `nie_formats::cfgbin` → forme étiquetée `entries`/`children`).
 //!
 //! Port 1:1 d'inagle `parsers/team-build-config.ts`. Cinq listes :
 //! `EFFECT_DATA` (35), `EFFECT_INFO` (30), `UP_DATA` (9), `DOWN_DATA` (6), `INFO` (6).
@@ -185,7 +185,7 @@ const INFO_DOWN_REF: [[i64; 2]; 6] = [[0, 1], [1, 1], [2, 1], [3, 1], [4, 1], [5
 const INFO_EFFINFO_REF: [[i64; 2]; 6] = [[0, 5], [5, 5], [10, 5], [15, 5], [20, 5], [25, 5]];
 
 // ════════════════════════════════════════════════════════════════════════════════
-//  Construction de la fixture `{ "entries": [...] }` (forme iecode).
+//  Construction de la fixture `{ "entries": [...] }` (forme étiquetée).
 // ════════════════════════════════════════════════════════════════════════════════
 
 /// Construit une variable `{type, value}`. Type `Float` si la chaîne contient un point

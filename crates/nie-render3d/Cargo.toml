@@ -17,11 +17,11 @@ default = ["cli"]
 cli = ["dep:clap", "video"]
 video = ["dep:thiserror"]
 # wgpu viewport. Optional: headless consumers (CPU golden tests, CLI turntable) do not pull wgpu.
-gpu = ["dep:nie-gpu", "dep:pollster", "dep:bytemuck"]
+gpu = ["dep:nie-gpu", "dep:pollster", "dep:bytemuck", "dep:wgpu-profiler"]
 # Optional canvas presentation; no GPU backend is added to CPU consumers by default.
 webgpu = ["gpu", "nie-gpu/webgpu", "dep:web-sys"]
 # WebGL 2 backend running the same renderer where WebGPU is missing (+2.24 MiB of wasm,
-# measured 2026-09-12 in bun-os, hence opt-in).
+# measured 2026-09-12, hence opt-in).
 webgl = ["webgpu", "nie-gpu/webgl"]
 # Bevy 0.20.1 ECS/App/Mesh plugin integration.
 bevy = [
@@ -44,6 +44,8 @@ thiserror = { workspace = true, optional = true }
 nie-gpu = { workspace = true, optional = true }
 pollster = { version = "1.0.1", optional = true }
 bytemuck = { version = "1.25", features = ["derive"], optional = true }
+# Timer-query scopes around the render passes (`GpuRenderer::gpu_pass_ms`).
+wgpu-profiler = { workspace = true, optional = true }
 bevy_app = { workspace = true, optional = true }
 bevy_ecs = { workspace = true, optional = true }
 bevy_asset = { workspace = true, optional = true }

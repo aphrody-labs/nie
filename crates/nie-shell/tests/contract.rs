@@ -14,11 +14,6 @@ fn checked_in_files_are_current() {
         nie_shell::contract_json(),
         "run `cargo run -p nie-shell -- contract > contract/nie-app.json`"
     );
-    assert_eq!(
-        std::fs::read_to_string(root.join("aphrody-store.toml")).unwrap(),
-        nie_shell::store_toml(),
-        "run `cargo run -p nie-shell -- store > contract/aphrody-store.toml`"
-    );
 }
 
 #[test]
@@ -45,22 +40,5 @@ fn every_command_binary_exists_in_its_package() {
             command.package,
             command.binary
         );
-    }
-}
-
-#[test]
-fn store_entry_is_valid_toml_with_the_shell_fields() {
-    let table: toml::Table = nie_shell::store_toml().parse().unwrap();
-    let entry = &table["entries"][0];
-    for key in [
-        "id",
-        "name",
-        "tagline",
-        "description",
-        "category",
-        "bin_name",
-        "platforms",
-    ] {
-        assert!(entry.get(key).is_some(), "missing {key}");
     }
 }

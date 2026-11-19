@@ -19,8 +19,6 @@ pub enum LauncherError {
     #[error("JSON serialization error: {0}")]
     Json(#[from] serde_json::Error),
 
-    #[error("EAC patch error: {0}")]
-    Eac(String),
 
     #[error("general error: {0}")]
     General(String),

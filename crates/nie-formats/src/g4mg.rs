@@ -1,6 +1,6 @@
 //! Extraction de géométrie G4MG (Level-5 « Graphics 4 Mesh Geometry »).
 //!
-//! Port Rust de `IECODE.Core/Formats/Level5/G4mgParser.cs` (`ExtractGeometry` L178,
+//! Port Rust de `G4mgParser.cs` (`ExtractGeometry` L178,
 //! `DecodeNormal` L364, `DecodeUv` L392, `Snorm16` L415, `Vec3ByteSize`/`Vec2ByteSize`
 //! L341/L352). Commits de référence : `e59f0b3` (normales SNORM16 + UV0) et `e444a88`.
 //!
@@ -197,8 +197,8 @@ pub fn extract_geometry(g4mg: &[u8], g4md: &G4md) -> Vec<SubmeshGeometry> {
     // de menu MULTI-submesh, `total_verts` double-compte les vertices PARTAGÉS entre submeshes (ex.
     // title02_00 : `vertex_offset` répétés [0,124,236,236,124]) → `derived_stride = 384/20 = 19 < 32`
     // (UV0 @24 + 8). On borne donc le stride dérivé par cet extent (vrai stride confirmé = 32 via dump
-    // octets : submesh[0] = quad propre (1,0)(0,0)(0,-1)(1,-1)). **Divergence ASSUMÉE d'iecode** —
-    // RE originale, ce layout multi-submesh étant non résolu dans iecode (cf. DESIGN.md §6). Sans
+    // octets : submesh[0] = quad propre (1,0)(0,0)(0,-1)(1,-1)). **Divergence ASSUMÉE du format étiqueté** —
+    // RE originale, ce layout multi-submesh étant non résolu dans la référence (cf. DESIGN.md §6). Sans
     // effet sur les meshes de perso / mono-submesh (où `derived_stride >= attr_extent`).
     let attr_extent = {
         let mut e = 12usize;

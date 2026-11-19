@@ -1,0 +1,17 @@
+[package]
+name = "nie-win32"
+version = "2.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Rust runtime for statically recompiled nie.exe: guest CPU state, flat image mapping, call dispatch and the Win32 import surface"
+keywords = ["win32", "static-recompilation", "runtime", "pe"]
+categories = ["emulators", "os::windows-apis"]
+
+[lints]
+workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc = { workspace = true }

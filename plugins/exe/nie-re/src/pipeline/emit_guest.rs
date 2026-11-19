@@ -315,7 +315,7 @@ fn cargo_toml(crate_name: &str, machine: &str, engine: &Path) -> String {
          [[bin]]\nname = \"{crate_name}\"\npath = \"src/main.rs\"\n\n\
          [dependencies]\nbun-engine = {{ path = \"{engine}\", default-features = false, features = [\"{machine}\"] }}\n\n\
          [profile.release]\nopt-level = 2\ndebug = false\ncodegen-units = 16\npanic = \"abort\"\n\n\
-         # Standalone: not a member of the Rose Griffon workspace.\n[workspace]\n"
+         # Standalone: not a member of any workspace.\n[workspace]\n"
     )
 }
 

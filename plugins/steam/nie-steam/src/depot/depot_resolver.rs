@@ -1,6 +1,6 @@
 //! Sélection des depots Steam depuis la section KeyValue `depots` d'une app info PICS.
 //!
-//! Port fidèle de `IECODE.Core/Steam/Content/SteamDepotResolver.cs` (C#, SteamKit2).
+//! Port fidèle de `SteamDepotResolver.cs` (C#, SteamKit2).
 //! Logique **pure**, sans I/O — testable unitairement sans connexion Steam.
 //!
 //! La représentation [`KeyValue`] vient de [`steamroom::types::key_value`].

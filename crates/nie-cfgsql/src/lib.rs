@@ -12,6 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
 use nie_formats::cfgbin::{self, CfgBinFile, CfgEntry, RdbnList, RdbnValue, Value};
+use nie_formats::vfs_manifest::hex;
 
 /// Errors raised while turning a `cfg.bin` into SQL.
 #[derive(Debug, thiserror::Error)]
@@ -489,14 +490,6 @@ fn quote_text(s: &str) -> String {
     format!("'{}'", s.replace('\'', "''"))
 }
 
-fn hex(bytes: &[u8]) -> String {
-    let mut s = String::with_capacity(bytes.len() * 2);
-    for b in bytes {
-        let _ = write!(s, "{b:02x}");
-    }
-    s
-}
-
 /// Renders one cell as an SQL literal.
 #[must_use]
 pub fn literal(cell: &Cell, dialect: Dialect) -> String {
@@ -798,3 +791,9 @@ mod tests {
 }
 
 pub mod pg;
+
+#[cfg(feature = "crlib")]
+#[allow(unsafe_code)]
+mod abi_generated;
+#[cfg(feature = "crlib")]
+mod abi_impls;

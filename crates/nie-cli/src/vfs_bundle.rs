@@ -589,7 +589,7 @@ fn profile_selections(
 
 fn read_cfg_json<S: BundleSource>(source: &S, path: &str) -> anyhow::Result<serde_json::Value> {
     let bytes = source.read(path).map_err(anyhow::Error::msg)?;
-    nie_formats::cfgbin::to_iecode_json(&bytes)
+    nie_formats::cfgbin::to_tagged_json(&bytes)
         .ok_or_else(|| anyhow!("VFS config is not a decodable cfg.bin: {path}"))
 }
 
@@ -867,7 +867,7 @@ fn select_menu_companions<S: BundleSource>(
     locale: &str,
 ) -> anyhow::Result<usize> {
     let setting_bytes = source.read(setting_path).map_err(anyhow::Error::msg)?;
-    let root = nie_formats::cfgbin::to_iecode_json(&setting_bytes)
+    let root = nie_formats::cfgbin::to_tagged_json(&setting_bytes)
         .ok_or_else(|| anyhow!("menu setting is not a decodable cfg.bin: {setting_path}"))?;
     let setting = nie_data::menu_setting::parse(&root);
     let mut companions = BTreeSet::new();

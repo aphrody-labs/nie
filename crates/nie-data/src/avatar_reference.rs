@@ -1,7 +1,7 @@
 //! Import contracts for Chara Edit projects and external player references.
 //!
 //! A local NIE project contains complete editable state and can be validated by the resolver.
-//! Zukan and Azalee player links only identify a canonical player, so they remain reference-only:
+//! Zukan and wiki player links only identify a canonical player, so they remain reference-only:
 //! no measured table maps those players to editable Chara Edit recipes. The game's share code
 //! can be decoded to raw slots, but those slots are never guessed into `faceSettingType` values.
 
@@ -47,7 +47,7 @@ pub struct AvatarShareCodeSpec {
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum OcReferenceKind {
     Zukan,
-    Azalee,
+    Wiki,
     NieCharacter,
     Png,
     Glb,
@@ -127,8 +127,8 @@ pub enum AvatarReferenceImport {
         #[cfg_attr(feature = "serde", serde(rename = "referenceOnly"))]
         reference_only: bool,
     },
-    /// Player link from Azalee's real `/chara/<slug|code>` route.
-    AzaleePlayer {
+    /// Player link from the wiki's `/chara/<slug|code>` route.
+    WikiPlayer {
         identifier: String,
         #[cfg_attr(feature = "serde", serde(rename = "referenceOnly"))]
         reference_only: bool,
@@ -239,7 +239,7 @@ fn validate_oc_document(document: &OcAvatarDocument) -> bool {
                             .is_some_and(|slots| !slots.is_empty())
                 }
                 OcReferenceKind::Zukan
-                | OcReferenceKind::Azalee
+                | OcReferenceKind::Wiki
                 | OcReferenceKind::NieCharacter => {
                     reference.bytes.is_none()
                         && reference.sha256.is_none()
@@ -423,12 +423,13 @@ fn query_value(query: &str, key: &str) -> Option<String> {
 }
 
 #[cfg(feature = "serde")]
-/// Host of the NIE wiki whose `chara/<id>` links are accepted: host of `NIE_WIKI_BASE`, else the public default.
-fn wiki_host() -> String {
-    // The crate is no_std: the override is read at build time, not from the process environment.
-    option_env!("NIE_WIKI_BASE")
-        .and_then(|base| url_host(base.trim()).map(String::from))
-        .unwrap_or_else(|| String::from("azalee.rosegriffon.fr"))
+/// Host of the NIE wiki whose `chara/<id>` links are accepted: the host of `NIE_WIKI_BASE`, none when unset.
+fn wiki_host() -> Option<String> {
+    // The crate is no_std: the setting is read at build time, not from the process environment.
+    if cfg!(test) {
+        return Some(String::from("wiki.nie.test"));
+    }
+    option_env!("NIE_WIKI_BASE").and_then(|base| url_host(base.trim()).map(String::from))
 }
 
 #[cfg(feature = "serde")]
@@ -599,7 +600,7 @@ pub fn import_avatar_reference(
                 reference_only: true,
             });
         }
-        if host.eq_ignore_ascii_case(&wiki_host()) {
+        if wiki_host().is_some_and(|wiki| host.eq_ignore_ascii_case(&wiki)) {
             let tail = reference
                 .split_once("://")
                 .map_or(reference, |(_, tail)| tail);
@@ -619,7 +620,7 @@ pub fn import_avatar_reference(
             if !valid_player_identifier(&identifier) {
                 return Err(AvatarReferenceError::InvalidReference);
             }
-            return Ok(AvatarReferenceImport::AzaleePlayer {
+            return Ok(AvatarReferenceImport::WikiPlayer {
                 identifier,
                 reference_only: true,
             });
@@ -765,7 +766,7 @@ mod tests {
     }
 
     #[test]
-    fn validates_real_zukan_query_and_azalee_character_path_without_claiming_a_recipe() {
+    fn validates_real_zukan_query_and_wiki_character_path_without_claiming_a_recipe() {
         let query = "hN2cl56NnpyLmo2glpvdxaTdnM_Kz83LyM_P3aKC";
         assert_eq!(
             import_avatar_reference(
@@ -791,10 +792,10 @@ mod tests {
             import_avatar_reference(
                 &catalog(),
                 &AvatarState::default(),
-                "https://azalee.rosegriffon.fr/chara/astro-lor"
+                "https://wiki.nie.test/chara/astro-lor"
             )
             .unwrap(),
-            AvatarReferenceImport::AzaleePlayer {
+            AvatarReferenceImport::WikiPlayer {
                 identifier: "astro-lor".into(),
                 reference_only: true,
             }
@@ -803,7 +804,7 @@ mod tests {
             import_avatar_reference(
                 &catalog(),
                 &AvatarState::default(),
-                "https://azalee.rosegriffon.fr/avatar?code=e"
+                "https://wiki.nie.test/avatar?code=e"
             ),
             Err(AvatarReferenceError::InvalidReference)
         ));
@@ -960,7 +961,7 @@ mod tests {
                 "zukan",
                 "https://zukan.inazuma.jp/fr/chara_model_view/?q=reference",
             ),
-            ("azalee", "https://azalee.rosegriffon.fr/chara/astro-lor"),
+            ("wiki", "https://wiki.nie.test/chara/astro-lor"),
             ("nie_character", "c99019010"),
         ] {
             assert!(valid(document(kind, value, None, None)));

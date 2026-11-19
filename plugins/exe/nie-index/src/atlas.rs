@@ -490,7 +490,7 @@ impl Atlas {
                         r.get(0)
                     })?;
                 for dep in &parsed.deps {
-                    let internal = i64::from(dep.starts_with("nie-") || dep.starts_with("rg-"));
+                    let internal = i64::from(dep.starts_with("nie-"));
                     dep_stmt.execute(params![crate_id, dep, internal])?;
                 }
                 text.execute(params![
@@ -2196,13 +2196,13 @@ fn extract_refs(line: &str, line_no: usize, out: &mut Vec<(usize, &'static str, 
             out.push((line_no, "func", trimmed.to_string()));
         } else if trimmed.len() == 64 && trimmed.bytes().all(|b| b.is_ascii_hexdigit()) {
             out.push((line_no, "sha256", trimmed.to_ascii_lowercase()));
-        } else if trimmed.starts_with("nie-") || trimmed.starts_with("rg-") {
+        } else if trimmed.starts_with("nie-") {
             out.push((line_no, "crate", trimmed.to_string()));
         } else if trimmed.contains('/') && trimmed.contains('.') {
             out.push((line_no, "path", trimmed.to_string()));
             // `crates/nie/nie-re/src/lib.rs` names a crate as much as `nie-re` does.
             for segment in trimmed.split('/') {
-                if segment.starts_with("nie-") || segment.starts_with("rg-") {
+                if segment.starts_with("nie-") {
                     out.push((line_no, "crate", segment.to_string()));
                 }
             }

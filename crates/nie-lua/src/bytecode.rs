@@ -757,6 +757,19 @@ pub fn encode(chunk: &Chunk) -> Vec<u8> {
     w.out
 }
 
+/// Removes the debug information (`source`, line info, local and upvalue names) of every
+/// prototype, as `luac -s` does. The game ships its chunks in this form.
+pub fn strip_debug(chunk: &mut Chunk) {
+    fn walk(p: &mut Prototype) {
+        p.source.clear();
+        p.line_info.clear();
+        p.loc_vars.clear();
+        p.upvalue_names.clear();
+        p.protos.iter_mut().for_each(walk);
+    }
+    walk(&mut chunk.main);
+}
+
 /// Réencode un chunk pour une plateforme dont `size_t` et `int` ont d'autres tailles.
 ///
 /// ## Pourquoi cette fonction existe

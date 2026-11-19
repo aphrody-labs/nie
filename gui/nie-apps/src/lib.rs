@@ -13,6 +13,8 @@
 pub mod explorer;
 pub mod http_explorer;
 #[cfg(not(target_family = "wasm"))]
+pub mod lua_tabs;
+#[cfg(not(target_family = "wasm"))]
 pub mod viewer;
 #[cfg(not(target_family = "wasm"))]
 pub mod wiki;

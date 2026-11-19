@@ -9,12 +9,14 @@ description = "Byte-exact PE64 model, complete image partitioning, rebuild and C
 keywords = ["pe", "reverse-engineering", "coff", "assembler", "x86-64"]
 categories = ["development-tools::debugging", "parser-implementations"]
 
+[lib]
+crate-type = ["rlib", "staticlib", "cdylib"]
+
 [lints]
 workspace = true
 
 [features]
-default = ["serde"]
-serde = []
+crlib = []
 
 [dependencies]
 nie-re = { path = "../nie-re", version = "2.0.0", default-features = false }

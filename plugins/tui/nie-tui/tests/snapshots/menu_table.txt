@@ -1,0 +1,24 @@
+ path /data/common/menu  [(loose)]
+ data/common ────┐ menu ──────────────────────────────┐ preview ──────────────────────────────────────────────
+ event_cfg/    1 │ ui_main.cfg.bin              132 B │path       data/common/menu/ui_main.cfg.bin
+ menu/         1 │                                    │size       132 B
+ misc/         2 │                                    │format     T2B
+ script/       1 │                                    │record     UI_ITEM (1 of 1)
+ text/         2 │                                    │rows       2
+                 │                                    │UI_ITEM  (2 of 2 rows from 1)──────────────────────────
+                 │                                    │#0  #1
+                 │                                    │10  play
+                 │                                    │20  quit
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+                 │                                    │
+ 1/1                                                                               table  halfblocks  9 files

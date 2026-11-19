@@ -3,7 +3,7 @@
 //! host is unreachable. Example:
 //!
 //! ```text
-//! NIE_ASSETS_PRD_SOURCE="ssh://prd/srv/nie/steam/steamapps/common/INAZUMA ELEVEN Victory Road" cargo test -p nie-assets --test prd_stream -- --nocapture
+//! NIE_ASSETS_PRD_SOURCE="ssh://<game-host>/<game_dir>" cargo test -p nie-assets --test prd_stream -- --nocapture
 //! ```
 //!
 //! Nothing is downloaded beyond the CPK tables and one small file; no game byte is stored.

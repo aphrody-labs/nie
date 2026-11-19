@@ -17,6 +17,7 @@ env:
   CARGO_TERM_COLOR: never
   CARGO_INCREMENTAL: "0"
 
+# Every job is the `just` recipe `ci-<job>` of the justfile.
 jobs:
   native:
     name: headless asset load (${{ matrix.os }})
@@ -27,14 +28,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
-      - name: Toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
-      - name: Synthetic CPK through Bevy's AssetServer, VFS and remote transports
-        # Builds a CPK archive in a temp directory and loads bytes and a texture through
-        # `game://`. No game file is involved.
-        run: cargo test --locked -p nie-assets -p nie-formats -p nie-plugin --lib --tests
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
+        with:
+          tool: just@1.59.0
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - run: just ci-native
 
   launcher:
     name: nie-mcp-launch (${{ matrix.os }})
@@ -45,27 +46,50 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
-      - name: Toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - name: Resolution order and stdio round trips against a fake nie-mcp
-        run: cargo test --locked --manifest-path tools/nie-mcp-launch/Cargo.toml
-      - name: Lint, warnings denied
-        run: cargo clippy --locked --manifest-path tools/nie-mcp-launch/Cargo.toml --all-targets -- -D warnings
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
+        with:
+          tool: just@1.59.0
+      - run: just ci-launcher
 
   workspace:
     name: workspace (every crate, every target)
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
-      - name: System libraries
-        # Bevy and winit link against ALSA, udev, Wayland and xkbcommon through pkg-config.
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev libgl1-mesa-dev
-      - name: Toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
-      - name: Lint the whole workspace, warnings denied
-        run: cargo clippy --locked --workspace --all-targets -- -D warnings
-      - name: Bevy asset integration
-        run: cargo check --locked -p nie-bevy --features bevy --all-targets
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
+        with:
+          tool: just@1.59.0
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - run: just ci-workspace
+
+  os:
+    name: os (no_std core, OSDK ISO)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
+        with:
+          tool: just@1.59.0
+      - run: just ci-os
+
+  deny:
+    name: crypto and transport bans (cargo deny)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@75a7c0f87bd666af3cdb75c5b9e9d03ab6044e6f # v2.90.6
+        with:
+          tool: just@1.59.0,cargo-deny@0.20.2
+      - run: just ci-deny

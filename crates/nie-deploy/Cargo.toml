@@ -1,0 +1,43 @@
+[package]
+name = "nie-deploy"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+description = "Deployment of the nie stack with no init system and no container runtime: a process supervisor (setsid, uid drop, rlimits, restart with backoff, rotated logs, health probes), an installer over nie-ssh and the Cloudflare origin step."
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "nie-deploy"
+path = "src/main.rs"
+
+[dependencies]
+nie-tls = { workspace = true }
+anyhow = { workspace = true, features = ["std"] }
+base64 = { workspace = true }
+clap = { workspace = true }
+graviola = { workspace = true }
+nie-edge = { path = "../nie-edge", version = "2.0.0" }
+nie-health = { path = "../nie-health", version = "2.0.0" }
+nie-ssh = { workspace = true }
+rcgen = { workspace = true }
+reqwest = { workspace = true, features = ["blocking", "rustls-no-provider"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true, features = ["display", "parse", "serde", "std"] }
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true, features = ["fs", "process", "resource", "signal", "user"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+crabtables = { workspace = true }
+
+[target.'cfg(unix)'.dev-dependencies]
+nix = { workspace = true, features = ["sched"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }

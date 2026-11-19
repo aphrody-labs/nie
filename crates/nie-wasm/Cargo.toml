@@ -29,13 +29,35 @@ nie-explore = { workspace = true, default-features = false }
 serde = { workspace = true, features = ["std", "derive"] }
 serde_json = { workspace = true }
 
+[features]
+default = []
+# `ModelViewer`: the WebGPU canvas presenter of nie-render3d. `webgl` adds its WebGL2 fallback.
+webgpu = ["dep:nie-render3d", "nie-render3d/webgpu"]
+webgl = ["webgpu", "nie-render3d/webgl"]
+
+# The browser mount of the installation (`GameMount`) and its transports, then the browser
+# entropy support for transitive getrandom 0.3 consumers.
 # wasm-bindgen est épinglé à une version EXACTE dans le Cargo.toml racine : le CLI
 # `wasm-bindgen` doit porter la même, sinon les bindings générés sont rejetés.
-# Gate via cfg(target_arch = "wasm32") dans le code source.
-wasm-bindgen.workspace = true
-
-# Browser entropy support for transitive getrandom 0.3 consumers.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen.workspace = true
+blake3 = { workspace = true }
+js-sys = { workspace = true }
+nie-render3d = { path = "../nie-render3d", version = "2.0.0", default-features = false, optional = true }
+nie-wiki-vfs = { path = "../nie-wiki-vfs", version = "2.0.0" }
+wasm-bindgen-futures = { workspace = true }
+web-sys = { workspace = true, features = [
+  "Blob",
+  "File",
+  "FileSystemDirectoryHandle",
+  "FileSystemFileHandle",
+  "Headers",
+  "HtmlCanvasElement",
+  "Request",
+  "RequestInit",
+  "Response",
+  "WorkerGlobalScope",
+] }
 console_error_panic_hook.workspace = true
 getrandom = { version = "0.3.4", default-features = false, features = [
   "wasm_js",

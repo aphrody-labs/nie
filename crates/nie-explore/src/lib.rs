@@ -7,7 +7,8 @@
 //! façades (CLI texte / IPC JSON), pour éviter que les deux dérivent (cf. `CLAUDE.md`,
 //! anti-doublon).
 
-#![forbid(unsafe_code)]
+#![cfg_attr(not(feature = "crlib"), forbid(unsafe_code))]
+#![cfg_attr(feature = "crlib", deny(unsafe_code))]
 
 #[cfg(all(feature = "host", not(target_arch = "wasm32")))]
 pub mod audio;
@@ -23,8 +24,14 @@ pub mod depot;
 #[cfg(all(feature = "host", not(target_arch = "wasm32")))]
 pub mod domain_data;
 pub mod export;
+/// The renderer-independent model of the terminal explorer `nie fm`.
+#[cfg(all(feature = "fm", not(target_arch = "wasm32")))]
+pub mod fm;
+/// The renderer-independent model of the GPU terminal `nie term`: VT grid, cursor, scrollback,
+/// image placements and the input encoders. Portable (no window system, GPU API or pty).
+#[cfg(feature = "term")]
+pub mod term;
 pub mod folder_roles;
-#[cfg(all(feature = "host", not(target_arch = "wasm32")))]
 pub mod game_data;
 pub mod geometry;
 #[cfg(all(feature = "host", not(target_arch = "wasm32")))]
@@ -600,3 +607,7 @@ pub fn describe_content(path: &str, data: &[u8]) -> Option<Vec<String>> {
 
     None
 }
+
+#[cfg(feature = "crlib")]
+#[allow(unsafe_code)]
+mod abi_generated;

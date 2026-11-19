@@ -1,6 +1,6 @@
 //! Session Steam authentifiée (login CM + PICS + clés depots).
 //!
-//! Port de `IECODE.Core/Steam/Content/Steam3Session.cs` (C#, SteamKit2)
+//! Port de `Steam3Session.cs` (C#, SteamKit2)
 //! réécrit sur la fondation `steamroom` / `steamroom-client`.
 //!
 //! `Steam3Session` côté C# combinait :
@@ -423,7 +423,7 @@ async fn credentials_login(
         .map_err(|e| anyhow::anyhow!("finalisation login : {e}"))
 }
 
-/// Convertit le premier `GuardType` steamroom disponible en `SteamGuardKind` iecode.
+/// Convertit le premier `GuardType` steamroom disponible en `SteamGuardKind` de référence.
 fn guard_kind_from_steamroom(kinds: &[GuardType]) -> SteamGuardKind {
     if kinds.iter().any(|k| matches!(k, GuardType::DeviceCode)) {
         SteamGuardKind::Device
@@ -432,7 +432,7 @@ fn guard_kind_from_steamroom(kinds: &[GuardType]) -> SteamGuardKind {
     }
 }
 
-/// Convertit `SteamGuardKind` iecode en `GuardType` steamroom.
+/// Convertit `SteamGuardKind` de référence en `GuardType` steamroom.
 fn guard_kind_to_steamroom(kind: SteamGuardKind) -> GuardType {
     match kind {
         SteamGuardKind::Device => GuardType::DeviceCode,

@@ -24,7 +24,7 @@ host = [
 [dependencies]
 anyhow = { workspace = true }
 hex = "0.4"
-reqwest = { workspace = true, features = ["blocking", "rustls"], optional = true }
+reqwest = { workspace = true, features = ["blocking", "rustls-no-provider"], optional = true }
 rusqlite = { workspace = true, optional = true }
 sha2 = { workspace = true }
 serde = { workspace = true, features = ["std", "derive"] }

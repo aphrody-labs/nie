@@ -5,11 +5,10 @@
 //!   1. `NIE_MCP_BIN`                       explicit binary
 //!   2. `<cargo target dir>/{release,debug}/nie-mcp[.exe]`, newest first; the target dir is
 //!      `CARGO_TARGET_DIR`, else the `target_directory` of `cargo metadata`
-//!   3. the build host over SSH             `NIE_BUILD_HOST` (default `fr1`), `NIE_BUILD_DIR`
-//!      (default `/srv/xbuild/nie`)
+//!   3. the build host over SSH (nie-ssh, else ssh)             `NIE_BUILD_HOST`, `NIE_BUILD_DIR`, else the
+//!      `[build]` table of `deploy/build.toml` in the project directory
 //!
-//! Heavy builds stay off the PC: build with
-//! `ssh fr1 'cd /srv/xbuild/nie && cargo build -p nie-cli --bin nie-mcp --features host'`.
+//! Heavy builds stay off the PC: `just compile` builds on the build host of the same table.
 //! Paths passed to tools resolve on the machine that runs the binary.
 //!
 //! stdio is inherited. On Unix the launcher replaces itself with the server (`exec`), so signals
@@ -17,13 +16,12 @@
 //! returns its exit code; the child sees EOF on stdin when the launcher goes away.
 
 use std::env;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 
-const DEFAULT_HOST: &str = "fr1";
-const DEFAULT_DIR: &str = "/srv/xbuild/nie";
+const MANIFEST: &str = "deploy/build.toml";
 const EXE: &str = if cfg!(windows) {
     "nie-mcp.exe"
 } else {
@@ -35,23 +33,41 @@ const EXE: &str = if cfg!(windows) {
 struct Config {
     bin: Option<PathBuf>,
     target_dir: Option<PathBuf>,
-    host: String,
-    dir: String,
+    host: Option<String>,
+    dir: Option<String>,
 }
 
 impl Config {
-    fn from_env() -> Self {
+    /// `root` is the project directory holding `deploy/build.toml`.
+    fn from_env(root: &Path) -> Self {
         let var = |name: &str| env::var_os(name).filter(|v| !v.is_empty());
-        let text = |name: &str, default: &str| {
-            var(name).map_or_else(|| default.to_owned(), |v| v.to_string_lossy().into_owned())
-        };
+        let text = |name: &str| var(name).map(|v| v.to_string_lossy().into_owned());
+        let manifest = fs::read_to_string(root.join(MANIFEST)).unwrap_or_default();
         Self {
             bin: var("NIE_MCP_BIN").map(PathBuf::from),
             target_dir: var("CARGO_TARGET_DIR").map(PathBuf::from),
-            host: text("NIE_BUILD_HOST", DEFAULT_HOST),
-            dir: text("NIE_BUILD_DIR", DEFAULT_DIR),
+            host: text("NIE_BUILD_HOST").or_else(|| build_key(&manifest, "host")),
+            dir: text("NIE_BUILD_DIR").or_else(|| build_key(&manifest, "dir")),
         }
     }
+}
+
+/// `key = "value"` of the `[build]` table (all the manifest holds; no general TOML needed).
+fn build_key(manifest: &str, key: &str) -> Option<String> {
+    let mut in_build = false;
+    for line in manifest.lines().map(str::trim) {
+        if line.starts_with('[') {
+            in_build = line == "[build]";
+        } else if in_build
+            && let Some((name, value)) = line.split_once('=')
+            && name.trim() == key
+        {
+            let value = value.split('#').next().unwrap_or_default().trim();
+            let value = value.strip_prefix('"')?.strip_suffix('"')?;
+            return (!value.is_empty()).then(|| value.trim_end_matches('/').to_owned());
+        }
+    }
+    None
 }
 
 /// What to run.
@@ -59,6 +75,8 @@ impl Config {
 enum Launch {
     Local(PathBuf),
     Remote { host: String, dir: String },
+    /// No local build and no build host configured.
+    Missing,
 }
 
 /// The newest of `<target>/release/nie-mcp` and `<target>/debug/nie-mcp`; release wins ties.
@@ -86,9 +104,12 @@ fn resolve(cfg: &Config, cargo_target_dir: impl FnOnce() -> Option<PathBuf>) -> 
     if let Some(bin) = target.as_deref().and_then(newest_binary) {
         return Launch::Local(bin);
     }
-    Launch::Remote {
-        host: cfg.host.clone(),
-        dir: cfg.dir.clone(),
+    match (&cfg.host, &cfg.dir) {
+        (Some(host), Some(dir)) => Launch::Remote {
+            host: host.clone(),
+            dir: dir.clone(),
+        },
+        _ => Launch::Missing,
     }
 }
 
@@ -99,19 +120,53 @@ fn remote_script(host: &str, dir: &str) -> String {
     )
 }
 
-/// Program and arguments of a [`Launch`].
-fn argv(launch: &Launch) -> (OsString, Vec<OsString>) {
+/// The SSH transport: `NIE_SSH_BIN`, else `nie-ssh` when it is on `PATH`, else OpenSSH's `ssh`.
+fn ssh_program() -> OsString {
+    if let Some(bin) = env::var_os("NIE_SSH_BIN").filter(|b| !b.is_empty()) {
+        return bin;
+    }
+    let name = if cfg!(windows) { "nie-ssh.exe" } else { "nie-ssh" };
+    env::var_os("PATH")
+        .into_iter()
+        .flat_map(|paths| env::split_paths(&paths).collect::<Vec<_>>())
+        .map(|dir| dir.join(name))
+        .find(|candidate| candidate.is_file())
+        .map_or_else(|| "ssh".into(), PathBuf::into_os_string)
+}
+
+/// True when `program` is OpenSSH's client (`ssh`, `ssh.exe`), which takes `-T -o BatchMode=yes`.
+fn is_openssh(program: &OsStr) -> bool {
+    Path::new(program)
+        .file_stem()
+        .is_some_and(|stem| stem.eq_ignore_ascii_case("ssh"))
+}
+
+/// Program and arguments of a [`Launch`], the remote one over `ssh_program`.
+fn argv_with(launch: &Launch, ssh_program: &OsStr) -> (OsString, Vec<OsString>) {
     match launch {
         Launch::Local(bin) => (bin.clone().into_os_string(), Vec::new()),
-        Launch::Remote { host, dir } => (
-            "ssh".into(),
-            ["-T", "-o", "BatchMode=yes", host]
-                .into_iter()
-                .map(OsString::from)
-                .chain([remote_script(host, dir).into()])
-                .collect(),
-        ),
+        Launch::Missing => (OsString::new(), Vec::new()),
+        Launch::Remote { host, dir } => {
+            let flags: &[&str] = if is_openssh(ssh_program) {
+                &["-T", "-o", "BatchMode=yes"]
+            } else {
+                &[]
+            };
+            (
+                ssh_program.to_owned(),
+                flags
+                    .iter()
+                    .map(OsString::from)
+                    .chain([OsString::from(host), remote_script(host, dir).into()])
+                    .collect(),
+            )
+        }
     }
+}
+
+/// Program and arguments of a [`Launch`].
+fn argv(launch: &Launch) -> (OsString, Vec<OsString>) {
+    argv_with(launch, &ssh_program())
 }
 
 /// Value of the JSON string field `key`, first occurrence (enough for `cargo metadata`).
@@ -174,7 +229,13 @@ fn project_root() -> PathBuf {
 
 fn main() -> ExitCode {
     let root = project_root();
-    let launch = resolve(&Config::from_env(), || cargo_target_dir(&root));
+    let launch = resolve(&Config::from_env(&root), || cargo_target_dir(&root));
+    if launch == Launch::Missing {
+        eprintln!(
+            "nie-mcp-launch: no local nie-mcp build and no build host: set NIE_MCP_BIN or NIE_BUILD_HOST and NIE_BUILD_DIR, or fill {MANIFEST}"
+        );
+        return ExitCode::from(127);
+    }
     let (program, args) = argv(&launch);
     let mut command = Command::new(&program);
     command.args(&args).current_dir(&root);
@@ -228,8 +289,8 @@ mod tests {
 
     fn cfg() -> Config {
         Config {
-            host: DEFAULT_HOST.into(),
-            dir: DEFAULT_DIR.into(),
+            host: Some("box".into()),
+            dir: Some("/work/nie".into()),
             ..Config::default()
         }
     }
@@ -308,11 +369,21 @@ mod tests {
         let dir = TempDir::new();
         let empty = dir.path().to_path_buf();
         let remote = Launch::Remote {
-            host: "fr1".into(),
-            dir: "/srv/xbuild/nie".into(),
+            host: "box".into(),
+            dir: "/work/nie".into(),
         };
         assert_eq!(resolve(&cfg(), || Some(empty)), remote);
         assert_eq!(resolve(&cfg(), || None), remote);
+        assert_eq!(resolve(&Config::default(), || None), Launch::Missing);
+    }
+
+    #[test]
+    fn manifest_build_table_is_read() {
+        let text = "# c\n[other]\nhost = \"no\"\n[build]\nhost = \"box\" # why\ndir = \"/w/nie/\"\n";
+        assert_eq!(build_key(text, "host").as_deref(), Some("box"));
+        assert_eq!(build_key(text, "dir").as_deref(), Some("/w/nie"));
+        assert_eq!(build_key("", "host"), None);
+        assert!(build_key(include_str!("../../../deploy/build.toml"), "host").is_some());
     }
 
     #[test]
@@ -321,7 +392,7 @@ mod tests {
             host: "fr2".into(),
             dir: "/work/nie".into(),
         };
-        let (program, args) = argv(&launch);
+        let (program, args) = argv_with(&launch, OsStr::new("ssh"));
         assert_eq!(program, "ssh");
         let args: Vec<_> = args
             .iter()
@@ -332,6 +403,19 @@ mod tests {
         assert!(args[4].contains("nie-mcp not built in fr2:/work/nie"));
         assert!(args[4].contains("exit 127"));
         assert_eq!(args.len(), 5);
+    }
+
+    #[test]
+    fn nie_ssh_takes_the_host_and_the_script_only() {
+        let launch = Launch::Remote {
+            host: "box".into(),
+            dir: "/work/nie".into(),
+        };
+        let (program, args) = argv_with(&launch, OsStr::new("/usr/bin/nie-ssh"));
+        assert_eq!(program, "/usr/bin/nie-ssh");
+        assert_eq!(args.len(), 2);
+        assert_eq!(args[0], "box");
+        assert!(args[1].to_string_lossy().starts_with("cd /work/nie && bin="));
     }
 
     #[test]

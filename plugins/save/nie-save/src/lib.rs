@@ -49,7 +49,8 @@
 //!
 //! Ce crate travaille uniquement sur des slices en mémoire et des `Vec<u8>`. Compatible
 //! `no_std + alloc` (sauf les fonctions utilitaires `std::fs::*` dans [`io`]).
-#![forbid(unsafe_code)]
+#![cfg_attr(not(feature = "crlib"), forbid(unsafe_code))]
+#![cfg_attr(feature = "crlib", deny(unsafe_code))]
 #![allow(clippy::pedantic)]
 
 extern crate alloc;
@@ -667,10 +668,10 @@ fn crc32_of(data: &[u8]) -> u32 {
 /// Référence à un personnage possédé par le joueur.
 ///
 /// Porte l'identifiant brut extrait de la save (`id` = clé primaire `inagle_characters`)
-/// et, optionnellement, le nom résolu côté consommateur (azalee / wasm-consumer).
+/// et, optionnellement, le nom résolu côté consommateur (wiki / wasm-consumer).
 ///
 /// Le crate `nie-save` ne lit pas le miroir SQLite : il renvoie les `CharaId` bruts.
-/// La résolution `id → name_fr` est effectuée en dehors du crate (page azalee ou
+/// La résolution `id → name_fr` est effectuée en dehors du crate (page du wiki ou
 /// via un manifeste JSON injecté au moment du build).
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -713,7 +714,7 @@ impl CharaRef {
 /// ## Résolution des noms
 ///
 /// `nie-save` renvoie les ids bruts (`CharaId`). La résolution vers `name_fr`
-/// se fait côté consommateur via le miroir SQLite azalee ou un manifeste JSON.
+/// se fait côté consommateur via le miroir SQLite du wiki ou un manifeste JSON.
 /// Utiliser [`Roster::resolve`] pour injecter les noms résolus.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -784,7 +785,7 @@ impl Roster {
 ///   sous forme de SF-TLV entrelacé — format non encore décodé.
 ///
 /// Ce struct est prévu pour extension future. Actuellement vide.
-/// La page azalee affichera les informations d'équipe via Steam + EA Juno à la place.
+/// La page du wiki affichera les informations d'équipe via Steam + EA Juno à la place.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Team {
@@ -1422,7 +1423,7 @@ mod tests {
     ///
     /// Validation croisée vs inagle_characters documentée :
     /// - 4534 ids extraits, 4484 uniques (50 doublons normaux côté moteur jeu)
-    /// - 4484/4484 ids uniques matchent `inagle_characters` dans le miroir SQLite azalee
+    /// - 4484/4484 ids uniques matchent `inagle_characters` dans le miroir SQLite du wiki
     ///   (validé manuellement par script Python, 2026-06-05)
     ///
     /// Nécessite la save réelle du VPS. Skip si absent.
@@ -1470,3 +1471,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(feature = "crlib")]
+#[allow(unsafe_code)]
+mod abi_generated;

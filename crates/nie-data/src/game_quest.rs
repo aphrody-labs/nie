@@ -16,7 +16,7 @@
 use alloc::vec::Vec;
 use serde_json::Value;
 
-use crate::cfgbin::{field_hash, field_i64, field_pair, field_str, list_values};
+use crate::cfgbin::{field_hash, field_i64, field_pair, field_str, list_values, slice_ref};
 use crate::hash::HashId;
 
 /// `m_questDataList` — un objectif de quête.
@@ -116,15 +116,8 @@ impl GameQuestConfig {
     /// Résout les objectifs d'un défi (`quest_data` slice dans `quest_data`).
     #[must_use]
     pub fn quests_of(&self, q: &GameQuestInfo) -> &[QuestData] {
-        slice(&self.quest_data, q.quest_data)
+        slice_ref(&self.quest_data, q.quest_data)
     }
-}
-
-fn slice<T>(list: &[T], range: [i64; 2]) -> &[T] {
-    let n = list.len();
-    let start = (range[0].max(0) as usize).min(n);
-    let end = start.saturating_add(range[1].max(0) as usize).min(n);
-    list.get(start..end).unwrap_or(&[])
 }
 
 /// Parse un `game_quest_config_*.cfg.bin.json` complet.

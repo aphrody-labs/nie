@@ -1,5 +1,5 @@
 //! Données de jeu STATIQUES (techniques pour l'instant) — indépendant du VFS "brut"
-//! (`vfs_ls`/`vfs_describe`) et du miroir wiki azalee (`wikiDb`/`nameResolve`) : lecture directe
+//! (`vfs_ls`/`vfs_describe`) et du miroir wiki wiki (`wikiDb`/`nameResolve`) : lecture directe
 //! des `.cfg.bin` du jeu, décodés par les VRAIS parseurs typés de `nie-data` (déjà une
 //! dépendance déclarée mais jamais câblée dans une commande jusqu'ici — cf. demande
 //! utilisatrice « toutes les features, api et code de nie et des crates doivent être
@@ -134,13 +134,13 @@ pub fn list_skills(vfs: &Vfs) -> Result<Vec<SkillDto>, String> {
 }
 
 /// Convertit UNE liste de `CfgEntry` frères en JSON **avec suffixe d'index par nom dupliqué**
-/// (`TEXT_INFO` → `TEXT_INFO_0`, `TEXT_INFO_1`, …) — c'est la forme "inagle"/iecode RÉELLE
+/// (`TEXT_INFO` → `TEXT_INFO_0`, `TEXT_INFO_1`, …) — c'est la forme étiquetée RÉELLE
 /// qu'attendent `walk_named`/[`nie_data::text::parse_text_file`] (prefix-match `"TEXT_INFO_"` +
 /// exclusion du noeud `"…_BEGIN"`), PAS la forme brute de [`crate::bridge::t2b_to_json`]
 /// (noms non désambiguïsés, ex. plusieurs frères tous nommés `"TEXT_INFO"`) : `walk_named`
 /// matcherait alors 0 noeud (bug constaté : `list_items`/`list_auras`/`list_trophies`/
 /// `list_quests` résolvaient 0 texte avant ce correctif, malgré des fichiers texte trouvés et
-/// parsés sans erreur). Port fidèle du `to_iecode` local dupliqué dans CHAQUE
+/// parsés sans erreur). Port fidèle du `to_tagged` local dupliqué dans CHAQUE
 /// `nie-game/examples/export_{items,auras,trophies,quests}.rs` (déjà validé end-to-end sur le
 /// vrai jeu) — factorisé ici une fois pour toutes plutôt que redupliqué une 5ᵉ fois.
 /// Charge un `.cfg.bin` T2B du VFS (chemin résolu dynamiquement, cf. [`find_path`]) et le
@@ -1094,7 +1094,7 @@ pub fn list_uniforms(vfs: &Vfs) -> Result<Vec<UniformDto>, String> {
         .collect())
 }
 
-// ─── Familles au-delà du wiki azalee (§4.3 ROADMAP) ──────────────────────────────────────────
+// ─── Familles au-delà du wiki wiki (§4.3 ROADMAP) ──────────────────────────────────────────
 //
 // Même patron que `list_shops`/`list_uniforms` : `load_t2b`/`load_rdbn` (ponts déjà testés) →
 // parseur typé de `nie-data` → DTO applati, entiers en `f64` (`specta` refuse les BigInt).

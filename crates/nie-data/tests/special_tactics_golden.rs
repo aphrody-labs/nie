@@ -530,7 +530,7 @@ const REF_SUCCESS_COND_IDS: [[i64; 2]; 15] = [
 /// Les 15 premiers `__SORT_INDEX_*`.
 const SORT_INDEX: [i64; 15] = [32, 9, 24, 81, 56, 66, 46, 36, 76, 5, 65, 55, 35, 45, 75];
 
-/// Construit des variables Int au format iecode `{type:"Int", value:"<n>"}`.
+/// Construit des variables Int au format étiquetée `{type:"Int", value:"<n>"}`.
 fn int_vars(vals: &[i64]) -> Vec<Value> {
     vals.iter()
         .map(|v| json!({ "type": "Int", "value": v.to_string() }))
@@ -555,7 +555,7 @@ fn info_node(idx: usize, info: &Info) -> Value {
     json!({ "name": format!("SPECIAL_TACTICS_INFO_{idx}"), "variables": variables, "children": [] })
 }
 
-/// Reconstruit le noeud racine iecode exact du dump (4 entries, enfants suffixés `_<i>`).
+/// Reconstruit le noeud racine étiquetée exact du dump (4 entries, enfants suffixés `_<i>`).
 fn fixture() -> Value {
     // Liste des effets.
     let effect_children: Vec<Value> = EFFECTS

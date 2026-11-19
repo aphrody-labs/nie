@@ -9,10 +9,10 @@
 //!
 //! | forme | exemple | producteur |
 //! |-------|---------|------------|
-//! | **iecode** (« étiquetée ») | `{"type":"Int","value":"128840881"}` | dumps `*.cfg.bin.json` (inagle / C#) |
+//! | **étiquetée** (« étiquetée ») | `{"type":"Int","value":"128840881"}` | dumps `*.cfg.bin.json` (inagle / C#) |
 //! | **native** (serde, tag externe) | `{"Int":128840881}` | [`nie_formats::cfgbin::Value`] via `nie decode` |
 //!
-//! La forme iecode porte **toujours la valeur en chaîne** ; la forme native porte un
+//! La forme étiquetée porte **toujours la valeur en chaîne** ; la forme native porte un
 //! `serde_json::Number` (ou une chaîne pour `String`). Sans le support de la seconde, un JSON
 //! produit par la CLI du dépôt se lisait « toutes variables absentes » — les parseurs
 //! renvoyaient des listes **vides sans erreur**. Les deux formes sont donc reconnues ici, à
@@ -31,15 +31,15 @@ use crate::hash::HashId;
 /// Une variable CfgBin, `value` réinterprétée à la demande.
 ///
 /// Couvre les deux formes documentées en tête de module : `value` porte la chaîne de la forme
-/// iecode (`""` quand la forme native n'en fournit pas), `num` porte le scalaire JSON de la
+/// étiquetée (`""` quand la forme native n'en fournit pas), `num` porte le scalaire JSON de la
 /// forme native. Les accesseurs privilégient `num` quand il est présent.
 #[derive(Debug, Clone)]
 pub struct Var<'a> {
     /// Type déclaré (`"Int"`, `"String"`, `"Float"`, `"Hash"`, …).
     pub ty: &'a str,
-    /// Valeur brute textuelle (forme iecode) ; `""` si la forme native porte un scalaire.
+    /// Valeur brute textuelle (forme étiquetée) ; `""` si la forme native porte un scalaire.
     pub value: &'a str,
-    /// Scalaire JSON de la forme native (`{"Int":13}`) ; `None` en forme iecode.
+    /// Scalaire JSON de la forme native (`{"Int":13}`) ; `None` en forme étiquetée.
     pub(crate) num: Option<&'a Value>,
 }
 
@@ -117,14 +117,14 @@ impl<'a> Node<'a> {
 
     /// Variable à l'index `i`, ou `None`.
     ///
-    /// Reconnaît les deux formes de variable (cf. tête de module) : `{"type","value"}` (iecode)
+    /// Reconnaît les deux formes de variable (cf. tête de module) : `{"type","value"}` (référence)
     /// et `{"<Type>": scalaire}` (native serde de `nie_formats`).
     #[must_use]
     pub fn var(&self, i: usize) -> Option<Var<'a>> {
         let arr = self.raw.get("variables")?.as_array()?;
         let v = arr.get(i)?;
 
-        // Forme iecode : la clé `value` est présente et porte une chaîne.
+        // Forme étiquetée : la clé `value` est présente et porte une chaîne.
         if let Some(value) = v.get("value").and_then(Value::as_str) {
             let ty = v.get("type").and_then(Value::as_str).unwrap_or("");
             return Some(Var {
@@ -203,6 +203,16 @@ pub fn list_values<'a>(root: &'a Value, list_name: &str) -> Option<&'a Vec<Value
         }
     }
     None
+}
+
+/// `list[offset .. offset + count]` for an `[offset, count]` reference, bounds clamped to the
+/// list (negative values count as 0, a range past the end is empty).
+#[must_use]
+pub fn slice_ref<T>(list: &[T], range: [i64; 2]) -> &[T] {
+    let n = list.len();
+    let start = (range[0].max(0) as usize).min(n);
+    let end = start.saturating_add(range[1].max(0) as usize).min(n);
+    list.get(start..end).unwrap_or(&[])
 }
 
 /// Helper : lit un champ chaîne d'un objet `values[]` (les `*_config` mettent les hash en hex).

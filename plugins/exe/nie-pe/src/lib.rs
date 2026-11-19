@@ -7,3 +7,7 @@ pub use nie_re::pe_forge::{
     CoffHeader, Cover, DataDirectory, OptionalHeader64, PeError, PeImage, Result, SectionHeader,
     Unit, UnitKind, asm, checksum, coff, diff, image, pdata, sha256_hex, units,
 };
+
+#[cfg(feature = "crlib")]
+#[allow(unsafe_code)]
+mod abi_generated;

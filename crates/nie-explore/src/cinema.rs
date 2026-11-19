@@ -339,7 +339,7 @@ pub fn jointure_gamedata(vfs: &Vfs) -> Jointure {
         let Ok(octets) = vfs.read(&chemin) else {
             continue;
         };
-        let Some(root) = nie_formats::cfgbin::rdbn_to_iecode_json(&octets) else {
+        let Some(root) = nie_formats::cfgbin::rdbn_to_tagged_json(&octets) else {
             continue;
         };
         let Some(listes) = root.get("lists").and_then(Value::as_array) else {

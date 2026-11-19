@@ -77,7 +77,7 @@ fn top_entries(root: &Value) -> Vec<Node<'_>> {
         .unwrap_or_default()
 }
 
-/// Parse un `ability_learning_config.cfg.bin` (forme iecode `entries`) déjà désérialisé.
+/// Parse un `ability_learning_config.cfg.bin` (forme étiquetée `entries`) déjà désérialisé.
 ///
 /// Port 1:1 de `loadAbilityLearningConfig` (`ability-learning.ts`). Seules les deux sections
 /// `..._BOARD_EFFECT_LIST_BEG_0` et `..._BOARD_INFO_LIST_BEG_0` sont exploitées.

@@ -6,7 +6,8 @@
 //! file handle and PostgreSQL uses a parameterized, asynchronous `tokio-postgres`
 //! client whose session is marked read-only by the server.
 
-#![forbid(unsafe_code)]
+#![cfg_attr(not(feature = "crlib"), forbid(unsafe_code))]
+#![cfg_attr(feature = "crlib", deny(unsafe_code))]
 
 pub mod sqlite_registry;
 pub use sqlite_registry::{DatabaseRegistry, ExecuteResult, Migration};
@@ -222,7 +223,7 @@ impl PostgresReadOnly {
     /// at the server. PostgreSQL therefore supplies a second write barrier in
     /// addition to [`ReadQuery`].
     pub async fn connect(url: &str) -> Result<Self, SqlError> {
-        let _ = rustls::crypto::ring::default_provider().install_default();
+        nie_tls::install();
         let (tls, _warnings) = tokio_postgres_rustls::MakeRustlsConnect::with_native_certs()
             .map_err(|_| SqlError::NativeCertificateStore)?;
         let (client, connection) = tokio_postgres::connect(url, tls).await?;
@@ -603,3 +604,7 @@ mod tests {
         assert!(PostgresNull::accepts(&Type::TEXT));
     }
 }
+
+#[cfg(feature = "crlib")]
+#[allow(unsafe_code)]
+mod abi_generated;

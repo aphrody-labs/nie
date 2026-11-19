@@ -86,7 +86,7 @@ fn nat_s(v: &str) -> Value {
     json!({ "String": v })
 }
 
-/// Construit une variable en forme **iecode** (`{type, value}`, valeur toujours en chaîne).
+/// Construit une variable en forme **tagged** (`{type, value}`, valeur toujours en chaîne).
 fn iec_i(v: i64) -> Value {
     json!({ "type": "Int", "value": v.to_string() })
 }
@@ -293,13 +293,13 @@ fn focus_shift_absent_de_cet_ecran_ne_casse_rien() {
 #[test]
 fn les_deux_formes_donnent_le_meme_ecran() {
     // Le cœur du correctif `cfgbin::Node::var` : `{"Int":13}` (natif, produit par `nie decode`)
-    // et `{"type":"Int","value":"13"}` (iecode) doivent décrire le MÊME écran. Avant, la forme
+    // et `{"type":"Int","value":"13"}` (etiquetee) doivent décrire le MÊME écran. Avant, la forme
     // native se lisait « toutes variables absentes » et le parseur renvoyait des listes vides
     // SANS erreur — un faux vert silencieux.
     let natif = parsed(true);
-    let iecode = parsed(false);
+    let etiquetee = parsed(false);
     assert_eq!(
-        natif, iecode,
+        natif, etiquetee,
         "les deux formes de variable doivent converger"
     );
     assert_eq!(

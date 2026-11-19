@@ -1,5 +1,5 @@
 -- Schéma de la base de connaissance nie. Tout ce que la boucle RE découvre ou
--- importe (savoir fusionné iecode/inagle) est durable ici. WAL pour concurrence workers.
+-- importe (savoir de référence fusionné) est durable ici. WAL pour concurrence workers.
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
 PRAGMA synchronous = NORMAL;
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS meta (
     value TEXT NOT NULL
 );
 
--- Binaire cible (nie.exe / nie_eacpatched.exe).
+-- Binaire cible (nie.exe).
 CREATE TABLE IF NOT EXISTS binary (
     id        INTEGER PRIMARY KEY,
     path      TEXT NOT NULL,
@@ -166,7 +166,7 @@ CREATE TABLE IF NOT EXISTS symbol (
     UNIQUE(binary_id, name, kind)
 );
 
--- Formats Level-5 documentés (savoir iecode/inagle fusionné). source : iecode|inagle|re.
+-- Formats Level-5 documentés (savoir de référence fusionné). source : reference|inagle|re.
 CREATE TABLE IF NOT EXISTS format (
     id     INTEGER PRIMARY KEY,
     name   TEXT NOT NULL UNIQUE,

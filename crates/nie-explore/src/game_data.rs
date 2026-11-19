@@ -1,19 +1,16 @@
 //! Shared VFS loading and cfg.bin-to-data adapters.
 
-use std::collections::HashMap;
-
-use nie_formats::cfgbin::CfgEntry;
-use nie_formats::vfs::Vfs;
+use nie_formats::cfgbin::t2b_siblings_to_tagged_json;
+use nie_formats::vfs_read::VfsRead;
 use serde_json::{Value, json};
 
-use crate::bridge::t2b_value_to_json;
-
 /// Return the alphabetically first VFS path accepted by `predicate`.
-pub fn find_path(vfs: &Vfs, predicate: impl Fn(&str) -> bool) -> Option<String> {
-    vfs.iter()
-        .map(|(path, _)| path.to_string())
+pub fn find_path(vfs: &dyn VfsRead, predicate: impl Fn(&str) -> bool) -> Option<String> {
+    vfs.entries()
+        .map(|(path, _)| path)
         .filter(|path| predicate(path))
         .min()
+        .map(str::to_owned)
 }
 
 /// Return the final component of a normalized VFS path.
@@ -24,7 +21,7 @@ pub fn base_name(path: &str) -> &str {
 
 /// Load and bridge the first matching RDBN cfg.bin.
 pub fn load_rdbn(
-    vfs: &Vfs,
+    vfs: &dyn VfsRead,
     predicate: impl Fn(&str) -> bool,
     description: &str,
 ) -> Result<Value, String> {
@@ -38,28 +35,9 @@ pub fn load_rdbn(
     ))
 }
 
-/// Convert sibling T2B entries to the indexed JSON shape expected by `nie-data`.
-#[must_use]
-pub fn indexed_entries_json(siblings: &[CfgEntry]) -> Vec<Value> {
-    let mut counts: HashMap<&str, usize> = HashMap::new();
-    siblings
-        .iter()
-        .map(|entry| {
-            let index = counts.entry(entry.name.as_str()).or_insert(0);
-            let name = format!("{}_{}", entry.name, *index);
-            *index += 1;
-            json!({
-                "name": name,
-                "variables": entry.variables.iter().map(t2b_value_to_json).collect::<Vec<_>>(),
-                "children": indexed_entries_json(&entry.children),
-            })
-        })
-        .collect()
-}
-
 /// Load and bridge the first matching T2B cfg.bin using indexed sibling names.
 pub fn load_t2b(
-    vfs: &Vfs,
+    vfs: &dyn VfsRead,
     predicate: impl Fn(&str) -> bool,
     description: &str,
 ) -> Result<Value, String> {
@@ -68,7 +46,7 @@ pub fn load_t2b(
     let bytes = vfs.read(&path).map_err(|error| error.to_string())?;
     let parsed = nie_formats::cfgbin::parse_t2b(&bytes)
         .map_err(|error| format!("parse T2B {path} : {error}"))?;
-    Ok(json!({ "entries": indexed_entries_json(&parsed.entries) }))
+    Ok(json!({ "entries": t2b_siblings_to_tagged_json(&parsed.entries) }))
 }
 
 /// Decode one cfg.bin path already mounted in `vfs`.
@@ -78,7 +56,7 @@ pub fn load_t2b(
 /// `{ "entries": [...] }`.  Hosts may expose this value through their own IPC
 /// or HTTP transport, but format detection and error context belong here so
 /// every caller reads exactly the same VFS bytes.
-pub fn decode_cfgbin(vfs: &Vfs, path: &str) -> Result<Value, String> {
+pub fn decode_cfgbin(vfs: &dyn VfsRead, path: &str) -> Result<Value, String> {
     let bytes = vfs.read(path).map_err(|error| error.to_string())?;
     if nie_formats::cfgbin::is_rdbn(&bytes) {
         let parsed = nie_formats::cfgbin::parse(&bytes)
@@ -99,7 +77,7 @@ pub fn decode_cfgbin(vfs: &Vfs, path: &str) -> Result<Value, String> {
 /// documents carry a `lists` root; their JSON representation does not retain each column's wire
 /// type, so the original VFS bytes remain the required schema template. Keeping that dispatch and
 /// template handling here prevents native hosts from growing their own format writer.
-pub fn encode_cfgbin(vfs: &Vfs, path: &str, edited: &Value) -> Result<Vec<u8>, String> {
+pub fn encode_cfgbin(vfs: &dyn VfsRead, path: &str, edited: &Value) -> Result<Vec<u8>, String> {
     if edited.get("lists").is_some() {
         let raw = vfs.read(path).map_err(|error| error.to_string())?;
         let rdbn = nie_formats::cfgbin::parse(&raw)
@@ -114,7 +92,7 @@ pub fn encode_cfgbin(vfs: &Vfs, path: &str, edited: &Value) -> Result<Vec<u8>, S
 }
 
 /// Load one localized text family as indexed JSON.
-pub fn load_text_json_lang(vfs: &Vfs, text_type: &str, language: &str) -> Result<Value, String> {
+pub fn load_text_json_lang(vfs: &dyn VfsRead, text_type: &str, language: &str) -> Result<Value, String> {
     let stem = nie_data::text::text_file_name(text_type).ok_or_else(|| {
         format!("type de texte inconnu : {text_type} (cf. nie_data::text::TEXT_FILES)")
     })?;
@@ -128,12 +106,12 @@ pub fn load_text_json_lang(vfs: &Vfs, text_type: &str, language: &str) -> Result
 }
 
 /// Load the French text table for one data family.
-pub fn load_text_json(vfs: &Vfs, text_type: &str) -> Result<Value, String> {
+pub fn load_text_json(vfs: &dyn VfsRead, text_type: &str) -> Result<Value, String> {
     load_text_json_lang(vfs, text_type, "fr")
 }
 
 /// Load and parse the French `(hash, text)` rows for one data family.
-pub fn load_text(vfs: &Vfs, text_type: &str) -> Result<Vec<(nie_data::HashId, String)>, String> {
+pub fn load_text(vfs: &dyn VfsRead, text_type: &str) -> Result<Vec<(nie_data::HashId, String)>, String> {
     Ok(nie_data::text::parse_text_file(&load_text_json(
         vfs, text_type,
     )?))
@@ -142,7 +120,8 @@ pub fn load_text(vfs: &Vfs, text_type: &str) -> Result<Vec<(nie_data::HashId, St
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nie_formats::cfgbin::Value as CfgValue;
+    use nie_formats::cfgbin::{CfgEntry, Value as CfgValue};
+    use nie_formats::vfs::Vfs;
 
     fn unique_temp_file(label: &str) -> std::path::PathBuf {
         let stamp = std::time::SystemTime::now()
@@ -185,7 +164,7 @@ mod tests {
                 children: vec![],
             },
         ];
-        let json = indexed_entries_json(&entries);
+        let json = t2b_siblings_to_tagged_json(&entries);
         assert_eq!(json[0]["name"], "TEXT_INFO_0");
         assert_eq!(json[1]["name"], "TEXT_INFO_1");
         assert_eq!(json[0]["children"][0]["name"], "NODE_0");

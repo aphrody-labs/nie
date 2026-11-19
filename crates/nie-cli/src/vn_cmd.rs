@@ -22,8 +22,8 @@ use nie_explore::vn::{
 };
 use nie_explore::vn::{
     ExportOptions, capitalize_name as capitaliser, catalogue as construire_catalogue,
-    collect_texts as collecter_textes, dialogue_references, identities_from_iecode, plan_export,
-    sanitize_filename as assainir, t2b_to_iecode as t2b_vers_iecode,
+    collect_texts as collecter_textes, dialogue_references, identities_from_tagged, plan_export,
+    sanitize_filename as assainir, t2b_to_tagged as t2b_vers_tagged,
     usable_dialogue as replique_utilisable,
 };
 use nie_formats::vfs::Vfs;
@@ -138,14 +138,14 @@ pub fn run(cmd: &VnCmd, vfs: &Vfs) -> Result<()> {
 // Identités : code interne <-> nom, lus dans l'installation locale
 // ---------------------------------------------------------------------------
 
-/// Lit un `cfg.bin` T2B du VFS et le rend dans la forme `iecode`.
+/// Lit un `cfg.bin` T2B du VFS et le rend dans la forme `tagged`.
 fn lire_t2b(vfs: &Vfs, chemin: &str) -> Option<serde_json::Value> {
     let raw = vfs.read(chemin).ok()?;
     if nie_formats::cfgbin::is_rdbn(&raw) {
         return None;
     }
     let cfg = nie_formats::cfgbin::cfgbin_parse(&raw).ok()?;
-    Some(serde_json::json!({ "entries": t2b_vers_iecode(&cfg.entries) }))
+    Some(serde_json::json!({ "entries": t2b_vers_tagged(&cfg.entries) }))
 }
 
 /// Premier chemin du VFS commençant par `prefixe` et finissant par `suffixe`.
@@ -179,7 +179,7 @@ fn identites(vfs: &Vfs, langue_noms: &str) -> Vec<CharacterIdentity> {
         return Vec::new();
     };
 
-    identities_from_iecode(&base_json, &texte_json)
+    identities_from_tagged(&base_json, &texte_json)
 }
 
 // ---------------------------------------------------------------------------

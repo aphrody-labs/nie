@@ -29,7 +29,7 @@
 //! ## Usage
 //!
 //! ```text
-//! nie-model-serve --source "ssh://prd/srv/nie/steam/steamapps/common/INAZUMA ELEVEN Victory Road" \
+//! nie-model-serve --source "ssh://<game-host>/<game_dir>" \
 //!                 --port 8790
 //! ```
 
@@ -64,6 +64,7 @@ use nie_formats::cri_audio::{Awb, is_hca};
 use nie_formats::g4tx::parse as parse_g4tx;
 use nie_formats::g4tx_decode;
 use nie_formats::vfs::Vfs;
+use nie_model_serve::decode::cfgbin_to_json;
 use nie_model_serve::catalog::{
     CatalogLimits, CharaModelCatalog, CharacterPartsCatalog, ResolvedPart,
 };
@@ -398,7 +399,7 @@ fn menu_screen_entry(vfs: &Vfs, stem: &str) -> Option<serde_json::Value> {
     let bytes = vfs
         .read(&format!("{MENU_CFG_DIR}{stem}_setting.cfg.bin"))
         .ok()?;
-    let root = cfgbin::to_iecode_json(&bytes)?;
+    let root = cfgbin::to_tagged_json(&bytes)?;
     let ms = nie_data::menu_setting::parse(&root);
     let nav = nie_data::unlock_condition::crc32_str(stem);
     let layers: Vec<serde_json::Value> = ms
@@ -462,158 +463,6 @@ fn build_icons_index(vfs: &Vfs) -> String {
         })
         .collect();
     serde_json::to_string(&doc).unwrap_or_else(|_| "{}".to_string())
-}
-
-/// Décode un `cfg.bin`/`objbin`/`fxbin`/`mevbin` RDBN en JSON exploitable :
-/// `{ format, lists: [ { name, type, count, rows: [ { champ: valeur } ] } ] }`.
-/// Les noms de listes/types/champs sont résolus depuis la table de chaînes (lisible).
-fn cfgbin_to_json(data: &[u8]) -> Option<serde_json::Value> {
-    use serde_json::{Map, Value, json};
-    if !cfgbin::is_rdbn(data) {
-        // Format T2B (cfg.bin Level-5 classique, le cas réel sur IEVR) : arbre
-        // hiérarchique {name, variables, children} — sérialisé directement.
-        let cfg = cfgbin::cfgbin_parse(data).ok()?;
-        return serde_json::to_value(&cfg).ok();
-    }
-    let rdbn = cfgbin::parse(data).ok()?;
-    let lists = cfgbin::read_values(&rdbn, data);
-    let lists_json: Vec<Value> = lists
-        .iter()
-        .map(|l| {
-            let rows: Vec<Value> = l
-                .rows
-                .iter()
-                .map(|row| {
-                    let mut m = Map::new();
-                    for (name, val) in &row.fields {
-                        m.insert(name.clone(), rdbn_value_to_json(val));
-                    }
-                    Value::Object(m)
-                })
-                .collect();
-            json!({ "name": l.name, "type": l.type_name, "count": rows.len(), "rows": rows })
-        })
-        .collect();
-    Some(json!({ "format": "rdbn", "lists": lists_json }))
-}
-
-/// Encode des octets bruts en hex MAJUSCULE sans séparateur (ex. `"000000008FC2753F"`),
-/// identique au dump iecode des champs `position`/`blob`.
-fn hex_upper(bytes: &[u8]) -> String {
-    use core::fmt::Write;
-    let mut s = String::with_capacity(bytes.len() * 2);
-    for b in bytes {
-        let _ = write!(s, "{b:02X}");
-    }
-    s
-}
-
-/// Convertit une [`cfgbin::RdbnValue`] en JSON, encodage **identique au dump iecode**
-/// (`hash` -> `"0x........"`, `blob`/`position` -> hex MAJUSCULE), donc directement
-/// consommable par les parseurs typés de `nie-data` (cf. `nie_data::typed::decode_by_key`).
-fn rdbn_value_to_json(v: &cfgbin::RdbnValue) -> serde_json::Value {
-    use cfgbin::RdbnValue as R;
-    use serde_json::{Value, json};
-    match v {
-        R::Bool(b) => json!(b),
-        R::Byte(n) => json!(n),
-        R::Short(n) | R::ActType(n) => json!(n),
-        R::Int(n) | R::Flag(n) => json!(n),
-        R::Float(f) => json!(f),
-        R::Hash(h) => json!(format!("0x{h:08X}")),
-        R::Rates(a) | R::Position(a) => json!(a),
-        R::Condition(s) => json!(s),
-        R::ShortTuple(t) => json!(t),
-        // Octets bruts en hex MAJUSCULE (identique iecode `defensePos` =
-        // "000000008FC2753F") au lieu de l'ancien `"blob[8o]"` qui jetait la donnee.
-        R::Blob(b) => json!(hex_upper(b)),
-        _ => Value::Null,
-    }
-}
-
-/// Décode un `cfg.bin` RDBN vers la forme **canonique iecode** attendue par les
-/// parseurs typés de `nie-data` : `{ "version", "lists": [ { "name", "typeName",
-/// "values": [ { champ: valeur } ] } ] }`. `None` si le fichier n'est pas du RDBN à
-/// listes (T2B/`entries` non couvert ici).
-fn cfgbin_to_iecode_root(data: &[u8]) -> Option<serde_json::Value> {
-    use serde_json::{Map, Value, json};
-    if !cfgbin::is_rdbn(data) {
-        return None;
-    }
-    let rdbn = cfgbin::parse(data).ok()?;
-    let lists = cfgbin::read_values(&rdbn, data);
-    let lists_json: Vec<Value> = lists
-        .iter()
-        .map(|l| {
-            let values: Vec<Value> = l
-                .rows
-                .iter()
-                .map(|row| {
-                    let mut m = Map::new();
-                    for (name, val) in &row.fields {
-                        m.insert(name.clone(), rdbn_value_to_json(val));
-                    }
-                    Value::Object(m)
-                })
-                .collect();
-            json!({ "name": l.name, "typeName": l.type_name, "values": values })
-        })
-        .collect();
-    Some(json!({ "lists": lists_json }))
-}
-
-/// Convertit une liste de frères T2B [`cfgbin::CfgEntry`] vers la forme **iecode**
-/// attendue par les parseurs `entries` de `nie-data`, en répliquant le suffixe
-/// d'index d'iecode : chaque nœud est renommé `<base>_<i>` où `i` est son rang
-/// d'occurrence parmi les frères de même nom (`MISSION_CONFIG_INFO` -> `..._0`,
-/// `ITEM_CONSUME_INFO` -> `..._0`, `_1`, `_2`…). Indispensable car les parseurs
-/// matchent un préfixe **avec underscore final** (`"MISSION_CONFIG_INFO_"`).
-/// `value` est toujours une chaîne (les parseurs la re-parsent ; `type` indicatif).
-fn t2b_siblings_to_iecode(siblings: &[cfgbin::CfgEntry]) -> Vec<serde_json::Value> {
-    use serde_json::{Value, json};
-    use std::collections::HashMap;
-    let mut counts: HashMap<&str, usize> = HashMap::new();
-    siblings
-        .iter()
-        .map(|e| {
-            let idx = counts.entry(e.name.as_str()).or_insert(0);
-            let name = format!("{}_{}", e.name, *idx);
-            *idx += 1;
-            let variables: Vec<Value> = e
-                .variables
-                .iter()
-                .map(|v| match v {
-                    cfgbin::Value::String(s) => json!({ "type": "String", "value": s }),
-                    cfgbin::Value::Int(n) => json!({ "type": "Int", "value": n.to_string() }),
-                    cfgbin::Value::Float(f) => json!({ "type": "Float", "value": f.to_string() }),
-                })
-                .collect();
-            let children = t2b_siblings_to_iecode(&e.children);
-            json!({ "name": name, "variables": variables, "children": children })
-        })
-        .collect()
-}
-
-/// Décode un `cfg.bin` **T2B** (`entries`) vers la forme iecode `{ "entries": [...] }`
-/// consommable par les parseurs `entries` de `nie-data` (music_app, record, item…).
-/// `None` si le fichier est du RDBN (utiliser [`cfgbin_to_iecode_root`]).
-fn cfgbin_to_t2b_iecode_root(data: &[u8]) -> Option<serde_json::Value> {
-    use serde_json::json;
-    if cfgbin::is_rdbn(data) {
-        return None;
-    }
-    let cfg = cfgbin::cfgbin_parse(data).ok()?;
-    Some(json!({ "entries": t2b_siblings_to_iecode(&cfg.entries) }))
-}
-
-/// Décode un `cfg.bin` vers la forme iecode adaptée à son format (RDBN `lists` ou
-/// T2B `entries`) : aiguille vers [`cfgbin_to_iecode_root`] ou [`cfgbin_to_t2b_iecode_root`].
-fn cfgbin_to_typed_root(data: &[u8]) -> Option<serde_json::Value> {
-    if cfgbin::is_rdbn(data) {
-        cfgbin_to_iecode_root(data)
-    } else {
-        cfgbin_to_t2b_iecode_root(data)
-    }
 }
 
 /// Compose une **scène de dialogue de mode histoire** (fond + boîte + onglet locuteur + texte wrappé)
@@ -998,7 +847,7 @@ fn bind_piece_textures(
             }));
             continue;
         };
-        let Some(mut png_bytes) = g4tx_decode::decode_named_to_png(&g4tx_data, &texture) else {
+        let Some(mut png_bytes) = g4tx_decode::decode_named_to_png_fast(&g4tx_data, &texture) else {
             warn!("planche {texture} indécodable dans {}", src.container);
             entries.push(
                 json!({ "material": material, "texture": texture, "rule": rule, "decoded": false }),
@@ -1014,7 +863,8 @@ fn bind_piece_textures(
         {
             skin_tinted = tint_skin_mask(&mut rgba, w, h, &mask, mw, mh, rgb);
             if skin_tinted {
-                if let Some(png) = g4tx_decode::encode_rgba_to_png(&rgba, w as usize, h as usize) {
+                if let Some(png) = g4tx_decode::encode_rgba_to_png_fast(&rgba, w as usize, h as usize)
+                {
                     png_bytes = png;
                 } else {
                     skin_tinted = false;
@@ -1034,7 +884,7 @@ fn bind_piece_textures(
                 continue;
             };
             let role = texture_role_from_name(&real).1;
-            if let Some(png) = g4tx_decode::decode_named_to_png(&g4tx_data, &real) {
+            if let Some(png) = g4tx_decode::decode_named_to_png_fast(&g4tx_data, &real) {
                 model.aux_textures.push(AuxTexture {
                     material: material.clone(),
                     role: role.to_string(),
@@ -2374,7 +2224,7 @@ fn video_unavailable_response() -> Vec<u8> {
     ).into_bytes()
 }
 
-// ── Catalogue des cinématiques (page /videos d'azalée, page Cinéma de l'explorateur) ──────────
+// ── Catalogue des cinématiques (page /videos du wiki, page Cinéma de l'explorateur) ──────────
 //
 // La fiche d'un film n'est plus construite ici : elle vit dans `nie_explore::cinema`, avec la
 // CLI `nie video` et l'explorateur. Ce serveur n'en est plus qu'une façade HTTP. Le catalogue
@@ -3530,20 +3380,18 @@ fn enumerate_servable_codes(vfs: &Vfs) -> Vec<WarmJob> {
         .collect()
 }
 
-/// Octets disponibles sur le FS contenant `path` (via `df`). `None` si indéterminé.
+/// Octets disponibles sur le FS contenant `path` (`statvfs`). `None` si indéterminé.
+#[cfg(unix)]
+#[allow(clippy::useless_conversion)] // the statvfs field widths differ between Unix targets
 fn free_bytes(path: &Path) -> Option<u64> {
-    let out = std::process::Command::new("df")
-        .arg("-B1")
-        .arg("--output=avail")
-        .arg(path)
-        .output()
-        .ok()?;
-    String::from_utf8_lossy(&out.stdout)
-        .lines()
-        .nth(1)?
-        .trim()
-        .parse::<u64>()
-        .ok()
+    let stat = nix::sys::statvfs::statvfs(path).ok()?;
+    Some(u64::from(stat.blocks_available()) * u64::from(stat.fragment_size()))
+}
+
+/// Sans `statvfs`, l'espace libre est indéterminé et le préchargement ne s'arrête pas sur lui.
+#[cfg(not(unix))]
+fn free_bytes(_path: &Path) -> Option<u64> {
+    None
 }
 
 /// Seuil d'arrêt du préchargement : on stoppe si l'espace libre passe sous 3 Gio.
@@ -3661,13 +3509,11 @@ fn cache_control_for_status(status: u16) -> &'static str {
 /// verbatim, so no spelling reaches a gated handler without passing here.
 ///
 /// **`/vfs/` is deliberately NOT gated here** (decision of 2026-09-25). It lists names and
-/// sizes, never bytes, and its one legitimate caller is the rg website's server-side rendering
-/// (`rg/packages/azalee/src/cpk/live.ts` → `cdn.rosegriffon.fr/vfs/…`), which this process
-/// cannot tell apart from any other request and which carries no token. Its exposure is closed
-/// one layer up instead: the infra vhosts answer `404` on the public `/cdn/vfs/` path
-/// and admit `cdn.rosegriffon.fr/vfs/` from the host itself only (infra `31db1fc`).
-/// `nie-site`'s `/assets` proxy refuses `vfs/` on its own allowlist. Gate it here too once
-/// that SSR forwards the token.
+/// sizes, never bytes, and its one legitimate caller is a server-side renderer on the same host,
+/// which this process cannot tell apart from any other request and which carries no token. Its
+/// exposure is closed one layer up instead: the edge answers `404` on the public `/cdn/vfs/` path
+/// and admits `/vfs/` from the host itself only. Gate it here too once that renderer forwards
+/// the token.
 fn private_route(path: &str, query: &str) -> bool {
     let under = |prefix: &str| {
         path.strip_prefix(prefix)
@@ -3796,7 +3642,7 @@ fn param_usize(query: &str, key: &str, defaut: usize) -> usize {
 
 /// Sérialise une entrée de listing.
 ///
-/// Les noms de champs sont ceux que consomme déjà l'explorateur web (`CpkFile` d'azalée) :
+/// Les noms de champs sont ceux que consomme déjà l'explorateur web (`CpkFile` du wiki) :
 /// c'est ce qui permet de rebrancher le front sur ce pont sans toucher aux composants.
 fn entree_json(e: &nie_explore::listing::FileEntry) -> serde_json::Value {
     serde_json::json!({
@@ -4109,7 +3955,7 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
     IS_HEAD.with(|h| h.set(method == "HEAD"));
     let range_header = range_header.as_deref();
 
-    // Strippe la query string (`?v=3` cache-bust d'azalee) : le code modèle vit dans le
+    // Strippe la query string (`?v=3` cache-bust du wiki) : le code modèle vit dans le
     // path seul. Sans ça, `strip_suffix(".glb")` échoue sur `c….glb?v=3` -> "code invalide".
     // La query est capturée AVANT, pour les routes `/vfs/…` qui, elles, en vivent.
     let query = path.split_once('?').map(|(_, q)| q).unwrap_or("");
@@ -4151,7 +3997,7 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
 
     // `/vfs/…` — pont de LISTING du VFS réel, en JSON.
     //
-    // L'explorateur web d'azalée (`/cpk`) parcourait un index SQLite matérialisé depuis un
+    // L'explorateur web du wiki (`/cpk`) parcourait un index SQLite matérialisé depuis un
     // NDJSON figé : une photo du VFS, à régénérer à la main, muette sur le rôle des dossiers et
     // sur ce qu'un fichier sait produire. Ces trois routes servent la même vue que l'app desktop,
     // depuis `nie_explore::listing` — une seule implémentation pour les deux explorateurs.
@@ -4555,7 +4401,7 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
     // `/tex/…` — décode N'IMPORTE QUEL G4TX du VFS en PNG. Les textures perso (face/uniforme/
     // corps sous `dx11/chr/`) sont absentes du dump ET non servies par le décodeur menu live
     // (:8788) ; seul ce service a le décodeur nie-formats. Deux formes, toutes deux servies
-    // telles quelles par nginx (`cdn.rosegriffon.fr/dx11/… -> /tex/dx11/…`) :
+    // telles quelles par l'edge (`/dx11/… -> /tex/dx11/…`) :
     //
     //   1:1     `/tex/<chemin>.png`                    → `data/<chemin>.g4tx`, texture principale
     //   nommée  `/tex/<chemin>.g4tx/<nom>.png`         → texture `<nom>` DANS ce conteneur
@@ -4663,7 +4509,7 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
             let palette = vfs
                 .read("data/common/font/font_color.cfg.bin")
                 .ok()
-                .and_then(|d| cfgbin::to_iecode_json(&d))
+                .and_then(|d| cfgbin::to_tagged_json(&d))
                 .map(|json| nie_data::font_color::parse_font_colors(&json))
                 .unwrap_or_default();
             // Familles de police : un dossier par famille sous `font/`, chacune avec son atlas.
@@ -4849,7 +4695,7 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
 
     // `/typed/<vfs-path>.json` — décode un cfg.bin en STRUCTURE DE JEU typée `nie-data`
     // (formation, skill, item…) au lieu du RDBN brut. Renvoie `{family, data}` ; repli
-    // `{family:null, key, generic:<rdbn iecode>}` si la famille n'a pas de parseur typé.
+    // `{family:null, key, generic:<rdbn tagged>}` si la famille n'a pas de parseur typé.
     if let Some(rest) = path.strip_prefix("/typed/") {
         let rel = rest.strip_suffix(".json").unwrap_or(rest);
         let vfs_path = if rel.starts_with("data/") {
@@ -4865,7 +4711,7 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
             let vfs = &state.vfs;
             vfs.read(&vfs_path).ok()
         };
-        match bytes.as_deref().and_then(cfgbin_to_typed_root) {
+        match bytes.as_deref().and_then(cfgbin::to_tagged_json) {
             Some(root) => {
                 let key = nie_data::typed::family_key(&vfs_path);
                 let out = match nie_data::typed::decode_by_key(&key, &root) {
@@ -5507,6 +5353,7 @@ fn handle_connection(mut stream: TcpStream, state: Arc<State>) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 fn main() -> Result<()> {
+    nie_tls::install();
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()

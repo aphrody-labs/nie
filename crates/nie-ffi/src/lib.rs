@@ -603,7 +603,7 @@ pub unsafe extern "C" fn nie_cfgbin_typed_json_out(ptr: *const u8, len: usize, o
     } else {
         // SAFETY: the caller guarantees the input range is readable.
         let data = unsafe { core::slice::from_raw_parts(ptr, len) };
-        nie_formats::cfgbin::to_iecode_json(data)
+        nie_formats::cfgbin::to_tagged_json(data)
             .and_then(|value| serde_json::to_vec(&value).ok())
             .map(NieBytes::from_vec)
             .unwrap_or_else(NieBytes::empty)
@@ -1832,7 +1832,7 @@ pub unsafe extern "C" fn nie_cfgbin_probe(ptr: *const u8, len: usize) -> u32 {
     }
 }
 
-/// Décode un fichier RDBN ou T2B vers la représentation JSON canonique IECODE.
+/// Décode un fichier RDBN ou T2B vers la représentation JSON canonique de référence.
 ///
 /// # Safety
 ///
@@ -1847,7 +1847,7 @@ pub unsafe extern "C" fn nie_cfgbin_to_json_out(ptr: *const u8, len: usize, out:
         return;
     }
     let data = unsafe { core::slice::from_raw_parts(ptr, len) };
-    let val = nie_formats::cfgbin::to_iecode_json(data);
+    let val = nie_formats::cfgbin::to_tagged_json(data);
     let bytes = val.and_then(|v| serde_json::to_vec(&v).ok());
     let res = match bytes {
         Some(b) => NieBytes::from_vec(b),
@@ -2521,7 +2521,7 @@ mod tests {
         assert_eq!(key1, key2);
         assert_ne!(key1, 0);
 
-        let mut buffer = b"Level-5 IECODE high performance FFI buffer test".to_vec();
+        let mut buffer = b"Level-5 nie high performance FFI buffer test".to_vec();
         let original = buffer.clone();
         unsafe { nie_cpk_decrypt_block(buffer.as_mut_ptr(), buffer.len(), 0, key1) };
         assert_ne!(buffer, original);

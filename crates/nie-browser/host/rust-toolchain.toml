@@ -1,0 +1,4 @@
+# The nightly vendor/kitesurf pins (its rust-toolchain.toml); the engine crates build with it.
+[toolchain]
+channel = "nightly-2026-05-14"
+profile = "minimal"

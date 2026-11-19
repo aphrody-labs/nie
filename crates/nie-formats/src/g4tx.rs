@@ -1,6 +1,6 @@
 //! Lecteur de conteneurs de textures G4TX (Level-5 « Graphics 4 Texture »).
 //!
-//! Port Rust de `IECODE.Core/Formats/Level5/G4txParser.cs` (`ParseTextures` L141,
+//! Port Rust de `G4txParser.cs` (`ParseTextures` L141,
 //! calcul des offsets de tables L146-150, `G4txHeader` L17, `G4txEntry` L45,
 //! `G4txSubEntry` L61). Recoupé octet par octet contre deux fichiers RÉELS :
 //!
@@ -171,7 +171,7 @@ fn is_dummy_texture(tex: &G4txTexture) -> bool {
 /// Sélectionne la texture principale **réelle** d'un atlas g4tx pour un objet-menu.
 ///
 /// Le compositeur naïf prenait la 1ʳᵉ texture DDS, souvent un **dummy 4×4** (`*_dmy*`) placé en
-/// tête de l'atlas → sprite invisible. Stratégie, alignée sur la résolution par nom d'iecode
+/// tête de l'atlas → sprite invisible. Stratégie, alignée sur la résolution par nom du format étiqueté
 /// (`MenuPngService.DecodeNamedTexture`) :
 /// 1. texture principale DDS dont le nom == `basename` du conteneur (insensible à la casse) ;
 /// 2. sinon, plus grande texture principale DDS par aire, en **écartant les dummies** ;
@@ -561,7 +561,7 @@ mod tests {
     use super::*;
 
     // Fixtures réelles tronquées au début du payload (header + tables), copiées de
-    // /home/ubuntu/rg/iecode/re/menu/extracted/fonts/. Le payload DDS volumineux est coupé :
+    // fonts/. Le payload DDS volumineux est coupé :
     // on valide nom/id/dimensions(entrée)/régions, pas les pixels.
     #[cfg(feature = "real-fixtures")]
     const FONT_DEF_HEAD: &[u8] = include_bytes!("../tests/fixtures/font_def.g4tx.head");

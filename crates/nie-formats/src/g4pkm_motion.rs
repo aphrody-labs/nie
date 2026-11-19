@@ -30,7 +30,7 @@ pub struct MotionFinalPose {
     /// `true` si la bind pose du bone de placement était hors-écran et qu'on a remonté à un ancêtre.
     pub used_ancestor_fallback: bool,
     /// `true` si l'objet a une motion d'ouverture (`AnimationComponent.mot_open_hash != 0`).
-    /// **Annotation seulement** — n'influe pas sur la pose (conforme iecode `:79-82`).
+    /// **Annotation seulement** — n'influe pas sur la pose (conforme étiquetée `:79-82`).
     pub has_open_motion: bool,
 }
 
@@ -286,14 +286,14 @@ pub fn find_placement_bone_index(layout: &G4pkmLayout) -> usize {
         return i;
     }
 
-    // Passe 2 : premier bone "base" (port 1:1 iecode `FindPlacementBoneIndex`).
+    // Passe 2 : premier bone "base" (port 1:1 de la référence `FindPlacementBoneIndex`).
     //
     // NB (raffinement « préférer le 1ᵉʳ base NON-trivial » TENTÉ + MESURÉ 2026-06-16, ÉCARTÉ) :
     // sauter un `_pos_base01` trivial (origine, scale 1) au profit du 1ᵉʳ base non-trivial (ex.
     // `_header_base01` plein-largeur) place mieux l'en-tête/onglets de `main_menu` (**SSIM 0,418 →
     // 0,446**) MAIS régresse `title02` (**0,251 → 0,245** : certains objbins title02 se replacent
     // hors de leur centre correct). Le raffinement n'est donc PAS universel — il appartient à la
-    // **placement spécifique au driver** (D1.c-driver), pas à l'heuristique partagée iecode. On
+    // **placement spécifique au driver** (D1.c-driver), pas à l'heuristique partagée de la référence. On
     // préserve la fidélité title02 (discipline anti-régression « relever le plancher, jamais le baisser »).
     for (i, b) in layout.bones.iter().enumerate() {
         if contains_ic(&b.name, "base") {

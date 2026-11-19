@@ -1,6 +1,6 @@
 //! Hôte de menu Lua — `MenuState` + `install_menu_host` + `run_menu`.
 //!
-//! Reproduit le comportement de `GameLuaHost.cs` (iecode) : enregistre les
+//! Reproduit le comportement de `GameLuaHost.cs` (référence) : enregistre les
 //! fonctions hôtes comme globals Lua, chacune mutant un [`MenuState`] partagé.
 //!
 //! ## Dispatch `funcLuaMenuCommand`
@@ -8,7 +8,7 @@
 //! Le jeu appelle `funcLuaMenuCommand(cmdId, layerId, …args)` où `cmdId` est
 //! un hash 32 bits d'un nom de commande interne du moteur C++. Ces hashes sont
 //! reversés depuis `nie.exe` et documentés dans `re/lua/funclua-cmdids.json`
-//! (iecode) ; les valeurs confirmées sont codées en dur ici.
+//! (référence) ; les valeurs confirmées sont codées en dur ici.
 //!
 //! Pour les `cmdId` non encore reversés, l'appel est journalisé et ignoré
 //! (retour `0.0`) — le script continue sans crash, conformément au comportement
@@ -249,7 +249,7 @@ const REVERSED_RETURN1: &[u32] = &[
     0x9D68_8EB3,
 ];
 
-/// cmdId `funcLuaMenuCommand` reversés sur le binaire **COURANT** (`nie_eacpatched.exe`, 3 juin 2026
+/// cmdId `funcLuaMenuCommand` reversés sur le binaire **COURANT** (`nie.exe`, 3 juin 2026
 /// — build distinct de celui des reversals historiques : les VAs de handler ont glissé, mais les
 /// cmdId, eux, sont stables car hash du nom de commande). Repérés par le triage déterministe
 /// `scripts/tools/triage_funclua_handlers.py` (iced-x86 + bornes `.pdata` à chunks chaînés) : setters à
@@ -716,7 +716,7 @@ fn args_repr(args: &[Value]) -> String {
 /// - `NameSettingBegin`, `AddNames`, `NameSettingEnd` — no-ops (retour nil).
 /// - `IsCloseEndListLayer()` → `false`.
 /// - `SetGuideStatusToLua`, `waitTrue`, `waitFalse` — no-ops.
-/// - Stubs observés dans les scripts décompilés (iecode `LuaRuntime.cs`) :
+/// - Stubs observés dans les scripts décompilés (référence `LuaRuntime.cs`) :
 ///   `UpdateDetailWindowAttachBase`, `SaveAndShowWaitWindow`, `UploadSaveData`,
 ///   `OnCloseEndLayerCommon`, `OnChangeLayerGroupCommon`.
 ///
@@ -1152,7 +1152,7 @@ pub fn install_menu_host(lua: &Lua) -> mlua::Result<Rc<RefCell<MenuState>>> {
         lua.globals().set(*name, f)?;
     }
 
-    // ── Stubs supplémentaires observés dans les scripts (iecode LuaRuntime.cs) ─
+    // ── Stubs supplémentaires observés dans les scripts (référence LuaRuntime.cs) ─
     for name in &[
         "UpdateDetailWindowAttachBase",
         "SaveAndShowWaitWindow",
@@ -1855,7 +1855,7 @@ pub fn run_menu(
 
     // Convention moteur : le script définit OnOpenLayer(layerId) et/ou
     // OnSetupLayer(layerId). On appelle d'abord OnSetupLayer si présent, puis
-    // OnOpenLayer (iecode LuaRuntime.cs).
+    // OnOpenLayer (référence LuaRuntime.cs).
     let setup: mlua::Value = lua.globals().get("OnSetupLayer")?;
     if let mlua::Value::Function(f) = setup {
         // tolérance : une erreur ici ne doit pas masquer OnOpenLayer

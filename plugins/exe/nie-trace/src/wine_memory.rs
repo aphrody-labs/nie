@@ -377,7 +377,9 @@ mod tests {
             .unwrap()
             .trim()
             .to_owned();
-        assert_eq!(find_pid_by_name(&comm), Some(me));
+        // Sibling test processes of the same binary (nextest) share the comm: any of them is a match.
+        let found = find_pid_by_name(&comm).expect("un processus de ce comm");
+        assert_eq!(fs::read_to_string(format!("/proc/{found}/comm")).unwrap().trim(), comm);
         // base + étendue du binaire de test (son chemin /proc/self/maps contient le nom du comm).
         let base = find_module_base(me, &comm).expect("binaire de test mappé");
         let (b, end) = module_range(me, &comm).unwrap();

@@ -1,6 +1,6 @@
 //! Lecteur de squelettes G4SK (Level-5 « Graphics 4 Skeleton »).
 //!
-//! Port Rust de `IECODE.Core/Formats/Level5/G4skParser.cs`, **complété** par le vrai layout
+//! Port Rust de `G4skParser.cs`, **complété** par le vrai layout
 //! recoupé sur un `.g4sk` réel extrait du jeu (`s28g001b.g4sk`, 19 os).
 //!
 //! ## En-tête : DÉTERMINISTE et vérifiable

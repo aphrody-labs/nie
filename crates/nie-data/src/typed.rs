@@ -1,4 +1,4 @@
-//! Dispatch **typé** des `cfg.bin` : d'une `Value` au format iecode (`lists`/`entries`) +
+//! Dispatch **typé** des `cfg.bin` : d'une `Value` au format étiqueté (`lists`/`entries`) +
 //! d'une clé de famille (dérivée du nom de fichier), vers la structure de jeu nommée
 //! correspondante sérialisée en JSON. Partagé entre `nie-model-serve` (route `/typed`) et
 //! `nie-wasm` (décodage in-browser) — **source unique** des familles couvertes.
@@ -28,7 +28,7 @@ pub fn family_key(path: &str) -> String {
     base.to_string()
 }
 
-/// Dispatche un `root` (forme iecode `lists`/`entries`) vers le parseur typé de la famille
+/// Dispatche un `root` (forme étiquetée `lists`/`entries`) vers le parseur typé de la famille
 /// `key`, et renvoie `(label, json)`. `None` si aucune famille typée ne correspond (le caller
 /// renvoie alors le générique). Couvre 109 familles game-data (37 d'origine, 56 rapatriées
 /// de nie-model-serve le 2026-06-21, 16 ajoutées le 2026-09-06 sur mesure de la matrice de
@@ -135,7 +135,7 @@ pub fn decode_by_key(key: &str, root: &Value) -> Option<(&'static str, Value)> {
                 crate::soccer_suggest::parse_soccer_suggest_config(root)
             )
         }
-        // Parseurs soccer existants + golden-testés mais qui n'étaient PAS routés → azalee.
+        // Parseurs soccer existants + golden-testés mais qui n'étaient PAS routés → wiki.
         "soccer_focus_battle_effect_config" => {
             t!(
                 "soccer_focus_battle",
@@ -499,7 +499,7 @@ pub fn decode_by_key(key: &str, root: &Value) -> Option<(&'static str, Value)> {
         }
         // Définitions d'écrans de menu : ~304 fichiers `<écran>_menu_setting` (un par écran), même
         // format T2B (MENU_LAYER_INFO/CMD/RES…). Dispatch par SUFFIXE → toutes les structures d'écran
-        // décodables typé (support du driver de menu + explorateur azalee).
+        // décodables typé (support du driver de menu + explorateur wiki).
         k if k.ends_with("_menu_setting") => t!("menu_setting", crate::menu_setting::parse(root)),
         // Déclencheurs de scripting (~287 fichiers `*_trigger` : qsb/qsa quêtes, fbtl_cro matchs, c21…)
         // — DATA_COUNT/DATA_ITEM avec condition décodée. Dispatch par SUFFIXE. (Les fichiers d'autre

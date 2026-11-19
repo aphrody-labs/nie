@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "Unified reverse engineering core: PE/ELF/Mach-O triage, byte-exact PE64 forge/COFF, .pdata/minidump/ASAR/Electron/Go/Android/SteamStub inspection, Ghidra P-Code/Pseudo-C & ghidra-decompiler, MinGW-REA, Lua 5.2, CRIWARE CPK/CRILAYLA, DBXV2 formats, AOB/live memory, YARA-X, Magika"
+description = "Reverse-engineering core of nie.exe: PE/ELF/Mach-O triage, x86-64 disassembly, byte-exact PE64 forge and COFF, .pdata and minidump readers, Ghidra P-Code lifting and Pseudo-C, staged recompilation pipeline"
 keywords = [
   "reverse-engineering",
   "ghidra",
@@ -16,15 +16,14 @@ keywords = [
 ]
 categories = ["development-tools::debugging", "parser-implementations"]
 
+[lib]
+crate-type = ["rlib", "staticlib", "cdylib"]
+
 [features]
-default = ["game", "pipeline"]
-game = ["dep:memmap2"]
+crlib = []
+default = ["pipeline"]
 pipeline = ["dep:tempfile", "dep:process-wrap"]
 decompile = ["dep:ghidra-decompiler"]
-magika = ["dep:magika", "dep:ort"]
-leveldb = ["dep:rusty-leveldb", "dep:tempfile"]
-yara = ["dep:yara-x"]
-# Compat alias for consumers expecting nie-re-core/shenron-re wasm gating
 wasm = ["dep:wasm-bindgen"]
 
 [dependencies]
@@ -38,12 +37,9 @@ serde_json = { workspace = true }
 sha2 = { workspace = true }
 sha1 = { workspace = true }
 thiserror = { workspace = true }
-regex = "1.13.1"
 crc32fast = { workspace = true }
-zerocopy = { version = "0.8.63", features = ["derive", "alloc", "simd"] }
 walkdir = "2.5.0"
-flate2 = "1.1.11"
-anyhow = { workspace = true }
+flate2 = { workspace = true }
 
 # Standard crates.io RE libraries used by nie-re-core and nie-pe
 aes = "0.9.4"
@@ -57,19 +53,10 @@ hashbrown = { version = "0.17", default-features = false, features = [
 wasm-bindgen = { workspace = true, optional = true }
 
 # Optional feature-gated dependencies
-memmap2 = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
 process-wrap = { version = "10.0.1", optional = true, default-features = false, features = ["std", "process-group", "job-object"] }
 ghidra-decompiler = { version = "2.1.0", optional = true }
-magika = { version = "1.1.0", optional = true }
-# magika 1.1.0 pins ort =2.0.0-rc.12 (newest magika); it ships no ONNX Runtime backend: the final binary picks one. download-binaries fetches the prebuilt runtime at build time (host and msvc targets).
-ort = { version = "=2.0.0-rc.12", optional = true, default-features = false, features = ["download-binaries", "tls-rustls"] }
-rusty-leveldb = { version = "4", optional = true, default-features = false, features = ["fs"] }
-yara-x = { version = "1.23.0", optional = true, default-features = false }
 
 [lints]
 workspace = true
 
-# ort is magika's ONNX Runtime backend switch: selected through features, never named in code.
-[package.metadata.cargo-shear]
-ignored = ["ort"]

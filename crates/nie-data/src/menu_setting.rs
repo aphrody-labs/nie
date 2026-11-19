@@ -227,7 +227,7 @@ fn is_list_marker(name: &str) -> bool {
     name.contains("LIST_BEG") || name.contains("LIST_END")
 }
 
-/// Parse un `*_menu_setting.cfg.bin.json` (forme iecode T2B `entries`) en [`MenuSetting`].
+/// Parse un `*_menu_setting.cfg.bin.json` (forme étiquetée T2B `entries`) en [`MenuSetting`].
 ///
 /// Règles :
 /// - un `MENU_LAYER_INFO` n'est retenu que s'il porte au moins `var[0..2]` (id, nom, objbin) ;

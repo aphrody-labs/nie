@@ -11,7 +11,8 @@
 //! - [`GameAssetsPlugin`]: mounts the source and registers `game://`; add it before `AssetPlugin`.
 //! - [`GameBytes`] and [`GameBytesLoader`]: raw bytes of any file, for formats decoded elsewhere.
 
-#![forbid(unsafe_code)]
+#![cfg_attr(not(feature = "crlib"), forbid(unsafe_code))]
+#![cfg_attr(feature = "crlib", deny(unsafe_code))]
 #![warn(missing_docs)]
 
 mod bytes;
@@ -27,3 +28,7 @@ pub use config::{AssetsConfig, ConfigError};
 pub use files::GameFiles;
 pub use plugin::GameAssetsPlugin;
 pub use reader::{GAME_SOURCE, VfsAssetReader, register_game_source};
+
+#[cfg(feature = "crlib")]
+#[allow(unsafe_code)]
+mod abi_generated;

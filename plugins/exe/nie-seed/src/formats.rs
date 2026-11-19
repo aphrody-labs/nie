@@ -1,31 +1,31 @@
-//! Catalogue des formats Level-5 / Criware documentés par iecode.
+//! Catalogue des formats Level-5 / Criware documentés par la référence.
 //!
 //! Chaque format est inséré via [`nie_index::ingest::format`]. Les magic bytes
-//! sont extraits depuis `IECODE.Core/Formats/FormatDetector.cs` et les parsers
+//! sont extraits depuis `FormatDetector.cs` et les parsers
 //! individuels (G4pkParser, NavmParser, PxclParser, HcaDecoder, etc.).
 //!
 //! Sources consultées :
-//! - `IECODE.Core/Formats/FormatDetector.cs` — magic bytes unifiés ;
-//! - `IECODE.Core/Formats/Level5/*.cs` — parsers Level-5 ;
-//! - `IECODE.Core/Formats/Criware/*.cs` — parsers Criware ;
-//! - `IECODE.Core/Formats/Shader/DxbcReader.cs` — DXBC ;
-//! - `IECODE.Core/Audio/HcaDecoder.cs` — HCA.
+//! - `FormatDetector.cs` — magic bytes unifiés ;
+//! - les parseurs de référence — parsers Level-5 ;
+//! - les parseurs de référence — parsers Criware ;
+//! - `DxbcReader.cs` — DXBC ;
+//! - `HcaDecoder.cs` — HCA.
 
 use anyhow::{Context, Result};
 use nie_index::{Db, ingest};
 use tracing::debug;
 
-/// Un format documenté par iecode.
+/// Un format documenté par la référence.
 struct FormatDef {
     /// Nom court du format (clé primaire de la table `format`).
     name: &'static str,
     /// Magic bytes en représentation ASCII ou hexadécimale lisible.
     magic: Option<&'static str>,
-    /// Chemin du parser C# (relatif à `iecode/src/IECODE.Core/`).
+    /// Chemin du parser C# (relatif au dépôt de référence).
     doc: &'static str,
 }
 
-/// Catalogue complet des formats documentés par iecode.
+/// Catalogue complet des formats documentés par la référence.
 ///
 /// Conventiont magic :
 /// - Magic ASCII entre guillemets si le magic est lisible (ex. `"G4TX"`) ;
@@ -185,7 +185,7 @@ static FORMATS: &[FormatDef] = &[
     },
 ];
 
-/// Insère le catalogue complet des formats iecode dans la base.
+/// Insère le catalogue complet des formats de référence dans la base.
 /// Renvoie le nombre de formats insérés.
 ///
 /// # Erreurs
@@ -200,7 +200,7 @@ pub fn ingest_formats(db: &mut Db) -> Result<usize> {
     let mut count = 0usize;
 
     for fmt in FORMATS {
-        let source = "iecode";
+        let source = "reference";
         let doc = Some(fmt.doc);
         ingest::format(&tx, fmt.name, fmt.magic, source, doc)
             .with_context(|| format!("format({})", fmt.name))?;

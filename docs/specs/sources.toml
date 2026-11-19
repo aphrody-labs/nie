@@ -1,0 +1,357 @@
+# Declarations for `nie-specs sync`. Each fact is a regular expression over the official page; the
+# capture groups (joined with `join`) are the recorded value. A pattern that stops matching fails
+# the sync: the upstream page changed and the fact must be re-read. Text mode strips tags and
+# collapses whitespace; raw mode keeps the bytes (Markdown, C headers).
+
+[[spec]]
+id = "wasm"
+title = "WebAssembly core specification"
+official = "https://webassembly.github.io/spec/core/"
+used_by = "nie-wasm and every wasm32-unknown-unknown build (wgpu WebGPU/WebGL, nie-render3d)"
+version = { url = "https://webassembly.github.io/spec/core/index.html", pattern = 'Release (\d+\.\d+) \((?P<date>\d{4}-\d{2}-\d{2})\)' }
+commit = { repo = "WebAssembly/spec", branch = "main" }
+
+  [[spec.fact]]
+  key = "page_size"
+  what = "Linear memory page size in bytes"
+  url = "https://webassembly.github.io/spec/core/exec/runtime.html"
+  pattern = 'page size , which is defined to be the constant \\\((\d+)\\\)'
+
+  [[spec.fact]]
+  key = "module_magic"
+  what = "Binary module magic bytes (hex)"
+  url = "https://webassembly.github.io/spec/core/binary/modules.html"
+  pattern = 'binary-magic.{0,80}?mathtt\{(0x\w\w)\}~~\\mathtt\{(0x\w\w)\}~~\\mathtt\{(0x\w\w)\}~~\\mathtt\{(0x\w\w)\}'
+  join = " "
+
+  [[spec.fact]]
+  key = "binary_version"
+  what = "Binary format version bytes (hex)"
+  url = "https://webassembly.github.io/spec/core/binary/modules.html"
+  pattern = 'binary-version\}\{\\mathtt\{version\}\}\} & ::= & \\mathtt\{(0x\w\w)\}~~\\mathtt\{(0x\w\w)\}~~\\mathtt\{(0x\w\w)\}~~\\mathtt\{(0x\w\w)\}'
+  join = " "
+
+[[spec]]
+id = "webgpu"
+title = "WebGPU"
+official = "https://www.w3.org/TR/webgpu/"
+used_by = "wgpu `webgpu` backend (nie-gpu, nie-render3d) in the browser"
+version = { url = "https://www.w3.org/TR/webgpu/", pattern = '(W3C [A-Za-z ]+?) , (?P<date>\d{1,2} [A-Z][a-z]+ \d{4})' }
+commit = { repo = "gpuweb/gpuweb", path = "spec/index.bs", branch = "main" }
+
+  [[spec.fact]]
+  key = "maxTextureDimension2D"
+  what = "Default limit: maximum 2D texture width and height"
+  url = "https://www.w3.org/TR/webgpu/"
+  pattern = 'maxTextureDimension2D GPUSize32 maximum (\d+)'
+
+  [[spec.fact]]
+  key = "maxBindGroups"
+  what = "Default limit: bind groups per pipeline layout"
+  url = "https://www.w3.org/TR/webgpu/"
+  pattern = 'maxBindGroups GPUSize32 maximum (\d+)'
+
+  [[spec.fact]]
+  key = "maxColorAttachments"
+  what = "Default limit: color attachments per render pass"
+  url = "https://www.w3.org/TR/webgpu/"
+  pattern = 'maxColorAttachments GPUSize32 maximum (\d+)'
+
+  [[spec.fact]]
+  key = "maxBufferSize"
+  what = "Default limit: maximum buffer size in bytes"
+  url = "https://www.w3.org/TR/webgpu/"
+  pattern = 'maxBufferSize GPUSize64 maximum (\d+) bytes'
+
+  [[spec.fact]]
+  key = "maxStorageBufferBindingSize"
+  what = "Default limit: maximum storage buffer binding in bytes"
+  url = "https://www.w3.org/TR/webgpu/"
+  pattern = 'maxStorageBufferBindingSize GPUSize64 maximum (\d+) bytes'
+
+  [[spec.fact]]
+  key = "maxComputeInvocationsPerWorkgroup"
+  what = "Default limit: compute invocations per workgroup"
+  url = "https://www.w3.org/TR/webgpu/"
+  pattern = 'maxComputeInvocationsPerWorkgroup GPUSize32 maximum (\d+)'
+
+[[spec]]
+id = "wgsl"
+title = "WebGPU Shading Language (WGSL)"
+official = "https://www.w3.org/TR/WGSL/"
+used_by = "naga `wgsl-in`/`wgsl-out`, every nie wgpu shader"
+version = { url = "https://www.w3.org/TR/WGSL/", pattern = '(W3C [A-Za-z ]+?) , (?P<date>\d{1,2} [A-Z][a-z]+ \d{4})' }
+commit = { repo = "gpuweb/gpuweb", path = "wgsl/index.bs", branch = "main" }
+
+  [[spec.fact]]
+  key = "address_spaces"
+  what = "Address spaces"
+  url = "https://www.w3.org/TR/WGSL/"
+  pattern = '(function private workgroup uniform storage)'
+
+  [[spec.fact]]
+  key = "workgroup_size_attribute"
+  what = "Compute entry points declare their size with this attribute"
+  url = "https://www.w3.org/TR/WGSL/"
+  pattern = '(workgroup_size)'
+
+[[spec]]
+id = "pe"
+title = "PE/COFF image format"
+official = "https://learn.microsoft.com/en-us/windows/win32/debug/pe-format"
+used_by = "nie.exe loading and static recompilation (nie-pe, nie-index)"
+version = { url = "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md", pattern = '(?m)^ms\.date: (?P<date>\S+)', mode = "raw" }
+commit = { repo = "MicrosoftDocs/win32", path = "desktop-src/Debug/pe-format.md", branch = "docs" }
+
+  [[spec.fact]]
+  key = "pe_offset_location"
+  what = "Offset of the file pointer to the PE signature"
+  url = "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+  mode = "raw"
+  pattern = 'At location (0x3c)'
+
+  [[spec.fact]]
+  key = "pe_signature"
+  what = "PE signature (escaped as in the Markdown source)"
+  url = "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+  mode = "raw"
+  pattern = 'signature is "(PE\\\\0\\\\0)"'
+
+  [[spec.fact]]
+  key = "magic_pe32"
+  what = "Optional header magic, PE32"
+  url = "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+  mode = "raw"
+  pattern = '\| (0x[0-9a-fA-F]+) <br/> \| PE32 <br/>'
+
+  [[spec.fact]]
+  key = "magic_pe32_plus"
+  what = "Optional header magic, PE32+"
+  url = "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+  mode = "raw"
+  pattern = '\| (0x[0-9a-fA-F]+) <br/> \| PE32\+ <br/>'
+
+  [[spec.fact]]
+  key = "machine_amd64"
+  what = "COFF machine type x64"
+  url = "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+  mode = "raw"
+  pattern = 'IMAGE\\_FILE\\_MACHINE\\_AMD64 <br/>\s*\| (0x[0-9a-fA-F]+)'
+
+  [[spec.fact]]
+  key = "machine_i386"
+  what = "COFF machine type x86"
+  url = "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+  mode = "raw"
+  pattern = 'IMAGE\\_FILE\\_MACHINE\\_I386 <br/>\s*\| (0x[0-9a-fA-F]+)'
+
+  [[spec.fact]]
+  key = "machine_arm64"
+  what = "COFF machine type ARM64"
+  url = "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+  mode = "raw"
+  pattern = 'IMAGE\\_FILE\\_MACHINE\\_ARM64 <br/>\s*\| (0x[0-9a-fA-F]+)'
+
+  [[spec.fact]]
+  key = "dll_dynamic_base"
+  what = "DllCharacteristics: ASLR (dynamic base)"
+  url = "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+  mode = "raw"
+  pattern = 'IMAGE\\_DLLCHARACTERISTICS\\_ <br/> DYNAMIC\\_BASE <br/>\s*\| (0x[0-9a-fA-F]+)'
+
+  [[spec.fact]]
+  key = "dll_nx_compat"
+  what = "DllCharacteristics: DEP (NX compatible)"
+  url = "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+  mode = "raw"
+  pattern = 'IMAGE\\_DLLCHARACTERISTICS\\_ <br/> NX\\_COMPAT <br/>\s*\| (0x[0-9a-fA-F]+)'
+
+[[spec]]
+id = "d3d11"
+title = "Direct3D 11.3 functional specification"
+official = "https://github.com/microsoft/DirectX-Specs/blob/master/d3d/archive/D3D11_3_FunctionalSpec.htm"
+used_by = "nie.exe renderer (static recompilation runtime, DXBC translation)"
+version = { url = "https://raw.githubusercontent.com/microsoft/DirectX-Specs/master/d3d/archive/D3D11_3_FunctionalSpec.htm", pattern = 'Version (\d+\.\d+) - (?P<date>\d+ / \d+ / \d+)' }
+commit = { repo = "microsoft/DirectX-Specs", path = "d3d/archive/D3D11_3_FunctionalSpec.htm", branch = "master" }
+
+  [[spec.fact]]
+  key = "REQ_TEXTURE2D_U_OR_V_DIMENSION"
+  what = "Maximum 2D texture width or height"
+  url = "https://raw.githubusercontent.com/microsoft/DirectX-Specs/master/d3d/archive/D3D11_3_FunctionalSpec.htm"
+  pattern = 'D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION (\d+)'
+
+  [[spec.fact]]
+  key = "REQ_TEXTURE3D_U_V_OR_W_DIMENSION"
+  what = "Maximum 3D texture dimension"
+  url = "https://raw.githubusercontent.com/microsoft/DirectX-Specs/master/d3d/archive/D3D11_3_FunctionalSpec.htm"
+  pattern = 'D3D11_REQ_TEXTURE3D_U_V_OR_W_DIMENSION (\d+)'
+
+  [[spec.fact]]
+  key = "REQ_TEXTURECUBE_DIMENSION"
+  what = "Maximum cube texture dimension"
+  url = "https://raw.githubusercontent.com/microsoft/DirectX-Specs/master/d3d/archive/D3D11_3_FunctionalSpec.htm"
+  pattern = 'D3D11_REQ_TEXTURECUBE_DIMENSION (\d+)'
+
+  [[spec.fact]]
+  key = "REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION"
+  what = "Maximum 2D texture array length"
+  url = "https://raw.githubusercontent.com/microsoft/DirectX-Specs/master/d3d/archive/D3D11_3_FunctionalSpec.htm"
+  pattern = 'D3D11_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION (\d+)'
+
+  [[spec.fact]]
+  key = "REQ_CONSTANT_BUFFER_ELEMENT_COUNT"
+  what = "Maximum constant buffer size in 4x32-bit elements"
+  url = "https://raw.githubusercontent.com/microsoft/DirectX-Specs/master/d3d/archive/D3D11_3_FunctionalSpec.htm"
+  pattern = 'D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT (\d+)'
+
+  [[spec.fact]]
+  key = "REQ_SAMPLER_OBJECT_COUNT_PER_DEVICE"
+  what = "Maximum sampler objects per device"
+  url = "https://raw.githubusercontent.com/microsoft/DirectX-Specs/master/d3d/archive/D3D11_3_FunctionalSpec.htm"
+  pattern = 'D3D11_REQ_SAMPLER_OBJECT_COUNT_PER_DEVICE (\d+)'
+
+[[spec]]
+id = "dxbc"
+title = "DXBC / DXIL shader container"
+official = "https://github.com/microsoft/DirectXShaderCompiler/blob/main/include/dxc/DxilContainer/DxilContainer.h"
+used_by = "nie-formats `dxbc` container parser, DXBC to SPIR-V/WGSL translation of nie.exe shaders"
+version = { url = "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/include/dxc/DxilContainer/DxilContainer.h", pattern = '(?s)DxilContainerVersionMajor = (\d+);.*?DxilContainerVersionMinor = (\d+);', mode = "raw" }
+commit = { repo = "microsoft/DirectXShaderCompiler", path = "include/dxc/DxilContainer/DxilContainer.h", branch = "main" }
+
+  [[spec.fact]]
+  key = "container_fourcc"
+  what = "Container header FourCC (DXBC for back-compat)"
+  url = "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/include/dxc/DxilContainer/DxilContainer.h"
+  mode = "raw"
+  pattern = "DFCC_Container\\s*=\\s*DXIL_FOURCC\\(\\s*'(.)',\\s*'(.)',\\s*'(.)',\\s*'(.)'"
+
+  [[spec.fact]]
+  key = "resource_def_fourcc"
+  what = "Resource definitions chunk"
+  url = "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/include/dxc/DxilContainer/DxilContainer.h"
+  mode = "raw"
+  pattern = "DFCC_ResourceDef\\s*=\\s*DXIL_FOURCC\\('(.)',\\s*'(.)',\\s*'(.)',\\s*'(.)'"
+
+  [[spec.fact]]
+  key = "input_signature_fourcc"
+  what = "Input signature chunk"
+  url = "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/include/dxc/DxilContainer/DxilContainer.h"
+  mode = "raw"
+  pattern = "DFCC_InputSignature\\s*=\\s*DXIL_FOURCC\\('(.)',\\s*'(.)',\\s*'(.)',\\s*'(.)'"
+
+  [[spec.fact]]
+  key = "output_signature_fourcc"
+  what = "Output signature chunk"
+  url = "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/include/dxc/DxilContainer/DxilContainer.h"
+  mode = "raw"
+  pattern = "DFCC_OutputSignature\\s*=\\s*DXIL_FOURCC\\('(.)',\\s*'(.)',\\s*'(.)',\\s*'(.)'"
+
+  [[spec.fact]]
+  key = "dxil_fourcc"
+  what = "DXIL bytecode chunk"
+  url = "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/include/dxc/DxilContainer/DxilContainer.h"
+  mode = "raw"
+  pattern = "DFCC_DXIL\\s*=\\s*DXIL_FOURCC\\('(.)',\\s*'(.)',\\s*'(.)',\\s*'(.)'"
+
+  [[spec.fact]]
+  key = "shader_hash_fourcc"
+  what = "Shader hash chunk"
+  url = "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/include/dxc/DxilContainer/DxilContainer.h"
+  mode = "raw"
+  pattern = "DFCC_ShaderHash\\s*=\\s*DXIL_FOURCC\\('(.)',\\s*'(.)',\\s*'(.)',\\s*'(.)'"
+
+[[spec]]
+id = "cuda"
+title = "CUDA toolkit and compute capability"
+official = "https://docs.nvidia.com/cuda/"
+used_by = "GPU compute on the PC (RTX 4070, driver 621.14); the VPS hosts have no GPU"
+version = { url = "https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html", pattern = 'Corresponding Driver Branch CUDA (\d+\.\d+) R\d+' }
+
+  [[spec.fact]]
+  key = "latest_toolkit_driver_branch"
+  what = "Driver branch of the latest toolkit (R620 covers driver 621.14)"
+  url = "https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html"
+  pattern = 'Corresponding Driver Branch CUDA (\d+\.\d+) (R\d+)'
+  join = " "
+
+  [[spec.fact]]
+  key = "minor_version_compat_driver"
+  what = "Driver floor for CUDA 13.x under minor-version compatibility"
+  url = "https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html"
+  pattern = '13\.x >= (\d+)'
+
+  [[spec.fact]]
+  key = "max_threads_per_block"
+  what = "Maximum threads per block"
+  url = "https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/compute-capabilities.html"
+  pattern = 'Maximum number of threads per block (\d+)'
+
+  [[spec.fact]]
+  key = "warp_size"
+  what = "Warp size"
+  url = "https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/compute-capabilities.html"
+  pattern = 'Warp size (\d+)'
+
+  [[spec.fact]]
+  key = "max_registers_per_thread"
+  what = "Maximum 32-bit registers per thread"
+  url = "https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/compute-capabilities.html"
+  pattern = 'Maximum number of 32-bit registers per thread (\d+)'
+
+  [[spec.fact]]
+  key = "sm89_shared_memory_per_sm"
+  what = "Shared memory per SM at compute capability 8.9 (fifth column: 7.5, 8.0, 8.6, 8.7, 8.9)"
+  url = "https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/compute-capabilities.html"
+  pattern = 'Maximum amount of shared memory per SM (?:\d+ KB ){4}(\d+ KB)'
+
+[[spec]]
+id = "rtx-4070"
+title = "NVIDIA GeForce RTX 4070 (Ada Lovelace, compute capability 8.9)"
+official = "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4070-family/"
+used_by = "the PC GPU; D3D11/Vulkan/CUDA paths run only there"
+version = { url = "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4070-family/", pattern = 'GeForce (RTX 4070) Family Graphics Cards' }
+
+  [[spec.fact]]
+  key = "cuda_cores"
+  what = "CUDA cores (RTX 4070 is the last column of the family table)"
+  url = "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4070-family/"
+  pattern = 'NVIDIA CUDA Cores (?:\d+ ){3}(\d+)'
+
+  [[spec.fact]]
+  key = "boost_clock_ghz"
+  what = "Boost clock in GHz"
+  url = "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4070-family/"
+  pattern = 'Boost Clock \(GHz\) (?:[\d.]+ ){3}([\d.]+)'
+
+  [[spec.fact]]
+  key = "memory_size"
+  what = "Memory size"
+  url = "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4070-family/"
+  pattern = 'Memory Size (?:\d+ GB ){3}(\d+ GB)'
+
+  [[spec.fact]]
+  key = "memory_bus"
+  what = "Memory interface width"
+  url = "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4070-family/"
+  pattern = 'Memory Interface Width (?:\d+-bit ){3}(\d+-bit)'
+
+  [[spec.fact]]
+  key = "compute_capability"
+  what = "Compute capability of GeForce RTX 4070"
+  url = "https://developer.nvidia.com/cuda-gpus"
+  pattern = '(\d\.\d) [^.]*?GeForce RTX 4070 Ti GeForce RTX 4070 '
+
+# Hosts: `ssh` is the alias in ~/.ssh/config; the PC is only collected locally.
+[[host]]
+name = "pc"
+os = "windows"
+
+[[host]]
+name = "fr1"
+os = "linux"
+ssh = "fr1"
+
+[[host]]
+name = "prd"
+os = "linux"
+ssh = "prd"

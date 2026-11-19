@@ -110,7 +110,7 @@ define_cli_tools!(
         CliLauncher,
         "cli_launcher",
         "launcher",
-        "Run IEVR Ultimate Team launcher operations: team decrypt/encrypt, package info, save parking/injection, EAC bypass, and UT packs/players/formations."
+        "Run IEVR Ultimate Team launcher operations: team decrypt/encrypt, package info, save parking/injection, and UT packs/players/formations."
     ),
     (
         CliViola,
@@ -134,7 +134,7 @@ define_cli_tools!(
         CliRefreshTypedJson,
         "cli_refresh_typed_json",
         "refresh-typed-json",
-        "Regenerate typed iecode JSON sidecars for cfg.bin files. This tool writes files."
+        "Regenerate typed tagged-form JSON sidecars for cfg.bin files. This tool writes files."
     ),
     (
         CliSteam,
@@ -344,7 +344,7 @@ define_cli_tools!(
         CliMem,
         "cli_mem",
         "mem",
-        "Inspect and mutate live nie.exe memory: maps, reads, writes, dumps, scans, Lua fields, palettes, or explicit EAC patches in YOLO read-and-write mode."
+        "Inspect the memory of a nie.exe process the user started through the official launcher: maps, reads, dumps, scans, Lua fields and palettes."
     ),
     (
         CliVfs,
@@ -368,7 +368,7 @@ define_cli_tools!(
         CliLive,
         "cli_live",
         "live",
-        "Drive the real nie.exe under Proton: resolved environment, prerequisite report, prefix setup, launch, attach, and a launch-and-read probe."
+        "Describe the already running nie.exe process: PID, module base and ptrace permission."
     ),
 );
 
@@ -440,12 +440,6 @@ struct ExplorerToastRequest {
     kind: Option<String>,
 }
 
-#[derive(Debug, Default, serde::Deserialize, schemars::JsonSchema)]
-struct GameLaunchRequest {
-    #[serde(default)]
-    args: Vec<String>,
-}
-
 fn json_text(value: Value) -> String {
     serde_json::to_string_pretty(&value).unwrap_or_else(|error| {
         json!({ "error": format!("JSON serialization failed: {error}") }).to_string()
@@ -467,6 +461,14 @@ where
         Ok(Err(error)) => Err(error_text(error)),
         Err(error) => Err(error_text(format!("blocking MCP worker failed: {error}"))),
     }
+}
+
+/// The repository: `NIE_REPO`, else the current directory.
+fn repo_root() -> std::path::PathBuf {
+    std::env::var_os("NIE_REPO")
+        .map(std::path::PathBuf::from)
+        .or_else(|| std::env::current_dir().ok())
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
 }
 
 fn re_database_path() -> std::path::PathBuf {
@@ -500,7 +502,7 @@ fn safe_vfs_path(path: &str) -> Result<&str, String> {
 
 async fn fetch_model_asset(request: AssetRequest) -> CompatibilityResult {
     let base =
-        std::env::var("MODEL_SERVE_URL").unwrap_or_else(|_| "http://127.0.0.1:8790".to_owned());
+        std::env::var("NIE_MODEL_SERVE_URL").unwrap_or_else(|_| "http://127.0.0.1:8790".to_owned());
     fetch_model_asset_from(request, &base).await
 }
 
@@ -528,7 +530,7 @@ async fn fetch_model_asset_from(request: AssetRequest, base: &str) -> Compatibil
         {
             let mut segments = url
                 .path_segments_mut()
-                .map_err(|()| anyhow::anyhow!("MODEL_SERVE_URL cannot be a base URL"))?;
+                .map_err(|()| anyhow::anyhow!("NIE_MODEL_SERVE_URL cannot be a base URL"))?;
             segments.push("model-full").push(&format!("{code}.glb"));
         }
         let url_text = url.to_string();
@@ -610,49 +612,6 @@ async fn fetch_model_asset_from(request: AssetRequest, base: &str) -> Compatibil
 
 #[tool_router(router = compatibility_router)]
 impl NieMcpServer {
-    #[tool(
-        name = "rg_api_health",
-        description = "Report the health of the native nie MCP process and its in-process CLI binding."
-    )]
-    async fn compatibility_health(&self) -> CompatibilityResult {
-        let base =
-            std::env::var("RG_API_URL").unwrap_or_else(|_| "http://127.0.0.1:8085".to_owned());
-        let url = format!("{}/api/v1/health", base.trim_end_matches('/'));
-        let result = async {
-            let client = reqwest::Client::builder()
-                .timeout(std::time::Duration::from_secs(5))
-                .build()?;
-            let mut response = client.get(&url).send().await;
-            if response
-                .as_ref()
-                .map_or(true, |r| r.status().is_server_error())
-            {
-                tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-                if let Ok(retry_resp) = client.get(&url).send().await {
-                    response = Ok(retry_resp);
-                }
-            }
-            let response = response?;
-            let status = response.status();
-            let body = response.text().await?;
-            anyhow::ensure!(
-                status.is_success(),
-                "nie-site returned {status}: {}",
-                body.chars().take(500).collect::<String>()
-            );
-            let health: Value = serde_json::from_str(&body)
-                .map_err(|error| anyhow::anyhow!("nie-site returned invalid JSON: {error}"))?;
-            Ok::<_, anyhow::Error>(json!({
-                "url": url,
-                "status": status.as_u16(),
-                "health": health,
-                "mcp_runtime": "rust-native"
-            }))
-        }
-        .await;
-        result.map(json_text).map_err(error_text)
-    }
-
     #[tool(
         name = "vfs_list",
         description = "List immediate directories and files under a VFS prefix. Compatibility name retained from the Bun server."
@@ -819,12 +778,7 @@ impl NieMcpServer {
         Parameters(request): Parameters<RepoReadRequest>,
     ) -> CompatibilityResult {
         blocking_json(move || {
-            let root = std::env::var_os("NIE_REPO")
-                .or_else(|| std::env::var_os("NIE_REPO_ROOT"))
-                .map(std::path::PathBuf::from)
-                .unwrap_or_else(|| {
-                    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
-                });
+            let root = repo_root();
             let file = nie_explore::depot::Depot::ouvrir(root)
                 .and_then(|depot| depot.lire(&request.path, request.max_bytes))
                 .map_err(anyhow::Error::msg)?;
@@ -933,67 +887,6 @@ impl NieMcpServer {
             .map(json_text)
             .map_err(error_text)
     }
-
-    #[tool(
-        name = "game_launch",
-        description = "Launch nie.exe from the repository root without waiting and return its process ID."
-    )]
-    async fn compatibility_game_launch(
-        &self,
-        Parameters(request): Parameters<GameLaunchRequest>,
-    ) -> CompatibilityResult {
-        let result = tokio::task::spawn_blocking(move || launch_game(request.args)).await;
-        match result {
-            Ok(Ok(value)) => Ok(json_text(value)),
-            Ok(Err(error)) => Err(error_text(error)),
-            Err(error) => Err(error_text(format!("game launch worker failed: {error}"))),
-        }
-    }
-}
-
-fn launch_game(args: Vec<String>) -> anyhow::Result<Value> {
-    anyhow::ensure!(args.len() <= 128, "too many game arguments");
-    anyhow::ensure!(
-        args.iter()
-            .all(|arg| arg.len() <= 16 * 1024 && !arg.contains('\0')),
-        "invalid game argument"
-    );
-    let root = std::env::var_os("NIE_REPO")
-        .or_else(|| std::env::var_os("NIE_REPO_ROOT"))
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."));
-    let configured = std::env::var_os("NIE_GAME_EXE")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::path::PathBuf::from("nie.exe"));
-    let executable = if configured.is_absolute() {
-        configured
-    } else {
-        root.join(configured)
-    };
-    anyhow::ensure!(
-        executable.is_file(),
-        "executable not found: {}",
-        executable.display()
-    );
-    let mut child = std::process::Command::new(&executable)
-        .args(&args)
-        .current_dir(&root)
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .spawn()?;
-    let pid = child.id();
-    let _ = std::thread::Builder::new()
-        .name(format!("nie-mcp-reaper-{pid}"))
-        .spawn(move || {
-            let _ = child.wait();
-        });
-    Ok(json!({
-        "ok": true,
-        "exe": executable,
-        "pid": pid,
-        "args": args
-    }))
 }
 
 impl NieMcpServer {
@@ -1041,22 +934,25 @@ mod tests {
         use clap::CommandFactory as _;
 
         let tools = NieMcpServer::all_tools().list_all();
-        assert_eq!(tools.len(), 63);
         let commands = crate::Cli::command()
             .get_subcommands()
             .map(clap::Command::get_name)
-            // Exclude long-running blocking daemon commands from synchronous in-process cli_* MCP tools.
-            .filter(|name| !matches!(*name, "mcp" | "serve"))
+            // Exclude long-running blocking daemon commands from synchronous in-process cli_* MCP tools,
+            // and `deps`, a network-bound spec generator run from a shell or CI, and `exe`, whose only
+            // subcommand (`exe lint`) is a gate that scans the workspace sources.
+            .filter(|name| !matches!(*name, "mcp" | "serve" | "deps" | "exe"))
             .map(str::to_owned)
             .collect::<Vec<_>>();
-        assert_eq!(commands.len(), 46);
-        for command in commands {
+        for command in &commands {
             let tool_name = format!("cli_{}", command.replace('-', "_"));
             assert!(
                 tools.iter().any(|tool| tool.name == tool_name),
                 "missing MCP tool for `nie {command}`"
             );
         }
+        // One cli_* tool per command, then the compatibility tools: nothing missing, nothing stray.
+        let compatibility = NieMcpServer::compatibility_router().list_all().len();
+        assert_eq!(tools.len(), commands.len() + compatibility);
         assert!(
             tools
                 .iter()

@@ -1,0 +1,40 @@
+{
+  "crate": "nie-formats",
+  "id": "formats",
+  "abi_version": 1,
+  "functions": [
+    {
+      "name": "nie_formats_detect",
+      "doc": "Detects the format of a buffer from its leading bytes and returns its lowercase name, or \"unknown\". Free the result with nie_formats_string_free.",
+      "args": [
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "returns": "string"
+    },
+    {
+      "name": "nie_formats_crc32",
+      "doc": "CRC32 of a buffer as the game computes it for cfg.bin names.",
+      "args": [
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "returns": "u32"
+    },
+    {
+      "name": "nie_formats_cfgbin_to_json",
+      "doc": "Decodes a cfg.bin (RDBN or T2B) into the tagged JSON form read by the typed tables of nie-data. NULL when the bytes are not a cfg.bin. Free the result with nie_formats_string_free.",
+      "args": [
+        {
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "returns": "string"
+    }
+  ]
+}

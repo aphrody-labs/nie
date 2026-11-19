@@ -211,7 +211,7 @@ pub fn fold_name(value: &str) -> String {
         .collect()
 }
 
-pub fn t2b_to_iecode(entries: &[nie_formats::cfgbin::CfgEntry]) -> Vec<serde_json::Value> {
+pub fn t2b_to_tagged(entries: &[nie_formats::cfgbin::CfgEntry]) -> Vec<serde_json::Value> {
     use nie_formats::cfgbin::Value;
     entries.iter().map(|entry| {
         let variables = entry.variables.iter().map(|value| match value {
@@ -219,7 +219,7 @@ pub fn t2b_to_iecode(entries: &[nie_formats::cfgbin::CfgEntry]) -> Vec<serde_jso
             Value::Int(value) => serde_json::json!({"type":"Int", "value":value.to_string()}),
             Value::Float(value) => serde_json::json!({"type":"Float", "value":value.to_string()}),
         }).collect::<Vec<_>>();
-        serde_json::json!({"name":entry.name, "variables":variables, "children":t2b_to_iecode(&entry.children)})
+        serde_json::json!({"name":entry.name, "variables":variables, "children":t2b_to_tagged(&entry.children)})
     }).collect()
 }
 
@@ -244,7 +244,7 @@ pub fn assemble_name(first: &str, last: &str) -> String {
     }
 }
 
-pub fn identities_from_iecode(
+pub fn identities_from_tagged(
     base: &serde_json::Value,
     text: &serde_json::Value,
 ) -> Vec<CharacterIdentity> {

@@ -6,7 +6,7 @@
 //!
 //! - Dump réel (VFS) : `data/common/gamedata/skill/change_aura_skill_config_1.01.73.00.cfg.bin`.
 //! - Format **RDBN à listes** (`{ "lists": [ { "name", "typeName", "values" } ] }`), décodé en
-//!   forme iecode par `nie-model-serve::cfgbin_to_iecode_root`.
+//!   forme étiquetée par `nie-model-serve::cfgbin_to_tagged_root`.
 //! - Référence de portage : `inagle`
 //!   (`parseContent` l.45-66, `buildChangeAuraSkillDatabase` l.81-100).
 //!
@@ -55,7 +55,7 @@ pub struct ChangeAuraSkillData {
 }
 
 impl ChangeAuraSkillData {
-    /// Construit la règle depuis un objet `values[]` (forme iecode). Port 1:1 d'inagle
+    /// Construit la règle depuis un objet `values[]` (forme étiquetée). Port 1:1 d'inagle
     /// `parseContent` (l.54-57) : recopie `id` et `charaParamId` tels quels.
     #[must_use]
     pub fn from_value(v: &Value) -> Self {
@@ -162,7 +162,7 @@ impl ChangeAuraSkillDatabase {
 
 // ─── Parseur principal ─────────────────────────────────────────────────────────────
 
-/// Parse un `change_aura_skill_config_*.cfg.bin` complet (forme iecode `{ "lists": [...] }`).
+/// Parse un `change_aura_skill_config_*.cfg.bin` complet (forme étiquetée `{ "lists": [...] }`).
 ///
 /// Port 1:1 d'inagle `parseContent` (`change-aura-skill-config.ts` l.45-66) : itère les deux
 /// listes nommées ; les listes absentes donnent des `Vec` vides (comme `if (!content?.lists)`).

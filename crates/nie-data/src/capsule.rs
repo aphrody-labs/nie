@@ -17,9 +17,9 @@
 //!
 //! ## Réconciliation de structure inagle ↔ nie-formats (important)
 //!
-//! Le parseur TS suppose un arbre iecode où chaque noeud d'en-tête `*_INFO` **contient** sa
+//! Le parseur TS suppose un arbre étiqueté où chaque noeud d'en-tête `*_INFO` **contient** sa
 //! sous-liste `*_DATA_LIST_BEG` comme enfant imbriqué (cf. son commentaire « INFO entries with
-//! nested DATA lists »). Le décodeur T2B de `nie-formats` (`cfgbin_to_t2b_iecode_root`) rend au
+//! nested DATA lists »). Le décodeur T2B de `nie-formats` (`cfgbin_to_t2b_tagged_root`) rend au
 //! contraire l'en-tête `*_INFO` et son `*_DATA_LIST_BEG` comme **frères** sous le `*_LIST_BEG` :
 //!
 //! ```text
@@ -183,7 +183,7 @@ fn top_entries(root: &Value) -> Vec<Node<'_>> {
 /// Apparie chaque en-tête `*_INFO` d'un noeud `*_LIST_BEG` avec ses lignes `DATA`.
 ///
 /// Gère les deux formes (cf. doc du module) : sous-liste `*_DATA_LIST_BEG` imbriquée **dans**
-/// l'en-tête (forme iecode d'inagle) **ou** frère suivant l'en-tête (forme T2B de nie-formats).
+/// l'en-tête (forme étiquetée d'inagle) **ou** frère suivant l'en-tête (forme T2B de nie-formats).
 /// Renvoie `(en-tête, lignes_data)`.
 fn paired_children<'a>(list: Node<'a>) -> Vec<(Node<'a>, Vec<Node<'a>>)> {
     let kids = list.children();
@@ -214,7 +214,7 @@ fn paired_children<'a>(list: Node<'a>) -> Vec<(Node<'a>, Vec<Node<'a>>)> {
     out
 }
 
-/// Parse un `capsule_config_*.cfg.bin.json` désérialisé (forme iecode `{entries: [...]}`).
+/// Parse un `capsule_config_*.cfg.bin.json` désérialisé (forme étiquetée `{entries: [...]}`).
 ///
 /// Port 1:1 de `parseEntries` (`capsule-config.ts` l.68-136), adapté à la structure frère/imbriquée.
 #[must_use]

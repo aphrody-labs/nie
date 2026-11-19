@@ -1,9 +1,9 @@
 //! Décodage des chunks de texture Switch **NXTCH** + déswizzle GOB Tegra X1.
 //!
 //! Port Rust de :
-//! - `IECODE.Core/Formats/Level5/NxtchParser.cs` (`NxtchTextureFormat` L18,
+//! - `NxtchParser.cs` (`NxtchTextureFormat` L18,
 //!   `CalculateTextureDataSize` L86, `NxtchHeader.IsValid` magic `0x484354584E`).
-//! - `IECODE.Core/Formats/Level5/TextureSwizzler.cs` (déswizzle Block-Linear Tegra X1).
+//! - `TextureSwizzler.cs` (déswizzle Block-Linear Tegra X1).
 //!
 //! ## Limite de validation (honnête)
 //!
@@ -93,7 +93,7 @@ impl NxtchFormat {
 }
 
 /// En-tête NXTCH (48 octets). Offsets alignés 1:1 sur la struct C# `NxtchHeader`
-/// (`IECODE.Core/Formats/Level5/G4txParser.cs` l.77, layout séquentiel : `Magic` u64
+/// (`G4txParser.cs` l.77, layout séquentiel : `Magic` u64
 /// @0x00 puis 10 `int`). Les champs `UnknownN` ne sont pas portés.
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

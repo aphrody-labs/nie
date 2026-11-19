@@ -5,7 +5,7 @@
 //!   strings référencées `st`, data-refs `dr`, constantes `hx`, sous-système `ns`, rôle `ro`,
 //!   `pagerank_scores`, `globals`, `rtti_to_functions`) ;
 //! - `research/nie-rtti-classes.txt` (1 234 classes RTTI `game::`/`lives::`) ;
-//! - formats Level-5 documentés par iecode (`IECODE.Core/Formats/**`) ;
+//! - formats Level-5 documentés par la référence (`formats documentés`) ;
 //! - tables hash→nom d'inagle (CRC32/FNV des IDs persos/skills/items).
 //!
 //! Le module [`stats`] résume une passe d'ingestion. L'ingestion proprement dite est
@@ -58,9 +58,9 @@ pub struct Stats {
     pub anchors: usize,
     /// Nombre de formats documentés insérés (catalogue minimal codé en dur).
     pub formats: usize,
-    /// Nombre de formats insérés depuis le catalogue JSON iecode (`export-knowledge`).
+    /// Nombre de formats insérés depuis le catalogue JSON de référence (`export-knowledge`).
     pub catalog_formats: usize,
-    /// Nombre de champs d'en-tête insérés depuis le catalogue JSON iecode.
+    /// Nombre de champs d'en-tête insérés depuis le catalogue JSON de référence.
     pub catalog_fields: usize,
     /// Nombre de couples (hash, nom) inagle insérés.
     pub hash_names: usize,
@@ -75,12 +75,12 @@ pub fn version() -> &'static str {
 /// Lance l'intégralité de l'ingestion connaissance et renvoie les compteurs.
 ///
 /// - `binary_id` : id du binaire dans `nie_index::Db` (déjà inséré via `upsert_binary`).
-/// - `refs_root` : racine du répertoire `refs/` (contient `iecode-re/research/nie-rtti-classes.txt`).
+/// - `refs_root` : racine du répertoire `refs/` (contient `re/research/nie-rtti-classes.txt`).
 /// - `inagle_sqlite_dir`: directory containing `inagle-*.sqlite` files
 ///   (typiquement `var/backups/`).
 /// - `format_catalog_json` : chemin du catalogue JSON exporté par
-///   `iecode export-knowledge --out <fichier>` (optionnel). Si fourni et lisible,
-///   il enrichit les tables `format`/`format_field` avec le savoir complet d'iecode
+///   `export-knowledge --out <fichier>` (optionnel). Si fourni et lisible,
+///   il enrichit les tables `format`/`format_field` avec le savoir complet du format étiqueté
 ///   (layouts de champs d'en-tête), au-delà du catalogue minimal codé en dur.
 ///
 /// # Erreurs
@@ -103,7 +103,7 @@ pub fn ingest_all(
 
     // 1. Classes RTTI
     let rtti_path = refs_root
-        .join("iecode-re")
+        .join("re")
         .join("research")
         .join("nie-rtti-classes.txt");
     stats.rtti_classes = rtti_classes::ingest_rtti_classes(db, binary_id, &rtti_path)?;
@@ -113,7 +113,7 @@ pub fn ingest_all(
     // 2. Formats Level-5 / Criware (catalogue minimal codé en dur)
     stats.formats = formats::ingest_formats(db)?;
 
-    // 2b. Catalogue JSON iecode complet (optionnel, enrichit format/format_field).
+    // 2b. Catalogue JSON étiquetée complet (optionnel, enrichit format/format_field).
     if let Some(json) = format_catalog_json {
         match format_catalog::ingest_format_catalog(db, json) {
             Ok(s) => {
@@ -121,7 +121,7 @@ pub fn ingest_all(
                 stats.catalog_fields = s.fields;
             }
             Err(e) => {
-                tracing::warn!("ingestion catalogue iecode ignorée : {e:#}");
+                tracing::warn!("ingestion catalogue de référence ignorée : {e:#}");
             }
         }
     }

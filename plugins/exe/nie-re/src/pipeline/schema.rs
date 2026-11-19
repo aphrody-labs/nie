@@ -99,7 +99,7 @@ fn with_meta(id: &str, title: &str, mut v: Value) -> Value {
         );
         o.insert(
             "$id".into(),
-            json!(format!("https://rosegriffon.fr/schema/re/{id}.json")),
+            json!(format!("urn:nie:schema:re:{id}")),
         );
         o.insert("title".into(), json!(title));
     }
@@ -357,7 +357,7 @@ pub fn schemas() -> Vec<(&'static str, Value)> {
             "pipeline-report.json",
             with_meta(
                 "pipeline-report",
-                "Rose Griffon RE pipeline report",
+                "RE pipeline report",
                 pipeline_report(),
             ),
         ),
@@ -365,19 +365,19 @@ pub fn schemas() -> Vec<(&'static str, Value)> {
             "stage-report.json",
             with_meta(
                 "stage-report",
-                "Rose Griffon RE pipeline stage report",
+                "RE pipeline stage report",
                 stage_report(),
             ),
         ),
         (
             "ir.json",
-            with_meta("ir", "Rose Griffon RE lifted IR module", ir()),
+            with_meta("ir", "RE lifted IR module", ir()),
         ),
         (
             "adapter.json",
             with_meta(
                 "adapter",
-                "Rose Griffon RE pipeline stage adapter",
+                "RE pipeline stage adapter",
                 adapter(),
             ),
         ),

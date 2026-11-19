@@ -8,16 +8,15 @@ publish = false
 description = "Native C ABI for Inazuma Eleven binary-format inspection and extraction"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib", "staticlib", "cdylib"]
 name = "nie"
 
 [lints]
 workspace = true
 
 [features]
-default = ["formats", "textures"]
-formats = []
-textures = ["formats", "nie-formats/textures"]
+default = ["textures"]
+textures = ["nie-formats/textures"]
 
 [dependencies]
 nie-cfgsql = { path = "../nie-cfgsql", version = "2.0.0" }

@@ -209,7 +209,7 @@ pub fn adx_decode(data: &[u8]) -> Result<PcmResult, FormatError> {
     }
 
     // Coefficients ADX (filtre ADPCM linéaire 2e ordre).
-    // Formule (C++ iecode référence) :
+    // Formule (C++ de référence) :
     //   a = sqrt(2) - cos(2π·fc/fs)
     //   b = sqrt(2) - 1
     //   coeff1 = (a - sqrt(a²-b²)) / b * 8192

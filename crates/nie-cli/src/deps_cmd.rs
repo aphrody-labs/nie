@@ -1184,11 +1184,10 @@ fn classify(
             if let Some(url) = &subject.git {
                 reason.push_str(&format!("; upstream builds from git {url}"));
             }
-            if let Some(member) = member {
-                if let (Some(repo), Some(now)) = (&member.manifest.version, &latest) {
+            if let Some(member) = member
+                && let (Some(repo), Some(now)) = (&member.manifest.version, &latest) {
                     reason.push_str(&format!("; crates.io {now}, repository {repo} ({})", lag(repo, now)));
                 }
-            }
             done("crates-io", reason)
         }
         Lic::Denied if policy.design_cited.contains(&subject.name) => {
@@ -1234,11 +1233,10 @@ fn needed_crates(manifests: &[Manifest], scope: &str) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
     let members: BTreeSet<String> = manifests.iter().filter_map(member_name).map(canon).collect();
     for m in manifests {
-        if let Some(name) = member_name(m) {
-            if m.publish {
+        if let Some(name) = member_name(m)
+            && m.publish {
                 names.insert(name.to_owned());
             }
-        }
         if scope == "members" {
             continue;
         }
@@ -1518,11 +1516,10 @@ async fn read_repo(net: &mut Net, policy: &Policy, lock: &NieLock, requested: &s
         match parse_manifest(&text, &dir, ws.as_ref()) {
             Ok(m) => {
                 for dep in &m.deps {
-                    if let (Src::Path, Some(path)) = (&dep.src, &dep.path) {
-                        if dirs.contains(path) && !path.is_empty() {
+                    if let (Src::Path, Some(path)) = (&dep.src, &dep.path)
+                        && dirs.contains(path) && !path.is_empty() {
                             member_dirs.insert(path.clone());
                         }
-                    }
                 }
                 manifests.push(m);
             }
@@ -1873,15 +1870,14 @@ const MD_DESIGNS: &str = "## Designs cited\n\nFilled by hand: one entry per desi
 /// Replaces the block `id` of `md`, or inserts it before the `Designs cited` section.
 fn upsert_block(md: &str, id: &str, block: &str) -> String {
     let (open, close) = marker(id);
-    if let (Some(start), Some(end)) = (md.find(&open), md.find(&close)) {
-        if start < end {
+    if let (Some(start), Some(end)) = (md.find(&open), md.find(&close))
+        && start < end {
             let end = end + close.len();
             let tail = md[end..].strip_prefix('\n').unwrap_or(&md[end..]);
             return format!("{}{}{}", &md[..start], block.trim_end_matches('\n'), if tail.is_empty() { "\n".to_owned() } else { format!("\n{tail}") });
         }
-    }
     match md.find(DESIGNS_HEADING) {
-        Some(at) => format!("{}{}\n{}", &md[..at], block.trim_end_matches('\n'), format!("\n{}", &md[at..])),
+        Some(at) => format!("{}{}\n\n{}", &md[..at], block.trim_end_matches('\n'), &md[at..]),
         None => format!("{}\n{}\n", md.trim_end(), block.trim_end_matches('\n')),
     }
 }

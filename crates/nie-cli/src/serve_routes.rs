@@ -25,14 +25,55 @@ pub(crate) enum Route {
     VfsFind,
     VfsStat,
     VfsRead,
+    VfsStream,
+    AppIndex,
+    AppAsset,
     GameQuery,
     WikiLanguages,
     WikiUnsourced,
+    WikiCatalog,
+    WikiTables,
+    WikiTableList,
+    WikiTableRecord,
     WikiList(Family),
     WikiRecord(Family),
     PageIndex,
+    PageTables,
+    PageTableList,
+    PageTableRecord,
     PageList(Family),
     PageRecord(Family),
+}
+
+impl Route {
+    /// Whether the answer is an HTML page.
+    pub(crate) fn is_page(self) -> bool {
+        matches!(
+            self,
+            Self::PageIndex
+                | Self::PageTables
+                | Self::PageTableList
+                | Self::PageTableRecord
+                | Self::PageList(_)
+                | Self::PageRecord(_)
+        )
+    }
+
+    /// Whether `nie-wiki-vfs` answers it.
+    pub(crate) fn is_wiki(self) -> bool {
+        self.is_page()
+            || matches!(
+                self,
+                Self::WikiLanguages
+                    | Self::WikiUnsourced
+                    | Self::WikiCatalog
+                    | Self::WikiTables
+                    | Self::WikiTableList
+                    | Self::WikiTableRecord
+                    | Self::WikiList(_)
+                    | Self::WikiRecord(_)
+            )
+    }
 }
 
 /// A documented parameter.
@@ -61,6 +102,10 @@ const LANG: Param = Param {
 const Q: Param = Param {
     name: "q",
     description: "Case-insensitive substring of names (in the selected languages) and codes",
+};
+const CLASS: Param = Param {
+    name: "class",
+    description: "Character class: param_and_base, param_without_base or base_without_param",
 };
 const LIMIT: Param = Param {
     name: "limit",
@@ -258,6 +303,36 @@ pub(crate) const ROUTES: &[RouteDef] = &[
     ),
     def(
         "GET",
+        "/v1/vfs/stream",
+        Route::VfsStream,
+        "vfs",
+        "Byte ranges of the installation's own files (cpk_list.cfg.bin, packs/<pack>, loose files) for a browser that decodes them itself; bearer token required, 404 without it, local installations only",
+        &[Param {
+            name: "path",
+            description: "File relative to the data folder: cpk_list.cfg.bin, packs/<pack>.cpk or a loose file",
+        }],
+        "application/octet-stream",
+    ),
+    def(
+        "GET",
+        "/app",
+        Route::AppIndex,
+        "app",
+        "The browser app: explorer, wiki and model viewer running in the page",
+        &[],
+        "text/html",
+    ),
+    def(
+        "GET",
+        "/app/{name}",
+        Route::AppAsset,
+        "app",
+        "A file of the browser app bundle; the name carries the BLAKE3 prefix of the content, so the answer is immutable",
+        &[],
+        "application/octet-stream",
+    ),
+    def(
+        "GET",
         "/v1/game/query",
         Route::GameQuery,
         "game",
@@ -298,11 +373,47 @@ pub(crate) const ROUTES: &[RouteDef] = &[
     ),
     def(
         "GET",
+        "/v1/wiki/catalog",
+        Route::WikiCatalog,
+        "wiki",
+        "Every gamedata file of the installation and whether a family decodes it",
+        &[],
+        JSON_TYPE,
+    ),
+    def(
+        "GET",
+        "/v1/wiki/tables",
+        Route::WikiTables,
+        "wiki",
+        "Every decoded table with its node classes, roles and entry counts",
+        &[],
+        JSON_TYPE,
+    ),
+    def(
+        "GET",
+        "/v1/wiki/tables/{table}/{class}",
+        Route::WikiTableList,
+        "wiki",
+        "Entries of one table class as stored, with text labels, paged",
+        &[LANG, Q, LIMIT, OFFSET],
+        JSON_TYPE,
+    ),
+    def(
+        "GET",
+        "/v1/wiki/tables/{table}/{class}/{index}",
+        Route::WikiTableRecord,
+        "wiki",
+        "One table entry by its index in the class",
+        &[LANG],
+        JSON_TYPE,
+    ),
+    def(
+        "GET",
         "/v1/wiki/characters",
         Route::WikiList(Family::Characters),
         "wiki",
-        "Characters: chara_param joined to chara_base, paged",
-        &[LANG, Q, LIMIT, OFFSET],
+        "Characters: every chara_param and chara_base entry, with their classes, paged",
+        &[LANG, Q, CLASS, LIMIT, OFFSET],
         JSON_TYPE,
     ),
     def(
@@ -355,7 +466,34 @@ pub(crate) const ROUTES: &[RouteDef] = &[
         "/wiki",
         Route::PageIndex,
         "pages",
-        "Wiki home: languages, backing tables, families without a source",
+        "Wiki home: languages, backing tables, character classes, families without a source, every gamedata file",
+        &[],
+        HTML_TYPE,
+    ),
+    def(
+        "GET",
+        "/wiki/{lang}/tables",
+        Route::PageTables,
+        "pages",
+        "Every decoded table and its node classes",
+        &[],
+        HTML_TYPE,
+    ),
+    def(
+        "GET",
+        "/wiki/{lang}/tables/{table}/{class}",
+        Route::PageTableList,
+        "pages",
+        "Entries of one table class",
+        &[Q, LIMIT, OFFSET],
+        HTML_TYPE,
+    ),
+    def(
+        "GET",
+        "/wiki/{lang}/tables/{table}/{class}/{index}",
+        Route::PageTableRecord,
+        "pages",
+        "One table entry",
         &[],
         HTML_TYPE,
     ),
@@ -365,7 +503,7 @@ pub(crate) const ROUTES: &[RouteDef] = &[
         Route::PageList(Family::Characters),
         "pages",
         "Character list",
-        &[Q, LIMIT, OFFSET],
+        &[Q, CLASS, LIMIT, OFFSET],
         HTML_TYPE,
     ),
     def(
@@ -456,8 +594,12 @@ fn path_params(pattern: &str) -> Vec<&str> {
 fn description_of(name: &str) -> &'static str {
     match name {
         "lang" => "Language folder or BCP 47 tag of the shipped text languages",
+        "table" => "Table stem without version (chara_param, passive_skill_config, ...)",
+        "class" => "Node class (T2B) or list name (RDBN) of the table",
+        "index" => "Entry index in the class",
+        "name" => "File of the app bundle, with the BLAKE3 prefix of its content in the name",
         "key" => {
-            "chara_param id (0xXXXXXXXX) or internal code for characters, skillID or code for skills, belongTeamId for teams"
+            "chara_param id (0xXXXXXXXX), base-<n> or internal code for characters, skillID or code for skills, belongTeamId for teams"
         }
         _ => "",
     }
@@ -523,6 +665,7 @@ pub(crate) fn openapi() -> Value {
             { "name": "service" }, { "name": "vfs" }, { "name": "formats" }, { "name": "game" },
             { "name": "wiki", "description": "JSON pages computed from the VFS; see docs/wiki.md" },
             { "name": "pages", "description": "Server-rendered HTML wiki pages" },
+            { "name": "app", "description": "The browser app, embedded in the binary" },
         ],
         "paths": paths,
         "components": { "schemas": { "Error": {

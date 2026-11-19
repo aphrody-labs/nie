@@ -6,7 +6,7 @@
 //! - Fichier source (VFS) :
 //!   `data/common/gamedata/skill/team_build_config_6.00.23.cfg.bin`
 //!   (monté depuis `/mnt/c/Program Files (x86)/Steam/steamapps/common/INAZUMA ELEVEN
-//!   Victory Road`, décodé en forme iecode `entries`/`children`/`variables`).
+//!   Victory Road`, décodé en forme étiquetée `entries`/`children`/`variables`).
 //! - Parseur TS de référence (port 1:1) :
 //!   `inagle`.
 //!
@@ -366,7 +366,7 @@ fn parse_build_infos(children: &[Node<'_>], out: &mut Vec<TeamBuildInfo>) {
     }
 }
 
-/// Parse un `team_build_config_*.cfg.bin` (forme iecode `{ "entries": [...] }`).
+/// Parse un `team_build_config_*.cfg.bin` (forme étiquetée `{ "entries": [...] }`).
 ///
 /// Port 1:1 de `parseContent` (`team-build-config.ts` l.99-217). Les noeuds de premier
 /// niveau sont les `TEAM_BUILD_*_LIST_BEG` ; chacun est aiguillé vers le parseur de sa liste

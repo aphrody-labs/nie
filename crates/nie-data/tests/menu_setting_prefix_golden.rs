@@ -35,7 +35,7 @@ fn ecran_non_main_parse_byte_exact() {
 
 #[cfg(feature = "serde")]
 #[test]
-fn dispatch_typed_par_suffixe_atteint_azalee() {
+fn dispatch_typed_par_suffixe_atteint_wiki() {
     use nie_data::typed::{decode_by_key, family_key};
     let Some(root) = load() else { return };
     let key = family_key("info_bookmark_menu_setting.cfg.bin");

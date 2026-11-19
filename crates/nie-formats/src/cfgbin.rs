@@ -1,8 +1,8 @@
 //! Lecteur de fichiers RDBN (format Level-5, `cfg.bin` IEVR).
 //!
 //! Port Rust de :
-//! - `IECODE.Core/Formats/Level5/CfgBin/Rdbn/RdbnReader.cs`
-//! - `IECODE.Core/Formats/Level5/CfgBin/Rdbn/RdbnStructures.cs`
+//! - `RdbnReader.cs`
+//! - `RdbnStructures.cs`
 //!
 //! ## Format RDBN (wire layout, tout little-endian)
 //!
@@ -309,7 +309,7 @@ pub fn parse(data: &[u8]) -> Result<RdbnData, FormatError> {
 //
 // Port exact de `RdbnReader.CreateRdbnData` (L194), `ReadFieldValue` (L249) et
 // `ReadConditionValue` (L293). Vérifié octet par octet contre le vrai fichier
-// `/home/ubuntu/rg/iecode/re/menu/extracted/fonts/font_color.cfg.bin` (liste
+// `fonts/font_color.cfg.bin` (liste
 // `m_FontColorDataList`, type `FONT_COLOR`, 7 champs, 64 lignes de 100 octets).
 // ---------------------------------------------------------------------------
 
@@ -688,7 +688,7 @@ fn read_vec4_le(data: &[u8], off: usize) -> Result<[f32; 4], FormatError> {
 
 /// Calcule le hash CRC32 compatible avec le format RDBN.
 ///
-/// Polynomial : 0xEDB88320 (IEEE 802.3, LE). Identique à `Crc32.cs` de IECODE.
+/// Polynomial : 0xEDB88320 (IEEE 802.3, LE). Identique à `Crc32.cs` du décodeur de référence.
 /// Utilisé pour hasher les noms de types/champs/listes.
 ///
 /// # Exemple
@@ -1413,9 +1413,9 @@ fn rdbn_encode_value(
 /// Encode des listes RDBN décodées ([`read_values`]) en fichier `.cfg.bin` RDBN binaire —
 /// inverse de [`read_values`]/[`parse`].
 ///
-/// Port du writer C++ `iecode::level5::cfgbin_write_rdbn` (dépôt `aphrody-labs/iecode`,
+/// Port du writer C++ `cfgbin_write_rdbn` (
 /// `cli/src/formats/level5/cfgbin.cpp:1143-1422`) — le seul encodeur RDBN connu à ce jour : absent
-/// du C# `IECODE.Core` d'origine (`apps/iecode` local, lecture seule), absent jusqu'ici de
+/// du C# d'origine (lecture seule), absent jusqu'ici de
 /// `nie-formats`. Layout d'en-tête et de tables croisé octet à octet contre [`parse`] (déjà
 /// vérifié contre le vrai jeu) : mêmes offsets `0x24/0x28/0x2C/0x30/0x32/0x34/0x36/0x38`, mêmes
 /// entrées de [`ENTRY_SIZE`] octets — confirmé avant portage, pas supposé.
@@ -1695,13 +1695,13 @@ pub fn encode_rdbn(lists: &[RdbnList]) -> Result<Vec<u8>, String> {
 }
 
 // ---------------------------------------------------------------------------
-// Forme JSON « iecode » — celle que lisent les parseurs typés de `nie-data`
+// Forme JSON « étiquetée » — celle que lisent les parseurs typés de `nie-data`
 // ---------------------------------------------------------------------------
 //
 // `decode()` (ci-dessus) sérialise les structures BRUTES (`RdbnData`/`CfgBinFile`) — utile
 // pour une vue structurelle générique (explorateur, FFI), mais **pas** ce que consomment les
 // parseurs `nie-data` : ceux-ci attendent la forme documentée dans
-// `csharp/IECODE.Core/Dump/DataPathExporter.cs` — RDBN -> `{ "lists": [{name,typeName,values}] }`,
+// `DataPathExporter.cs` — RDBN -> `{ "lists": [{name,typeName,values}] }`,
 // T2B -> `{ "entries": [{name,variables,children}] }` avec les frères de même nom suffixés
 // `_0`, `_1`… (les parseurs matchent un préfixe à underscore final). Portée depuis la copie
 // privée de `nie-model-serve` (`cfgbin_to_typed_root` et consorts) pour que `nie decode
@@ -1709,7 +1709,7 @@ pub fn encode_rdbn(lists: &[RdbnList]) -> Result<Vec<u8>, String> {
 // au lieu de deux implémentations qui dérivent l'une de l'autre.
 
 /// Encode des octets bruts en hex MAJUSCULE sans séparateur (ex. `"000000008FC2753F"`),
-/// identique au dump iecode des champs `position`/`blob`.
+/// identique au dump étiqueté des champs `position`/`blob`.
 fn blob_hex_upper(bytes: &[u8]) -> String {
     use core::fmt::Write;
     let mut s = String::with_capacity(bytes.len() * 2);
@@ -1719,10 +1719,11 @@ fn blob_hex_upper(bytes: &[u8]) -> String {
     s
 }
 
-/// Convertit une [`RdbnValue`] en JSON, encodage identique au dump iecode (`hash` ->
+/// Convertit une [`RdbnValue`] en JSON, encodage identique au dump étiqueté (`hash` ->
 /// `"0x........"`, `blob`/`position` -> hex MAJUSCULE) — directement consommable par les
 /// parseurs typés de `nie-data`.
-fn rdbn_value_to_iecode_json(v: &RdbnValue) -> serde_json::Value {
+#[must_use]
+pub fn rdbn_value_to_tagged_json(v: &RdbnValue) -> serde_json::Value {
     use serde_json::json;
     match v {
         RdbnValue::Bool(b) => json!(b),
@@ -1739,10 +1740,10 @@ fn rdbn_value_to_iecode_json(v: &RdbnValue) -> serde_json::Value {
     }
 }
 
-/// Décode un `cfg.bin` RDBN vers la forme canonique iecode `{ "lists": [{ "name", "typeName",
+/// Décode un `cfg.bin` RDBN vers la forme canonique étiquetée `{ "lists": [{ "name", "typeName",
 /// "values": [{champ: valeur}] }] }`. `None` si `data` n'est pas du RDBN.
 #[must_use]
-pub fn rdbn_to_iecode_json(data: &[u8]) -> Option<serde_json::Value> {
+pub fn rdbn_to_tagged_json(data: &[u8]) -> Option<serde_json::Value> {
     use serde_json::{Map, Value as Json, json};
     if !is_rdbn(data) {
         return None;
@@ -1758,7 +1759,7 @@ pub fn rdbn_to_iecode_json(data: &[u8]) -> Option<serde_json::Value> {
                 .map(|row| {
                     let mut m = Map::new();
                     for (name, val) in &row.fields {
-                        m.insert(name.clone(), rdbn_value_to_iecode_json(val));
+                        m.insert(name.clone(), rdbn_value_to_tagged_json(val));
                     }
                     Json::Object(m)
                 })
@@ -1769,12 +1770,25 @@ pub fn rdbn_to_iecode_json(data: &[u8]) -> Option<serde_json::Value> {
     Some(json!({ "lists": lists_json }))
 }
 
-/// Convertit une liste de frères T2B [`CfgEntry`] vers la forme iecode attendue par les
-/// parseurs `entries` de `nie-data`, en répliquant le suffixe d'index d'iecode : chaque nœud
+/// Convertit une variable T2B en `{ "type", "value" }` : `value` est TOUJOURS une chaîne dans la
+/// forme étiquetée (les parseurs la re-parsent ; `type` indicatif).
+#[must_use]
+pub fn t2b_value_to_tagged_json(v: &Value) -> serde_json::Value {
+    use serde_json::json;
+    match v {
+        Value::String(s) => json!({ "type": "String", "value": s }),
+        Value::Int(n) => json!({ "type": "Int", "value": n.to_string() }),
+        Value::Float(f) => json!({ "type": "Float", "value": f.to_string() }),
+    }
+}
+
+/// Convertit une liste de frères T2B [`CfgEntry`] vers la forme étiquetée attendue par les
+/// parseurs `entries` de `nie-data`, en répliquant le suffixe d'index du format étiqueté : chaque nœud
 /// est renommé `<base>_<i>` où `i` est son rang d'occurrence parmi ses frères de même nom
 /// (`MISSION_CONFIG_INFO` -> `..._0`, `..._1`…). `value` est toujours une chaîne (les
 /// parseurs la re-parsent ; `type` indicatif).
-fn t2b_siblings_to_iecode_json(siblings: &[CfgEntry]) -> Vec<serde_json::Value> {
+#[must_use]
+pub fn t2b_siblings_to_tagged_json(siblings: &[CfgEntry]) -> Vec<serde_json::Value> {
     use serde_json::json;
     let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
     siblings
@@ -1783,44 +1797,37 @@ fn t2b_siblings_to_iecode_json(siblings: &[CfgEntry]) -> Vec<serde_json::Value> 
             let idx = counts.entry(e.name.as_str()).or_insert(0);
             let name = alloc::format!("{}_{}", e.name, *idx);
             *idx += 1;
-            let variables: Vec<serde_json::Value> = e
-                .variables
-                .iter()
-                .map(|v| match v {
-                    Value::String(s) => json!({ "type": "String", "value": s }),
-                    Value::Int(n) => json!({ "type": "Int", "value": n.to_string() }),
-                    Value::Float(f) => json!({ "type": "Float", "value": f.to_string() }),
-                })
-                .collect();
-            let children = t2b_siblings_to_iecode_json(&e.children);
+            let variables: Vec<serde_json::Value> =
+                e.variables.iter().map(t2b_value_to_tagged_json).collect();
+            let children = t2b_siblings_to_tagged_json(&e.children);
             json!({ "name": name, "variables": variables, "children": children })
         })
         .collect()
 }
 
-/// Décode un `cfg.bin` T2B vers la forme iecode `{ "entries": [...] }` consommable par les
+/// Décode un `cfg.bin` T2B vers la forme étiquetée `{ "entries": [...] }` consommable par les
 /// parseurs `entries` de `nie-data`. `None` si `data` est du RDBN (utiliser
-/// [`rdbn_to_iecode_json`]) ou ne parse pas comme T2B.
+/// [`rdbn_to_tagged_json`]) ou ne parse pas comme T2B.
 #[must_use]
-pub fn t2b_to_iecode_json(data: &[u8]) -> Option<serde_json::Value> {
+pub fn t2b_to_tagged_json(data: &[u8]) -> Option<serde_json::Value> {
     use serde_json::json;
     if is_rdbn(data) {
         return None;
     }
     let cfg = cfgbin_parse(data).ok()?;
-    Some(json!({ "entries": t2b_siblings_to_iecode_json(&cfg.entries) }))
+    Some(json!({ "entries": t2b_siblings_to_tagged_json(&cfg.entries) }))
 }
 
-/// Décode un `cfg.bin` vers la forme iecode adaptée à son format (RDBN `lists` ou T2B
-/// `entries`) : aiguille vers [`rdbn_to_iecode_json`] ou [`t2b_to_iecode_json`]. C'est la
+/// Décode un `cfg.bin` vers la forme étiquetée adaptée à son format (RDBN `lists` ou T2B
+/// `entries`) : aiguille vers [`rdbn_to_tagged_json`] ou [`t2b_to_tagged_json`]. C'est la
 /// forme que lisent tous les parseurs de `nie-data` (`list_values`/`Var`, cf. leur doc de
 /// module) — à distinguer de [`decode`] plus haut, qui rend la structure BRUTE.
 #[must_use]
-pub fn to_iecode_json(data: &[u8]) -> Option<serde_json::Value> {
+pub fn to_tagged_json(data: &[u8]) -> Option<serde_json::Value> {
     if is_rdbn(data) {
-        rdbn_to_iecode_json(data)
+        rdbn_to_tagged_json(data)
     } else {
-        t2b_to_iecode_json(data)
+        t2b_to_tagged_json(data)
     }
 }
 
@@ -1839,12 +1846,12 @@ pub fn is_container_name(name: &str) -> bool {
         || name.starts_with("PTREE")
 }
 
-/// Retire le suffixe d'index que [`t2b_siblings_to_iecode_json`] ajoute à chaque nœud.
+/// Retire le suffixe d'index que [`t2b_siblings_to_tagged_json`] ajoute à chaque nœud.
 ///
-/// La règle iecode **ajoute toujours** `_<rang>` ; retirer le dernier groupe de chiffres en est
+/// La règle étiquetée **ajoute toujours** `_<rang>` ; retirer le dernier groupe de chiffres en est
 /// donc l'inverse exact, y compris quand le nom d'origine finit lui-même par des chiffres
 /// (`FOO_2` devient `FOO_2_0`, et redevient `FOO_2`).
-fn strip_iecode_index(name: &str) -> &str {
+fn strip_tagged_index(name: &str) -> &str {
     match name.rsplit_once('_') {
         Some((base, index)) if !index.is_empty() && index.bytes().all(|b| b.is_ascii_digit()) => {
             base
@@ -1853,13 +1860,13 @@ fn strip_iecode_index(name: &str) -> &str {
     }
 }
 
-/// Reconstruit une variable T2B depuis sa forme iecode `{"type","value"}`.
+/// Reconstruit une variable T2B depuis sa forme étiquetée `{"type","value"}`.
 ///
 /// `value` est **toujours** une chaîne dans cette forme, dans les deux sens ; elle est reparsée
 /// selon `type`. Un type inconnu ou une valeur illisible est une erreur explicite, jamais une
 /// valeur par défaut silencieuse : une faute de frappe dans un JSON édité à la main ne doit pas
 /// produire un `cfg.bin` syntaxiquement valide que le jeu lirait de travers.
-fn iecode_json_to_t2b_value(value: &serde_json::Value) -> Result<Value, alloc::string::String> {
+fn tagged_json_to_t2b_value(value: &serde_json::Value) -> Result<Value, alloc::string::String> {
     let kind = value
         .get("type")
         .and_then(serde_json::Value::as_str)
@@ -1884,8 +1891,8 @@ fn iecode_json_to_t2b_value(value: &serde_json::Value) -> Result<Value, alloc::s
     }
 }
 
-/// Reconstruit un nœud T2B depuis sa forme iecode.
-fn iecode_json_to_t2b_entry(value: &serde_json::Value) -> Result<CfgEntry, alloc::string::String> {
+/// Reconstruit un nœud T2B depuis sa forme étiquetée.
+fn tagged_json_to_t2b_entry(value: &serde_json::Value) -> Result<CfgEntry, alloc::string::String> {
     let name = value
         .get("name")
         .and_then(serde_json::Value::as_str)
@@ -1894,17 +1901,17 @@ fn iecode_json_to_t2b_entry(value: &serde_json::Value) -> Result<CfgEntry, alloc
         None => Vec::new(),
         Some(items) => items
             .iter()
-            .map(iecode_json_to_t2b_value)
+            .map(tagged_json_to_t2b_value)
             .collect::<Result<Vec<_>, _>>()?,
     };
     let children = match value.get("children").and_then(serde_json::Value::as_array) {
         None => Vec::new(),
         Some(items) => items
             .iter()
-            .map(iecode_json_to_t2b_entry)
+            .map(tagged_json_to_t2b_entry)
             .collect::<Result<Vec<_>, _>>()?,
     };
-    let name = strip_iecode_index(name);
+    let name = strip_tagged_index(name);
     // Le silence serait pire que l'erreur : `encode_t2b` n'écrit le sous-arbre que des nœuds
     // nommés comme des conteneurs, donc un document dont un parent ne l'est pas produirait un
     // fichier bien formé auquel il manquerait des lignes entières, sans rien pour le signaler.
@@ -1922,7 +1929,7 @@ fn iecode_json_to_t2b_entry(value: &serde_json::Value) -> Result<CfgEntry, alloc
     })
 }
 
-/// Inverse de [`t2b_to_iecode_json`] : reconstruit l'arbre `CfgEntry` depuis la forme iecode
+/// Inverse de [`t2b_to_tagged_json`] : reconstruit l'arbre `CfgEntry` depuis la forme étiquetée
 /// `{"entries": [...]}` — celle des dumps `*.cfg.bin.json` du dépôt et de tout ce qui est édité
 /// à partir d'eux.
 ///
@@ -1934,28 +1941,28 @@ fn iecode_json_to_t2b_entry(value: &serde_json::Value) -> Result<CfgEntry, alloc
 /// # Errors
 ///
 /// Rend le premier nœud ou la première variable mal formée, avec ce qui manquait.
-pub fn iecode_json_to_t2b_entries(
+pub fn tagged_json_to_t2b_entries(
     root: &serde_json::Value,
 ) -> Result<Vec<CfgEntry>, alloc::string::String> {
     let entries = root
         .get("entries")
         .and_then(serde_json::Value::as_array)
-        .ok_or("JSON sans champ \"entries\" (forme iecode T2B attendue)")?;
-    entries.iter().map(iecode_json_to_t2b_entry).collect()
+        .ok_or("JSON sans champ \"entries\" (forme étiquetée T2B attendue)")?;
+    entries.iter().map(tagged_json_to_t2b_entry).collect()
 }
 
-/// Encode un document iecode `{"entries": [...]}` en `cfg.bin` T2B.
+/// Encode un document étiqueté `{"entries": [...]}` en `cfg.bin` T2B.
 ///
-/// C'est le chemin qui manquait entre les artefacts iecode du dépôt et un fichier que le jeu
-/// pourrait lire. Ce que la fonction garantit, et que [`t2b_to_iecode_json`] permet de vérifier,
+/// C'est le chemin qui manquait entre les artefacts étiquetés du dépôt et un fichier que le jeu
+/// pourrait lire. Ce que la fonction garantit, et que [`t2b_to_tagged_json`] permet de vérifier,
 /// c'est que le dépôt relit à l'identique ce qu'il vient d'écrire. Ce qu'elle ne garantit pas,
 /// et qu'aucun test ici ne peut établir : que le **jeu** accepte le fichier.
 ///
 /// # Errors
 ///
-/// Propage l'erreur de [`iecode_json_to_t2b_entries`].
-pub fn encode_iecode_t2b(root: &serde_json::Value) -> Result<Vec<u8>, alloc::string::String> {
-    Ok(encode_t2b(&iecode_json_to_t2b_entries(root)?))
+/// Propage l'erreur de [`tagged_json_to_t2b_entries`].
+pub fn encode_tagged_t2b(root: &serde_json::Value) -> Result<Vec<u8>, alloc::string::String> {
+    Ok(encode_t2b(&tagged_json_to_t2b_entries(root)?))
 }
 
 // ---------------------------------------------------------------------------
@@ -2114,7 +2121,7 @@ mod tests {
 
     // -------------------------------------------------------------------
     // Décodage des VALEURS — golden values issues du VRAI fichier
-    // /home/ubuntu/rg/iecode/re/menu/extracted/fonts/font_color.cfg.bin
+    // fonts/font_color.cfg.bin
     // (copié dans tests/fixtures/). Header tracé octet par octet :
     //   header_size=0x50, version=100, data_offset=0x14(×4=0x50),
     //   type_count=1, field_offset=8, field_count=7, root_offset=0x40,

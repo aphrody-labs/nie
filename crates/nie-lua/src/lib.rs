@@ -14,7 +14,7 @@
 //! pas une réinterprétation. mlua avec `lua52` + `vendored` embarque PUC-Rio Lua 5.2.4,
 //! la même implémentation que le jeu, et charge le **bytecode** directement.
 //!
-//! (iecode, faute de VM 5.2 native en C#, décompile via `unluac` puis réinterprète sous
+//! (référence, faute de VM 5.2 native en C#, décompile via `unluac` puis réinterprète sous
 //! MoonSharp — chemin lossy ; ici on exécute le bytecode d'origine.)
 //!
 //! ## `unsafe`
@@ -31,6 +31,12 @@
 pub use mlua::chunk::ChunkMode;
 
 pub mod bytecode;
+#[cfg(all(
+    feature = "aot",
+    not(all(target_arch = "wasm32", target_os = "unknown"))
+))]
+pub mod aot;
+pub mod rt;
 pub mod inspection;
 pub mod menu_scene;
 pub mod menu_state;
@@ -243,7 +249,7 @@ pub fn load_bytecode(lua: &mlua::Lua, data: &[u8], name: &str) -> Result<mlua::F
 /// Installe la fonction hôte `INCLUDE(name)` — le **système de modules** du moteur : le
 /// script appelle `INCLUDE("…")`, l'hôte résout le nom en bytecode `.lua.bin` (via `resolver`)
 /// et l'exécute dans la MÊME VM. Renvoie les valeurs du module inclus (ou rien si introuvable,
-/// comportement aligné sur iecode `DefaultLuaHost`).
+/// comportement aligné sur la référence `DefaultLuaHost`).
 ///
 /// `resolver` : nom logique d'include → bytecode du module (typiquement adossé au VFS).
 ///
@@ -272,7 +278,7 @@ where
 {
     let f = lua.create_function(move |lua, name: String| {
         let Some(bytes) = resolver(&name) else {
-            return Ok(mlua::MultiValue::new()); // introuvable → vide (comme iecode)
+            return Ok(mlua::MultiValue::new()); // introuvable → vide (comme la référence)
         };
         // Un module peut être du bytecode (.lua.bin) ou de la source ; on tente le bytecode.
         let mode = if is_lua52_bytecode(&bytes) {
@@ -842,7 +848,7 @@ mod tests {
                 }
             };
 
-            // Détermine un layerId plausible : on essaie 0 (iecode utilise general_win
+            // Détermine un layerId plausible : on essaie 0 (la référence utilise general_win
             // = 292844459 = 0x117473AB pour qrcode_menu ; sans le dico on essaie 0 puis ce hash).
             // Les scripts qui définissent OnOpenLayer(layerId) utiliseront souvent le
             // layerId passé pour filtrer ; on tente 0 = « tous les layers ».

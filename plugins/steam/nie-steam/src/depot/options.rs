@@ -1,6 +1,6 @@
 //! Options de téléchargement Steam.
 //!
-//! Port de `IECODE.Core/Steam/Content/SteamDownloadOptions.cs` (C#).
+//! Port de `SteamDownloadOptions.cs` (C#).
 //! Couvre l'ensemble des paramètres de `SteamDownloadOptions` + les types
 //! auxiliaires (`SteamGuardKind`, `SteamDownloadPhase`, `SteamDownloadProgress`,
 //! `SteamDepotInfo`, `SteamDownloadResult`).
@@ -33,7 +33,7 @@ pub type GuardCodeFuture = Pin<Box<dyn Future<Output = anyhow::Result<String>> +
 
 /// Trait à implémenter côté appelant pour fournir un code 2FA Steam Guard.
 ///
-/// En CLI : lit depuis `stdin` ou la variable d'environnement `STEAM_GUARD_CODE`.
+/// En CLI : lit depuis `stdin` ou la variable d'environnement `NIE_STEAM_GUARD_CODE`.
 /// En mode automatisé : renvoie le code depuis la configuration.
 ///
 /// Utilise un return type `Pin<Box<dyn Future>>` pour être dyn-compatible et
@@ -54,7 +54,7 @@ pub trait SteamGuardProvider: Send + Sync {
 }
 
 /// Implémentation `SteamGuardProvider` depuis la variable d'environnement
-/// `STEAM_GUARD_CODE`. Pratique pour les runs CI non-interactifs.
+/// `NIE_STEAM_GUARD_CODE`. Pratique pour les runs CI non-interactifs.
 #[derive(Clone, Debug, Default)]
 pub struct EnvGuardProvider;
 
@@ -66,9 +66,9 @@ impl SteamGuardProvider for EnvGuardProvider {
         _previous_incorrect: bool,
     ) -> GuardCodeFuture {
         Box::pin(async {
-            std::env::var("STEAM_GUARD_CODE").map_err(|_| {
+            std::env::var("NIE_STEAM_GUARD_CODE").map_err(|_| {
                 anyhow::anyhow!(
-                    "Steam Guard (2FA) requis. Définissez STEAM_GUARD_CODE=<code> \
+                    "Steam Guard (2FA) requis. Définissez NIE_STEAM_GUARD_CODE=<code> \
                      dans l'environnement."
                 )
             })
@@ -133,7 +133,7 @@ pub struct SteamDownloadOptions {
     /// Défaut : [`crate::depot::token_store::default_path()`].
     pub token_store_path: Option<PathBuf>,
 
-    /// Magasin de jetons explicite (`STEAM_TOKEN_STORE`), prioritaire sur `token_store_path`.
+    /// Magasin de jetons explicite (`NIE_STEAM_TOKEN_STORE`), prioritaire sur `token_store_path`.
     pub token_backend: Option<std::sync::Arc<dyn crate::depot::token_backend::TokenBackend>>,
 
     /// Fournisseur de codes Steam Guard (2FA). `None` → utilise [`EnvGuardProvider`].

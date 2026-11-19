@@ -1,5 +1,4 @@
-//! `nie-shell contract` prints `contract/nie-app.json`; `nie-shell store` prints
-//! `contract/aphrody-store.toml`.
+//! `nie-shell contract` prints `contract/nie-app.json`.
 
 use std::io::Write;
 use std::process::ExitCode;
@@ -7,9 +6,8 @@ use std::process::ExitCode;
 fn main() -> ExitCode {
     let text = match std::env::args().nth(1).as_deref() {
         Some("contract") => nie_shell::contract_json(),
-        Some("store") => nie_shell::store_toml(),
         _ => {
-            eprintln!("usage: nie-shell <contract|store>");
+            eprintln!("usage: nie-shell contract");
             return ExitCode::from(2);
         }
     };

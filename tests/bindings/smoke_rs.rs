@@ -1,6 +1,6 @@
 // Rust binding smoke test: abi_version and cfgbin_to_sql on a synthetic fixture.
 #[path = "../../bindings/rust/nie_contract_sys.rs"]
-#[allow(dead_code)]
+#[allow(dead_code, reason = "the generated binding exposes the whole contract; this smoke test calls two entries")]
 mod nie_contract_sys;
 
 fn main() {

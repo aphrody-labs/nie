@@ -101,6 +101,7 @@ pub(crate) fn json_route(
     let list_query = Query {
         languages: languages_of(query),
         text: text_of(query),
+        class: query.get("class").filter(|c| !c.is_empty()).cloned(),
         offset: offset_of(query),
         limit: Some(limit),
     };
@@ -117,8 +118,44 @@ pub(crate) fn json_route(
             "OK",
             &json!({ "count": wiki.unsourced().len(), "items": wiki.unsourced() }),
         ),
+        Route::WikiCatalog => match wiki.catalog() {
+            Ok(items) => {
+                HttpResponse::json(200, "OK", &json!({ "count": items.len(), "items": items }))
+            }
+            Err(error) => failure(&error),
+        },
+        Route::WikiTables => match wiki.tables() {
+            Ok(items) => {
+                HttpResponse::json(200, "OK", &json!({ "count": items.len(), "items": items }))
+            }
+            Err(error) => failure(&error),
+        },
+        Route::WikiTableList => {
+            let class = params.get(1).map_or("", String::as_str);
+            match wiki.table_records(key, class, &list_query) {
+                Ok(Some(page)) => HttpResponse::json(200, "OK", &page_json(&page, limit)),
+                Ok(None) => error_json(404, "Not Found", format!("no table class `{key}/{class}`")),
+                Err(error) => failure(&error),
+            }
+        }
+        Route::WikiTableRecord => {
+            let class = params.get(1).map_or("", String::as_str);
+            let index = params.get(2).and_then(|i| i.parse::<usize>().ok());
+            let id = format!("{key}/{class}/{}", params.get(2).map_or("", String::as_str));
+            match index {
+                Some(index) => record_json(wiki.table_record(key, class, index, &langs), &id),
+                None => error_json(400, "Bad Request", "the entry index is not a number"),
+            }
+        }
         Route::WikiList(Family::Characters) => match wiki.characters(&list_query) {
-            Ok(page) => HttpResponse::json(200, "OK", &page_json(&page, limit)),
+            Ok(page) => {
+                let mut value = page_json(&page, limit);
+                match wiki.character_classes() {
+                    Ok(classes) => value["classes"] = json!(classes),
+                    Err(error) => return failure(&error),
+                }
+                HttpResponse::json(200, "OK", &value)
+            }
             Err(error) => failure(&error),
         },
         Route::WikiList(Family::Skills) => match wiki.skills(&list_query) {
@@ -148,12 +185,17 @@ pub(crate) fn page_route(
     wiki: &Wiki,
 ) -> HttpResponse {
     if route == Route::PageIndex {
-        return match wiki.sources() {
-            Ok(sources) => html_response(
-                200,
-                "OK",
-                html::index(wiki.languages(), &sources, wiki.unsourced()),
-            ),
+        let built = (|| {
+            Ok::<_, Error>(html::index(
+                wiki.languages(),
+                &wiki.sources()?,
+                &wiki.character_classes()?,
+                wiki.unsourced(),
+                &wiki.catalog()?,
+            ))
+        })();
+        return match built {
+            Ok(page) => html_response(200, "OK", page),
             Err(error) => failure(&error),
         };
     }
@@ -180,10 +222,12 @@ pub(crate) fn page_route(
     let list_query = Query {
         languages: vec![lang.folder.clone()],
         text: params_of_list.text.clone(),
+        class: query.get("class").filter(|c| !c.is_empty()).cloned(),
         offset: params_of_list.offset,
         limit: Some(limit),
     };
     let key = params.get(1).map_or("", String::as_str);
+    let class = params.get(2).map_or("", String::as_str);
     let render = |rest: String, page: &dyn Fn(&Ctx<'_>) -> String| {
         let ctx = Ctx {
             languages,
@@ -195,12 +239,40 @@ pub(crate) fn page_route(
     let missing = || not_found(wiki, &format!("no entry matches `{key}`"));
     let all: [String; 0] = [];
     match route {
-        Route::PageList(Family::Characters) => match wiki.characters(&list_query) {
-            Ok(page) => render("characters".to_owned(), &|c| {
-                html::characters(c, &page, &params_of_list)
-            }),
+        Route::PageTables => match wiki.tables() {
+            Ok(tables) => render("tables".to_owned(), &|c| html::tables(c, &tables)),
             Err(error) => failure(&error),
         },
+        Route::PageTableList => match wiki.table_records(key, class, &list_query) {
+            Ok(Some(page)) => render(format!("tables/{key}/{class}"), &|c| {
+                html::table_list(c, key, class, &page, &params_of_list)
+            }),
+            Ok(None) => not_found(wiki, &format!("no table class `{key}/{class}`")),
+            Err(error) => failure(&error),
+        },
+        Route::PageTableRecord => {
+            let index = params.get(3).and_then(|i| i.parse::<usize>().ok());
+            match index.map(|i| wiki.table_record(key, class, i, &all)) {
+                Some(Ok(Some(record))) => {
+                    render(format!("tables/{key}/{class}/{}", record.index), &|c| {
+                        html::table_record(c, &record)
+                    })
+                }
+                Some(Ok(None)) | None => missing(),
+                Some(Err(error)) => failure(&error),
+            }
+        }
+        Route::PageList(Family::Characters) => {
+            let built = wiki
+                .characters(&list_query)
+                .and_then(|page| Ok((page, wiki.character_classes()?)));
+            match built {
+                Ok((page, classes)) => render("characters".to_owned(), &|c| {
+                    html::characters(c, &page, &params_of_list, &classes)
+                }),
+                Err(error) => failure(&error),
+            }
+        }
         Route::PageList(Family::Skills) => match wiki.skills(&list_query) {
             Ok(page) => render("skills".to_owned(), &|c| {
                 html::skills(c, &page, &params_of_list)
@@ -251,131 +323,23 @@ pub(crate) fn shared(
 mod tests {
     use std::sync::Arc;
 
-    use nie_formats::cfgbin::{
-        CfgEntry, RdbnList, RdbnRow, RdbnValue, Value as Cfg, encode_rdbn, encode_t2b,
-    };
+    use nie_wiki_vfs::testing::installation;
 
-    use crate::serve_cmd::tests_support::{route, state_with_vfs};
+    use crate::serve_cmd::tests_support::{route, route_stateless, state_with_vfs};
+    use crate::serve_cmd::{HttpResponse, ServerState};
 
-    fn entry(name: &str, variables: Vec<Cfg>, children: Vec<CfgEntry>) -> CfgEntry {
-        CfgEntry {
-            name: name.to_owned(),
-            variables,
-            children,
-        }
+    fn state(dir: &std::path::Path) -> Arc<ServerState> {
+        state_with_vfs(installation(dir))
     }
 
-    fn int(value: u32) -> Cfg {
-        Cfg::Int(value as i32)
-    }
-
-    fn text_table(kind: &str, rows: Vec<CfgEntry>) -> Vec<u8> {
-        encode_t2b(&[entry(kind, vec![Cfg::Int(rows.len() as i32)], rows)])
-    }
-
-    fn noun(hash: u32, label: &str) -> CfgEntry {
-        let mut vars = vec![int(hash), Cfg::Int(0)];
-        vars.extend((0..3).map(|_| Cfg::String(String::new())));
-        vars.push(Cfg::String(label.to_owned()));
-        vars.extend((0..4).map(|_| Cfg::String(String::new())));
-        vars.extend((0..5).map(|_| Cfg::Int(0)));
-        entry("NOUN_INFO", vars, vec![])
-    }
-
-    fn rdbn(list: &str, fields: Vec<(&str, RdbnValue)>) -> Vec<u8> {
-        encode_rdbn(&[RdbnList {
-            name: list.to_owned(),
-            type_name: "INFO".to_owned(),
-            rows: vec![RdbnRow {
-                fields: fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect(),
-            }],
-        }])
-        .unwrap()
-    }
-
-    /// One language, one character on one team with one skill, and an emblem file.
-    fn installation(dir: &std::path::Path) -> Arc<crate::serve_cmd::ServerState> {
-        let mut base: Vec<Cfg> = (0..20).map(|_| Cfg::Int(0)).collect();
-        base[0] = int(0xA000_0001);
-        base[1] = Cfg::String("c00000001".to_owned());
-        base[3] = int(0x1111_0001);
-        base[11] = Cfg::Int(2);
-        base[16] = int(0xD000_0001);
-        let mut param: Vec<Cfg> = (0..12).map(|_| Cfg::Int(0)).collect();
-        param[0] = int(0xB000_0001);
-        param[1] = int(0xA000_0001);
-        param[3] = Cfg::Int(4);
-        let team_row = vec![
-            ("belongTeamId", RdbnValue::Hash(0xD000_0001)),
-            ("teamNameTextId", RdbnValue::Hash(0x4444_0001)),
-            (
-                "teamEmblemId_IE",
-                RdbnValue::Hash(crc32fast::hash(b"em010001")),
-            ),
-        ];
-        let skill_row = vec![
-            ("skillID", RdbnValue::Hash(0xC000_0001)),
-            ("skillIDStr", RdbnValue::Condition("whs00001".to_owned())),
-            ("skillNameId", RdbnValue::Hash(0x3333_0001)),
-            ("element", RdbnValue::Int(1)),
-        ];
-        let files: Vec<(&str, Vec<u8>)> = vec![
-            (
-                "data/common/gamedata/character/chara_base_1.0.cfg.bin",
-                text_table(
-                    "CHARA_BASE_INFO_LIST_BEG",
-                    vec![entry("CHARA_BASE_INFO", base, vec![])],
-                ),
-            ),
-            (
-                "data/common/gamedata/character/chara_param_1.0.cfg.bin",
-                text_table(
-                    "CHARA_PARAM_INFO_LIST_BEG",
-                    vec![entry("CHARA_PARAM_INFO", param, vec![])],
-                ),
-            ),
-            (
-                "data/common/gamedata/skill/skill_config_1.0.cfg.bin",
-                rdbn("m_skillInfoList", skill_row),
-            ),
-            (
-                "data/common/gamedata/character/belong_team_config_0.0.cfg.bin",
-                rdbn("m_belongTeamInfoList", team_row),
-            ),
-            (
-                "data/common/text/fr/chara_text.cfg.bin",
-                text_table("NOUN_INFO_BEGIN", vec![noun(0x1111_0001, "Aki & Kino")]),
-            ),
-            (
-                "data/common/text/fr/skill_text.cfg.bin",
-                text_table("NOUN_INFO_BEGIN", vec![noun(0x3333_0001, "Tir")]),
-            ),
-            (
-                "data/common/text/fr/team_text.cfg.bin",
-                text_table("NOUN_INFO_BEGIN", vec![noun(0x4444_0001, "Raimon")]),
-            ),
-            (
-                "data/dx11/menu/200_icon/01_icon_emblem/em010001.g4tx",
-                b"x".to_vec(),
-            ),
-        ];
-        let mut vfs = nie_formats::vfs::Vfs::new();
-        for (path, bytes) in files {
-            let disk = dir.join(path.replace('/', "__"));
-            std::fs::write(&disk, &bytes).unwrap();
-            vfs.add_overlay_file(path.to_owned(), disk, bytes.len() as u32);
-        }
-        state_with_vfs(vfs)
-    }
-
-    fn body(response: &crate::serve_cmd::HttpResponse) -> String {
+    fn body(response: &HttpResponse) -> String {
         String::from_utf8(response.body.clone()).unwrap()
     }
 
     #[tokio::test]
     async fn json_routes_serve_pages_records_and_errors() {
         let dir = tempfile::tempdir().unwrap();
-        let state = installation(dir.path());
+        let state = state(dir.path());
 
         let r = route(&state, "/v1/wiki/languages").await;
         assert_eq!(r.status, 200);
@@ -386,11 +350,27 @@ mod tests {
         let v: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
         assert_eq!(
             (v["total"].as_u64(), v["limit"].as_u64()),
-            (Some(1), Some(1))
+            (Some(4), Some(1))
         );
         assert_eq!(v["items"][0]["internal_code"], "c00000001");
         assert_eq!(v["items"][0]["gender"]["value"], 2);
         assert_eq!(v["items"][0]["param_source"]["table"], "CHARA_PARAM_INFO");
+        // The class counts travel with the list.
+        let counts: Vec<u64> = v["classes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c["count"].as_u64().unwrap())
+            .collect();
+        assert_eq!(counts, [2, 1, 2]);
+
+        let r = route(&state, "/v1/wiki/characters?class=base_without_param").await;
+        let v: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
+        assert_eq!(v["total"], 2);
+        assert_eq!(
+            route(&state, "/v1/wiki/characters/base-2").await.status,
+            200
+        );
 
         assert_eq!(
             route(&state, "/v1/wiki/characters?lang=xx").await.status,
@@ -420,35 +400,118 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn table_and_catalog_routes_serve_every_class_as_stored() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = state(dir.path());
+
+        let r = route(&state, "/v1/wiki/tables").await;
+        let v: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
+        assert_eq!(v["count"], 12);
+
+        let r = route(
+            &state,
+            "/v1/wiki/tables/chara_param/STORY_FIX_SKILL_INFO?lang=fr",
+        )
+        .await;
+        assert_eq!(r.status, 200);
+        let v: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
+        assert_eq!(v["total"], 1);
+        assert_eq!(v["items"][0]["variables"], serde_json::json!([1, 2]));
+
+        let r = route(&state, "/v1/wiki/tables/aura_skill_config/AURA_CMD_INFO/0").await;
+        let v: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
+        assert_eq!(
+            v["labels"]["name"]["texts"]["fr"]["forms"][0]["text"],
+            "Esprit"
+        );
+        assert_eq!(v["refs"]["AURA_CMD_EFFECT"]["items"][0]["variables"][0], 20);
+
+        assert_eq!(
+            route(&state, "/v1/wiki/tables/chara_param/NOPE")
+                .await
+                .status,
+            404
+        );
+        assert_eq!(
+            route(&state, "/v1/wiki/tables/chara_param/CHARA_PARAM_INFO/x")
+                .await
+                .status,
+            400
+        );
+        assert_eq!(
+            route(&state, "/v1/wiki/tables/chara_param/CHARA_PARAM_INFO/99")
+                .await
+                .status,
+            404
+        );
+
+        let r = route(&state, "/v1/wiki/catalog").await;
+        assert!(body(&r).contains("\"status\":\"decoded\""));
+        assert!(body(&r).contains("unrelated_config_1.00.cfg.bin"));
+    }
+
+    #[tokio::test]
     async fn html_pages_render_per_language_with_provenance() {
         let dir = tempfile::tempdir().unwrap();
-        let state = installation(dir.path());
+        let state = state(dir.path());
 
         let r = route(&state, "/wiki").await;
         assert_eq!(r.status, 200);
         assert!(r.content_type.starts_with("text/html"));
-        assert!(body(&r).contains("chara_param_1.0.cfg.bin"));
+        assert!(body(&r).contains("chara_param_1.00.00.00.cfg.bin"));
+        assert!(body(&r).contains("unrelated_config_1.00.cfg.bin"));
 
-        let r = route(&state, "/wiki/fr/characters").await;
-        let page = body(&r);
+        let page = body(&route(&state, "/wiki/fr/characters").await);
         assert!(page.contains("<html lang=\"fr\">"));
-        // Text from the game is escaped.
-        assert!(page.contains("Aki &amp; Kino"));
+        assert!(page.contains("Aki Kino"));
 
         let page = body(&route(&state, "/wiki/FR/teams/0xD0000001").await);
         assert!(page.contains("/tex/dx11/menu/200_icon/01_icon_emblem/em010001.png"));
+        let page = body(&route(&state, "/wiki/fr/tables").await);
+        assert!(page.contains("STORY_FIX_SKILL_INFO"));
+        let page = body(&route(&state, "/wiki/de/tables/aura_skill_config/AURA_CMD_INFO/0").await);
+        assert!(page.contains("AURA_CMD_INFO #0"));
 
         assert_eq!(route(&state, "/wiki/xx/characters").await.status, 404);
         assert_eq!(route(&state, "/wiki/fr/skills/missing").await.status, 404);
+        assert_eq!(
+            route(&state, "/wiki/fr/tables/chara_param/NOPE")
+                .await
+                .status,
+            404
+        );
     }
 
     #[tokio::test]
     async fn the_document_is_served_and_the_wiki_needs_a_vfs() {
-        let r = crate::serve_cmd::tests_support::route_stateless("/openapi.json").await;
+        let r = route_stateless("/openapi.json").await;
         assert_eq!(r.status, 200);
         let v: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
         assert!(v["paths"]["/v1/wiki/characters/{key}"]["get"].is_object());
-        let r = crate::serve_cmd::tests_support::route_stateless("/v1/wiki/languages").await;
-        assert_eq!(r.status, 503);
+        assert!(v["paths"]["/v1/wiki/tables/{table}/{class}/{index}"]["get"].is_object());
+        assert_eq!(route_stateless("/v1/wiki/languages").await.status, 503);
+    }
+
+    /// The conformance check passes on a synthetic installation, in process and over the
+    /// routes, pages included: it compares every served record to the raw cfg.bin entries.
+    #[tokio::test]
+    async fn verify_finds_no_mismatch_on_a_consistent_wiki() {
+        let dir = tempfile::tempdir().unwrap();
+        let vfs = Arc::new(installation(dir.path()));
+        let args = crate::wiki_verify::VerifyArgs {
+            server: None,
+            concurrency: 4,
+            no_pages: false,
+            show: 20,
+        };
+        let report = crate::wiki_verify::verify(&args, vfs).await.unwrap();
+        report.print(20);
+        assert_eq!(report.total_mismatches(), 0);
+        assert!(report.checked("characters.records") >= 5);
+        // Every character, skill and team has a page, and the table records outside those families too.
+        let rich = report.checked("characters.records")
+            + report.checked("skills.records")
+            + report.checked("teams.records");
+        assert!(report.checked("pages.records") > rich);
     }
 }

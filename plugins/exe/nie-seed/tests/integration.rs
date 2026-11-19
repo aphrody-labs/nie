@@ -16,10 +16,10 @@ const NIE_SQLITE: &str = "var/nie.sqlite";
 const BINARY_ID: i64 = 1;
 
 /// Chemin du fichier RTTI.
-const RTTI_PATH: &str = "refs/iecode-re/research/nie-rtti-classes.txt";
+const RTTI_PATH: &str = "refs/re/research/nie-rtti-classes.txt";
 
 /// Répertoire des backups SQLite inagle.
-const INAGLE_DIR: &str = "refs/azalee-backups";
+const INAGLE_DIR: &str = "refs/mirror-backups";
 
 /// Ingestion complète via `ingest_all` sur la vraie DB.
 #[test]
@@ -30,8 +30,8 @@ fn ingest_all_reel() {
     let refs_root = Path::new("refs");
     let inagle_dir = Path::new(INAGLE_DIR);
 
-    // Catalogue iecode optionnel : présent si `iecode export-knowledge` a été lancé.
-    let catalog = Path::new("/tmp/iecode-format-catalog.json");
+    // Catalogue étiquetée optionnel : présent si `export-knowledge` a été lancé.
+    let catalog = Path::new("/tmp/nie-format-catalog.json");
     let catalog_opt = catalog.exists().then_some(catalog);
 
     let stats = nie_seed::ingest_all(&mut db, BINARY_ID, refs_root, Some(inagle_dir), catalog_opt)
@@ -102,7 +102,7 @@ fn ingest_rtti_reel() {
     }
 }
 
-/// Test d'ingestion des formats iecode.
+/// Test d'ingestion des formats de référence.
 #[test]
 #[ignore]
 fn ingest_formats_reel() {

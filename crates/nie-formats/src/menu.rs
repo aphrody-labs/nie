@@ -1,6 +1,6 @@
 //! Menu layout composition from `objbin` objects, `g4pkm` transforms and `g4tx` dimensions.
 //!
-//! Compatibility port of `IECODE.Core/Cdn/MenuLayoutExporter.cs` placement selection,
+//! Compatibility port of `MenuLayoutExporter.cs` placement selection,
 //! without I/O or locale resolution. Selected poses are converted to a 1280×720 canvas;
 //! their provenance distinguishes asset poses from ancestor fallback heuristics.
 //!
@@ -328,7 +328,7 @@ pub struct ScreenTransform {
 #[must_use]
 pub fn place_on_canvas(layout: &G4pkmLayout, sprite_w: u32, sprite_h: u32) -> ScreenTransform {
     // `has_open_motion=false` : le drapeau n'est qu'une annotation, il ne change pas la pose
-    // (conforme iecode `G4pkmMotion.cs:79-82`).
+    // (conforme étiquetée `G4pkmMotion.cs:79-82`).
     let placement = crate::g4pkm_motion::motion_final_pose(layout, false).pose;
     let pose = pick_best_pose(layout, placement, sprite_w, sprite_h);
     let (x_px, y_px) = pose.to_css_1280x720();
@@ -436,7 +436,7 @@ pub fn bone_region_parts(
         // Un menu range hors du cadre ce qu'il n'affiche pas encore : sur
         // `vroad01_71_vroad_tournament_notice`, trois locators `_pos_*` ajoutent chacun une
         // largeur d'écran et ses plaques reposent à x = 7 054 dans un espace qui s'arrête à 960.
-        // La règle du jeu pour ce cas existe déjà, portée d'iecode : prendre la position du
+        // La règle du jeu pour ce cas existe déjà, portée du format étiqueté : prendre la position du
         // premier ancêtre resté visible en gardant l'échelle de la feuille. Sans elle, les
         // parties étaient publiées hors canevas et le compositeur ne peignait rien — l'écran
         // répondait 200 avec zéro pixel opaque, exactement comme avant.

@@ -4,7 +4,7 @@
 //! En-tête commun Level-5 (cf. [`crate::level5`]), **validé byte sur les 4 `.g4vs` réels** du VFS :
 //! magic `G4VS` 4/4 + invariant `header_size + data_size == file_size` 4/4 (`header_size`=0x40,
 //! `type_id`=0x68, `align`=16). Le corps (paramètres d'effet) n'est pas décodé faute de vérité
-//! terrain (pas de parseur iecode) — en-tête byte-exact seulement, comme [`crate::g4mt`]/[`crate::g4ma`].
+//! terrain (pas de parseur de référence) — en-tête byte-exact seulement, comme [`crate::g4mt`]/[`crate::g4ma`].
 
 use crate::FormatError;
 use crate::level5::{self, Level5Header};

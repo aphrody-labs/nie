@@ -1,4 +1,4 @@
-# Claude Code profile for nie, applied by `bun ~/.claude/scripts/profile.ts` (aphrody-labs/claude):
+# Claude Code profile for nie, applied by the profile script of aphrody-labs/claude (`~/.claude/scripts/profile.ts`):
 # renders `.claude/settings.json` and the per-project MCP toggles; `--check` reports drift.
 # Minimal by design: only what the plan in docs needs; everything else is off for this repository.
 
@@ -40,5 +40,5 @@ outputStyle = "nie"
 [[settings.hooks.Stop]]
 [[settings.hooks.Stop.hooks]]
 type = "command"
-command = "bun --no-install --no-env-file tools/claude/goal-stop.ts"
+command = "cargo xtask claude-stop"
 timeout = 10

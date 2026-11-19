@@ -22,7 +22,9 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use serde_json::Value;
 
-use crate::cfgbin::{field_bool, field_hash, field_i64, field_pair, field_str, list_values};
+use crate::cfgbin::{
+    field_bool, field_hash, field_i64, field_pair, field_str, list_values, slice_ref,
+};
 use crate::hash::HashId;
 
 /// Entrée `NPC_EVENT_WEAPON_INFO` — une arme tirable avec son poids (pools weapon/another).
@@ -170,22 +172,14 @@ impl HappenEventNpcCommon {
     /// Résout la tranche `weapon_info` d'un [`EventAimedInfo`] dans `m_EventWeaponInfo`.
     #[must_use]
     pub fn weapons_of_aimed(&self, aimed: &EventAimedInfo) -> &[EventWeaponInfo] {
-        slice(&self.weapon_info, aimed.weapon_info)
+        slice_ref(&self.weapon_info, aimed.weapon_info)
     }
 
     /// Résout la tranche `aimed_info` d'un [`EventCommonInfo`] dans `m_EventAimedInfo`.
     #[must_use]
     pub fn aimed_of_event(&self, event: &EventCommonInfo) -> &[EventAimedInfo] {
-        slice(&self.aimed_info, event.aimed_info)
+        slice_ref(&self.aimed_info, event.aimed_info)
     }
-}
-
-/// Extrait `list[offset .. offset+count]`, bornes plafonnées à `list.len()`.
-fn slice<T>(list: &[T], range: [i64; 2]) -> &[T] {
-    let n = list.len();
-    let start = (range[0].max(0) as usize).min(n);
-    let end = start.saturating_add(range[1].max(0) as usize).min(n);
-    list.get(start..end).unwrap_or(&[])
 }
 
 /// Parse un `happen_event_npc_common.cfg.bin.json` complet.

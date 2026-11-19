@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Pluggable refresh-token stores, selected by `STEAM_TOKEN_STORE`.
+//! Pluggable refresh-token stores, selected by `NIE_STEAM_TOKEN_STORE`.
 //!
 //! | Kind         | Read                         | Write (rotation)                         |
 //! | ------------ | ---------------------------- | ---------------------------------------- |
-//! | `file`       | `$STEAM_HOME/steam-tokens.json` (0600) | same file                      |
-//! | `env`        | `STEAM_USER` + `STEAM_REFRESH_TOKEN`   | read-only (rotation is reported) |
+//! | `file`       | `$NIE_STEAM_HOME/steam-tokens.json` (0600) | same file                      |
+//! | `env`        | `NIE_STEAM_USER` + `NIE_STEAM_REFRESH_TOKEN`   | read-only (rotation is reported) |
 //! | `cloudflare` | Workers KV value             | Workers KV value                         |
-//! | `github`     | `STEAM_REFRESH_TOKEN` (how Actions exposes the secret) | `gh secret set` via stdin |
+//! | `github`     | `NIE_STEAM_REFRESH_TOKEN` (how Actions exposes the secret) | `gh secret set` via stdin |
 //!
 //! Cloudflare Secrets Store values cannot be read back through the API, so the readable and
 //! writable Cloudflare backend is a Workers KV namespace. GitHub Actions secrets are write-only
@@ -71,7 +71,7 @@ impl std::fmt::Debug for StoredToken {
     }
 }
 
-/// Store kinds accepted by `STEAM_TOKEN_STORE` and `auth export --to`.
+/// Store kinds accepted by `NIE_STEAM_TOKEN_STORE` and `auth export --to`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum StoreKind {
     File,
@@ -99,7 +99,7 @@ impl std::str::FromStr for StoreKind {
             "env" => Self::Env,
             "cloudflare" | "cf" | "kv" => Self::Cloudflare,
             "github" | "gh" => Self::Github,
-            other => bail!("STEAM_TOKEN_STORE inconnu : {other} (file|env|cloudflare|github)"),
+            other => bail!("NIE_STEAM_TOKEN_STORE inconnu : {other} (file|env|cloudflare|github)"),
         })
     }
 }
@@ -147,7 +147,7 @@ impl TokenBackend for FileBackend {
                     [only] => only.clone(),
                     [] => return Ok(None),
                     _ => bail!(
-                        "plusieurs comptes dans {} : précisez STEAM_USER",
+                        "plusieurs comptes dans {} : précisez NIE_STEAM_USER",
                         self.path.display()
                     ),
                 },
@@ -176,7 +176,7 @@ impl TokenBackend for FileBackend {
 
 // ─── env ──────────────────────────────────────────────────────────────────────
 
-/// Read-only store over `STEAM_USER` + `STEAM_REFRESH_TOKEN` (CI).
+/// Read-only store over `NIE_STEAM_USER` + `NIE_STEAM_REFRESH_TOKEN` (CI).
 pub struct EnvBackend {
     account: Option<String>,
     token: Option<String>,
@@ -184,7 +184,7 @@ pub struct EnvBackend {
 
 impl EnvBackend {
     pub fn from_env() -> Self {
-        Self::new(non_empty("STEAM_USER"), non_empty("STEAM_REFRESH_TOKEN"))
+        Self::new(non_empty("NIE_STEAM_USER"), non_empty("NIE_STEAM_REFRESH_TOKEN"))
     }
     pub fn new(account: Option<String>, token: Option<String>) -> Self {
         Self { account, token }
@@ -203,7 +203,7 @@ impl TokenBackend for EnvBackend {
             let name = account
                 .map(str::to_owned)
                 .or_else(|| self.account.clone())
-                .ok_or_else(|| anyhow!("STEAM_REFRESH_TOKEN défini sans STEAM_USER"))?;
+                .ok_or_else(|| anyhow!("NIE_STEAM_REFRESH_TOKEN défini sans NIE_STEAM_USER"))?;
             Ok(Some(StoredToken::new(name, token, None)))
         })
     }
@@ -299,14 +299,14 @@ pub struct CloudflareKvConfig {
 impl CloudflareKvConfig {
     pub fn from_env() -> Result<Self> {
         let need = |k: &str| {
-            non_empty(k).ok_or_else(|| anyhow!("{k} requis pour STEAM_TOKEN_STORE=cloudflare"))
+            non_empty(k).ok_or_else(|| anyhow!("{k} requis pour NIE_STEAM_TOKEN_STORE=cloudflare"))
         };
         Ok(Self {
             api_base: non_empty("CLOUDFLARE_API_BASE")
                 .unwrap_or_else(|| "https://api.cloudflare.com/client/v4".to_owned()),
             account_id: need("CLOUDFLARE_ACCOUNT_ID")?,
-            namespace_id: need("STEAM_TOKEN_KV_NAMESPACE_ID")?,
-            key_prefix: non_empty("STEAM_TOKEN_KV_PREFIX")
+            namespace_id: need("NIE_STEAM_TOKEN_KV_NAMESPACE_ID")?,
+            key_prefix: non_empty("NIE_STEAM_TOKEN_KV_PREFIX")
                 .unwrap_or_else(|| "steam-refresh-token".to_owned()),
             api_token: need("CLOUDFLARE_API_TOKEN")?,
         })
@@ -354,7 +354,7 @@ impl TokenBackend for CloudflareKvBackend {
             let account = account
                 .map(str::to_owned)
                 .or_else(|| self.default_account.clone())
-                .ok_or_else(|| anyhow!("STEAM_USER requis pour lire le KV Cloudflare"))?;
+                .ok_or_else(|| anyhow!("NIE_STEAM_USER requis pour lire le KV Cloudflare"))?;
             let (status, body) = self
                 .http
                 .get(&self.cfg.url(&account), &self.cfg.api_token)
@@ -455,7 +455,7 @@ impl GithubBackend {
             env,
             writer,
             secret_name,
-            user_secret_name: Some("STEAM_USER".to_owned()),
+            user_secret_name: Some("NIE_STEAM_USER".to_owned()),
             repo,
         }
     }
@@ -463,10 +463,10 @@ impl GithubBackend {
         Self::new(
             EnvBackend::from_env(),
             Arc::new(GhCli {
-                bin: non_empty("GH_BIN").unwrap_or_else(|| "gh".to_owned()),
+                bin: non_empty("NIE_GH_BIN").unwrap_or_else(|| "gh".to_owned()),
             }),
-            non_empty("STEAM_TOKEN_GH_SECRET").unwrap_or_else(|| "STEAM_REFRESH_TOKEN".to_owned()),
-            non_empty("STEAM_TOKEN_GH_REPO").or_else(|| non_empty("GITHUB_REPOSITORY")),
+            non_empty("NIE_STEAM_TOKEN_GH_SECRET").unwrap_or_else(|| "NIE_STEAM_REFRESH_TOKEN".to_owned()),
+            non_empty("NIE_STEAM_TOKEN_GH_REPO").or_else(|| non_empty("GITHUB_REPOSITORY")),
         )
     }
 }
@@ -507,15 +507,15 @@ pub fn open(kind: StoreKind, file_path: Option<PathBuf>) -> Result<Arc<dyn Token
         StoreKind::Cloudflare => Arc::new(CloudflareKvBackend::new(
             CloudflareKvConfig::from_env()?,
             Arc::new(ReqwestKv::new()),
-            non_empty("STEAM_USER"),
+            non_empty("NIE_STEAM_USER"),
         )),
         StoreKind::Github => Arc::new(GithubBackend::from_env()),
     })
 }
 
-/// Opens the canonical store named by `STEAM_TOKEN_STORE` (default `file`).
+/// Opens the canonical store named by `NIE_STEAM_TOKEN_STORE` (default `file`).
 pub fn from_env(file_path: Option<PathBuf>) -> Result<Arc<dyn TokenBackend>> {
-    let kind: StoreKind = std::env::var("STEAM_TOKEN_STORE")
+    let kind: StoreKind = std::env::var("NIE_STEAM_TOKEN_STORE")
         .unwrap_or_default()
         .parse()?;
     open(kind, file_path)
@@ -670,8 +670,8 @@ mod tests {
         let b = GithubBackend::new(
             EnvBackend::new(Some("dave".into()), Some("old".into())),
             gh.clone(),
-            "STEAM_REFRESH_TOKEN".into(),
-            Some("rose-griffon/rosegriffon".into()),
+            "NIE_STEAM_REFRESH_TOKEN".into(),
+            Some("owner/repo".into()),
         );
         rt().block_on(async {
             assert_eq!(b.load(None).await.unwrap().unwrap().refresh_token, "old");
@@ -683,12 +683,12 @@ mod tests {
         assert_eq!(
             calls[0],
             (
-                "STEAM_REFRESH_TOKEN".into(),
-                Some("rose-griffon/rosegriffon".into()),
+                "NIE_STEAM_REFRESH_TOKEN".into(),
+                Some("owner/repo".into()),
                 "new".into()
             )
         );
-        assert_eq!(calls[1].0, "STEAM_USER");
+        assert_eq!(calls[1].0, "NIE_STEAM_USER");
     }
 
     #[test]

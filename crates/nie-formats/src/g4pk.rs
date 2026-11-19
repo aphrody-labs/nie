@@ -4,9 +4,9 @@
 //! are decoded by [`crate::g4ra`]; [`is_g4ra`] remains here for existing callers.
 //!
 //! Port Rust de :
-//! - `IECODE.Core/Formats/Level5/G4pkParser.cs` (`G4pkHeader` L18-40, `ParseFiles` L81 :
+//! - `G4pkParser.cs` (`G4pkHeader` L18-40, `ParseFiles` L81 :
 //!   séquence offsetTable → sizeTable → hashTable → stringTable).
-//! - `IECODE.Core/Formats/Level5/G4raParser.cs` (magic G4RA `0x41523447`).
+//! - `G4raParser.cs` (magic G4RA `0x41523447`).
 //!
 //! Magics confirmés dans `GameFileType.cs` : `Magic_G4PK=0x4B503447`, `Magic_G4RA=0x41523447`.
 //! Discriminant G4PK@/G4PKM (`GameFileType.cs` Detect L185-191) : 5e octet `'M'` (0x4D) ⇒ paquet

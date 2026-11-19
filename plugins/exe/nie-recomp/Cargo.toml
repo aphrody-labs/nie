@@ -1,0 +1,35 @@
+[package]
+name = "nie-recomp"
+version = "2.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Static recompiler for nie.exe: PE inventory, x86-64 to Cranelift lifting, AOT object emission and differential verification against the original code"
+keywords = ["static-recompilation", "x86-64", "cranelift", "pe", "reverse-engineering"]
+categories = ["development-tools::debugging", "emulators"]
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "nie-recomp"
+path = "src/main.rs"
+
+[dependencies]
+nie-ssh = { workspace = true }
+nie-win32 = { path = "../nie-win32", version = "2.0.0" }
+anyhow = { workspace = true, features = ["std"] }
+clap = { workspace = true }
+cranelift-codegen = { workspace = true }
+cranelift-frontend = { workspace = true }
+cranelift-module = { workspace = true }
+cranelift-object = { workspace = true }
+iced-x86 = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+target-lexicon = { workspace = true }
+
+[dev-dependencies]
+iced-x86 = { workspace = true, features = ["code_asm"] }

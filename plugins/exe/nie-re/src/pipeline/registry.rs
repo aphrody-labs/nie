@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Stage adapter trait and registry. Built-in adapters live in [`super::stages`]; existing Rose Griffon
+//! Stage adapter trait and registry. Built-in adapters live in [`super::stages`]; existing
 //! crates, vendor owners and host tools plug in as typed [`ExternalAdapter`] entries that reference
 //! their owner by path, command or environment variable and report honest availability.
 
@@ -23,7 +23,7 @@ pub struct Options {
     pub target: TargetKind,
     /// Output directory.
     pub outdir: PathBuf,
-    /// Rose Griffon checkout root, used to probe in-tree owners.
+    /// Host checkout root, used to probe in-tree owners.
     pub root: Option<PathBuf>,
     /// Lifter function budget.
     pub max_functions: usize,
@@ -233,7 +233,7 @@ pub fn report(
 /// How an external owner is detected.
 #[derive(Debug, Clone, Copy)]
 pub enum Probe {
-    /// Path relative to yolo-re first, then the optional Rose Griffon emulator checkout.
+    /// Path relative to yolo-re first, then the optional emulator checkout.
     Path(&'static str),
     /// Path relative to the yolo-re workspace.
     RePath(&'static str),
@@ -327,7 +327,7 @@ fn resolve_probe_path(
         }
     }
     Err(format!(
-        "owner path `{rel}` absent from yolo-re and the optional Rose Griffon emulator checkout"
+        "owner path `{rel}` absent from yolo-re and the optional emulator checkout"
     ))
 }
 
@@ -515,7 +515,7 @@ macro_rules! ext {
     };
 }
 
-/// Typed external adapters bound to real Rose Griffon owners and host tools.
+/// Typed external adapters bound to real owners and host tools.
 pub const EXTERNALS: &[ExternalAdapter] = &[
     // acquire
     ext!(
@@ -602,15 +602,6 @@ pub const EXTERNALS: &[ExternalAdapter] = &[
         "packages/yolo-rea",
         ["*"],
         Probe::RePath("packages/yolo-rea/package.json"),
-        None
-    ),
-    ext!(
-        "re-dbxv2",
-        Analyze,
-        Crate,
-        "plugins/exe/nie-re-core/src/game",
-        ["cpk", "dbxv2"],
-        Probe::RePath("plugins/exe/nie-re-core/src/game"),
         None
     ),
     ext!(
@@ -927,7 +918,7 @@ mod workspace_probe_tests {
         if find_re_root().is_none() {
             return eprintln!("skip: no yolo-re workspace (set NIE_RE_ROOT)");
         }
-        for id in ["re-steam", "rea", "re-dbxv2"] {
+        for id in ["re-steam", "rea"] {
             if id == "rea"
                 && !find_re_root()
                     .is_some_and(|root| root.join("packages/yolo-rea/package.json").is_file())

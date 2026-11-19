@@ -1,6 +1,6 @@
 //! Parseur de layout 2D G4PKM (menu-objet Level-5).
 //!
-//! Port Rust fidèle de `IECODE.Core/Formats/Menu/G4pkmLayout.cs` (588 lignes).
+//! Port Rust fidèle de `G4pkmLayout.cs` (588 lignes).
 //! Extrait les transforms 2D (position, échelle, rotation) de chaque bone d'un
 //! squelette G4SK encapsulé dans un container G4PK de type menu.
 //!

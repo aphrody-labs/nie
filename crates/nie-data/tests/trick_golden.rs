@@ -4,8 +4,8 @@
 //! type `TRICK_INFO`, 9 lignes × 8 champs), monté depuis
 //! `/mnt/c/Program Files (x86)/Steam/steamapps/common/INAZUMA ELEVEN Victory Road`.
 //!
-//! Extraction : décodage RDBN → forme iecode `lists` (`nie-formats::cfgbin` +
-//! `cfgbin_to_iecode_root`), strictement identique à ce que consomment les parseurs typés
+//! Extraction : décodage RDBN → forme étiquetée `lists` (`nie-formats::cfgbin` +
+//! `cfgbin_to_tagged_root`), strictement identique à ce que consomment les parseurs typés
 //! de `nie-data`. Port 1:1 d'inagle `inagle`.
 //!
 //! Note `failEventIDName` : champ `Condition`. Sans événement d'échec (catégories Tir/Dribble
@@ -17,7 +17,7 @@ use nie_data::hash::HashId;
 use nie_data::trick::{TrickCategory, TrickInfo, find_trick, parse_trick_config};
 use serde_json::json;
 
-/// Fixture : les **9 valeurs réelles** de `m_trickInfoList` (dump VFS), forme iecode.
+/// Fixture : les **9 valeurs réelles** de `m_trickInfoList` (dump VFS), forme étiquetée.
 fn trick_config_fixture() -> serde_json::Value {
     json!({
         "version": 100,

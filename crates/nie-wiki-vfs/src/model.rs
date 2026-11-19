@@ -118,12 +118,33 @@ pub const UNSOURCED: [NoSource; 3] = [
     },
 ];
 
+/// The game family an id of a character's learned-skill list belongs to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SkillFamily {
+    /// `skill_config`: `m_skillInfoList` skillID.
+    Skill,
+    /// `aura_skill_config`: `AURA_CMD_INFO` variable 0.
+    Aura,
+    /// `passive_skill_config`: `PASSIVE_SKILL_INFO` variable 0.
+    Passive,
+}
+
 /// A skill a character learns, from the character's `chara_param` entry.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct LearnedSkill {
     pub skill_id: Id,
     pub learn_level: u8,
-    /// Absent when `skill_config` has no entry for the id or no text names it.
+    /// The table family whose entry carries this id; absent when none does.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub family: Option<SkillFamily>,
+    /// The entry of that family.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entry: Option<Provenance>,
+    /// The text key the entry names; absent when the entry has none.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name_text_id: Option<Id>,
+    /// Absent when no id entry exists or no text holds the key in any language.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<Localized>,
 }
@@ -136,38 +157,116 @@ pub struct TeamRef {
     pub name: Option<Localized>,
 }
 
-/// One `chara_param` entry joined to its `chara_base` entry.
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct Character {
-    pub chara_param_id: Id,
-    pub chara_base_id: Id,
-    pub internal_code: String,
-    /// `chara_base` nameHash: forms 0, 11 and 12 carry the full name and its two parts.
+/// A series as a character references it (`chara_series_config`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SeriesRef {
+    pub series_id: Id,
+    /// `charaSeriesType` as stored.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub series_type: Option<i64>,
+    /// The `charaSeriesNameTextId` text; absent when no series entry or no text exists.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<Localized>,
+}
+
+/// How a character record was formed from the two tables.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CharacterClass {
+    /// A `chara_param` entry whose baseId names a `chara_base` entry.
+    ParamAndBase,
+    /// A `chara_param` entry whose baseId matches no `chara_base` entry.
+    ParamWithoutBase,
+    /// A `chara_base` entry that no `chara_param` entry names, or a later entry of an id an
+    /// earlier entry already holds.
+    BaseWithoutParam,
+}
+
+/// How many character records each class holds.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ClassCount {
+    pub class: CharacterClass,
+    pub count: usize,
+    pub description: &'static str,
+}
+
+/// A slice of another node class referenced by `[offset, count]`, resolved.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct RefSlice {
+    /// The class the slice indexes.
+    pub class: String,
+    pub offset: i64,
+    pub count: i64,
+    /// The referenced entries as stored; empty when the slice leaves the class's range.
+    pub items: Vec<RefItem>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct RefItem {
+    pub index: usize,
+    pub variables: Vec<Value>,
+}
+
+/// One `chara_param` and/or `chara_base` entry. Variable lists are every variable as stored.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Character {
+    pub class: CharacterClass,
+    /// Absent for a `chara_base` entry no `chara_param` entry names.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub chara_param_id: Option<Id>,
+    /// The `chara_base` id (a `chara_param` entry carries it even when no base entry exists).
+    pub chara_base_id: Id,
+    /// Absent when no `chara_base` entry exists.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub internal_code: Option<String>,
+    /// `chara_base` variable 3: forms 0, 11 and 12 carry the full name and its two parts.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<Localized>,
+    /// `chara_base` variable 4.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub family_name: Option<Localized>,
+    /// `chara_base` variable 5 (the stored text differs from variable 4's).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub family_name_variant: Option<Localized>,
+    /// The `chara_text_roma` rows of the keys of variables 3, 4 and 5.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name_roma: Option<Localized>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub family_name_roma: Option<Localized>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub family_name_variant_roma: Option<Localized>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<Localized>,
     /// As stored: 1 = male, 2 = female. Absent when the record has no such variable.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gender: Option<Coded>,
-    pub element: Coded,
-    pub main_position: Coded,
-    pub sub_position: Coded,
-    pub growth_pattern: i64,
-    /// `chara_base` seriesId as stored.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub series_id: Option<Id>,
+    pub element: Option<Coded>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub main_position: Option<Coded>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sub_position: Option<Coded>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub growth_pattern: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub series: Option<SeriesRef>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub team: Option<TeamRef>,
     pub skills: Vec<LearnedSkill>,
-    /// The `chara_param` integer variables in stored order.
-    pub param_raw: Vec<i64>,
+    /// The `__SORT_INDEX` entry of the same position in the `chara_param` table.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_index: Option<i64>,
+    /// The `CHARA_BASE_INFO_REF_BATTLE` slice of `CHARA_BASE_BATTLE`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub battle: Option<RefSlice>,
+    /// The `chara_param` variables in stored order.
+    pub param_raw: Vec<Value>,
     /// The `chara_base` variables in stored order.
     pub base_raw: Vec<Value>,
-    pub param_source: Provenance,
-    pub base_source: Provenance,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub param_source: Option<Provenance>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_source: Option<Provenance>,
 }
 
 /// One `skill_config` entry.
@@ -217,4 +316,79 @@ pub struct Team {
     pub fields: BTreeMap<String, Value>,
     pub roster: NoSource,
     pub source: Provenance,
+}
+
+/// How a node class of a table is served.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ClassRole {
+    /// Each entry is a record.
+    Records,
+    /// `__SORT_INDEX`: entry k belongs to record k of the container's main class.
+    SortIndex,
+    /// `<MAIN>_REF_<TARGET>`: entry k holds the `[offset, count]` slice of target class
+    /// entries that belongs to record k of the main class.
+    Reference,
+}
+
+/// A node class (or RDBN list) of a table.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ClassInfo {
+    pub name: String,
+    pub role: ClassRole,
+    pub entries: usize,
+    /// For a reference class, the class it slices; for an annotation, the class it annotates.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
+    /// The page family that renders these entries richly, when one does.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rich_family: Option<&'static str>,
+    /// The container's own variables (T2B `*_LIST_BEG`), as stored.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub container_variables: Vec<Value>,
+}
+
+/// A decoded gamedata table and its classes.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct TableInfo {
+    /// File stem without version (`passive_skill_config`).
+    pub table: String,
+    pub vfs_path: String,
+    /// `rdbn` (named fields) or `t2b` (positional variables).
+    pub format: &'static str,
+    pub classes: Vec<ClassInfo>,
+}
+
+/// One entry of a table class, as stored, with the labels of its text references.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct TableRecord {
+    pub table: String,
+    pub class: String,
+    pub index: usize,
+    /// Named fields of an RDBN row.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fields: Option<BTreeMap<String, Value>>,
+    /// Positional variables of a T2B node (the file stores no field names).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub variables: Option<Vec<Value>>,
+    /// Nested nodes of a T2B node, as stored.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub children: Vec<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_index: Option<i64>,
+    /// Keyed by the target class.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub refs: BTreeMap<String, RefSlice>,
+    /// Text labels keyed by what the reference is (`name`, `description`).
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub labels: BTreeMap<String, Localized>,
+    pub source: Provenance,
+}
+
+/// A gamedata file of the installation and whether the wiki decodes it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CatalogEntry {
+    pub vfs_path: String,
+    /// `decoded` (a page family reads it) or `present` (listed, not decoded).
+    pub status: &'static str,
 }

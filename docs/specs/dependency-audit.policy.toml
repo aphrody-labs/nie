@@ -1,0 +1,38 @@
+# Policy of `nie deps audit`: what the audit reads. Programs, crates and kernel options are named
+# here, never in the command.
+
+[code]
+roots = ["crates", "plugins", "tools", "os"]
+
+# Program (as `Command::new` receives it) to the reason the call stays. A program missing here is
+# reported as "not reviewed".
+[code.kept]
+powershell = "Windows host inventory in nie-specs, run only when the target host is Windows"
+cl = "MSVC compiler driven by the forge to rebuild nie.exe byte for byte; no Rust equivalent exists"
+vswhere = "locates the MSVC installation for the forge"
+"dynamic(cl)" = "MSVC compiler driven by the forge to rebuild nie.exe byte for byte; no Rust equivalent exists"
+"dynamic(vswhere)" = "locates the MSVC installation for the forge"
+"dynamic(clang)" = "mingw toolchain of the RE pipeline that builds proxy DLLs for the Windows target"
+"dynamic(dlltool)" = "mingw toolchain of the RE pipeline that builds proxy DLLs for the Windows target"
+strace = "measurement tool of the Asterinas syscall audit; it records what a workload calls"
+
+[lock]
+tracked = [
+  "steamroom", "steamroom-client", "russh", "russh-sftp", "opendal", "pingora",
+  "blake3", "bevy", "wgpu-types", "rusqlite", "wasm-bindgen", "syn", "goblin", "iced-x86",
+]
+
+[kernel]
+options = ["RUST", "XFS_FS", "FUSE_FS", "IO_URING", "KVM", "WIREGUARD", "DRM_VIRTIO_GPU", "NF_TABLES"]
+
+[game]
+app_id = "2799860"
+chain = [
+  "nie.exe",
+  "GameBootstrapper.exe",
+  "EACLauncher.exe",
+  "EasyAntiCheat/Settings.json",
+  "EOSSDK-Win64-Shipping.dll",
+  "steam_api64.dll",
+  "data/cpk_list.cfg.bin",
+]

@@ -10,7 +10,7 @@
 use alloc::vec::Vec;
 use serde_json::Value;
 
-use crate::cfgbin::{field_hash, field_i64, field_pair, list_values};
+use crate::cfgbin::{field_hash, field_i64, field_pair, list_values, slice_ref};
 use crate::hash::HashId;
 
 /// Un esprit/joueur récompensé (entrée `…SpiritDataList`).
@@ -81,15 +81,8 @@ impl SoccerFixedRewardConfig {
     /// Résout les esprits d'une table de récompense fixe.
     #[must_use]
     pub fn spirits_of_fixed(&self, info: &RewardInfo) -> &[RewardSpirit] {
-        slice(&self.fixed_data, info.spirit_data)
+        slice_ref(&self.fixed_data, info.spirit_data)
     }
-}
-
-fn slice<T>(list: &[T], range: [i64; 2]) -> &[T] {
-    let n = list.len();
-    let start = (range[0].max(0) as usize).min(n);
-    let end = start.saturating_add(range[1].max(0) as usize).min(n);
-    list.get(start..end).unwrap_or(&[])
 }
 
 fn data_list(root: &Value, name: &str) -> Vec<RewardSpirit> {

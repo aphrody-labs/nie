@@ -7,7 +7,7 @@ const encoder = new TextEncoder();
 const cstr = (value: string): Uint8Array => encoder.encode(`${value}\0`);
 
 /** Opens the shared library built from the `nie-ffi` crate and returns the typed API. */
-export function openRgFfi(libraryPath: string) {
+export function openNieFfi(libraryPath: string) {
   const lib = dlopen(libraryPath, {
     nie_ffi_abi_version: { args: [], returns: FFIType.u32 },
     nie_string_free: { args: [FFIType.ptr], returns: FFIType.void },
@@ -30,4 +30,4 @@ export function openRgFfi(libraryPath: string) {
   };
 }
 
-export type RgFfi = ReturnType<typeof openRgFfi>;
+export type NieFfi = ReturnType<typeof openNieFfi>;

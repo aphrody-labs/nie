@@ -179,7 +179,7 @@ impl BelongTeamInfo {
     }
 }
 
-/// Parse le `belong_team_config_*.cfg.bin.json` complet (forme iecode `lists`).
+/// Parse le `belong_team_config_*.cfg.bin.json` complet (forme étiquetée `lists`).
 ///
 /// Port 1:1 de `loadBelongTeamInfo` (`belong-team.ts` l.214-234) : on lit l'unique liste
 /// `m_belongTeamInfoList` ; liste absente → `Vec` vide (`return []`).

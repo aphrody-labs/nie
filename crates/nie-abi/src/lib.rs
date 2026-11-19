@@ -1,6 +1,8 @@
 //! The contract is `contract.json`. Everything on both sides of the FFI is generated from it:
 //! the C header, the Rust `extern "C"` layer, the `bun:ffi` binding and the OpenAPI document.
 
+pub mod crlib;
+
 use serde::Deserialize;
 use std::fmt::Write as _;
 
@@ -103,7 +105,7 @@ pub fn load() -> Contract {
     c
 }
 
-fn c_args(f: &Func) -> String {
+pub(crate) fn c_args(f: &Func) -> String {
     let mut parts = Vec::new();
     for a in &f.args {
         match a.ty {
@@ -127,7 +129,7 @@ fn c_args(f: &Func) -> String {
     }
 }
 
-fn c_ret(t: Ty) -> &'static str {
+pub(crate) fn c_ret(t: Ty) -> &'static str {
     match t {
         Ty::F64 => "double",
         Ty::U64 => "uint64_t",
@@ -174,7 +176,7 @@ pub fn emit_c_header(c: &Contract) -> String {
     s
 }
 
-fn rust_ty(t: Ty) -> &'static str {
+pub(crate) fn rust_ty(t: Ty) -> &'static str {
     match t {
         Ty::F64 => "f64",
         Ty::U64 => "u64",
@@ -211,72 +213,80 @@ pub fn emit_rust(c: &Contract) -> String {
         "#[unsafe(no_mangle)]\npub unsafe extern \"C\" fn nie_string_free(s: *mut c_char) {{\n    if !s.is_null() {{\n        drop(unsafe {{ CString::from_raw(s) }});\n    }}\n}}\n"
     );
     for f in &c.functions {
-        let _ = writeln!(
-            s,
-            "/// {}\n///\n/// # Safety\n/// Pointer arguments must be valid for the stated lengths (strings NUL-terminated).",
-            f.doc
-        );
-        let mut params = Vec::new();
-        for a in &f.args {
-            match a.ty {
-                Ty::Str => params.push(format!("{}: *const c_char", a.name)),
-                Ty::Bytes => {
-                    params.push(format!("{}: *const u8", a.name));
-                    params.push(format!("{}_len: usize", a.name));
-                }
-                t => params.push(format!("{}: {}", a.name, rust_ty(t))),
-            }
-        }
-        let fail = match f.returns {
-            Ty::F64 => "f64::NAN",
-            Ty::U64 | Ty::U32 | Ty::I32 => "0",
-            Ty::Bool => "false",
-            Ty::String => "std::ptr::null_mut()",
-            Ty::Str | Ty::Bytes => unreachable!("validated"),
-        };
-        let _ = writeln!(
-            s,
-            "#[unsafe(no_mangle)]\npub unsafe extern \"C\" fn {}({}) -> {} {{",
-            f.name,
-            params.join(", "),
-            rust_ty(f.returns)
-        );
-        let mut call_args = Vec::new();
-        for a in &f.args {
-            match a.ty {
-                Ty::Str => {
-                    let _ = writeln!(
-                        s,
-                        "    if {0}.is_null() {{\n        return {fail};\n    }}\n    let Ok({0}) = unsafe {{ CStr::from_ptr({0}) }}.to_str() else {{\n        return {fail};\n    }};",
-                        a.name
-                    );
-                    call_args.push(a.name.clone());
-                }
-                Ty::Bytes => {
-                    let _ = writeln!(
-                        s,
-                        "    let {0}: &[u8] = if {0}.is_null() {{\n        &[]\n    }} else {{\n        unsafe {{ std::slice::from_raw_parts({0}, {0}_len) }}\n    }};",
-                        a.name
-                    );
-                    call_args.push(a.name.clone());
-                }
-                _ => call_args.push(a.name.clone()),
-            }
-        }
-        let call = format!("crate::impls::{}({})", f.name, call_args.join(", "));
-        if f.returns == Ty::String {
-            let _ = writeln!(
-                s,
-                "    catch_unwind(AssertUnwindSafe(|| match {call} {{\n        Some(out) => CString::new(out).map_or(std::ptr::null_mut(), CString::into_raw),\n        None => std::ptr::null_mut(),\n    }}))\n    .unwrap_or({fail})\n}}\n"
-            );
-        } else {
-            let _ = writeln!(
-                s,
-                "    catch_unwind(AssertUnwindSafe(|| {call})).unwrap_or({fail})\n}}\n"
-            );
-        }
+        s.push_str(&rust_fn(f, "crate::impls"));
     }
     s
+}
+
+/// The `extern "C"` function of one contract entry; it calls `<impls>::<symbol>` with safe Rust types.
+pub(crate) fn rust_fn(f: &Func, impls: &str) -> String {
+    let mut out = String::new();
+    let _ = writeln!(
+        out,
+        "/// {}\n///\n/// # Safety\n/// Pointer arguments must be valid for the stated lengths (strings NUL-terminated).",
+        f.doc
+    );
+    let mut params = Vec::new();
+    for a in &f.args {
+        match a.ty {
+            Ty::Str => params.push(format!("{}: *const c_char", a.name)),
+            Ty::Bytes => {
+                params.push(format!("{}: *const u8", a.name));
+                params.push(format!("{}_len: usize", a.name));
+            }
+            t => params.push(format!("{}: {}", a.name, rust_ty(t))),
+        }
+    }
+    let fail = match f.returns {
+        Ty::F64 => "f64::NAN",
+        Ty::U64 | Ty::U32 | Ty::I32 => "0",
+        Ty::Bool => "false",
+        Ty::String => "std::ptr::null_mut()",
+        Ty::Str | Ty::Bytes => unreachable!("validated"),
+    };
+    let _ = writeln!(
+        out,
+        "#[unsafe(no_mangle)]\npub unsafe extern \"C\" fn {}({}) -> {} {{",
+        f.name,
+        params.join(", "),
+        rust_ty(f.returns)
+    );
+    let mut call_args = Vec::new();
+    for a in &f.args {
+        match a.ty {
+            Ty::Str => {
+                let _ = writeln!(
+                    out,
+                    "    if {0}.is_null() {{\n        return {fail};\n    }}\n    let Ok({0}) = unsafe {{ CStr::from_ptr({0}) }}.to_str() else {{\n        return {fail};\n    }};",
+                    a.name
+                );
+                call_args.push(a.name.clone());
+            }
+            Ty::Bytes => {
+                let _ = writeln!(
+                    out,
+                    "    let {0}: &[u8] = if {0}.is_null() {{\n        &[]\n    }} else {{\n        unsafe {{ std::slice::from_raw_parts({0}, {0}_len) }}\n    }};",
+                    a.name
+                );
+                call_args.push(a.name.clone());
+            }
+            _ => call_args.push(a.name.clone()),
+        }
+    }
+    let call = format!("{}::{}({})", impls, f.name, call_args.join(", "));
+    if f.returns == Ty::String {
+        let _ = writeln!(
+            out,
+            "    catch_unwind(AssertUnwindSafe(|| match {call} {{\n        Some(out) => CString::new(out).map_or(std::ptr::null_mut(), CString::into_raw),\n        None => std::ptr::null_mut(),\n    }}))\n    .unwrap_or({fail})\n}}\n"
+        );
+    } else {
+        let _ = writeln!(
+            out,
+            "    catch_unwind(AssertUnwindSafe(|| {call})).unwrap_or({fail})\n}}\n"
+        );
+    }
+
+    out
 }
 
 fn ffi_type(t: Ty) -> &'static str {
@@ -338,7 +348,7 @@ pub fn emit_ts(c: &Contract) -> String {
         s,
         "/** Opens the shared library built from the `nie-ffi` crate and returns the typed API. */"
     );
-    let _ = writeln!(s, "export function openRgFfi(libraryPath: string) {{");
+    let _ = writeln!(s, "export function openNieFfi(libraryPath: string) {{");
     let _ = writeln!(s, "  const lib = dlopen(libraryPath, {{");
     let _ = writeln!(
         s,
@@ -421,7 +431,7 @@ pub fn emit_ts(c: &Contract) -> String {
     }
     let _ = writeln!(
         s,
-        "  }};\n}}\n\nexport type RgFfi = ReturnType<typeof openRgFfi>;"
+        "  }};\n}}\n\nexport type NieFfi = ReturnType<typeof openNieFfi>;"
     );
     s
 }

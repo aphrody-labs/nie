@@ -890,7 +890,7 @@ fn rebuild_rust(ctx: &mut Ctx) -> StageReport {
     let Some(file) = ctx.rust_file.clone() else {
         return report(Stage::Rebuild, id, StageStatus::Skipped, "no Rust module");
     };
-    let rustc_name = std::env::var("BUNRE_RUSTC").unwrap_or_else(|_| "rustc".into());
+    let rustc_name = std::env::var("NIE_RE_RUSTC").unwrap_or_else(|_| "rustc".into());
     let Some(rustc) = which(&rustc_name) else {
         return report(
             Stage::Rebuild,

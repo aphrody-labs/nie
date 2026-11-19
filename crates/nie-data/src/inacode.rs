@@ -26,7 +26,7 @@
 //! | `m_InacodeCommentDataList`       | `INACODE_COMMENT_DATA`     | 968 |
 //! | `m_InacodeCommentSetDataList`    | `INACODE_COMMENT_SET_DATA` | 83  |
 //!
-//! ## Encodage iecode des champs (cf. `cfgbin_to_iecode_root` de `nie-model-serve`)
+//! ## Encodage étiquetée des champs (cf. `cfgbin_to_tagged_root` de `nie-model-serve`)
 //!
 //! - `Hash` (CRC u32) → chaîne `"0x........"` (lue en [`HashId`]).
 //! - `Short`/`Byte` → entier JSON (lu en `i64`).
@@ -381,7 +381,7 @@ fn field_range(v: &Value, key: &str) -> InacodeRange {
     }
 }
 
-/// Parse un `inacode_config_*.cfg.bin` désérialisé (forme iecode `{ "lists": [...] }`),
+/// Parse un `inacode_config_*.cfg.bin` désérialisé (forme étiquetée `{ "lists": [...] }`),
 /// switch sur `list.name` à l'identique d'inagle (`parseContent`), étendu aux 10 listes.
 #[must_use]
 pub fn parse_inacode_config(root: &Value) -> InacodeConfig {

@@ -71,7 +71,7 @@ impl CharaCostume {
     }
 }
 
-/// Parse tous les costumes d'un `chara_costume_*.cfg.bin.json` deserialise (forme iecode
+/// Parse tous les costumes d'un `chara_costume_*.cfg.bin.json` deserialise (forme étiquetée
 /// `entries`). Port 1:1 d'inagle `parseEntries` (`chara-costume-config.ts` l.39-61) :
 /// pour chaque entree racine dont le nom commence par `CHARA_COSTUME_MODEL_LIST_BEG`,
 /// on itere ses enfants ; ceux dont le nom commence par `CHARA_COSTUME_MODEL_` et qui ont

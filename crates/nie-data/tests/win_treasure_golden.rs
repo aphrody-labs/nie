@@ -160,7 +160,7 @@ const BASE_RAW: &[(i64, i64, i64)] = &[
     (-491351371, 103, 10),
 ];
 
-/// Reconstruit le noeud `cfg.bin.json` (forme iecode T2B) à partir des octets réels.
+/// Reconstruit le noeud `cfg.bin.json` (forme étiquetée T2B) à partir des octets réels.
 fn node_fixture() -> serde_json::Value {
     let item_children: Vec<_> = ITEMS_RAW
         .iter()

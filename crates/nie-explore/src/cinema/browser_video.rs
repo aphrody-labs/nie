@@ -222,7 +222,7 @@ impl TemporaryVideo {
         for _ in 0..32 {
             let id = NEXT_TEMP.fetch_add(1, Ordering::Relaxed);
             let path = std::env::temp_dir().join(format!("nie-video-{}-{id}", std::process::id()));
-            #[allow(unused_mut)]
+            #[allow(unused_mut, reason = "mutated only on unix, where the directory mode is set")]
             let mut directory = fs::DirBuilder::new();
             #[cfg(unix)]
             {
@@ -251,6 +251,69 @@ impl Drop for TemporaryVideo {
 mod tests {
     use super::*;
     use nie_formats::usm::EnteteVideo;
+
+    /// What the MP4 container itself says about its first video track.
+    struct Mp4Probe {
+        codec: [u8; 4],
+        width: u16,
+        height: u16,
+        frames: u32,
+        timescale: u32,
+        frame_ticks: u32,
+    }
+
+    /// Payload of the first box named `kind` directly inside `data`.
+    fn child<'a>(data: &'a [u8], kind: &[u8; 4]) -> Option<&'a [u8]> {
+        let mut at = 0;
+        while at + 8 <= data.len() {
+            let size = u32::from_be_bytes(data[at..at + 4].try_into().ok()?) as usize;
+            if size < 8 || at + size > data.len() {
+                return None;
+            }
+            if &data[at + 4..at + 8] == kind {
+                return Some(&data[at + 8..at + size]);
+            }
+            at += size;
+        }
+        None
+    }
+
+    fn be16(data: &[u8], at: usize) -> Option<u16> {
+        Some(u16::from_be_bytes(data.get(at..at + 2)?.try_into().ok()?))
+    }
+
+    fn be32(data: &[u8], at: usize) -> Option<u32> {
+        Some(u32::from_be_bytes(data.get(at..at + 4)?.try_into().ok()?))
+    }
+
+    /// Reads dimensions, sample count and frame duration from `moov/trak/mdia` (the job
+    /// `ffprobe` did in this test).
+    fn probe_mp4(mp4: &[u8]) -> Option<Mp4Probe> {
+        let trak = child(child(mp4, b"moov")?, b"trak")?;
+        let mdia = child(trak, b"mdia")?;
+        let stbl = child(child(mdia, b"minf")?, b"stbl")?;
+        let timescale = be32(child(mdia, b"mdhd")?, 12)?;
+        let stsd = child(stbl, b"stsd")?;
+        // Full-box header (4) and entry count (4), then the sample entry box.
+        let entry = &stsd[8..];
+        let mut codec = [0; 4];
+        codec.copy_from_slice(entry.get(4..8)?);
+        // Visual sample entry: 6 reserved, 2 data reference, 16 predefined, then width, height.
+        let width = be16(entry, 8 + 24)?;
+        let height = be16(entry, 8 + 26)?;
+        let frames = be32(child(stbl, b"stsz")?, 8)?;
+        let stts = child(stbl, b"stts")?;
+        // Full-box header (4), entry count (4), then `(sample_count, sample_delta)` pairs.
+        let frame_ticks = be32(stts, 12)?;
+        Some(Mp4Probe {
+            codec,
+            width,
+            height,
+            frames,
+            timescale,
+            frame_ticks,
+        })
+    }
 
     fn track() -> Usm {
         Usm {
@@ -325,6 +388,31 @@ mod tests {
         assert_eq!(read_bounded(&path, 32).unwrap().len(), 32);
     }
 
+    /// Body of the child started by [`stalled_process`]: it blocks until it is killed. It does
+    /// nothing in a normal run, so the suite never waits on it.
+    #[test]
+    fn stall_helper() {
+        if std::env::var_os("NIE_TEST_STALL").is_some() {
+            std::thread::sleep(Duration::from_secs(10));
+        }
+    }
+
+    /// A process that never ends on its own: this test binary running only `stall_helper`.
+    fn stalled_process() -> Command {
+        let name = format!(
+            "{}::stall_helper",
+            module_path!().split_once("::").map_or("", |(_, rest)| rest)
+        );
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command
+            .args([name.as_str(), "--exact", "--test-threads=1"])
+            .env("NIE_TEST_STALL", "1")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        command
+    }
+
     #[cfg(unix)]
     #[test]
     fn stalled_encoder_is_killed_and_reaped_within_its_deadline() {
@@ -333,12 +421,7 @@ mod tests {
             timeout: Duration::from_millis(30),
             ..EncoderOptions::default()
         };
-        let mut command = Command::new("sleep");
-        command
-            .arg("10")
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
+        let mut command = stalled_process();
         let start = Instant::now();
         let error =
             run_encoder(&mut command, &temporary.path.join("missing.mp4"), &options).unwrap_err();
@@ -356,12 +439,7 @@ mod tests {
             max_output_bytes: 31,
             ..EncoderOptions::default()
         };
-        let mut command = Command::new("sleep");
-        command
-            .arg("10")
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
+        let mut command = stalled_process();
         let error = run_encoder(&mut command, &output, &options).unwrap_err();
         assert!(error.contains("output size limit"), "{error}");
     }
@@ -383,35 +461,15 @@ mod tests {
             assert_eq!(output.mime, "video/mp4");
             let path = temporary.path.join(format!("{filename}.mp4"));
             fs::write(&path, &output.bytes).unwrap();
-            let probe = Command::new("ffprobe")
-                .args([
-                    "-v",
-                    "error",
-                    "-show_entries",
-                    "stream=codec_name,width,height,avg_frame_rate,nb_frames",
-                    "-of",
-                    "json",
-                ])
-                .arg(&path)
-                .output()
-                .unwrap();
-            assert!(probe.status.success());
-            let probe: serde_json::Value = serde_json::from_slice(&probe.stdout).unwrap();
-            let video = &probe["streams"][0];
-            assert_eq!(video["codec_name"], "h264");
-            assert_eq!(video["width"], source.entete.largeur);
-            assert_eq!(video["height"], source.entete.hauteur);
-            assert_eq!(video["nb_frames"], source.images.to_string());
-            let rate: Vec<u64> = video["avg_frame_rate"]
-                .as_str()
-                .unwrap()
-                .split('/')
-                .map(|part| part.parse().unwrap())
-                .collect();
+            let probe = probe_mp4(&output.bytes).expect("parse the produced MP4");
+            assert_eq!(probe.codec, *b"avc1");
+            assert_eq!(u32::from(probe.width), source.entete.largeur);
+            assert_eq!(u32::from(probe.height), source.entete.hauteur);
+            assert_eq!(probe.frames, source.images);
             let (numerator, denominator) = source.entete.cadence().unwrap();
             assert_eq!(
-                rate[0] * u64::from(denominator),
-                rate[1] * u64::from(numerator)
+                u64::from(probe.timescale) * u64::from(denominator),
+                u64::from(probe.frame_ticks) * u64::from(numerator)
             );
             println!(
                 "{filename}: {} bytes, {}x{}, {}/{} fps, {} frames",

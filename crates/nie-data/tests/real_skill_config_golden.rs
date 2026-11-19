@@ -2,7 +2,7 @@
 //! Tests golden `real_skill_config` — VRAIES valeurs tirées du VFS IEVR :
 //! `data/common/gamedata/skill/real_skill_config_1.03.74.00.cfg.bin`.
 //!
-//! Extraction : `cargo run -p nie-game --example extract_real_skill` (RDBN → JSON iecode
+//! Extraction : `cargo run -p nie-game --example extract_real_skill` (RDBN → JSON tagged
 //! `lists`, via `cfgbin::read_values`). Port 1:1 d'inagle
 //! `inagle`. Vérité terrain = la sortie du dump.
 //!

@@ -32,13 +32,13 @@
 //! ## Textures (voie CDN URI — zéro copie de pixels)
 //!
 //! Les textures G4TX vivent dans les CPK chiffrés (`dx11/chr/_face/`, `dx11/chr/_uniform/`).
-//! Le CDN `cdn.rosegriffon.fr` décode les G4TX → PNG à la volée (iecode-cdn:8788, aucun dump).
+//! `nie-model-serve` (route `/tex/dx11/**`) décode les G4TX → PNG à la volée (le CDN de textures, aucun dump).
 //!
 //! [`to_glb_textured`] génère un GLB avec `images[].uri` pointant vers ces URLs CDN.
 //! Three.js/Babylon.js chargent les URI automatiquement. Format de l'URI :
 //!
-//! - Visage : `https://cdn.rosegriffon.fr/dx11/chr/_face/{series_dir}/{code}/{code}.png`
-//! - Uniforme : `https://cdn.rosegriffon.fr/dx11/chr/_uniform/{base_dir}/{tex_name}.png`
+//! - Visage : `/tex/dx11/chr/_face/{series_dir}/{code}/{code}.png`
+//! - Uniforme : `/tex/dx11/chr/_uniform/{base_dir}/{tex_name}.png`
 //!
 //! La résolution du `series_dir` depuis le code interne suit la convention des CPK IEVR :
 //! `c01…` → `01_ie1`, `c02…` → `02_ie2`, …, `c11…` → `11_victory`, etc.
@@ -234,10 +234,11 @@ pub fn series_dir_from_code(internal_code: &str) -> Option<&'static str> {
 
 // ── Résolution des URI de textures CDN ───────────────────────────────────────
 
-/// Préfixe de base de l'URL CDN pour les textures.
+/// Préfixe de base des URI de textures : la route `/tex` de `nie-model-serve`, relative à l'origine
+/// qui sert le modèle.
 ///
-/// Peut être surchargé via [`TextureUriConfig`] pour pointer vers un CDN alternatif.
-pub const CDN_BASE: &str = "https://cdn.rosegriffon.fr";
+/// Se surcharge par `NIE_CDN_BASE` ou par [`TextureUriConfig`] pour viser une autre origine.
+pub const CDN_BASE: &str = "/tex";
 
 /// Configuration des URI de textures (permet de surcharger le CDN de base en test).
 #[derive(Debug, Clone)]
@@ -270,7 +271,7 @@ impl Default for TextureUriConfig {
 /// use nie_formats::assemble::{face_texture_uri, TextureUriConfig};
 /// let cfg = TextureUriConfig::default();
 /// let uri = face_texture_uri("c01000010", &cfg).unwrap();
-/// assert_eq!(uri, "https://cdn.rosegriffon.fr/dx11/chr/_face/01_ie1/c01000010/c01000010.png");
+/// assert_eq!(uri, "/tex/dx11/chr/_face/01_ie1/c01000010/c01000010.png");
 /// ```
 #[must_use]
 pub fn face_texture_uri(internal_code: &str, cfg: &TextureUriConfig) -> Option<String> {
@@ -300,7 +301,7 @@ pub fn face_texture_uri(internal_code: &str, cfg: &TextureUriConfig) -> Option<S
 /// use nie_formats::assemble::{uniform_texture_uri, TextureUriConfig};
 /// let cfg = TextureUriConfig::default();
 /// let uri = uniform_texture_uri("sk000901", &cfg);
-/// assert_eq!(uri, "https://cdn.rosegriffon.fr/dx11/chr/_uniform/sk000901/sk000901_10.png");
+/// assert_eq!(uri, "/tex/dx11/chr/_uniform/sk000901/sk000901_10.png");
 /// ```
 #[must_use]
 pub fn uniform_texture_uri(material_base_name: &str, cfg: &TextureUriConfig) -> String {
@@ -767,7 +768,7 @@ pub struct EmbeddedTexture {
 ///
 /// - [`AssembledModel::to_glb`] — GLB sans textures (matériaux PBR generiques sans image).
 /// - [`AssembledModel::to_glb_textured`] — GLB avec `images[].uri` pointant vers le CDN
-///   IEVR (iecode-cdn:8788 décode les G4TX → PNG en live depuis les CPK).
+///   IEVR (le CDN de textures décode les G4TX → PNG en live depuis les CPK).
 /// - [`AssembledModel::to_glb_embedded`] — GLB avec textures PNG **embarquées** dans le
 ///   buffer BIN (autonome, aucune dépendance réseau). Utilise [`EmbeddedTexture`].
 ///
@@ -2456,51 +2457,6 @@ fn build_glb(model: &AssembledModel, with_textures: bool) -> Vec<u8> {
     let mut accessor_defs: Vec<Value> = Vec::new();
     let mut buffer_views_json: Vec<Value> = Vec::new();
 
-    /// Ajoute un bufferView + accessor et renvoie l'index accessor.
-    #[allow(clippy::too_many_arguments)]
-    fn add_accessor(
-        bv_data: &mut Vec<u8>,
-        buffer_views_json: &mut Vec<Value>,
-        accessor_defs: &mut Vec<Value>,
-        raw: &[u8],
-        count: usize,
-        comp_type: u32,
-        attr_type: &str,
-        min_val: Option<Value>,
-        max_val: Option<Value>,
-    ) -> usize {
-        let bv_offset = bv_data.len();
-        bv_data.extend_from_slice(raw);
-        // alignement 4B (glTF spec)
-        while !bv_data.len().is_multiple_of(4) {
-            bv_data.push(0);
-        }
-
-        let bv_idx = buffer_views_json.len();
-        buffer_views_json.push(json!({
-            "buffer": 0,
-            "byteOffset": bv_offset,
-            "byteLength": raw.len()
-        }));
-
-        let acc_idx = accessor_defs.len();
-        let mut acc = json!({
-            "bufferView": bv_idx,
-            "byteOffset": 0,
-            "componentType": comp_type,
-            "count": count,
-            "type": attr_type
-        });
-        if let Some(mn) = min_val {
-            acc["min"] = mn;
-        }
-        if let Some(mx) = max_val {
-            acc["max"] = mx;
-        }
-        accessor_defs.push(acc);
-        acc_idx
-    }
-
     // ── Collecte des URI de textures uniques (pour la table images/textures) ──
     // Chaque URI unique → un index de texture glTF.
     // Les primitives sans texture_uri (vide) → matériau Default (index 0).
@@ -2598,164 +2554,16 @@ fn build_glb(model: &AssembledModel, with_textures: bool) -> Vec<u8> {
                 continue;
             }
 
-            // Positions → VEC3 float32 (5126).
-            let pos_raw: Vec<u8> = prim
-                .positions
-                .iter()
-                .flat_map(|v| [v.x.to_le_bytes(), v.y.to_le_bytes(), v.z.to_le_bytes()].concat())
-                .collect();
-            let p_min: Vec<f32> = vec![
-                prim.positions
-                    .iter()
-                    .map(|v| v.x)
-                    .fold(f32::INFINITY, f32::min),
-                prim.positions
-                    .iter()
-                    .map(|v| v.y)
-                    .fold(f32::INFINITY, f32::min),
-                prim.positions
-                    .iter()
-                    .map(|v| v.z)
-                    .fold(f32::INFINITY, f32::min),
-            ];
-            let p_max: Vec<f32> = vec![
-                prim.positions
-                    .iter()
-                    .map(|v| v.x)
-                    .fold(f32::NEG_INFINITY, f32::max),
-                prim.positions
-                    .iter()
-                    .map(|v| v.y)
-                    .fold(f32::NEG_INFINITY, f32::max),
-                prim.positions
-                    .iter()
-                    .map(|v| v.z)
-                    .fold(f32::NEG_INFINITY, f32::max),
-            ];
-            let pos_acc = add_accessor(
+            let GlbGeometry {
+                pos: pos_acc,
+                normal: normal_acc,
+                uv: uv_acc,
+                indices: idx_acc,
+            } = glb_emit_geometry(
+                prim,
                 &mut bv_data,
                 &mut buffer_views_json,
                 &mut accessor_defs,
-                &pos_raw,
-                prim.positions.len(),
-                5126,
-                "VEC3",
-                Some(json!(p_min)),
-                Some(json!(p_max)),
-            );
-
-            // Normales → VEC3 float32 (5126), optionnel.
-            let normal_acc = if !prim.normals.is_empty() {
-                let raw: Vec<u8> = prim
-                    .normals
-                    .iter()
-                    .flat_map(|v| {
-                        [v.x.to_le_bytes(), v.y.to_le_bytes(), v.z.to_le_bytes()].concat()
-                    })
-                    .collect();
-                Some(add_accessor(
-                    &mut bv_data,
-                    &mut buffer_views_json,
-                    &mut accessor_defs,
-                    &raw,
-                    prim.normals.len(),
-                    5126,
-                    "VEC3",
-                    None,
-                    None,
-                ))
-            } else {
-                None
-            };
-
-            // UV0 → VEC2 float32 (5126), optionnel.
-            let uv_acc = if !prim.uv0.is_empty() {
-                let raw: Vec<u8> = prim
-                    .uv0
-                    .iter()
-                    .flat_map(|v| {
-                        let mut b = [0u8; 8];
-                        b[..4].copy_from_slice(&v.u.to_le_bytes());
-                        b[4..].copy_from_slice(&v.v.to_le_bytes());
-                        b
-                    })
-                    .collect();
-                Some(add_accessor(
-                    &mut bv_data,
-                    &mut buffer_views_json,
-                    &mut accessor_defs,
-                    &raw,
-                    prim.uv0.len(),
-                    5126,
-                    "VEC2",
-                    None,
-                    None,
-                ))
-            } else {
-                None
-            };
-
-            // Colors → VEC4 float32 (5126), optionnel.
-            let _color_acc = if !prim.colors.is_empty() {
-                let raw: Vec<u8> = prim
-                    .colors
-                    .iter()
-                    .flat_map(|v| {
-                        [
-                            v.x.to_le_bytes(),
-                            v.y.to_le_bytes(),
-                            v.z.to_le_bytes(),
-                            v.w.to_le_bytes(),
-                        ]
-                        .concat()
-                    })
-                    .collect();
-                Some(add_accessor(
-                    &mut bv_data,
-                    &mut buffer_views_json,
-                    &mut accessor_defs,
-                    &raw,
-                    prim.colors.len(),
-                    5126,
-                    "VEC4",
-                    None,
-                    None,
-                ))
-            } else {
-                None
-            };
-
-            // Indices → SCALAR uint16 ou uint32.
-            let use_u32 = prim.positions.len() > 65535;
-            let (idx_comp_type, idx_raw): (u32, Vec<u8>) = if use_u32 {
-                (
-                    5125,
-                    prim.indices.iter().flat_map(|&i| i.to_le_bytes()).collect(),
-                )
-            } else {
-                (
-                    5123,
-                    prim.indices
-                        .iter()
-                        .flat_map(|&i| (i as u16).to_le_bytes())
-                        .collect(),
-                )
-            };
-            // Alignement 4B
-            let mut idx_raw_padded = idx_raw;
-            while idx_raw_padded.len() % 4 != 0 {
-                idx_raw_padded.push(0);
-            }
-            let idx_acc = add_accessor(
-                &mut bv_data,
-                &mut buffer_views_json,
-                &mut accessor_defs,
-                &idx_raw_padded,
-                prim.indices.len(),
-                idx_comp_type,
-                "SCALAR",
-                None,
-                None,
             );
 
             // Résolution du matériau : texture si disponible, sinon Default (0).
@@ -2892,6 +2700,235 @@ fn build_glb(model: &AssembledModel, with_textures: bool) -> Vec<u8> {
     glb
 }
 
+/// Ajoute un bufferView + accessor (min/max optionnels) et renvoie l'index accessor.
+#[allow(clippy::too_many_arguments)]
+fn glb_add_accessor(
+    bv_data: &mut Vec<u8>,
+    buffer_views_json: &mut Vec<serde_json::Value>,
+    accessor_defs: &mut Vec<serde_json::Value>,
+    raw: &[u8],
+    count: usize,
+    comp_type: u32,
+    attr_type: &str,
+    min_val: Option<serde_json::Value>,
+    max_val: Option<serde_json::Value>,
+) -> usize {
+    use serde_json::json;
+    let bv_offset = bv_data.len();
+    bv_data.extend_from_slice(raw);
+    // alignement 4B (glTF spec)
+    while !bv_data.len().is_multiple_of(4) {
+        bv_data.push(0);
+    }
+
+    let bv_idx = buffer_views_json.len();
+    buffer_views_json.push(json!({
+        "buffer": 0,
+        "byteOffset": bv_offset,
+        "byteLength": raw.len()
+    }));
+
+    let acc_idx = accessor_defs.len();
+    let mut acc = json!({
+        "bufferView": bv_idx,
+        "byteOffset": 0,
+        "componentType": comp_type,
+        "count": count,
+        "type": attr_type
+    });
+    if let Some(mn) = min_val {
+        acc["min"] = mn;
+    }
+    if let Some(mx) = max_val {
+        acc["max"] = mx;
+    }
+    accessor_defs.push(acc);
+    acc_idx
+}
+
+/// Accessor indices of the geometry of one primitive.
+struct GlbGeometry {
+    pos: usize,
+    normal: Option<usize>,
+    uv: Option<usize>,
+    indices: usize,
+}
+
+/// Émet les accessors de géométrie d'une primitive (positions, normales, UV0, indices), partagés
+/// par les deux writers GLB.
+fn glb_emit_geometry(
+    prim: &MeshPrimitive,
+    bv_data: &mut Vec<u8>,
+    buffer_views_json: &mut Vec<serde_json::Value>,
+    accessor_defs: &mut Vec<serde_json::Value>,
+) -> GlbGeometry {
+    use serde_json::json;
+
+    // Positions → VEC3 float32 (5126).
+    let pos_raw: Vec<u8> = prim
+        .positions
+        .iter()
+        .flat_map(|v| [v.x.to_le_bytes(), v.y.to_le_bytes(), v.z.to_le_bytes()].concat())
+        .collect();
+    let p_min: Vec<f32> = vec![
+        prim.positions
+            .iter()
+            .map(|v| v.x)
+            .fold(f32::INFINITY, f32::min),
+        prim.positions
+            .iter()
+            .map(|v| v.y)
+            .fold(f32::INFINITY, f32::min),
+        prim.positions
+            .iter()
+            .map(|v| v.z)
+            .fold(f32::INFINITY, f32::min),
+    ];
+    let p_max: Vec<f32> = vec![
+        prim.positions
+            .iter()
+            .map(|v| v.x)
+            .fold(f32::NEG_INFINITY, f32::max),
+        prim.positions
+            .iter()
+            .map(|v| v.y)
+            .fold(f32::NEG_INFINITY, f32::max),
+        prim.positions
+            .iter()
+            .map(|v| v.z)
+            .fold(f32::NEG_INFINITY, f32::max),
+    ];
+    let pos_acc = glb_add_accessor(
+        bv_data,
+        buffer_views_json,
+        accessor_defs,
+        &pos_raw,
+        prim.positions.len(),
+        5126,
+        "VEC3",
+        Some(json!(p_min)),
+        Some(json!(p_max)),
+    );
+
+    // Normales → VEC3 float32 (5126), optionnel.
+    let normal_acc = if !prim.normals.is_empty() {
+        let raw: Vec<u8> = prim
+            .normals
+            .iter()
+            .flat_map(|v| [v.x.to_le_bytes(), v.y.to_le_bytes(), v.z.to_le_bytes()].concat())
+            .collect();
+        Some(glb_add_accessor(
+            bv_data,
+            buffer_views_json,
+            accessor_defs,
+            &raw,
+            prim.normals.len(),
+            5126,
+            "VEC3",
+            None,
+            None,
+        ))
+    } else {
+        None
+    };
+
+    // UV0 → VEC2 float32 (5126), optionnel.
+    let uv_acc = if !prim.uv0.is_empty() {
+        let raw: Vec<u8> = prim
+            .uv0
+            .iter()
+            .flat_map(|v| {
+                let mut b = [0u8; 8];
+                b[..4].copy_from_slice(&v.u.to_le_bytes());
+                b[4..].copy_from_slice(&v.v.to_le_bytes());
+                b
+            })
+            .collect();
+        Some(glb_add_accessor(
+            bv_data,
+            buffer_views_json,
+            accessor_defs,
+            &raw,
+            prim.uv0.len(),
+            5126,
+            "VEC2",
+            None,
+            None,
+        ))
+    } else {
+        None
+    };
+
+    // Colors → VEC4 float32 (5126), optionnel.
+    let _color_acc = if !prim.colors.is_empty() {
+        let raw: Vec<u8> = prim
+            .colors
+            .iter()
+            .flat_map(|v| {
+                [
+                    v.x.to_le_bytes(),
+                    v.y.to_le_bytes(),
+                    v.z.to_le_bytes(),
+                    v.w.to_le_bytes(),
+                ]
+                .concat()
+            })
+            .collect();
+        Some(glb_add_accessor(
+            bv_data,
+            buffer_views_json,
+            accessor_defs,
+            &raw,
+            prim.colors.len(),
+            5126,
+            "VEC4",
+            None,
+            None,
+        ))
+    } else {
+        None
+    };
+
+    // Indices → SCALAR uint16 ou uint32.
+    let use_u32 = prim.positions.len() > 65535;
+    let (idx_comp_type, idx_raw): (u32, Vec<u8>) = if use_u32 {
+        (
+            5125,
+            prim.indices.iter().flat_map(|&i| i.to_le_bytes()).collect(),
+        )
+    } else {
+        (
+            5123,
+            prim.indices
+                .iter()
+                .flat_map(|&i| (i as u16).to_le_bytes())
+                .collect(),
+        )
+    };
+    // Alignement 4B
+    let mut idx_raw_padded = idx_raw;
+    while idx_raw_padded.len() % 4 != 0 {
+        idx_raw_padded.push(0);
+    }
+    let idx_acc = glb_add_accessor(
+        bv_data,
+        buffer_views_json,
+        accessor_defs,
+        &idx_raw_padded,
+        prim.indices.len(),
+        idx_comp_type,
+        "SCALAR",
+        None,
+        None,
+    );
+    GlbGeometry {
+        pos: pos_acc,
+        normal: normal_acc,
+        uv: uv_acc,
+        indices: idx_acc,
+    }
+}
+
 // ── Squelette et skinning dans le GLB (partagé par les deux writers) ─────────
 
 /// Ajoute un bufferView + accessor sans min/max et renvoie l'index accessor.
@@ -2904,22 +2941,17 @@ fn glb_push_accessor(
     comp_type: u32,
     attr_type: &str,
 ) -> usize {
-    use serde_json::json;
-    let bv_offset = bv_data.len();
-    bv_data.extend_from_slice(raw);
-    while !bv_data.len().is_multiple_of(4) {
-        bv_data.push(0);
-    }
-    let bv_idx = buffer_views_json.len();
-    buffer_views_json.push(json!({
-        "buffer": 0, "byteOffset": bv_offset, "byteLength": raw.len()
-    }));
-    let acc_idx = accessor_defs.len();
-    accessor_defs.push(json!({
-        "bufferView": bv_idx, "byteOffset": 0,
-        "componentType": comp_type, "count": count, "type": attr_type
-    }));
-    acc_idx
+    glb_add_accessor(
+        bv_data,
+        buffer_views_json,
+        accessor_defs,
+        raw,
+        count,
+        comp_type,
+        attr_type,
+        None,
+        None,
+    )
 }
 
 /// Émet `JOINTS_0`/`WEIGHTS_0` (et `JOINTS_1`/`WEIGHTS_1` si un vertex porte plus de quatre
@@ -3303,42 +3335,6 @@ fn build_glb_embedded(model: &AssembledModel) -> Vec<u8> {
     let mut accessor_defs: Vec<Value> = Vec::new();
     let mut buffer_views_json: Vec<Value> = Vec::new();
 
-    #[allow(clippy::too_many_arguments)]
-    fn add_accessor(
-        bv_data: &mut Vec<u8>,
-        buffer_views_json: &mut Vec<Value>,
-        accessor_defs: &mut Vec<Value>,
-        raw: &[u8],
-        count: usize,
-        comp_type: u32,
-        attr_type: &str,
-        min_val: Option<Value>,
-        max_val: Option<Value>,
-    ) -> usize {
-        let bv_offset = bv_data.len();
-        bv_data.extend_from_slice(raw);
-        while !bv_data.len().is_multiple_of(4) {
-            bv_data.push(0);
-        }
-        let bv_idx = buffer_views_json.len();
-        buffer_views_json.push(json!({
-            "buffer": 0, "byteOffset": bv_offset, "byteLength": raw.len()
-        }));
-        let acc_idx = accessor_defs.len();
-        let mut acc = json!({
-            "bufferView": bv_idx, "byteOffset": 0,
-            "componentType": comp_type, "count": count, "type": attr_type
-        });
-        if let Some(mn) = min_val {
-            acc["min"] = mn;
-        }
-        if let Some(mx) = max_val {
-            acc["max"] = mx;
-        }
-        accessor_defs.push(acc);
-        acc_idx
-    }
-
     // ── Injection des textures PNG dans le buffer BIN ─────────────────────────
     // Les bufferViews des textures PNG ont un `target` absent (non vertex data).
     // Map component → (image_index, texture_index, material_index).
@@ -3514,160 +3510,16 @@ fn build_glb_embedded(model: &AssembledModel) -> Vec<u8> {
                 continue;
             }
 
-            // Positions → VEC3 float32.
-            let pos_raw: Vec<u8> = prim
-                .positions
-                .iter()
-                .flat_map(|v| [v.x.to_le_bytes(), v.y.to_le_bytes(), v.z.to_le_bytes()].concat())
-                .collect();
-            let p_min: Vec<f32> = vec![
-                prim.positions
-                    .iter()
-                    .map(|v| v.x)
-                    .fold(f32::INFINITY, f32::min),
-                prim.positions
-                    .iter()
-                    .map(|v| v.y)
-                    .fold(f32::INFINITY, f32::min),
-                prim.positions
-                    .iter()
-                    .map(|v| v.z)
-                    .fold(f32::INFINITY, f32::min),
-            ];
-            let p_max: Vec<f32> = vec![
-                prim.positions
-                    .iter()
-                    .map(|v| v.x)
-                    .fold(f32::NEG_INFINITY, f32::max),
-                prim.positions
-                    .iter()
-                    .map(|v| v.y)
-                    .fold(f32::NEG_INFINITY, f32::max),
-                prim.positions
-                    .iter()
-                    .map(|v| v.z)
-                    .fold(f32::NEG_INFINITY, f32::max),
-            ];
-            let pos_acc = add_accessor(
+            let GlbGeometry {
+                pos: pos_acc,
+                normal: normal_acc,
+                uv: uv_acc,
+                indices: idx_acc,
+            } = glb_emit_geometry(
+                prim,
                 &mut bv_data,
                 &mut buffer_views_json,
                 &mut accessor_defs,
-                &pos_raw,
-                prim.positions.len(),
-                5126,
-                "VEC3",
-                Some(json!(p_min)),
-                Some(json!(p_max)),
-            );
-
-            let normal_acc = if !prim.normals.is_empty() {
-                let raw: Vec<u8> = prim
-                    .normals
-                    .iter()
-                    .flat_map(|v| {
-                        [v.x.to_le_bytes(), v.y.to_le_bytes(), v.z.to_le_bytes()].concat()
-                    })
-                    .collect();
-                Some(add_accessor(
-                    &mut bv_data,
-                    &mut buffer_views_json,
-                    &mut accessor_defs,
-                    &raw,
-                    prim.normals.len(),
-                    5126,
-                    "VEC3",
-                    None,
-                    None,
-                ))
-            } else {
-                None
-            };
-
-            let uv_acc = if !prim.uv0.is_empty() {
-                let raw: Vec<u8> = prim
-                    .uv0
-                    .iter()
-                    .flat_map(|v| {
-                        let mut b = [0u8; 8];
-                        b[..4].copy_from_slice(&v.u.to_le_bytes());
-                        b[4..].copy_from_slice(&v.v.to_le_bytes());
-                        b
-                    })
-                    .collect();
-                Some(add_accessor(
-                    &mut bv_data,
-                    &mut buffer_views_json,
-                    &mut accessor_defs,
-                    &raw,
-                    prim.uv0.len(),
-                    5126,
-                    "VEC2",
-                    None,
-                    None,
-                ))
-            } else {
-                None
-            };
-
-            // Colors → VEC4 float32 (5126), optionnel.
-            let _color_acc = if !prim.colors.is_empty() {
-                let raw: Vec<u8> = prim
-                    .colors
-                    .iter()
-                    .flat_map(|v| {
-                        [
-                            v.x.to_le_bytes(),
-                            v.y.to_le_bytes(),
-                            v.z.to_le_bytes(),
-                            v.w.to_le_bytes(),
-                        ]
-                        .concat()
-                    })
-                    .collect();
-                Some(add_accessor(
-                    &mut bv_data,
-                    &mut buffer_views_json,
-                    &mut accessor_defs,
-                    &raw,
-                    prim.colors.len(),
-                    5126,
-                    "VEC4",
-                    None,
-                    None,
-                ))
-            } else {
-                None
-            };
-
-            let use_u32 = prim.positions.len() > 65535;
-            let (idx_comp_type, idx_raw): (u32, Vec<u8>) = if use_u32 {
-                (
-                    5125,
-                    prim.indices.iter().flat_map(|&i| i.to_le_bytes()).collect(),
-                )
-            } else {
-                (
-                    5123,
-                    prim.indices
-                        .iter()
-                        .flat_map(|&i| (i as u16).to_le_bytes())
-                        .collect(),
-                )
-            };
-            let mut idx_raw_padded = idx_raw;
-            while idx_raw_padded.len() % 4 != 0 {
-                idx_raw_padded.push(0);
-            }
-            let idx_acc = add_accessor(
-                &mut bv_data,
-                &mut buffer_views_json,
-                &mut accessor_defs,
-                &idx_raw_padded,
-                prim.indices.len(),
-                idx_comp_type,
-                "SCALAR",
-                None,
-                None,
             );
 
             // Matériau : utilise la texture embarquée du composant, sinon Default (0).
@@ -4247,20 +4099,14 @@ mod tests {
         let uri = face_texture_uri("c01000010", &cfg).unwrap();
         // Chemin vérifié contre l'index iev:file:index DB3 :
         // data/dx11/chr/_face/01_ie1/c01000010/c01000010.g4tx
-        assert_eq!(
-            uri,
-            "https://cdn.rosegriffon.fr/dx11/chr/_face/01_ie1/c01000010/c01000010.png"
-        );
+        assert_eq!(uri, "/tex/dx11/chr/_face/01_ie1/c01000010/c01000010.png");
     }
 
     #[test]
     fn face_texture_uri_c02026080() {
         let cfg = TextureUriConfig::default();
         let uri = face_texture_uri("c02026080", &cfg).unwrap();
-        assert_eq!(
-            uri,
-            "https://cdn.rosegriffon.fr/dx11/chr/_face/02_ie2/c02026080/c02026080.png"
-        );
+        assert_eq!(uri, "/tex/dx11/chr/_face/02_ie2/c02026080/c02026080.png");
     }
 
     #[test]
@@ -4269,7 +4115,7 @@ mod tests {
         let uri = face_texture_uri("c11803060", &cfg).unwrap();
         assert_eq!(
             uri,
-            "https://cdn.rosegriffon.fr/dx11/chr/_face/11_victory/c11803060/c11803060.png"
+            "/tex/dx11/chr/_face/11_victory/c11803060/c11803060.png"
         );
     }
 
@@ -4285,20 +4131,14 @@ mod tests {
         let cfg = TextureUriConfig::default();
         let uri = uniform_texture_uri("sk000901", &cfg);
         // Vérifié contre l'index : data/dx11/chr/_uniform/sk000901/sk000901_10.g4tx
-        assert_eq!(
-            uri,
-            "https://cdn.rosegriffon.fr/dx11/chr/_uniform/sk000901/sk000901_10.png"
-        );
+        assert_eq!(uri, "/tex/dx11/chr/_uniform/sk000901/sk000901_10.png");
     }
 
     #[test]
     fn uniform_texture_uri_u011001() {
         let cfg = TextureUriConfig::default();
         let uri = uniform_texture_uri("u011001", &cfg);
-        assert_eq!(
-            uri,
-            "https://cdn.rosegriffon.fr/dx11/chr/_uniform/u011001/u011001_10.png"
-        );
+        assert_eq!(uri, "/tex/dx11/chr/_uniform/u011001/u011001_10.png");
     }
 
     #[test]

@@ -33,7 +33,7 @@ fn main() {
     let cell_h = metrics.dims.cell_height as usize;
 
     // Rangée physique ASCII (y de base) — réglable par env YBASE.
-    let yb: usize = std::env::var("YBASE")
+    let yb: usize = std::env::var("NIE_EXAMPLE_YBASE")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(946);

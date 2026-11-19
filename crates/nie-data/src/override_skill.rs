@@ -126,7 +126,7 @@ fn field_pair(v: &Value, key: &str) -> [i64; 2] {
     }
 }
 
-/// Parse un `override_skill_config_*.cfg.bin` (forme iecode RDBN `{ "lists": [...] }`).
+/// Parse un `override_skill_config_*.cfg.bin` (forme étiquetée RDBN `{ "lists": [...] }`).
 ///
 /// Port 1:1 d'inagle `override-skill-config.ts` (`parseContent`) : remplit les trois listes
 /// puis résout les références `override → conditions → conditionSkills`, en préservant les

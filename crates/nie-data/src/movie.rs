@@ -4,7 +4,7 @@
 //!
 //! - Dump réel (VFS) : `data/common/gamedata/movie/movie_playing_config_1.02.28.cfg.bin`.
 //! - Format **RDBN à listes** (`{ "version", "lists": [ { "name", "typeName", "values" } ] }`),
-//!   décodé en forme iecode par `nie-model-serve::cfgbin_to_iecode_root` (cf. `read_values`).
+//!   décodé en forme étiquetée par `nie-model-serve::cfgbin_to_tagged_root` (cf. `read_values`).
 //! - **Aucun parseur inagle dédié `movie` n'existe** (grep néant). La référence de portage est
 //!   donc le parseur générique `inagle` (lit n'importe
 //!   quel gamedata : `name`/`values`/`types`). Les structures sont **dérivées 1:1 des noms de
@@ -92,7 +92,7 @@ pub struct MovieSubtitleMenuData {
 }
 
 impl MovieSubtitleMenuData {
-    /// Construit depuis un objet `values[]` (forme iecode). Les clés sont les noms de champs RDBN.
+    /// Construit depuis un objet `values[]` (forme étiquetée). Les clés sont les noms de champs RDBN.
     #[must_use]
     pub fn from_value(v: &Value) -> Self {
         Self {
@@ -127,7 +127,7 @@ pub struct MovieSongCaptionData {
 }
 
 impl MovieSongCaptionData {
-    /// Construit depuis un objet `values[]` (forme iecode).
+    /// Construit depuis un objet `values[]` (forme étiquetée).
     #[must_use]
     pub fn from_value(v: &Value) -> Self {
         Self {
@@ -185,7 +185,7 @@ pub struct MoviePlayingInfo {
 }
 
 impl MoviePlayingInfo {
-    /// Construit depuis un objet `values[]` (forme iecode).
+    /// Construit depuis un objet `values[]` (forme étiquetée).
     #[must_use]
     pub fn from_value(v: &Value) -> Self {
         Self {
@@ -268,7 +268,7 @@ impl MoviePlayingConfig {
 
 // ─── Parseur principal ───────────────────────────────────────────────────────────
 
-/// Parse une liste nommée de la forme iecode via `f` appliqué à chaque objet `values[]`.
+/// Parse une liste nommée de la forme étiquetée via `f` appliqué à chaque objet `values[]`.
 fn parse_list<T, F>(root: &Value, list_name: &str, f: F) -> Vec<T>
 where
     F: Fn(&Value) -> T,
@@ -278,7 +278,7 @@ where
         .unwrap_or_default()
 }
 
-/// Parse un `movie_playing_config_*.cfg.bin` complet (forme iecode `{ "lists": [...] }`).
+/// Parse un `movie_playing_config_*.cfg.bin` complet (forme étiquetée `{ "lists": [...] }`).
 ///
 /// Comptes réels (`movie_playing_config_1.02.28`) : 3 subtitle menus, 0 song captions,
 /// 219 playing infos.

@@ -66,7 +66,7 @@ impl HashId {
     ///
     /// Distinct de [`HashId::parse`], qui lit d'abord un décimal **signé** : `"1654568798"` y est
     /// un entier, ici ce serait un hex invalide (`5`, `4`, `6`… sont hex, mais `"nope"` non).
-    /// Parité avec `Level5Hash.TryParseHex` de IECODE.
+    /// Parité avec `Level5Hash.TryParseHex` du décodeur de référence.
     #[must_use]
     pub fn parse_hex(s: &str) -> Option<Self> {
         let t = s.trim();
@@ -87,7 +87,7 @@ impl HashId {
     }
 
     /// Sérialise en `XXXXXXXX` **sans** préfixe `0x` — parité avec le `ToString("X8")` de
-    /// `Level5Hash.ToHex` de IECODE, qui est le format des tables de hash Level-5.
+    /// `Level5Hash.ToHex` du décodeur de référence, qui est le format des tables de hash Level-5.
     #[must_use]
     pub fn to_hex_x8(self) -> String {
         alloc::format!("{:08X}", self.0)

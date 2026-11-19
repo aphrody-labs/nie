@@ -1,6 +1,6 @@
 # NIE / Inazuma Eleven format parsers
 
-This crate is the migrated Level-5 and Criware format-analysis library from `bun-os/crates/nie-formats`. It contains parsers, decoders, encoders, and bounded archive/VFS readers used for RE of IE assets: CPK/@UTF, cfg.bin/T2B, CRILAYLA, G4* model/texture/animation formats, NXTCH, NAVM, USM, and related structures.
+This crate is the Level-5 and Criware format-analysis library. It contains parsers, decoders, encoders, and bounded archive/VFS readers used for RE of IE assets: CPK/@UTF, cfg.bin/T2B, CRILAYLA, G4* model/texture/animation formats, NXTCH, NAVM, USM, and related structures.
 
 The UI-only `sprite_sheet` adapter and its dependency were excluded. No emulator, WASM binding, or WGPU renderer is part of this crate. The parser code itself remains portable Rust and keeps its `no_std`-oriented feature boundary where the upstream implementation provides one.
 

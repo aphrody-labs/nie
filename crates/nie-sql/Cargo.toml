@@ -7,8 +7,14 @@ license-file = "LICENSE.upstream"
 publish = false
 description = "Shared bounded read-only SQLite and PostgreSQL boundary for NIE hosts"
 
+[lib]
+crate-type = ["rlib", "staticlib", "cdylib"]
+
 [lints]
 workspace = true
+
+[features]
+crlib = []
 
 [dependencies]
 bytes = "1.12.1"
@@ -22,8 +28,8 @@ tokio-postgres = { version = "0.7", default-features = false, features = [
   "runtime",
   "with-serde_json-1",
 ] }
-tokio-postgres-rustls = { version = "0.14", default-features = false, features = ["ring", "native-certs"] }
-rustls = { version = "0.23.46", default-features = false, features = ["ring"] }
+tokio-postgres-rustls = { version = "0.14", default-features = false, features = ["native-certs"] }
+nie-tls = { workspace = true }
 
 [dev-dependencies]
 tempfile = { version = "3.27.0", default-features = false, features = [

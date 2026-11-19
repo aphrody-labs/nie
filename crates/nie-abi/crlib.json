@@ -1,0 +1,323 @@
+{
+  "crates": [
+    {
+      "package": "nie-abi",
+      "path": "crates/nie-abi",
+      "status": "excluded",
+      "reason": "build-time generator of the C ABI files; a tool, not a library to link"
+    },
+    {
+      "package": "nie-assets",
+      "path": "crates/nie-assets",
+      "id": "assets",
+      "status": "crlib"
+    },
+    {
+      "package": "nie-cfgsql",
+      "path": "crates/nie-cfgsql",
+      "id": "cfgsql",
+      "status": "crlib"
+    },
+    {
+      "package": "nie-cli",
+      "path": "crates/nie-cli",
+      "status": "excluded",
+      "reason": "CLI front end (`nie`, `nie-mcp`); its commands reach C consumers through the nie library (nie-ffi)"
+    },
+    {
+      "package": "nie-data",
+      "path": "crates/nie-data",
+      "status": "excluded",
+      "reason": "no_std data tables: a cdylib needs std, so C consumers reach them through nie-formats, nie-cfgsql and the nie library"
+    },
+    {
+      "package": "nie-deploy",
+      "path": "crates/nie-deploy",
+      "status": "excluded",
+      "reason": "service binary owned by the infra work; no library surface"
+    },
+    {
+      "package": "nie-edge",
+      "path": "crates/nie-edge",
+      "status": "excluded",
+      "reason": "edge service binary owned by the infra work; no library surface"
+    },
+    {
+      "package": "nie-explore",
+      "path": "crates/nie-explore",
+      "id": "explore",
+      "status": "crlib"
+    },
+    {
+      "package": "nie-ffi",
+      "path": "crates/nie-ffi",
+      "id": "ffi",
+      "status": "crlib",
+      "surface": "contract"
+    },
+    {
+      "package": "nie-formats",
+      "path": "crates/nie-formats",
+      "id": "formats",
+      "status": "crlib"
+    },
+    {
+      "package": "nie-gpu",
+      "path": "crates/nie-gpu",
+      "status": "excluded",
+      "reason": "wgpu device and pipeline types; GPU handles have no stable C representation"
+    },
+    {
+      "package": "nie-health",
+      "path": "crates/nie-health",
+      "status": "excluded",
+      "reason": "health probe service binary owned by the infra work"
+    },
+    {
+      "package": "nie-link",
+      "path": "crates/nie-link",
+      "status": "excluded",
+      "reason": "game link service owned by the infra work; no library surface"
+    },
+    {
+      "package": "nie-lua",
+      "path": "crates/nie-lua",
+      "status": "excluded",
+      "reason": "Lua runtime host being replaced by the native AOT port; no stable surface yet"
+    },
+    {
+      "package": "nie-model-serve",
+      "path": "crates/nie-model-serve",
+      "status": "excluded",
+      "reason": "HTTP asset service; consumers speak HTTP, not C"
+    },
+    {
+      "package": "nie-ocgen",
+      "path": "crates/nie-ocgen",
+      "id": "ocgen",
+      "status": "crlib"
+    },
+    {
+      "package": "nie-plugin",
+      "path": "crates/nie-plugin",
+      "status": "excluded",
+      "reason": "Rust trait contract (Plugin, Registry); a trait object has no C representation"
+    },
+    {
+      "package": "nie-render3d",
+      "path": "crates/nie-render3d",
+      "status": "excluded",
+      "reason": "CPU rasteriser and viewer front end; render targets are not C-representable"
+    },
+    {
+      "package": "nie-shell",
+      "path": "crates/nie-shell",
+      "status": "excluded",
+      "reason": "generator of contract/nie-app.json, JSON only"
+    },
+    {
+      "package": "nie-specs",
+      "path": "crates/nie-specs",
+      "status": "excluded",
+      "reason": "spec sync tool for docs/specs, a developer utility"
+    },
+    {
+      "package": "nie-sql",
+      "path": "crates/nie-sql",
+      "id": "sql",
+      "status": "crlib"
+    },
+    {
+      "package": "nie-wasm",
+      "path": "crates/nie-wasm",
+      "status": "excluded",
+      "reason": "wasm-bindgen browser bindings: the JavaScript surface is the crate's own ABI"
+    },
+    {
+      "package": "nie-wiki-vfs",
+      "path": "crates/nie-wiki-vfs",
+      "id": "wiki_vfs",
+      "status": "crlib"
+    },
+    {
+      "package": "nie-bevy",
+      "path": "plugins/bevy/nie-bevy",
+      "status": "excluded",
+      "reason": "Bevy ECS asset plugin; engine types have no C representation"
+    },
+    {
+      "package": "nie-camera",
+      "path": "plugins/exe/nie-camera",
+      "status": "excluded",
+      "reason": "Bevy camera plugin; engine types have no C representation"
+    },
+    {
+      "package": "nie-computer-use",
+      "path": "plugins/exe/nie-computer-use",
+      "status": "excluded",
+      "reason": "desktop automation and live process probing of the host; no portable C contract"
+    },
+    {
+      "package": "nie-forge",
+      "path": "plugins/exe/nie-forge",
+      "id": "forge",
+      "status": "crlib"
+    },
+    {
+      "package": "nie-index",
+      "path": "plugins/exe/nie-index",
+      "id": "index",
+      "status": "crlib"
+    },
+    {
+      "package": "nie-pe",
+      "path": "plugins/exe/nie-pe",
+      "id": "pe",
+      "status": "crlib"
+    },
+    {
+      "package": "nie-queue",
+      "path": "plugins/exe/nie-queue",
+      "status": "excluded",
+      "reason": "Redis frontier client; consumers use the Redis protocol"
+    },
+    {
+      "package": "nie-re",
+      "path": "plugins/exe/nie-re",
+      "id": "re",
+      "status": "crlib"
+    },
+    {
+      "package": "nie-re-core",
+      "path": "plugins/exe/nie-re-core",
+      "id": "re_core",
+      "status": "crlib"
+    },
+    {
+      "package": "nie-recomp",
+      "path": "plugins/exe/nie-recomp",
+      "status": "excluded",
+      "reason": "recompiler front end binary"
+    },
+    {
+      "package": "nie-seed",
+      "path": "plugins/exe/nie-seed",
+      "status": "excluded",
+      "reason": "knowledge-base ingestion tool for the index database"
+    },
+    {
+      "package": "nie-trace",
+      "path": "plugins/exe/nie-trace",
+      "status": "excluded",
+      "reason": "live modding and process memory tracing of the host; no portable C contract"
+    },
+    {
+      "package": "nie-win32",
+      "path": "plugins/exe/nie-win32",
+      "status": "excluded",
+      "reason": "platform shim of the Win32 runtime; consumed by Rust code only"
+    },
+    {
+      "package": "nie-launcher",
+      "path": "plugins/launcher/nie-launcher",
+      "id": "launcher",
+      "status": "crlib"
+    },
+    {
+      "package": "nie-viola",
+      "path": "plugins/launcher/nie-viola",
+      "id": "viola",
+      "status": "crlib"
+    },
+    {
+      "package": "nie-save",
+      "path": "plugins/save/nie-save",
+      "id": "save",
+      "status": "crlib"
+    },
+    {
+      "package": "nie-steam",
+      "path": "plugins/steam/nie-steam",
+      "id": "steam",
+      "status": "crlib"
+    },
+    {
+      "package": "nie-shell-desktop",
+      "path": "plugins/shell-desktop/nie-shell-desktop",
+      "status": "excluded",
+      "reason": "model of the desktop shell drawn by GPUI windows in gui/nie-shell; no portable C contract"
+    },
+    {
+      "package": "nie-app",
+      "path": "crates/nie-app",
+      "status": "excluded",
+      "reason": "the GPUI/wasm browser app, built for wasm32 and embedded in nie serve"
+    },
+    {
+      "package": "nie-bindgen",
+      "path": "crates/nie-bindgen",
+      "status": "excluded",
+      "reason": "binary or tool, no library surface"
+    },
+    {
+      "package": "nie-browser",
+      "path": "crates/nie-browser",
+      "status": "excluded",
+      "reason": "binary or tool, no library surface"
+    },
+    {
+      "package": "nie-comp",
+      "path": "crates/nie-comp",
+      "status": "excluded",
+      "reason": "Wayland session compositor, a binary"
+    },
+    {
+      "package": "nie-scaffold",
+      "path": "crates/nie-scaffold",
+      "status": "excluded",
+      "reason": "binary or tool, no library surface"
+    },
+    {
+      "package": "nie-ssh",
+      "path": "crates/nie-ssh",
+      "status": "excluded",
+      "reason": "SSH client library and CLI; its C surface is not defined yet"
+    },
+    {
+      "package": "nie-sshd",
+      "path": "crates/nie-sshd",
+      "status": "excluded",
+      "reason": "SSH server, a binary"
+    },
+    {
+      "package": "nie-syscalls",
+      "path": "crates/nie-syscalls",
+      "status": "excluded",
+      "reason": "strace workload runner, a tool"
+    },
+    {
+      "package": "nie-tls",
+      "path": "crates/nie-tls",
+      "status": "excluded",
+      "reason": "process-wide rustls provider install, consumed by Rust binaries only"
+    },
+    {
+      "package": "nie-tui",
+      "path": "plugins/tui/nie-tui",
+      "status": "excluded",
+      "reason": "terminal explorer, a binary front end"
+    },
+    {
+      "package": "hello",
+      "path": "apps/hello",
+      "status": "excluded",
+      "reason": "application scaffolded from the cli template, a binary"
+    },
+    {
+      "package": "nie-xtask",
+      "path": "xtask",
+      "status": "excluded",
+      "reason": "repository tasks behind the justfile (cargo xtask); a binary, no library surface"
+    }
+  ]
+}

@@ -71,11 +71,11 @@ impl RateLimiter {
     }
 }
 
-/// Chemin du cache de chunks par défaut (`~/.rosegriffon/cache/steam/chunks`).
+/// Chemin du cache de chunks par défaut (`~/.nie/cache/steam/chunks`).
 pub fn default_chunk_cache_dir() -> PathBuf {
     dirs_next::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join(".rosegriffon")
+        .join(".nie")
         .join("cache")
         .join("steam")
         .join("chunks")

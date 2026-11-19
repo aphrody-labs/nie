@@ -1,0 +1,12 @@
+[Unit]
+Description=nie host specs refresh (prd and fr1 over ssh, committed to aphrody-labs/nie)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Binary built on fr1: cargo build --release -p nie-specs, installed as ~/.local/bin/nie-specs.
+# GH_TOKEN comes from ~/.config/nie-specs.env (a token with contents:write on aphrody-labs/nie).
+EnvironmentFile=%h/.config/nie-specs.env
+ExecStart=%h/.local/bin/nie-specs hosts prd --local-as fr1 --root %h/.cache/nie-specs --publish aphrody-labs/nie@main
+WorkingDirectory=%h

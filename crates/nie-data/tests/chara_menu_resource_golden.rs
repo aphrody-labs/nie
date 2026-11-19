@@ -13,7 +13,7 @@ use nie_data::chara_menu_resource::{CharaResourcePaths, parse_chara_menu_resourc
 use nie_data::hash::HashId;
 use serde_json::{Value, json};
 
-/// Construit un noeud iecode `{name, variables, children}` depuis `(type, value)`.
+/// Construit un noeud étiquetée `{name, variables, children}` depuis `(type, value)`.
 fn node(name: &str, vars: &[(&str, &str)], children: Vec<Value>) -> Value {
     let variables: Vec<Value> = vars
         .iter()
@@ -111,7 +111,7 @@ const INFO_91: &[(&str, &str)] = &[
     ("Int", "0"),
 ];
 
-/// Reconstitue l'arbre iecode `{ entries: [...] }` du fichier (sous-ensemble représentatif).
+/// Reconstitue l'arbre étiquetée `{ entries: [...] }` du fichier (sous-ensemble représentatif).
 fn fixture() -> Value {
     let base = node(
         "CHARA_MENU_RESOURCE_BASE_PATH_LIST_BEG_0",

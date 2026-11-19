@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp &
-xvfb=$!
-trap 'kill "$xvfb" 2>/dev/null || true' EXIT TERM INT
-sleep 1
-DISPLAY=:99 openbox &
-wait -n

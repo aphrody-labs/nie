@@ -7,7 +7,7 @@
 //! - `disasm` : récupération des arêtes d'appel manquantes par désassemblage `iced-x86`
 //!   de `.text` (enrichit le call-graph au-delà du plafond de l'export Ghidra).
 //! - `propagate` : propagation de labels semi-supervisée sur le call-graph (auto-ML),
-//!   depuis les ancres du seed Ghidra/iecode vers les ~60 000 fonctions.
+//!   depuis les ancres du seed Ghidra/référence vers les ~60 000 fonctions.
 //! - `anchors` : ancrage des fonctions par leurs références de chaînes (table de règles
 //!   `motif→sous-système` appliquée avant la propagation).
 //! - `loop_db` : câblage DB → `PropagationGraph` → écriture des résultats.

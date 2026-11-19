@@ -3,7 +3,6 @@
 # Elle s'applique au jeu EN COURS. Les adresses changent à chaque lancement, donc tout est
 # exprimé en VALEURS à remplacer : un charaParamId, lui, ne bouge pas.
 #
-#   nie-mem live var/recettes/solaria.txt --game "<jeu>/nie.exe" --force
 #   nie-mem apply var/recettes/solaria.txt --force        (jeu déjà lancé)
 #
 # Sans --force, rien n'est écrit : le rapport dit ce qui aurait été touché.

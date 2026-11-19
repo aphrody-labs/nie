@@ -55,7 +55,7 @@ kernel in GRUB, and a promotion step that only trusts a kernel after a health ch
    `grub-mkconfig`. Entry ids are `gnulinux-<kernel>-advanced-<root uuid>`. Boot order of the test: `grub-set-default`
    stock, `grub-reboot` server kernel (proves the one-shot clears on this btrfs grubenv: `next_entry` was empty after
    boot), then `grub-reboot` the RC kernel.
-7. Promotion: `deploy/kernel/nie-kernel-promote.sh` (installed as `/usr/local/bin/nie-kernel-promote`, unit
+7. Promotion: `cargo xtask kernel promote` (installed as `/usr/local/bin/xtask`, unit
    `nie-kernel-promote.service`, required list in `/etc/kernel-promote/required`: the 12 services of the order plus the
    `/srv/nie/steam` mount). It derives the running entry from `/proc/cmdline`, and when it is not the saved default and
    the list is healthy it runs `grub-set-default`; unhealthy for 300 s, it reboots into the saved default.

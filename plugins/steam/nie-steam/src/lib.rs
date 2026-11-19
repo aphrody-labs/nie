@@ -39,6 +39,23 @@ pub use install::{
 };
 pub use vdf::{BinValue, VdfValue, parse_binary_vdf, parse_vdf, write_binary_vdf};
 
+/// Directory for the tooling state of Steam updates (the manifest cache, one `<app id>/manifests`
+/// folder per game). It lives outside the game directory, which holds game files only:
+/// `NIE_STEAM_STATE_DIR`, else `/var/lib/nie/steam` on Unix, else `%LOCALAPPDATA%\nie\steam`.
+#[must_use]
+pub fn state_dir() -> std::path::PathBuf {
+    if let Some(dir) = std::env::var_os("NIE_STEAM_STATE_DIR").filter(|v| !v.is_empty()) {
+        return dir.into();
+    }
+    if cfg!(unix) {
+        return "/var/lib/nie/steam".into();
+    }
+    std::env::var_os("LOCALAPPDATA")
+        .map_or_else(std::env::temp_dir, std::path::PathBuf::from)
+        .join("nie")
+        .join("steam")
+}
+
 /// Steam app ID of Inazuma Eleven: Victory Road (LEVEL5). `3593770` is a decoy (name collision).
 pub const IEVR_STEAM_APP_ID: u32 = 2_799_860;
 
@@ -100,3 +117,7 @@ impl nie_plugin::Plugin for SteamPlugin {
         }
     }
 }
+
+#[cfg(feature = "crlib")]
+#[allow(unsafe_code)]
+mod abi_generated;

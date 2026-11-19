@@ -1,0 +1,47 @@
+[package]
+name = "nie-tui"
+version = "2.0.0"
+edition = "2024"
+rust-version = "1.100"
+license-file = "LICENSE"
+publish = false
+description = "Terminal explorer of the game VFS (`nie fm`) and the GPU terminal that hosts it (`nie term`)"
+
+[lints]
+workspace = true
+
+[features]
+default = ["video", "model"]
+# H.264 frames of the USM films (OpenH264 built from source).
+video = ["nie-explore/fm-video"]
+# Turntable of G4MD models through the CPU rasteriser of nie-render3d.
+model = ["nie-explore/fm-model"]
+# `nie term`: the GPU terminal window (rio-window, sugarloaf on wgpu, a pty child) over the
+# `nie_explore::term` model. Opt-in: sugarloaf's build script needs glslc or glslangValidator on Linux.
+term = [
+  "nie-explore/term",
+  "dep:png",
+  "dep:rio-vt",
+  "dep:rio-window",
+  "dep:sugarloaf",
+]
+
+[dependencies]
+anyhow = { workspace = true, features = ["std"] }
+image = { workspace = true }
+nie-assets = { workspace = true }
+nie-explore = { workspace = true, features = ["fm"] }
+nie-formats = { workspace = true, features = ["std"] }
+nie-plugin = { workspace = true }
+png = { workspace = true, optional = true }
+ratatui = { workspace = true }
+ratatui-image = { workspace = true }
+rio-vt = { workspace = true, features = ["pty", "clipboard", "x11"], optional = true }
+rio-window = { workspace = true, optional = true }
+serde_json = { workspace = true }
+sugarloaf = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "sync", "time", "macros"] }
+
+[dev-dependencies]
+blake3 = { workspace = true }
+nie-explore = { workspace = true, features = ["fm", "fm-fixture"] }

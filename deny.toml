@@ -1,0 +1,16 @@
+# One TLS and SSH crypto stack for the whole graph: rustls on rustls-graviola, RustCrypto for ssh.
+# C and asm crypto crates stay out; `cargo deny check bans` fails CI when one returns.
+
+[graph]
+all-features = true
+
+[bans]
+multiple-versions = "allow"
+wildcards = "allow"
+deny = [
+  { crate = "aws-lc-sys", wrappers = ["aws-lc-rs"], reason = "C crypto; rustls-graviola is the provider" },
+  { crate = "aws-lc-rs", wrappers = ["russh"], reason = "russh 0.65.2 has no backend but ring or aws-lc-rs (compile_error); TLS stays on rustls-graviola. Drop when russh gains a RustCrypto backend" },
+  { crate = "ring", reason = "asm crypto; rustls-graviola is the provider" },
+  { crate = "openssl-sys", reason = "OpenSSL binding" },
+  { crate = "libssh2-sys", reason = "libssh2 binding; nie-ssh runs on russh" },
+]

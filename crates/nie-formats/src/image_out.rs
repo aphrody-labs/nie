@@ -6,7 +6,7 @@
 //! ## Le PNG ne passe pas par `image`
 //!
 //! Le PNG produit par [`crate::g4tx_decode::encode_rgba_to_png`] (crate `png`) est **byte-identique
-//! aux références publiées** sur `cdn.rosegriffon.fr` — c'est l'oracle de non-régression du
+//! aux références PNG publiées** par le service de textures — c'est l'oracle de non-régression du
 //! projet. Rien ne garantit qu'un autre encodeur choisisse les mêmes filtres ni le même niveau de
 //! compression, donc le PNG garde son chemin historique et `image` ne sert qu'aux autres formats.
 //! Le test `le_png_reste_sur_la_crate_png` verrouille cette règle.

@@ -1,6 +1,6 @@
 //! Lecteur de métadonnées de modèle G4MD (Level-5 « Graphics 4 Model Data »).
 //!
-//! Port Rust de `IECODE.Core/Formats/Level5/G4mdParser.cs` :
+//! Port Rust de `G4mdParser.cs` :
 //! - `G4mdHeader` (L38, offsets annotés) ;
 //! - `ParseSubmeshes` (L481, records 0x50 : champs +0x00/+0x04/+0x08/+0x0C/+0x2E/+0x32/+0x33) ;
 //! - table d'attributs vertex (`ReadVertexAttributes`, 8 octets/attribut) ;

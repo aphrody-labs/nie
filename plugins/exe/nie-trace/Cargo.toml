@@ -15,7 +15,6 @@ default = ["host"]
 host = ["dep:libc", "dep:windows-sys"]
 
 [dependencies]
-nie-steam = { workspace = true }
 thiserror = { workspace = true, features = ["std"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]

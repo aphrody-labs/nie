@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nie</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <h1>nie</h1>
+  <p id="caps" role="status" aria-label="Browser capabilities"></p>
+  <nav id="tabs" aria-label="Views" hidden>
+    <button type="button" data-view="explorer" aria-pressed="true">Explorer</button>
+    <button type="button" data-view="wiki" aria-pressed="false">Wiki</button>
+    <button type="button" data-view="viewer" aria-pressed="false">Model</button>
+  </nav>
+</header>
+<main id="main">
+  <section id="mount" aria-labelledby="mount-title">
+    <h2 id="mount-title">Open the game</h2>
+    <p>The page reads your installation in place: nothing is uploaded and nothing is copied.</p>
+    <div class="row">
+      <button type="button" id="pick-dir">Open the game folder</button>
+      <button type="button" id="reopen" hidden></button>
+    </div>
+    <form id="server" class="row" autocomplete="off">
+      <label for="server-url">Server</label>
+      <input id="server-url" type="url" inputmode="url" placeholder="this server">
+      <label for="server-token">Token</label>
+      <input id="server-token" type="password" autocomplete="off" placeholder="NIE_RAW_VFS_TOKEN">
+      <button type="submit">Connect</button>
+    </form>
+    <p id="mount-error" role="alert" class="error" hidden></p>
+  </section>
+
+  <section id="explorer" aria-labelledby="explorer-title" hidden>
+    <h2 id="explorer-title">Explorer</h2>
+    <p id="summary"></p>
+    <form id="search" class="row" role="search">
+      <label for="search-q">Find a path</label>
+      <input id="search-q" type="search" placeholder="menu, .g4tx, text/fr">
+      <button type="submit">Find</button>
+    </form>
+    <nav id="crumbs" aria-label="Folder"></nav>
+    <div class="table-wrap">
+      <table id="listing">
+        <caption class="sr">Folder contents</caption>
+        <thead><tr><th scope="col">Name</th><th scope="col" class="num">Bytes</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <button type="button" id="more" hidden>Show more</button>
+    <article id="detail" aria-live="polite" hidden>
+      <h3 id="detail-title"></h3>
+      <p id="detail-meta"></p>
+      <img id="detail-image" alt="" hidden>
+      <pre id="detail-text" tabindex="0"></pre>
+      <button type="button" id="open-model" hidden>View the model</button>
+    </article>
+  </section>
+
+  <section id="wiki" aria-labelledby="wiki-title" hidden>
+    <h2 id="wiki-title">Wiki</h2>
+    <p>Pages computed in this tab from the tables of the installation.</p>
+    <iframe id="wiki-frame" title="Wiki page" sandbox="allow-same-origin"></iframe>
+  </section>
+
+  <section id="viewer" aria-labelledby="viewer-title" hidden>
+    <h2 id="viewer-title">Model</h2>
+    <p id="viewer-status" role="status">Pick a .g4md file in the explorer, then choose View the model.</p>
+    <canvas id="canvas" width="800" height="600" tabindex="0" aria-label="Model viewer: drag to turn, wheel to zoom"></canvas>
+  </section>
+</main>
+<div id="live" class="sr" aria-live="polite"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

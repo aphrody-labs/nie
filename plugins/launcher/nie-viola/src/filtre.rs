@@ -11,7 +11,7 @@
 //! | `*`, `?` | ne traversent **pas** les `/` |
 //!
 //! Le matching est **ancré** (`^…$`) et insensible à la casse, et les `\` sont normalisés en `/`.
-//! Ces règles ne sont pas un choix : ce sont celles de `DumpService.GlobToRegex` côté IECODE, et
+//! Ces règles ne sont pas un choix : ce sont celles de `DumpService.GlobToRegex` côté de référence, et
 //! les presets ont été écrits pour elles. En dévier ferait matcher 0 fichier — le piège que
 //! `DumpPresets` documente en tête : *tous les globs doivent inclure le préfixe `data/`*.
 //!

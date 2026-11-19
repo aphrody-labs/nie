@@ -40,6 +40,7 @@ http_client = { path = "../vendor/zed/crates/http_client" }
 nie-data = { path = "../crates/nie-data", version = "2.0.0", default-features = false }
 nie-formats = { path = "../crates/nie-formats", version = "2.0.0", default-features = false }
 nie-explore = { path = "../crates/nie-explore", version = "2.0.0", default-features = false }
+nie-lua = { path = "../crates/nie-lua", version = "2.0.0", features = ["vm"] }
 nie-wiki-vfs = { path = "../crates/nie-wiki-vfs", version = "2.0.0" }
 nie-ui = { path = "nie-ui", version = "2.0.0" }
 nie-shell-desktop = { path = "../plugins/shell-desktop/nie-shell-desktop", version = "2.0.0" }

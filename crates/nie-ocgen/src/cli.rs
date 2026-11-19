@@ -37,10 +37,10 @@ pub enum OcgenCmd {
         #[arg(long, default_value = "data")]
         data: PathBuf,
     },
-    /// Encodes iecode `*.cfg.bin.json` documents into real `cfg.bin` T2B files.
+    /// Encodes tagged `*.cfg.bin.json` documents into real `cfg.bin` T2B files.
     ///
     /// Nothing is written until the bytes have been read back and compared to the source, node for
-    /// node. Works on any T2B iecode document, not only on a generated character: an OC's dialogue
+    /// node. Works on any étiquetée T2B document, not only on a generated character: an OC's dialogue
     /// event is the same kind of file.
     Encode {
         /// Files or directories to encode; a directory is walked for `*.cfg.bin.json`.
@@ -152,7 +152,7 @@ struct Source {
 /// The relative path is kept, and that is not cosmetic: an OC's dialogue carries the same file
 /// name under `fr/` and `en/`, so flattening the tree into one output directory makes the second
 /// locale silently overwrite the first. It did, once.
-fn collect_iecode(root: &Path, path: &Path, out: &mut Vec<Source>) -> Result<(), Error> {
+fn collect_tagged(root: &Path, path: &Path, out: &mut Vec<Source>) -> Result<(), Error> {
     if path.is_file() {
         let relative = path.strip_prefix(root).map_or_else(
             |_| PathBuf::from(path.file_name().unwrap_or_default()),
@@ -177,18 +177,18 @@ fn collect_iecode(root: &Path, path: &Path, out: &mut Vec<Source>) -> Result<(),
         .collect();
     entries.sort();
     for entry in entries {
-        let is_iecode = entry
+        let is_tagged = entry
             .file_name()
             .and_then(|name| name.to_str())
             .is_some_and(|name| name.ends_with(".cfg.bin.json"));
-        if entry.is_dir() || is_iecode {
-            collect_iecode(root, &entry, out)?;
+        if entry.is_dir() || is_tagged {
+            collect_tagged(root, &entry, out)?;
         }
     }
     Ok(())
 }
 
-/// Encodes one iecode document, refusing to write anything it cannot read back unchanged.
+/// Encodes one tagged document, refusing to write anything it cannot read back unchanged.
 fn encode_one(source: &Source, out_dir: Option<&Path>) -> Result<(PathBuf, usize), Error> {
     let path = source.path.as_path();
     encode_to(path, target_path(source, out_dir)?)
@@ -215,9 +215,9 @@ fn encode_to(source: &Path, target: PathBuf) -> Result<(PathBuf, usize), Error> 
     let document: serde_json::Value = serde_json::from_slice(&raw)
         .map_err(|error| Error::Format(format!("{} : {error}", source.display())))?;
 
-    let bytes = nie_formats::cfgbin::encode_iecode_t2b(&document)
+    let bytes = nie_formats::cfgbin::encode_tagged_t2b(&document)
         .map_err(|error| Error::Format(format!("{} : {error}", source.display())))?;
-    let relu = nie_formats::cfgbin::t2b_to_iecode_json(&bytes).ok_or_else(|| {
+    let relu = nie_formats::cfgbin::t2b_to_tagged_json(&bytes).ok_or_else(|| {
         Error::Format(format!(
             "{} : le T2B produit ne se relit pas",
             source.display()
@@ -343,7 +343,7 @@ pub fn run(op: &OcgenCmd) -> Result<(), Error> {
         OcgenCmd::Encode { paths, out } => {
             let mut sources = Vec::new();
             for path in paths {
-                collect_iecode(path, path, &mut sources)?;
+                collect_tagged(path, path, &mut sources)?;
             }
             // Two sources landing on one target would silently lose one of them.
             let mut targets: std::collections::BTreeMap<PathBuf, &Path> =

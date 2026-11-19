@@ -1,0 +1,24 @@
+[Unit]
+Description=nie-link cache tier: read-through page cache in front of the origin
+Documentation=https://github.com/aphrody-labs/nie/blob/main/docs/link.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# NIE_LINK_BIND, NIE_LINK_UPSTREAM and NIE_LINK_BUDGET_GIB come from this file.
+EnvironmentFile=/etc/nie/link-cache.env
+LoadCredential=token:/etc/nie/link.token
+DynamicUser=true
+CacheDirectory=nie-link
+ExecStart=/usr/local/bin/nie-link serve cache --token-file %d/token
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

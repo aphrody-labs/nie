@@ -358,7 +358,7 @@ pub async fn download_app_turbo(
         anyhow::bail!("no downloadable depots with valid keys/manifests");
     }
 
-    let manifest_cache_dir = Arc::new(opts.install_dir.join(".nie-steam-cache").join("manifests"));
+    let manifest_cache_dir = Arc::new(nie_steam::state_dir().join(opts.app_id.to_string()).join("manifests"));
     let _ = std::fs::create_dir_all(manifest_cache_dir.as_ref());
     let chunk_sem = Arc::new(Semaphore::new(opts.max_downloads.max(16)));
     let depot_sem = Arc::new(Semaphore::new(opts.transfer.max_depot_parallel.max(2)));

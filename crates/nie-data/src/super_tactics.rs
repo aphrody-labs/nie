@@ -8,7 +8,7 @@
 //! - Dump réel : `data/common/gamedata/skill/super_tactics_config_0.08.86.cfg.bin`
 //!   (extrait du VFS Steam : `INAZUMA ELEVEN Victory Road/data`).
 //! - Format **T2B `entries`** (noeuds nommés à variables positionnelles, suffixées `_<i>`
-//!   par occurrence — même convention iecode que `boost_grp.rs` / `command.rs`).
+//!   par occurrence — même convention étiquetée que `boost_grp.rs` / `command.rs`).
 //! - Port 1:1 de `inagle` (`parseEntries`),
 //!   enrichi : inagle agrège `SUPER_TACTICS_INFO_*` et `SUPER_TACTICS_INFO_REF_EFFECT_*`
 //!   dans une même liste générique `tactics` (var0..varN) ; on les sépare proprement en
@@ -223,7 +223,7 @@ impl SuperTacticsConfig {
 
 // ─── Parseur principal ─────────────────────────────────────────────────────────
 
-/// Parse un `super_tactics_config_*.cfg.bin.json` complet (forme iecode `entries`).
+/// Parse un `super_tactics_config_*.cfg.bin.json` complet (forme étiquetée `entries`).
 ///
 /// Comptes réels (`super_tactics_config_0.08.86`) : 11 effets, 6 infos, 6 ref_effects,
 /// 6 sort_index. Les noeuds `*_LIST_BEG_*` ne servent que de conteneurs et ne sont pas

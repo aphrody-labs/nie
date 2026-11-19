@@ -10,7 +10,7 @@
 //! `modelRefCrc` rendu en hex non signe via `toHex`.
 //!
 //! Les valeurs ci-dessous sont les **5 premiers enfants contigus** (index 0..4) du vrai
-//! fichier, extraits via `nie-formats` (CfgBin T2B) puis les conventions de nommage iecode
+//! fichier, extraits via `nie-formats` (CfgBin T2B) puis les conventions de nommage tagged
 //! (`<base>_<i>`). Verite terrain = la sortie d'inagle sur le meme fichier.
 
 use nie_data::chara_costume::{CharaCostume, parse_all_chara_costumes};
@@ -27,9 +27,9 @@ const RAW: [[i64; 4]; 5] = [
     [0, -972583323, 0, 0], // 0xC6078E65 (modelRef signe -> non signe via toHex)
 ];
 
-/// Construit un noeud iecode `entries` : la liste MODEL (avec les 5 enfants reels) plus
+/// Construit un noeud étiquetée `entries` : la liste MODEL (avec les 5 enfants reels) plus
 /// les deux listes freres DATA/INFO **vides** (pour prouver qu'elles sont ignorees, sans
-/// inventer de donnees). Noms suffixes `_<i>` comme le rendu iecode.
+/// inventer de donnees). Noms suffixes `_<i>` comme le rendu étiquetée.
 fn node_fixture() -> serde_json::Value {
     let children: Vec<_> = RAW
         .iter()

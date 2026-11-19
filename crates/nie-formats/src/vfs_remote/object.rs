@@ -19,8 +19,11 @@ fn io(error: opendal::Error) -> String {
 
 impl Object {
     pub fn open(spec: &ObjectSpec) -> Result<Self> {
-        // The HTTP transport of every service; installing it twice is harmless.
+        // The HTTP transport of every service, reqwest on the nie rustls provider (the `opendal`
+        // facade installs its own only with the aws-lc feature); installing it twice is harmless.
+        nie_tls::install();
         opendal::install_default();
+        opendal_http_transport_reqwest::install_default();
         let op = match &spec.service {
             Service::S3 {
                 bucket,

@@ -56,7 +56,7 @@ pub fn parse_ctrl_chara_node(node: &Node<'_>) -> Option<CtrlCharaData> {
 
 /// Parse tous les personnages contrôlables d'un `ctrl_chara_config_*.cfg.bin.json` désérialisé.
 ///
-/// Port de `parseEntries` : noeuds `CTRL_CHR_DATA_*` (forme iecode suffixée `_<i>`), hors
+/// Port de `parseEntries` : noeuds `CTRL_CHR_DATA_*` (forme étiquetée suffixée `_<i>`), hors
 /// `*LIST*`/`*BEG*`.
 #[must_use]
 pub fn parse_all_ctrl_chara(root: &Value) -> Vec<CtrlCharaData> {

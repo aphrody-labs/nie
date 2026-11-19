@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 User=ubuntu
-Environment=NIE_KERNEL_BIN=/usr/local/bin/nie-kernel
-ExecStart=/opt/nie-kernel/nie-kernel-cycle.sh
+Environment=NIE_KERNEL_DIR=/opt/nie-kernel
+ExecStart=/usr/local/bin/xtask kernel cycle
 TimeoutStartSec=6h
 Nice=10

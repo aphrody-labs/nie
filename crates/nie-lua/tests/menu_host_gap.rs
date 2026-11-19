@@ -131,7 +131,7 @@ fn collecter(dossier: &Path, dans: &mut Vec<PathBuf>) {
 fn calques(racine: &Path, ecran: &str) -> Option<Vec<u32>> {
     let chemin = racine.join(format!("common/gamedata/menu/cfg/{ecran}_setting.cfg.bin"));
     let octets = std::fs::read(chemin).ok()?;
-    let root = nie_formats::cfgbin::to_iecode_json(&octets)?;
+    let root = nie_formats::cfgbin::to_tagged_json(&octets)?;
     let setting = nie_data::menu_setting::parse(&root);
     Some(
         setting

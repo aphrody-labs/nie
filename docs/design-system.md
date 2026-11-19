@@ -9,7 +9,7 @@ any agent using the Figma MCP on this repository.
 
 | token family | VFS source | decoder | served at |
 |---|---|---|---|
-| text colours (70 named entries, text + ruby RGB) | `data/common/font/font_color.cfg.bin` (`FONT_COLOR`) | `nie_formats::cfgbin::to_iecode_json` + `nie_data::font_color::parse_font_colors` (the menu compositor reads the same file with `nie_formats::menu_layout::parse_font_palette`) | `GET /ui/theme.json` (nie-model-serve) |
+| text colours (70 named entries, text + ruby RGB) | `data/common/font/font_color.cfg.bin` (`FONT_COLOR`) | `nie_formats::cfgbin::to_tagged_json` + `nie_data::font_color::parse_font_colors` (the menu compositor reads the same file with `nie_formats::menu_layout::parse_font_palette`) | `GET /ui/theme.json` (nie-model-serve) |
 | glyph metrics | `data/common/font/font/font_def/font.cfg.bin` | `nie_formats::cfgbin::parse_t2b` + `nie_formats::font::parse_metrics` | `GET /ui/font-metrics.json` |
 | font atlases | `data/dx11/font/font_def/font.g4tx`, `font_ja*`, `font_zh_hans*`, `font_zh_hant*`, per-language `data/dx11/font/<lang>/` | `nie_formats::g4tx` | `GET /tex/dx11/font/...png` |
 | button glyphs (gaiji) per platform | `data/dx11/font/gaiji_{game,key,xinput,multi,nx,ps4,ps5,xbox,SteamDeck}.g4tx`, `gaiji_hlp_*` | `nie_formats::g4tx` | `GET /tex/dx11/font/gaiji_*.png` |
@@ -18,8 +18,7 @@ any agent using the Figma MCP on this repository.
 Rules:
 - A token name is the game's own identifier (the `FONT_COLOR` entry, the font file stem). Never
   rename to a generic scale (`primary`, `gray-500`).
-- Token values are read from the VFS at export time. The hand-made Rose Griffon brand sets
-  (`design/tokens.json`, `design/rg-m3.json`) are removed and were never a source for nie.
+- Token values are read from the VFS at export time. No hand-made brand token set is a source for nie.
 
 ## 2. Components: menu screens
 
@@ -54,8 +53,8 @@ Code:
 ## 3. Frameworks
 
 - Decoding and export: Rust (`nie-formats`, `nie-data`, `nie-explore`), no UI framework.
-- Rendering: Bevy (game world, `nie-bevy`) and NSH for tools, see `docs/adr-ui-stack.md`.
-- Serving: `nie serve` and `nie-model-serve` (`docs/serve.md`), images on ghcr.
+- Rendering: Bevy (game world, `nie-bevy`), see `docs/adr-ui-stack.md`.
+- Serving: `nie serve` and `nie-model-serve` (`docs/serve.md`), run by `nie-deploy supervise`.
 - The generic UI tree crate (`nie-ui-tree`) and its consumers are deleted; no crate here renders a
   UI that is not the game's.
 
@@ -66,7 +65,7 @@ Code:
   request.
 - Textures: `GET /tex/<vfs path>.png` (largest texture of a G4TX) and
   `GET /tex/<container>.g4tx/<name>.png` (a named texture); metadata `GET /tex-info/<path>.g4tx`.
-- CDN: `cdn.rosegriffon.fr/dx11/**` is served by nie-model-serve `/tex/dx11/**`.
+- CDN: `/dx11/**` on the public origin is served by nie-model-serve `/tex/dx11/**`.
 - Figma import: upload the PNG decoded from `/tex`, keep the VFS path as the layer description.
 
 ## 5. Icons

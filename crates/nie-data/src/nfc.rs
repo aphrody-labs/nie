@@ -5,7 +5,7 @@
 //! - Parser TS de référence : `inagle`
 //!   (`parseEntries` l.55-103, `buildNfcLotteryDatabase` l.116-124).
 //! - Dump réel : `data/common/gamedata/nfc/nfc_lottery_config.cfg.bin` (T2B, 85568 octets),
-//!   extrait du VFS Steam via `nie-formats` (`cfgbin_to_t2b_iecode_root`).
+//!   extrait du VFS Steam via `nie-formats` (`cfgbin_to_t2b_tagged_root`).
 //!
 //! ## Structure (format `entries`, arbre à imbrication régulière 4 niveaux)
 //!
@@ -127,7 +127,7 @@ pub struct NfcLotteryConfig {
 }
 
 impl NfcLotteryConfig {
-    /// Parse un `nfc_lottery_config.cfg.bin.json` désérialisé (forme iecode `entries`).
+    /// Parse un `nfc_lottery_config.cfg.bin.json` désérialisé (forme étiquetée `entries`).
     #[must_use]
     pub fn from_root(root: &Value) -> Self {
         Self {

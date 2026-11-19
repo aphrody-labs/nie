@@ -1,0 +1,73 @@
+# Default keymap of `nie fm`, in the notation and the section layout of yazi's keymap.toml.
+# A user file (`$XDG_CONFIG_HOME/nie/fm-keymap.toml`, or `NIE_FM_KEYMAP`) is merged on top: a
+# binding with the same keys replaces the default one.
+
+[mgr]
+keymap = [
+  # Navigation: the three columns are parent, current and preview.
+  { on = "q", run = "quit", desc = "Quit" },
+  { on = "<C-c>", run = "quit", desc = "Quit" },
+  { on = "<Esc>", run = "escape", desc = "Clear the search or filter" },
+  { on = "k", run = "arrow -1", desc = "Move up" },
+  { on = "j", run = "arrow 1", desc = "Move down" },
+  { on = "<Up>", run = "arrow -1", desc = "Move up" },
+  { on = "<Down>", run = "arrow 1", desc = "Move down" },
+  { on = "<C-u>", run = "arrow -50%", desc = "Half a page up" },
+  { on = "<C-d>", run = "arrow 50%", desc = "Half a page down" },
+  { on = "<C-b>", run = "arrow -100%", desc = "A page up" },
+  { on = "<C-f>", run = "arrow 100%", desc = "A page down" },
+  { on = "<PageUp>", run = "arrow -100%", desc = "A page up" },
+  { on = "<PageDown>", run = "arrow 100%", desc = "A page down" },
+  { on = "<Home>", run = "arrow top", desc = "First entry" },
+  { on = "<End>", run = "arrow bot", desc = "Last entry" },
+  { on = ["g", "g"], run = "arrow top", desc = "First entry" },
+  { on = "G", run = "arrow bot", desc = "Last entry" },
+  { on = "h", run = "leave", desc = "Go to the parent directory" },
+  { on = "<Left>", run = "leave", desc = "Go to the parent directory" },
+  { on = "<Backspace>", run = "leave", desc = "Go to the parent directory" },
+  { on = "l", run = "enter", desc = "Enter the directory" },
+  { on = "<Right>", run = "enter", desc = "Enter the directory" },
+  { on = "<Enter>", run = "enter", desc = "Enter the directory" },
+  { on = ["g", "h"], run = "cd", desc = "Go to the root" },
+
+  # Selection.
+  { on = "<Space>", run = ["toggle", "arrow 1"], desc = "Mark the entry and move down" },
+  { on = "<C-a>", run = "toggle_all", desc = "Mark every entry" },
+  { on = "v", run = "toggle_all", desc = "Mark every entry" },
+
+  # Search and filter.
+  { on = "/", run = "search", desc = "Fuzzy search every path" },
+  { on = "f", run = "filter", desc = "Filter the directory with globs" },
+  { on = "r", run = "reveal", desc = "Reveal the entry in its directory" },
+
+  # Grouping and sorting.
+  { on = "<Tab>", run = "mode", desc = "Group by path or by CPK archive" },
+  { on = [",", "n"], run = "sort name", desc = "Sort by name" },
+  { on = [",", "s"], run = "sort size", desc = "Sort by size" },
+  { on = [",", "e"], run = "sort ext", desc = "Sort by extension" },
+  { on = [",", "r"], run = "sort reverse", desc = "Reverse the order" },
+
+  # Preview.
+  { on = "J", run = "preview 5", desc = "Scroll the preview down" },
+  { on = "K", run = "preview -5", desc = "Scroll the preview up" },
+  { on = "]", run = "frame 1", desc = "Next frame or sprite" },
+  { on = "[", run = "frame -1", desc = "Previous frame or sprite" },
+  { on = "}", run = "item 1", desc = "Next texture, record or language" },
+  { on = "{", run = "item -1", desc = "Previous texture, record or language" },
+  { on = "p", run = "play", desc = "Play or pause the animation" },
+  { on = "x", run = "hex", desc = "Hex view of the file" },
+  { on = "?", run = "help", desc = "Show the keys" },
+]
+
+[input]
+keymap = [
+  { on = "<Esc>", run = "cancel", desc = "Cancel" },
+  { on = "<C-c>", run = "cancel", desc = "Cancel" },
+  { on = "<Enter>", run = "commit", desc = "Accept" },
+  { on = "<Backspace>", run = "backspace", desc = "Delete the previous character" },
+  { on = "<C-u>", run = "clear", desc = "Clear the line" },
+  { on = "<Up>", run = "arrow -1", desc = "Previous match" },
+  { on = "<Down>", run = "arrow 1", desc = "Next match" },
+  { on = "<C-p>", run = "arrow -1", desc = "Previous match" },
+  { on = "<C-n>", run = "arrow 1", desc = "Next match" },
+]

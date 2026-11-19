@@ -1,7 +1,7 @@
 #![allow(clippy::pedantic)]
 //! Tests golden `inacode` — valeurs RÉELLES des 10 listes RDBN, tirées de :
 //! `data/common/gamedata/inacode/inacode_config_1.01.57.00.cfg.bin` (VFS Steam),
-//! décodé RDBN par `nie-formats` (`cfgbin::read_values`) en forme iecode
+//! décodé RDBN par `nie-formats` (`cfgbin::read_values`) en forme étiquetée
 //! `{ lists: [ { name, typeName, values } ] }`.
 //!
 //! Port 1:1 d'inagle `inagle` (switch `list.name`),
@@ -13,7 +13,7 @@ use nie_data::hash::HashId;
 use nie_data::inacode::{InacodeRange, parse_inacode_config};
 use serde_json::{Value, json};
 
-/// Fixture = vrais noeuds du dump, forme iecode `{lists:[{name,typeName,values}]}`.
+/// Fixture = vrais noeuds du dump, forme étiquetée `{lists:[{name,typeName,values}]}`.
 fn fixture() -> Value {
     json!({
         "version": 100,

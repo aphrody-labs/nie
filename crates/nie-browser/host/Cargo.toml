@@ -1,0 +1,17 @@
+[package]
+name = "nie-browser-host"
+version = "2.0.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+description = "Native host of the kitesurf engine (vendor/kitesurf): shot renders HTML to PNG, diff compares two PNGs. Standalone workspace and lock so the main graph never resolves the engine."
+
+[workspace]
+
+[dependencies]
+anyhow = "1"
+kitesurf-core = { path = "../../../vendor/kitesurf/packages/core", default-features = false, features = ["blitz", "native-host"] }
+png = "0.18"
+
+[dev-dependencies]
+tempfile = "3"

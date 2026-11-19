@@ -67,6 +67,14 @@ impl<'a> DeviceRequest<'a> {
     }
 }
 
+/// The GPU timer-query feature of `adapter`: [`wgpu::Features::TIMESTAMP_QUERY`] when it offers
+/// it, empty otherwise. Pass the result to [`DeviceRequest::with_features`], so a renderer can
+/// report GPU pass times without ever requesting a feature the adapter lacks.
+#[must_use]
+pub fn timestamp_features(adapter: &wgpu::Adapter) -> wgpu::Features {
+    adapter.features() & wgpu::Features::TIMESTAMP_QUERY
+}
+
 /// A logical device and its queue, created through the shared request policy.
 pub struct GpuDevice {
     pub device: wgpu::Device,

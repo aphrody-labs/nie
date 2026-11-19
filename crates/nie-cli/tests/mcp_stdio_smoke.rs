@@ -31,7 +31,6 @@ fn text_content(response: &serde_json::Value) -> &str {
 #[test]
 fn initialize_list_and_call_stay_on_clean_stdio() {
     let mut child = Command::new(env!("CARGO_BIN_EXE_nie-mcp"))
-        .env("NIE_GAME_EXE", "missing-native-smoke-game.exe")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -86,13 +85,12 @@ fn initialize_list_and_call_stay_on_clean_stdio() {
     );
     assert_eq!(
         tools.len() - generes,
-        16,
+        15,
         "explicit tools from `compatibility_router`"
     );
     assert!(tools.iter().any(|tool| tool["name"] == "cli_info"));
     assert!(tools.iter().any(|tool| tool["name"] == "cli_vfs"));
     for compatibility_name in [
-        "rg_api_health",
         "vfs_list",
         "vfs_search",
         "vfs_stat",
@@ -107,7 +105,6 @@ fn initialize_list_and_call_stay_on_clean_stdio() {
         "explorer_open",
         "explorer_tab",
         "explorer_toast",
-        "game_launch",
     ] {
         assert!(
             tools.iter().any(|tool| tool["name"] == compatibility_name),
@@ -166,25 +163,6 @@ fn initialize_list_and_call_stay_on_clean_stdio() {
         bridge["url"]
             .as_str()
             .is_some_and(|url| url.ends_with("/bridge"))
-    );
-
-    request(
-        &mut stdin,
-        serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": 6,
-            "method": "tools/call",
-            "params": { "name": "game_launch", "arguments": { "args": [] } }
-        }),
-    );
-    let launch = response_for(&mut reader, 6);
-    assert_eq!(launch["result"]["isError"], true);
-    let launch: serde_json::Value =
-        serde_json::from_str(text_content(&launch)).expect("game_launch error JSON");
-    assert!(
-        launch["error"]
-            .as_str()
-            .is_some_and(|error| error.contains("not found"))
     );
 
     request(

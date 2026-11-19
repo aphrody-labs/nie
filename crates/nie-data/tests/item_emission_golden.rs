@@ -2,7 +2,7 @@
 //! Tests golden `item_emission` — noeud réel des deux listes jointes tiré de :
 //! `data/common/gamedata/item/item_emission_rarity_table_config_0.00.00.cfg.bin`
 //! (RDBN `lists`, 746 octets, le plus petit cfg.bin du jeu ; extrait du VFS via
-//! `cfgbin_to_iecode_root`, identique au dump iecode/inagle).
+//! `cfgbin_to_tagged_root`, identique au dump étiquetée).
 //!
 //! Port 1:1 d'inagle `inagle` `loadItemEmissionRates`
 //! (l.85-116) : jointure `m_itemEmissionRarityTableConfigList.tableInfo` `[offset, count]`
@@ -16,7 +16,7 @@ use nie_data::item_emission::{
 };
 use serde_json::json;
 
-/// Noeud réel `item_emission_rarity_table_config_0.00.00.cfg.bin` (forme iecode `lists`).
+/// Noeud réel `item_emission_rarity_table_config_0.00.00.cfg.bin` (forme étiquetée `lists`).
 /// Valeurs copiées octet pour octet du dump VFS.
 fn node_fixture() -> serde_json::Value {
     json!({

@@ -3,7 +3,7 @@
 // Criterion throughput benchmarks for the reverse-engineering triage pillar
 // (PLAN.md R5 / R5.x). They quantify the headline metric:
 //
-//   "bunre triage p50 on a 5 MiB PE < 1 s"
+//   "nie-re-core triage p50 on a 5 MiB PE < 1 s"
 //
 // which was previously UNMEASURED. The benches exercise the real public API
 // of `nie-re-core`:

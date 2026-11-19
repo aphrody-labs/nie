@@ -1,0 +1,16 @@
+[package]
+name = "nie-tls"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+description = "The one rustls crypto provider of the nie graph: rustls-graviola (Rust and assembly, no C), installed once per process."
+
+[lints]
+workspace = true
+
+[dependencies]
+rustls = { workspace = true }
+rustls-graviola = { workspace = true }

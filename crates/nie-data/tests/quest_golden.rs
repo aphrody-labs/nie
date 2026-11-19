@@ -27,7 +27,7 @@ fn quest_node(name: &str, vars: &[(&str, &str)]) -> Value {
     json!({ "name": name, "variables": variables, "children": [] })
 }
 
-/// Reconstruit la racine iecode : `entries → QUEST_DATA_CFG_LIST_BEG_0 → enfants`.
+/// Reconstruit la racine étiquetée : `entries → QUEST_DATA_CFG_LIST_BEG_0 → enfants`.
 fn root_fixture() -> Value {
     // 6 quêtes réelles (full 20 vars).
     let q0 = quest_node(

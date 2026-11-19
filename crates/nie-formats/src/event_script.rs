@@ -800,8 +800,8 @@ mod tests {
         let cfg = cfgbin_parse(&bytes).expect("cfgbin_parse réussi sur binaire OC");
         assert_eq!(cfg.format, Format::T2b);
         assert_eq!(cfg.entries.len(), 1);
-        // Le suffixe d'index `_<i>` est ajouté par la sérialisation iecode/JSON
-        // (`t2b_siblings_to_iecode_json`) ; le binaire porte le nom nu.
+        // Le suffixe d'index `_<i>` est ajouté par la sérialisation étiquetée/JSON
+        // (`t2b_siblings_to_tagged_json`) ; le binaire porte le nom nu.
         assert_eq!(cfg.entries[0].name, "TEXT_WASHA_MAP_BEGIN");
         assert_eq!(cfg.entries[0].children.len(), 15);
         assert_eq!(

@@ -1,0 +1,7 @@
+# The build host: heavy steps of `just lint|test|compile|check` (`cargo xtask`) and the `nie-mcp` launcher run here
+# when it answers. `host` is an ssh destination (`ssh -G <host>` resolves it), `dir` its work
+# directory. `NIE_BUILD_HOST` and `NIE_BUILD_DIR` override both.
+
+[build]
+host = "fr1"
+dir = "/srv/xbuild/nie"

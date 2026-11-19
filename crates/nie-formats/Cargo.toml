@@ -8,18 +8,23 @@ license = "Apache-2.0"
 publish = false
 description = "Level-5 and Criware binary format parsers for reverse engineering"
 
+[lib]
+crate-type = ["rlib", "staticlib", "cdylib"]
+
 [lints]
 workspace = true
 
 [features]
+crlib = ["std", "serde"]
 default = ["std", "serde", "lua", "remote-vfs"]
-std = ["dep:crc32fast", "crc32fast/std", "dep:tempfile", "dep:base64"]
+std = ["dep:crc32fast", "crc32fast/std", "dep:tempfile", "dep:base64", "glam/std", "serde_json/std"]
 remote-vfs = [
   "std",
   "dep:opendal",
-  "dep:russh",
+  "dep:opendal-http-transport-reqwest",
+  "dep:nie-ssh",
+  "dep:nie-tls",
   "dep:russh-sftp",
-  "dep:ssh2-config",
   "dep:tokio",
 ]
 serde = ["dep:serde"]
@@ -31,12 +36,10 @@ audio-decode = ["std", "dep:cridecoder"]
 real-fixtures = ["std"]
 
 [dependencies]
-glam = { version = "0.33.12", default-features = false, features = ["std"] } # same family as bevy_math 0.20 (one glam in Cargo.lock)
+glam = { version = "0.33.12", default-features = false, features = ["libm"] } # same family as bevy_math 0.20 (one glam in Cargo.lock)
 crc32fast = { workspace = true, optional = true }
 serde = { version = "1.0.229", default-features = false, features = ["derive", "std"], optional = true }
-serde_json = { version = "1.0.154", default-features = false, features = [
-  "std",
-] }
+serde_json = { version = "1.0.154", default-features = false, features = ["alloc"] }
 aes = { version = "0.9", default-features = false }
 base64 = { workspace = true, optional = true }
 sha2 = { workspace = true }
@@ -49,12 +52,16 @@ nie-lua = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 opendal = { workspace = true, optional = true }
-russh = { workspace = true, optional = true }
+opendal-http-transport-reqwest = { workspace = true, optional = true }
+nie-ssh = { workspace = true, optional = true }
+nie-tls = { workspace = true, optional = true }
 russh-sftp = { workspace = true, optional = true }
-ssh2-config = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["rt", "net", "time"], optional = true }
 
 [dev-dependencies]
+russh = { workspace = true }
+futures-lite = { workspace = true }
+tempfile = { workspace = true }
 serde_json = { version = "1.0.154", default-features = false, features = [
   "std",
 ] }

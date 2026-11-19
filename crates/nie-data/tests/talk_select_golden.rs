@@ -48,7 +48,7 @@ fn neuf_menus_byte_exact() {
 
 #[cfg(feature = "serde")]
 #[test]
-fn dispatch_typed_atteint_azalee() {
+fn dispatch_typed_atteint_wiki() {
     use nie_data::typed::{decode_by_key, family_key};
     let Some(root) = load() else { return };
     // family_key garde le `.cfg` du nom de fichier inhabituel `talk_select_config.cfg_<ver>.cfg.bin`.

@@ -30,7 +30,8 @@
 //! `CPK ` + table `@UTF` (anti-hallucination). Porté de `CriwareCrypt.cs` / `NativeCrypto.cs`
 //! et recoupé sur des octets réels du dump VPS. La constante d'audit `0x1717E18E`
 //! ([`cpk::VIOLA_FIXED_KEY`]) est la clé Viola des `cfg.bin`, PAS celle des packs.
-#![forbid(unsafe_code)]
+#![cfg_attr(not(feature = "crlib"), forbid(unsafe_code))]
+#![cfg_attr(feature = "crlib", deny(unsafe_code))]
 #![allow(clippy::pedantic)]
 // `#![no_std]` strict hors feature `std` (dédup Phase 3). Cœur de parseurs = alloc-only ;
 // assemble/vfs (I/O fichiers) + cri_audio (maths flottantes ADX f64::cos/sqrt) + textures/audio-decode
@@ -50,10 +51,13 @@ pub mod bitmap_font;
 pub mod assemble;
 /// Pure IEVR asset-family and preview classification used by native hosts.
 pub mod asset;
+pub mod byte_source;
 pub mod cfgbin;
 #[cfg(feature = "std")]
 pub mod col;
 pub mod cpk;
+/// The logical index `data/cpk_list.cfg.bin`, decoded once for every host.
+pub mod cpk_list;
 /// Encodeur CPK/@UTF (contrepartie écriture de [`cpk`]) — même gating (aucun, `alloc`-only).
 pub mod cpk_encode;
 /// Parseurs/décodeurs audio Criware (feature `std` : ADX décode via `f64::cos`/`sqrt`).
@@ -160,12 +164,6 @@ pub mod rdbn_patch;
 pub mod recolor;
 #[cfg(feature = "std")]
 pub mod sprite_sheet;
-/// `strcmp` byte-exact (`FUN_14168b570`, MSVC SIMD) — comparaison C non signée, no_std.
-pub mod strcmp;
-/// `strlen` byte-exact (`FUN_14168b5f0`, MSVC SWAR) — longueur de chaîne C, no_std.
-pub mod strlen;
-/// `strncmp` byte-exact (`FUN_14168b330`, MSVC) — comparaison C bornée non signée, no_std.
-pub mod strncmp;
 pub mod t2b_patch;
 /// Démultiplexeur USM/Sofdec2 complet : métadonnées `@UTF`, images, pistes sonores.
 #[cfg(feature = "std")]
@@ -176,6 +174,14 @@ pub mod vfs;
 /// Canonical content-addressed VFS manifest (digest shared by server and clients).
 #[cfg(feature = "std")]
 pub mod vfs_manifest;
+/// The synchronous read-only surface of a mounted VFS, shared by native and browser mounts.
+pub mod vfs_read;
+/// The CPK VFS over any asynchronous byte source: the browser's mount of the installation.
+#[cfg(feature = "std")]
+pub mod source_vfs;
+/// A synthetic installation (index and packs) for tests and fixtures; never a game byte.
+#[cfg(feature = "std")]
+pub mod synthetic;
 
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
 pub mod game_source;
@@ -1211,3 +1217,9 @@ mod tests {
         );
     }
 }
+
+#[cfg(feature = "crlib")]
+#[allow(unsafe_code)]
+mod abi_generated;
+#[cfg(feature = "crlib")]
+mod abi_impls;

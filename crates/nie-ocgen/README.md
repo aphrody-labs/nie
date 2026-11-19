@@ -64,16 +64,16 @@ le rejet est un rayon autour de cette couleur-là. Effet mesuré : `hair_pale` e
 `#1c150d` à 32 % à `#ffede3` à 96 %, et la peau de 42 % à 99 % — l'ancienne règle mangeait aussi
 la moitié éclairée du corps.
 
-## Du iecode au fichier
+## Du JSON étiqueté au fichier
 
-`t2b_to_iecode_json` existait ; **son inverse, non**. Tout ce que le dépôt produit sortait donc en
-JSON, sans chemin vers un fichier. `nie_formats::cfgbin::encode_iecode_t2b` le fournit, et
+`t2b_to_tagged_json` existait ; **son inverse, non**. Tout ce que le dépôt produit sortait donc en
+JSON, sans chemin vers un fichier. `nie_formats::cfgbin::encode_tagged_t2b` le fournit, et
 `nie-ocgen` ne l'utilise qu'après avoir **relu ses propres octets** : un `cfg.bin` que le dépôt ne
 sait pas redécoder à l'identique n'est jamais écrit.
 
 Deux pièges que ce chemin ferme, trouvés en écrivant son test :
 
-- `nie_explore::bridge::json_to_t2b_entries` inverse `t2b_to_json`, **pas** la forme iecode : il
+- `nie_explore::bridge::json_to_t2b_entries` inverse `t2b_to_json`, **pas** la forme étiquetée : il
   aurait écrit `CHARA_EDIT_PARAM_0` dans la table de clés au lieu de `CHARA_EDIT_PARAM`.
 - Un conteneur T2B se reconnaît à son **nom** (`_BEG`, `_BEGIN`, `PTREE`). Un parent nommé
   autrement voyait ses enfants disparaître en silence ; c'est refusé maintenant.
@@ -101,7 +101,7 @@ nie-ocgen slots                     # le relevé des slots de couleur, l'éviden
 nie-ocgen measure astro-lor         # les couleurs, sans rien générer
 nie-ocgen run astro-lor             # la chaîne complète → var/ocgen/ (JSON + cfg.bin)
 nie-ocgen icons astro-lor           # les conteneurs G4TX de portrait + leurs PNG relus
-nie-ocgen encode <dossier> --out X  # tout iecode *.cfg.bin.json → cfg.bin
+nie-ocgen encode <dossier> --out X  # tout JSON étiqueté *.cfg.bin.json → cfg.bin
 ```
 
 `nie oc <sous-commande>` est la surface canonique et `nie ocgen <sous-commande>` reste un alias

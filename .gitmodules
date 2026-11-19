@@ -1,13 +1,3 @@
-[submodule "iecode/dotnet"]
-	path = iecode/dotnet
-	url = ../iecode-dotnet
-	update = none
-	shallow = true
-[submodule "iecode/cpp"]
-	path = iecode/cpp
-	url = ../iecode-cpp
-	update = none
-	shallow = true
 [submodule "third_party/qemu-wasm"]
 	path = third_party/qemu-wasm
 	url = ../qemu-wasm
@@ -21,19 +11,19 @@
 	shallow = true
 [submodule "vendor/asterinas"]
 	path = vendor/asterinas
-	url = ../asterinas.git
+	url = ../asterinas
 	branch = main
 	update = none
 	shallow = true
 [submodule "vendor/kitesurf"]
 	path = vendor/kitesurf
-	url = ../kitesurf.git
+	url = ../kitesurf
 	branch = nie
 	update = none
 	shallow = true
 [submodule "vendor/zed"]
 	path = vendor/zed
-	url = ../zed.git
+	url = ../zed
 	branch = nie
 	update = none
 	shallow = true

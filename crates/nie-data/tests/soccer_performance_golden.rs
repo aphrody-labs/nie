@@ -3,7 +3,7 @@
 //! Tests golden `soccer_performance` — **les 16 entrées réelles** de la liste
 //! `m_soccerPerformanceConfigList` (type `SOCCER_PERFORMANCE_CONFIG`) tirées de :
 //! `data/common/gamedata/soccer/soccer_performance_config_0.00.00.00.cfg.bin`
-//! (VFS du jeu Steam ; extrait via `nie_formats::cfgbin` → forme iecode `lists`).
+//! (VFS du jeu Steam ; extrait via `nie_formats::cfgbin` → forme étiquetée `lists`).
 //!
 //! Port 1:1 d'inagle `inagle`
 //! (`parseContent` l.51-77, `extractImageName` l.43-45). Valeurs copiées telles quelles
@@ -16,7 +16,7 @@ use nie_data::soccer_performance::{
 };
 use serde_json::json;
 
-/// Fixture = les 16 valeurs réelles de `m_soccerPerformanceConfigList` (dump VFS), forme iecode.
+/// Fixture = les 16 valeurs réelles de `m_soccerPerformanceConfigList` (dump VFS), forme étiquetée.
 fn node_fixture() -> serde_json::Value {
     json!({
         "version": 100,

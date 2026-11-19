@@ -3,7 +3,7 @@
 //! Tests golden `soccer_chara_unique_rarity` — entrées réelles de la liste
 //! `m_soccerCharaUniqueRarityList` (type `SOCCER_CHARA_UNIQUE_RARITY`, 71 entrées) tirées de :
 //! `data/common/gamedata/soccer/soccer_chara_unique_rarity_config_1.03.00.00.cfg.bin`
-//! (VFS du jeu Steam ; extrait via `nie_formats::cfgbin` → forme iecode `lists`).
+//! (VFS du jeu Steam ; extrait via `nie_formats::cfgbin` → forme étiquetée `lists`).
 //!
 //! Port 1:1 d'inagle `inagle` (l.81-104). Détail
 //! Level-5 vérifié : le `charaParamIdHero*` n'est exposé que si `isHeroX == true` ET id non

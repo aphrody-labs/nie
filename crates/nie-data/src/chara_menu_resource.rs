@@ -36,7 +36,7 @@ use serde_json::Value;
 use crate::cfgbin::Node;
 use crate::hash::HashId;
 
-/// Nom de l'entrée racine listant le chemin de base (`BASE_PATH_LIST_BEG`, suffixé `_0` par iecode).
+/// Nom de l'entrée racine listant le chemin de base (`BASE_PATH_LIST_BEG`, suffixé `_0` par le rendu étiqueté).
 pub const BASE_PATH_LIST_NAME: &str = "CHARA_MENU_RESOURCE_BASE_PATH_LIST_BEG_0";
 /// Nom de l'entrée racine listant les templates/overrides (`INFO_LIST_BEG`, suffixé `_0`).
 pub const INFO_LIST_NAME: &str = "CHARA_MENU_RESOURCE_INFO_LIST_BEG_0";
@@ -243,7 +243,7 @@ fn paths_have_placeholder(paths: &[String]) -> bool {
         .any(|p| p.contains("<charaID>") || p.contains("<skillID>"))
 }
 
-/// Parse un `chara_menu_resource_*.cfg.bin.json` (forme iecode `{ entries: [...] }`) — port 1:1
+/// Parse un `chara_menu_resource_*.cfg.bin.json` (forme étiquetée `{ entries: [...] }`) — port 1:1
 /// d'inagle `parseContent` (chara-menu-resource-config.ts l.100-160).
 #[must_use]
 pub fn parse_chara_menu_resource(root: &Value) -> CharaMenuResourceDatabase {

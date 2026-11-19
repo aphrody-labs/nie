@@ -359,7 +359,7 @@ pub fn emit(ctx: &mut Ctx) -> StageReport {
             Stage::Decompile,
             id,
             StageStatus::Unavailable,
-            "engine checkout not found (set RG_ENGINE_ROOT): the crate links crates/bun-engine-core",
+            "engine checkout not found (set NIE_ENGINE_ROOT): the crate links crates/bun-engine-core",
         );
     };
     let engine = root.join("crates").join("bun-engine-core");
@@ -401,11 +401,9 @@ pub fn emit(ctx: &mut Ctx) -> StageReport {
     }
 }
 
-/// Cargo command prefix: `BUNRE_CARGO` (JSON array or a single program), else the serialized
-/// Rose Griffon wrapper on Windows (`bun scripts/cargo.ts exec --`),
-/// else `cargo`.
-fn cargo_prefix(root: &Path) -> Vec<String> {
-    if let Ok(v) = std::env::var("BUNRE_CARGO") {
+/// Cargo command prefix: `NIE_RE_CARGO` (JSON array or a single program), else `cargo`.
+fn cargo_prefix() -> Vec<String> {
+    if let Ok(v) = std::env::var("NIE_RE_CARGO") {
         if let Ok(list) = serde_json::from_str::<Vec<String>>(&v)
             && !list.is_empty()
         {
@@ -414,14 +412,6 @@ fn cargo_prefix(root: &Path) -> Vec<String> {
         if !v.trim().is_empty() {
             return vec![v];
         }
-    }
-    let script = root.join("scripts").join("cargo.ts");
-    if cfg!(windows) && script.is_file() && which("bun").is_some() {
-        return ["bun"]
-            .iter()
-            .map(|s| (*s).to_string())
-            .chain([script.display().to_string(), "exec".into(), "--".into()])
-            .collect();
     }
     vec!["cargo".into()]
 }
@@ -445,7 +435,7 @@ pub fn build(ctx: &mut Ctx) -> StageReport {
     let Some(dir) = g.crate_dir.clone() else {
         return report(Stage::Rebuild, id, StageStatus::Skipped, "no crate");
     };
-    let prefix = cargo_prefix(&root);
+    let prefix = cargo_prefix();
     let Some(program) = which(&prefix[0]) else {
         return report(
             Stage::Rebuild,
@@ -556,7 +546,7 @@ pub fn build(ctx: &mut Ctx) -> StageReport {
 
 /// Locate the Bun Engine interpreter CLI (`bun-engine run`).
 fn bun_engine_bin(root: &Path) -> Option<PathBuf> {
-    if let Some(p) = std::env::var_os("BUN_ENGINE_NATIVE")
+    if let Some(p) = std::env::var_os("NIE_ENGINE_NATIVE")
         .map(PathBuf::from)
         .filter(|p| p.is_file())
     {
@@ -831,7 +821,7 @@ pub fn verify(ctx: &mut Ctx) -> StageReport {
             None => checks.push(Check {
                 name: "framebuffer-equals-bun-engine-run".into(),
                 ok: false,
-                detail: "bun-engine binary not found (BUN_ENGINE_NATIVE or target/{release,debug})"
+                detail: "bun-engine binary not found (NIE_ENGINE_NATIVE or target/{release,debug})"
                     .into(),
             }),
         }

@@ -32,6 +32,7 @@ struct Listing {
 }
 
 enum Msg {
+    Health(String),
     Listing(Listing),
     Failed(String, String),
     Picture(String, Rgba8),
@@ -52,6 +53,8 @@ pub struct HttpBackend {
     requested: Vec<String>,
     preview: Option<(String, PreviewBody)>,
     status: String,
+    /// `936 CPK, 255628 entries`, from `/health`.
+    summary: String,
     quit: bool,
 }
 
@@ -124,9 +127,16 @@ impl HttpBackend {
             requested: Vec::new(),
             preview: None,
             status: "Loading the game listing...".to_owned(),
+            summary: String::new(),
             quit: false,
         };
         backend.request_listing(String::new());
+        backend.fetch(format!("{}/health", backend.base), |r| {
+            let json = r.ok().and_then(|b| serde_json::from_slice::<Value>(&b).ok());
+            Msg::Health(json.map_or_else(String::new, |j| {
+                format!("{} CPK, {} entries", j["cpks"].as_u64().unwrap_or(0), j["entries"].as_u64().unwrap_or(0))
+            }))
+        });
         backend
     }
 
@@ -270,6 +280,7 @@ impl Backend for HttpBackend {
         let changed = !msgs.is_empty();
         for msg in msgs {
             match msg {
+                Msg::Health(summary) => self.summary = summary,
                 Msg::Listing(l) => {
                     let dir = l.dir.clone();
                     self.listings.insert(dir.clone(), l);
@@ -336,7 +347,7 @@ impl Backend for HttpBackend {
             parent: self.column(&parent_dir, parent_cursor, false),
             current: self.column(&self.cwd, Some(self.cursor), true),
             preview,
-            status: SharedString::from(self.status.clone()),
+            status: SharedString::from(if self.status.is_empty() { self.summary.clone() } else { self.status.clone() }),
         }
     }
 

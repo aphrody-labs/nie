@@ -12,7 +12,7 @@ use anyhow::{Context, Result};
 use nie_index::{Db, ingest};
 use tracing::debug;
 
-/// Parse `refs/iecode-re/research/nie-rtti-classes.txt` et insère toutes les
+/// Parse `refs/re/research/nie-rtti-classes.txt` et insère toutes les
 /// classes RTTI dans la base. Renvoie le nombre de classes insérées.
 ///
 /// # Erreurs

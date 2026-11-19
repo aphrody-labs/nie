@@ -1,0 +1,47 @@
+[package]
+name = "nie-link"
+description = "Paged, content-addressed link of the game installation between hosts: a page server on the Linux hosts and a Windows ProjFS client that shows the installation as a real NTFS folder, with a verified local page cache, trace prefetch and cache-aware routing"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "nie-link"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true, features = ["std"] }
+base64 = { workspace = true, features = ["std"] }
+blake3 = { workspace = true }
+clap = { workspace = true }
+nie-steam = { workspace = true }
+rayon = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha1 = { workspace = true }
+steamroom = { workspace = true }
+thiserror = { workspace = true, features = ["std"] }
+toml = { workspace = true, features = ["parse", "serde", "std", "display"] }
+ureq = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true, features = [
+  "Win32_Foundation",
+  "Win32_Storage_FileSystem",
+  "Win32_Storage_ProjectedFileSystem",
+  "Win32_System_Registry",
+  "Win32_Security",
+  "Win32_System_IO",
+  "Win32_System_Threading",
+  "Win32_System_Console",
+] }
+
+[dev-dependencies]
+tempfile = { workspace = true }

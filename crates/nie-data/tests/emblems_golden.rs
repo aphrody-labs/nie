@@ -2,7 +2,7 @@
 //! Tests golden `emblems` (écussons d'équipe / team emblems) — vraies valeurs du dump RDBN à
 //! listes extrait du VFS :
 //! `data/common/gamedata/menu/emblem_resource_0.04.18.cfg.bin`
-//! (décodé en forme iecode par `nie-model-serve::cfgbin_to_iecode_root`).
+//! (décodé en forme étiquetée par `nie-model-serve::cfgbin_to_tagged_root`).
 //!
 //! Référence de portage : `inagle` (`parseContent`), header inagle
 //! « structure réelle (format `lists`, vérifiée octet pour octet contre le .bin) » → golden trivial.
@@ -15,7 +15,7 @@ use nie_data::emblems::{
 use nie_data::hash::HashId;
 use serde_json::json;
 
-/// Fixture = forme iecode `{ "lists": [...] }` reproduisant **octet pour octet** le dump réel
+/// Fixture = forme étiquetée `{ "lists": [...] }` reproduisant **octet pour octet** le dump réel
 /// `emblem_resource_0.04.18.cfg.bin` (2 emblèmes + 1 basePath).
 fn root_fixture() -> serde_json::Value {
     json!({

@@ -1,7 +1,7 @@
 #![allow(clippy::pedantic)]
 //! Tests golden `movie` — vraies valeurs du dump RDBN à listes extrait du VFS :
 //! `data/common/gamedata/movie/movie_playing_config_1.02.28.cfg.bin`
-//! (décodé en forme iecode par `nie-model-serve::cfgbin_to_iecode_root`).
+//! (décodé en forme étiquetée par `nie-model-serve::cfgbin_to_tagged_root`).
 //!
 //! Aucun parseur inagle dédié `movie` n'existe : la référence est le parseur générique
 //! `inagle` ; les structs sont dérivées 1:1 des
@@ -14,7 +14,7 @@ use nie_data::movie::{
 };
 use serde_json::json;
 
-/// Fixture = forme iecode `{ "lists": [...] }`. Les 3 lignes réelles de
+/// Fixture = forme étiquetée `{ "lists": [...] }`. Les 3 lignes réelles de
 /// `m_MovieSubtitleMenuDataList`, la liste `m_MovieSongCaptionDataList` vide (0 ligne du dump),
 /// et 5 lignes représentatives de `m_MoviePlayingInfoList` (indices réels 0, 4, 5, 19, 218).
 fn root_fixture() -> serde_json::Value {

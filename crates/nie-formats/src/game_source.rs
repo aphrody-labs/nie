@@ -2,10 +2,9 @@
 use crate::FormatError;
 use std::path::{Path, PathBuf};
 
-pub const SOURCE_ENV: [&str; 4] = [
+pub const SOURCE_ENV: [&str; 3] = [
     "NIE_GAME_SOURCE",
     "NIE_GAME_DIR",
-    "IECODE_GAME_PATH",
     "NIE_GAME_PATH",
 ];
 
@@ -73,29 +72,36 @@ pub fn remember(source: &str) -> Result<(), FormatError> {
         .map_err(|e| FormatError::Malformed(e.to_string()))
 }
 
+/// Rejects a remote source URI that carries credentials, a query or a fragment: those come from
+/// SSH config, `rclone.conf`, environment variables or `NIE_HTTP_AUTH_TOKEN`, never from the URI.
+pub(crate) fn validate_remote_uri(source: &str) -> Result<(), FormatError> {
+    let (_, rest) = source
+        .split_once("://")
+        .ok_or(FormatError::Corrupt("invalid game source URI"))?;
+    let authority = rest.split('/').next().unwrap_or_default();
+    let is_ssh = source.starts_with("ssh://") || source.starts_with("sftp://");
+    if authority.is_empty()
+        || authority.contains(['%', '\\'])
+        || source.chars().any(char::is_control)
+        || source.contains(['?', '#'])
+        || authority
+            .split_once('@')
+            .is_some_and(|(user, _)| user.contains(':'))
+        || (!is_ssh && authority.contains('@'))
+    {
+        return Err(FormatError::Corrupt(
+            "URI credentials/query/fragment are unsupported; use SSH config, rclone.conf, env vars, or NIE_HTTP_AUTH_TOKEN",
+        ));
+    }
+    Ok(())
+}
+
 fn normalize(source: &str) -> Result<String, FormatError> {
     if source.is_empty() || source.contains(['\0', '\n', '\r']) {
         return Err(FormatError::Corrupt("invalid game source"));
     }
     if is_remote(source) {
-        let (_, rest) = source
-            .split_once("://")
-            .ok_or(FormatError::Corrupt("invalid game source URI"))?;
-        let authority = rest.split('/').next().unwrap_or_default();
-        let is_ssh = source.starts_with("ssh://") || source.starts_with("sftp://");
-        if authority.is_empty()
-            || authority.contains(['%', '\\'])
-            || source.chars().any(char::is_control)
-            || source.contains(['?', '#'])
-            || authority
-                .split_once('@')
-                .is_some_and(|(user, _)| user.contains(':'))
-            || (!is_ssh && authority.contains('@'))
-        {
-            return Err(FormatError::Corrupt(
-                "source URI cannot contain credentials, query or fragment",
-            ));
-        }
+        validate_remote_uri(source)?;
         return Ok(source.to_owned());
     }
     let data = local_data_dir(Path::new(source))
@@ -257,8 +263,8 @@ mod tests {
         for scheme in [
             "ssh://host/arbitrary/data",
             "rclone://vps/srv/ievr/data",
-            "r2://rosegriffon/ievr/data",
-            "s3://rosegriffon/ievr/data",
+            "r2://bucket/ievr/data",
+            "s3://bucket/ievr/data",
             "gdrive://gdrive-ai/ievr/data",
             "nievfs://gdrive-ai/ievr/data",
         ] {

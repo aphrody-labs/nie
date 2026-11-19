@@ -1,0 +1,31 @@
+[package]
+name = "nie-ssh"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+description = "SSH client in pure Rust on russh: ~/.ssh/config with ProxyJump, ssh-agent and Windows named-pipe agents, known_hosts, exec, SFTP and port forwarding. The replacement of every `ssh` subprocess."
+
+[lints]
+workspace = true
+
+[lib]
+name = "nie_ssh"
+path = "src/lib.rs"
+
+[[bin]]
+name = "nie-ssh"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true, features = ["std"] }
+clap = { workspace = true }
+russh = { workspace = true }
+russh-sftp = { workspace = true }
+ssh2-config = { workspace = true }
+tokio = { workspace = true, features = ["io-std", "io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }

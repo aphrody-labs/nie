@@ -4,9 +4,9 @@
 //!
 //! Fixture = VRAIES valeurs extraites du VFS Steam d'IEVR :
 //! `data/common/gamedata/skill/override_skill_config_3.00.21.00.cfg.bin`
-//! (format RDBN à listes, 1809 octets), décodé en forme iecode
+//! (format RDBN à listes, 1809 octets), décodé en forme étiquetée
 //! `{ "lists": [ { "name", "typeName", "values": [...] } ] }` via
-//! `nie_formats::cfgbin` (même conversion que `nie-model-serve::cfgbin_to_iecode_root`).
+//! `nie_formats::cfgbin` (même conversion que `nie-model-serve::cfgbin_to_tagged_root`).
 //!
 //! Comptes réels : 61 condition_skills, 33 conditions, 33 overrides.
 
@@ -153,7 +153,7 @@ const OVERRIDES: &[(u32, i64, i64)] = &[
     (0x6FB2DB56, 32, 1),
 ];
 
-/// Reconstruit le JSON iecode RDBN exact (3 listes) à partir des fixtures.
+/// Reconstruit le JSON étiquetée RDBN exact (3 listes) à partir des fixtures.
 fn node_fixture() -> serde_json::Value {
     let condition_skills: Vec<_> = CONDITION_SKILLS
         .iter()

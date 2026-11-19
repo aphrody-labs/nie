@@ -1,8 +1,0 @@
-.git
-.github
-.claude
-.cargo
-.mcp.json
-target
-**/target
-tools/claude

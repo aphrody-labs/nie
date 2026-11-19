@@ -1,0 +1,454 @@
+{
+  "specs": [
+    {
+      "id": "wasm",
+      "title": "WebAssembly core specification",
+      "official": "https://webassembly.github.io/spec/core/",
+      "version": "3.0",
+      "version_date": "2026-11-16",
+      "commit": {
+        "repo": "WebAssembly/spec",
+        "sha": "d0b2e8d5544d2049fba0521922c436e3f0fcaebe",
+        "date": "2026-11-16T09:38:27Z"
+      },
+      "sources": [
+        {
+          "url": "https://webassembly.github.io/spec/core/binary/modules.html",
+          "mode": "text",
+          "sha256": "7abdee22f9d751c66a10d026056615b9befc4a117a84bd5b3d2509789f1ee63e",
+          "bytes": 56891
+        },
+        {
+          "url": "https://webassembly.github.io/spec/core/exec/runtime.html",
+          "mode": "text",
+          "sha256": "92ac2257d956f3f053f0cdde43b5c2fe3c23e649bb79eb221fa63a31e7646c93",
+          "bytes": 80313
+        },
+        {
+          "url": "https://webassembly.github.io/spec/core/index.html",
+          "mode": "text",
+          "sha256": "d5f25e228bc50330242c829b0ec05fc72239c0a9effe71998fef7d1bbf61ecaf",
+          "bytes": 10128
+        }
+      ],
+      "facts": [
+        {
+          "key": "page_size",
+          "what": "Linear memory page size in bytes",
+          "value": "65536",
+          "url": "https://webassembly.github.io/spec/core/exec/runtime.html"
+        },
+        {
+          "key": "module_magic",
+          "what": "Binary module magic bytes (hex)",
+          "value": "0x00 0x61 0x73 0x6D",
+          "url": "https://webassembly.github.io/spec/core/binary/modules.html"
+        },
+        {
+          "key": "binary_version",
+          "what": "Binary format version bytes (hex)",
+          "value": "0x01 0x00 0x00 0x00",
+          "url": "https://webassembly.github.io/spec/core/binary/modules.html"
+        }
+      ]
+    },
+    {
+      "id": "webgpu",
+      "title": "WebGPU",
+      "official": "https://www.w3.org/TR/webgpu/",
+      "version": "W3C Candidate Recommendation Draft",
+      "version_date": "16 November 2026",
+      "commit": {
+        "repo": "gpuweb/gpuweb",
+        "sha": "d178d9145ab1652ec933e71a8c30e8f6470f00a3",
+        "date": "2026-11-16T23:48:45Z"
+      },
+      "sources": [
+        {
+          "url": "https://www.w3.org/TR/webgpu/",
+          "mode": "text",
+          "sha256": "5ec698f60d606106309423e5c43dbd5aab7c4ec1a6c25f3a6af67f2a147be065",
+          "bytes": 4510800
+        }
+      ],
+      "facts": [
+        {
+          "key": "maxTextureDimension2D",
+          "what": "Default limit: maximum 2D texture width and height",
+          "value": "8192",
+          "url": "https://www.w3.org/TR/webgpu/"
+        },
+        {
+          "key": "maxBindGroups",
+          "what": "Default limit: bind groups per pipeline layout",
+          "value": "4",
+          "url": "https://www.w3.org/TR/webgpu/"
+        },
+        {
+          "key": "maxColorAttachments",
+          "what": "Default limit: color attachments per render pass",
+          "value": "8",
+          "url": "https://www.w3.org/TR/webgpu/"
+        },
+        {
+          "key": "maxBufferSize",
+          "what": "Default limit: maximum buffer size in bytes",
+          "value": "268435456",
+          "url": "https://www.w3.org/TR/webgpu/"
+        },
+        {
+          "key": "maxStorageBufferBindingSize",
+          "what": "Default limit: maximum storage buffer binding in bytes",
+          "value": "134217728",
+          "url": "https://www.w3.org/TR/webgpu/"
+        },
+        {
+          "key": "maxComputeInvocationsPerWorkgroup",
+          "what": "Default limit: compute invocations per workgroup",
+          "value": "256",
+          "url": "https://www.w3.org/TR/webgpu/"
+        }
+      ]
+    },
+    {
+      "id": "wgsl",
+      "title": "WebGPU Shading Language (WGSL)",
+      "official": "https://www.w3.org/TR/WGSL/",
+      "version": "W3C Candidate Recommendation Draft",
+      "version_date": "6 November 2026",
+      "commit": {
+        "repo": "gpuweb/gpuweb",
+        "sha": "6bf1c35fffaae37cf9db16c88e7d5d03382b5c52",
+        "date": "2026-11-06T17:50:55Z"
+      },
+      "sources": [
+        {
+          "url": "https://www.w3.org/TR/WGSL/",
+          "mode": "text",
+          "sha256": "07a63324320a8150abca0e7b35edf84f890e778a058225d9bf3f79876ef57efb",
+          "bytes": 3102821
+        }
+      ],
+      "facts": [
+        {
+          "key": "address_spaces",
+          "what": "Address spaces",
+          "value": "function private workgroup uniform storage",
+          "url": "https://www.w3.org/TR/WGSL/"
+        },
+        {
+          "key": "workgroup_size_attribute",
+          "what": "Compute entry points declare their size with this attribute",
+          "value": "workgroup_size",
+          "url": "https://www.w3.org/TR/WGSL/"
+        }
+      ]
+    },
+    {
+      "id": "pe",
+      "title": "PE/COFF image format",
+      "official": "https://learn.microsoft.com/en-us/windows/win32/debug/pe-format",
+      "version": "07/14/2025",
+      "version_date": null,
+      "commit": {
+        "repo": "MicrosoftDocs/win32",
+        "sha": "ca8274decead49403d70ceeed4af8d4ca74eaf11",
+        "date": "2026-10-08T15:26:36Z"
+      },
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md",
+          "mode": "raw",
+          "sha256": "b17271a341f9b6e3204cf3f04ed905c25c03fd4cadb7a57bd4aaf38cf56a2fe0",
+          "bytes": 335441
+        }
+      ],
+      "facts": [
+        {
+          "key": "pe_offset_location",
+          "what": "Offset of the file pointer to the PE signature",
+          "value": "0x3c",
+          "url": "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+        },
+        {
+          "key": "pe_signature",
+          "what": "PE signature (escaped as in the Markdown source)",
+          "value": "PE\\\\0\\\\0",
+          "url": "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+        },
+        {
+          "key": "magic_pe32",
+          "what": "Optional header magic, PE32",
+          "value": "0x10b",
+          "url": "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+        },
+        {
+          "key": "magic_pe32_plus",
+          "what": "Optional header magic, PE32+",
+          "value": "0x20b",
+          "url": "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+        },
+        {
+          "key": "machine_amd64",
+          "what": "COFF machine type x64",
+          "value": "0x8664",
+          "url": "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+        },
+        {
+          "key": "machine_i386",
+          "what": "COFF machine type x86",
+          "value": "0x14c",
+          "url": "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+        },
+        {
+          "key": "machine_arm64",
+          "what": "COFF machine type ARM64",
+          "value": "0xaa64",
+          "url": "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+        },
+        {
+          "key": "dll_dynamic_base",
+          "what": "DllCharacteristics: ASLR (dynamic base)",
+          "value": "0x0040",
+          "url": "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+        },
+        {
+          "key": "dll_nx_compat",
+          "what": "DllCharacteristics: DEP (NX compatible)",
+          "value": "0x0100",
+          "url": "https://raw.githubusercontent.com/MicrosoftDocs/win32/docs/desktop-src/Debug/pe-format.md"
+        }
+      ]
+    },
+    {
+      "id": "d3d11",
+      "title": "Direct3D 11.3 functional specification",
+      "official": "https://github.com/microsoft/DirectX-Specs/blob/master/d3d/archive/D3D11_3_FunctionalSpec.htm",
+      "version": "1.17",
+      "version_date": "6 / 20 / 2025",
+      "commit": {
+        "repo": "microsoft/DirectX-Specs",
+        "sha": "f37b0d6033a184bd716e4483e9a8fb192f1e63c7",
+        "date": "2026-04-13T16:40:24Z"
+      },
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/microsoft/DirectX-Specs/master/d3d/archive/D3D11_3_FunctionalSpec.htm",
+          "mode": "text",
+          "sha256": "c31bd9ccd796ece01577531e45f705a01bb9b3d8758b25476cbc46e686b9cad0",
+          "bytes": 2208643
+        }
+      ],
+      "facts": [
+        {
+          "key": "REQ_TEXTURE2D_U_OR_V_DIMENSION",
+          "what": "Maximum 2D texture width or height",
+          "value": "16384",
+          "url": "https://raw.githubusercontent.com/microsoft/DirectX-Specs/master/d3d/archive/D3D11_3_FunctionalSpec.htm"
+        },
+        {
+          "key": "REQ_TEXTURE3D_U_V_OR_W_DIMENSION",
+          "what": "Maximum 3D texture dimension",
+          "value": "2048",
+          "url": "https://raw.githubusercontent.com/microsoft/DirectX-Specs/master/d3d/archive/D3D11_3_FunctionalSpec.htm"
+        },
+        {
+          "key": "REQ_TEXTURECUBE_DIMENSION",
+          "what": "Maximum cube texture dimension",
+          "value": "16384",
+          "url": "https://raw.githubusercontent.com/microsoft/DirectX-Specs/master/d3d/archive/D3D11_3_FunctionalSpec.htm"
+        },
+        {
+          "key": "REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION",
+          "what": "Maximum 2D texture array length",
+          "value": "2048",
+          "url": "https://raw.githubusercontent.com/microsoft/DirectX-Specs/master/d3d/archive/D3D11_3_FunctionalSpec.htm"
+        },
+        {
+          "key": "REQ_CONSTANT_BUFFER_ELEMENT_COUNT",
+          "what": "Maximum constant buffer size in 4x32-bit elements",
+          "value": "4096",
+          "url": "https://raw.githubusercontent.com/microsoft/DirectX-Specs/master/d3d/archive/D3D11_3_FunctionalSpec.htm"
+        },
+        {
+          "key": "REQ_SAMPLER_OBJECT_COUNT_PER_DEVICE",
+          "what": "Maximum sampler objects per device",
+          "value": "4096",
+          "url": "https://raw.githubusercontent.com/microsoft/DirectX-Specs/master/d3d/archive/D3D11_3_FunctionalSpec.htm"
+        }
+      ]
+    },
+    {
+      "id": "dxbc",
+      "title": "DXBC / DXIL shader container",
+      "official": "https://github.com/microsoft/DirectXShaderCompiler/blob/main/include/dxc/DxilContainer/DxilContainer.h",
+      "version": "1.0",
+      "version_date": null,
+      "commit": {
+        "repo": "microsoft/DirectXShaderCompiler",
+        "sha": "10b3328a915e30973449aa03a1816d289e4fd42f",
+        "date": "2025-01-25T01:23:20Z"
+      },
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/include/dxc/DxilContainer/DxilContainer.h",
+          "mode": "raw",
+          "sha256": "f9975fb71c62f1aa37cba989adc83f7dcbb06d48e36a62a0b2ebf29c26eaa397",
+          "bytes": 25310
+        }
+      ],
+      "facts": [
+        {
+          "key": "container_fourcc",
+          "what": "Container header FourCC (DXBC for back-compat)",
+          "value": "DXBC",
+          "url": "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/include/dxc/DxilContainer/DxilContainer.h"
+        },
+        {
+          "key": "resource_def_fourcc",
+          "what": "Resource definitions chunk",
+          "value": "RDEF",
+          "url": "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/include/dxc/DxilContainer/DxilContainer.h"
+        },
+        {
+          "key": "input_signature_fourcc",
+          "what": "Input signature chunk",
+          "value": "ISG1",
+          "url": "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/include/dxc/DxilContainer/DxilContainer.h"
+        },
+        {
+          "key": "output_signature_fourcc",
+          "what": "Output signature chunk",
+          "value": "OSG1",
+          "url": "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/include/dxc/DxilContainer/DxilContainer.h"
+        },
+        {
+          "key": "dxil_fourcc",
+          "what": "DXIL bytecode chunk",
+          "value": "DXIL",
+          "url": "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/include/dxc/DxilContainer/DxilContainer.h"
+        },
+        {
+          "key": "shader_hash_fourcc",
+          "what": "Shader hash chunk",
+          "value": "HASH",
+          "url": "https://raw.githubusercontent.com/microsoft/DirectXShaderCompiler/main/include/dxc/DxilContainer/DxilContainer.h"
+        }
+      ]
+    },
+    {
+      "id": "cuda",
+      "title": "CUDA toolkit and compute capability",
+      "official": "https://docs.nvidia.com/cuda/",
+      "version": "13.5",
+      "version_date": null,
+      "commit": null,
+      "sources": [
+        {
+          "url": "https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/compute-capabilities.html",
+          "mode": "text",
+          "sha256": "04918b20e2dcc9245b5a7f9940ab88718c34814dd6aa92f467be9963a91346c8",
+          "bytes": 86155
+        },
+        {
+          "url": "https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html",
+          "mode": "text",
+          "sha256": "4567918966baf3b12f1948a1c08ac76b378920a6d84b726ae7bc2c58a91298ad",
+          "bytes": 234111
+        }
+      ],
+      "facts": [
+        {
+          "key": "latest_toolkit_driver_branch",
+          "what": "Driver branch of the latest toolkit (R620 covers driver 621.14)",
+          "value": "13.5 R620",
+          "url": "https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html"
+        },
+        {
+          "key": "minor_version_compat_driver",
+          "what": "Driver floor for CUDA 13.x under minor-version compatibility",
+          "value": "580",
+          "url": "https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html"
+        },
+        {
+          "key": "max_threads_per_block",
+          "what": "Maximum threads per block",
+          "value": "1024",
+          "url": "https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/compute-capabilities.html"
+        },
+        {
+          "key": "warp_size",
+          "what": "Warp size",
+          "value": "32",
+          "url": "https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/compute-capabilities.html"
+        },
+        {
+          "key": "max_registers_per_thread",
+          "what": "Maximum 32-bit registers per thread",
+          "value": "255",
+          "url": "https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/compute-capabilities.html"
+        },
+        {
+          "key": "sm89_shared_memory_per_sm",
+          "what": "Shared memory per SM at compute capability 8.9 (fifth column: 7.5, 8.0, 8.6, 8.7, 8.9)",
+          "value": "100 KB",
+          "url": "https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/compute-capabilities.html"
+        }
+      ]
+    },
+    {
+      "id": "rtx-4070",
+      "title": "NVIDIA GeForce RTX 4070 (Ada Lovelace, compute capability 8.9)",
+      "official": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4070-family/",
+      "version": "RTX 4070",
+      "version_date": null,
+      "commit": null,
+      "sources": [
+        {
+          "url": "https://developer.nvidia.com/cuda-gpus",
+          "mode": "text",
+          "sha256": "7e72ec4ef4993f019a49f31a017b82907f60462637d9a32d22977a15af0157d6",
+          "bytes": 26435
+        },
+        {
+          "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4070-family/",
+          "mode": "text",
+          "sha256": "544cea566d124e5fb00cb49f42e2283f98f313ff591ab1ee5eb9c8ef1368b98d",
+          "bytes": 638997
+        }
+      ],
+      "facts": [
+        {
+          "key": "cuda_cores",
+          "what": "CUDA cores (RTX 4070 is the last column of the family table)",
+          "value": "5888",
+          "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4070-family/"
+        },
+        {
+          "key": "boost_clock_ghz",
+          "what": "Boost clock in GHz",
+          "value": "2.48",
+          "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4070-family/"
+        },
+        {
+          "key": "memory_size",
+          "what": "Memory size",
+          "value": "12 GB",
+          "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4070-family/"
+        },
+        {
+          "key": "memory_bus",
+          "what": "Memory interface width",
+          "value": "192-bit",
+          "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4070-family/"
+        },
+        {
+          "key": "compute_capability",
+          "what": "Compute capability of GeForce RTX 4070",
+          "value": "8.9",
+          "url": "https://developer.nvidia.com/cuda-gpus"
+        }
+      ]
+    }
+  ]
+}

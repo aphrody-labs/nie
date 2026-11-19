@@ -2,8 +2,8 @@
 //!
 //! Port Rust de :
 //! - `crates/nie/nie-inventory/src/cri.rs` (primary reference, MIT)
-//! - `refs/iecode-re/cli/ffi/rust/cpk-reader/src/utf.rs` (référence secondaire)
-//! - `IECODE.Core/Formats/Criware/UtfTable.cs` (référence C# — IECODE)
+//! - `refs/re/cli/ffi/rust/cpk-reader/src/utf.rs` (référence secondaire)
+//! - `UtfTable.cs` (référence C#)
 //!
 //! ## Format `@UTF` (wire layout, tout big-endian)
 //!
@@ -45,9 +45,9 @@
 //! de 4 octets, chaque mot dérivé d'un état CRC réinitialisé sur l'offset du mot.
 //!
 //! Port fidèle de :
-//! - `IECODE.Core/Formats/Criware/CriFs/Encryption/CriwareCrypt.cs` (`CalculateKeyFromFilename`,
+//! - `CriwareCrypt.cs` (`CalculateKeyFromFilename`,
 //!   `DecryptBlock`, `UpdateCrcStateFast`, `ComputeXorByte`) ;
-//! - `IECODE.Core/Native/NativeCrypto.cs` (même algorithme, variante SIMD côté C#) ;
+//! - `NativeCrypto.cs` (même algorithme, variante SIMD côté C#) ;
 //! - sélection de clé : `CpkDecryptionStream.FromFile` → `CalculateKeyFromFilename(Path.GetFileName(cpkPath))`.
 //!
 //! **Vérification terrain (octets réels du dump VPS, non fabriqués)** : la clé dérivée
@@ -55,7 +55,7 @@
 //! Exemple recoupé : `1d08dda99e8549431c6c7b459ed8deab.cpk` → clé `0xBD281847` →
 //! magic `43 50 4B 20` ("CPK ") + `@UTF` @0x10. Idem pour 3 autres CPK testés.
 //!
-//! ⚠️ **Distinction critique** : la constante `0x1717E18E` relevée par l'audit iecode
+//! ⚠️ **Distinction critique** : la constante `0x1717E18E` relevée par l'audit de référence
 //! (`IEVRGame.CriEncryptionKey`, `NativeCrypto.IEVRCriKey`) est la clé **fixe Viola**
 //! utilisée pour les `cfg.bin` empaquetés (`Viola/Pack/Logic/CPack.cs`), **PAS** pour
 //! les `.cpk` de `data/packs/`. Appliquée à un CPK réel elle produit du bruit
@@ -75,6 +75,7 @@ use alloc::{string::String, vec::Vec};
 use alloc::borrow::ToOwned;
 
 use crate::FormatError;
+use crate::byte_source::ByteSource;
 
 // ---------------------------------------------------------------------------
 // Constantes
@@ -99,7 +100,7 @@ const FLAG_HAS_NAME: u8 = 0x10; // un offset de nom (4 octets BE) suit dans le s
 const FLAG_HAS_DEFAULT: u8 = 0x20; // une valeur constante suit dans le schéma ; n'avance PAS row_cursor
 const FLAG_ROW_STORAGE: u8 = 0x40; // la valeur est stockée par ligne dans la section rows
 
-/// Clé fixe « Viola » relevée par l'audit iecode (`IEVRGame.CriEncryptionKey`).
+/// Clé fixe « Viola » relevée par l'audit de référence (`IEVRGame.CriEncryptionKey`).
 ///
 /// **Ne s'applique PAS** aux `.cpk` de `data/packs/` (qui utilisent une clé dérivée du
 /// nom de fichier). Réservée aux `cfg.bin` empaquetés Viola (`CPack.cs`). Exposée pour
@@ -241,7 +242,7 @@ pub fn decrypt_block(buffer: &mut [u8], file_offset: u64, key: u32) {
 // (`mov dword [rbp+…], …`), désobfusqués par le MÊME `decrypt_block` (position-XOR CRC32)
 // avec une clé fixe — pas une clé de nom de fichier. Vérifié au réel : l'AES-256-CBC
 // produit un T2B valide (footer `01 74 32 62`, en-tête cohérent : entries≈254 203,
-// string_table_off+len ≈ taille fichier). iecode N'A PAS ce déchiffrement (sa commande
+// string_table_off+len ≈ taille fichier). Le décodeur de référence N'A PAS ce déchiffrement (sa commande
 // `crypto decrypt` renvoie « Unknown encryption »).
 
 /// Blob de clé AES-256 obfusqué, embarqué dans `nie.exe` (8 dwords LE, posés sur la pile
@@ -914,121 +915,62 @@ impl CpkReader {
     where
         F: FnMut(u64, usize) -> Result<Vec<u8>, FormatError>,
     {
-        let data = read(0, 16)?;
-        let mut is_encrypted = false;
-        let mut file_key = None;
-
-        if data.len() < 16 {
-            return Err(FormatError::TooShort {
-                got: data.len(),
-                need: 16,
-            });
-        }
-
-        let magic = u32::from_le_bytes(data[0..4].try_into().unwrap());
-        if magic != 0x204B5043 {
-            // "CPK " en LE
-            let name_with_appid = alloc::format!("002AB8F4-{}", filename);
-            let key_with_appid = key_from_filename(&name_with_appid);
-            let key_without = key_from_filename(filename);
-
-            let try_key = |k: u32| -> bool {
-                let mut test = [0u8; 4];
-                test.copy_from_slice(&data[0..4]);
-                decrypt_block(&mut test, 0, k);
-                let dm = u32::from_le_bytes(test);
-                dm == 0x204B5043
-            };
-
-            if try_key(key_with_appid) {
-                is_encrypted = true;
-                file_key = Some(key_with_appid);
-            } else if try_key(key_without) {
-                is_encrypted = true;
-                file_key = Some(key_without);
-            } else {
-                return Err(FormatError::BadMagic {
-                    format: "CPK (non dechiffrable)",
-                });
-            }
-        }
-
-        let mut read_region = |offset: usize, size: usize| -> Result<Vec<u8>, FormatError> {
-            if size > 64 * 1024 * 1024 {
-                return Err(FormatError::Corrupt("CPK metadata exceeds 64 MiB budget"));
-            }
-            let mut region = read(offset as u64, size)?;
-            if region.len() != size {
-                return Err(FormatError::TooShort {
-                    got: region.len(),
-                    need: size,
-                });
-            }
-            if is_encrypted && let Some(k) = file_key {
-                decrypt_block(&mut region, offset as u64, k);
-            }
-            Ok(region)
+        let encryption = Encryption::probe(&read(0, 16)?, filename)?;
+        let mut region = |offset: usize, size: usize| -> Result<Vec<u8>, FormatError> {
+            encryption.region(read(offset as u64, check_metadata_size(size)?)?, offset, size)
         };
+        let header_total = metadata_total(&region(0, 16)?)?;
+        let (toc_abs, content_offset) = toc_location(&region(0, header_total)?)?;
+        let toc_total = metadata_total(&region(toc_abs, 16)?)?;
+        let entries = toc_entries(&region(toc_abs, toc_total)?, content_offset)?;
+        Ok(encryption.reader(entries))
+    }
 
-        let header_container = read_region(0, 16)?;
-        let header_table_size =
-            u32::from_le_bytes(header_container[8..12].try_into().unwrap()) as usize;
-        let header_total = 16usize
-            .checked_add(header_table_size)
-            .ok_or(FormatError::Corrupt("CPK: header size overflow"))?;
-
-        let header_data = read_region(0, header_total)?;
-        let header_utf = parse_table_container(&header_data, 0)?;
-
-        let toc_offset = header_utf.get_i64(0, "TocOffset").unwrap_or(-1);
-        let mut content_offset = header_utf.get_i64(0, "ContentOffset").unwrap_or(-1);
-        if content_offset < 0 || toc_offset < content_offset {
-            content_offset = toc_offset;
+    /// Parse only archive metadata from an asynchronous [`ByteSource`]: the same four ranged
+    /// reads as [`Self::from_reader`], the same decoding, so a browser mount and the native one
+    /// cannot disagree.
+    ///
+    /// # Errors
+    /// The source cannot be read, or holds no decryptable CPK.
+    pub async fn from_source<S: ByteSource>(filename: &str, source: &S) -> Result<Self, FormatError> {
+        async fn region<S: ByteSource>(
+            source: &S,
+            encryption: Encryption,
+            offset: usize,
+            size: usize,
+        ) -> Result<Vec<u8>, FormatError> {
+            let raw = source.read_at(offset as u64, check_metadata_size(size)?).await?;
+            encryption.region(raw, offset, size)
         }
+        let encryption = Encryption::probe(&source.read_at(0, 16).await?, filename)?;
+        let header_total = metadata_total(&region(source, encryption, 0, 16).await?)?;
+        let (toc_abs, content_offset) =
+            toc_location(&region(source, encryption, 0, header_total).await?)?;
+        let toc_total = metadata_total(&region(source, encryption, toc_abs, 16).await?)?;
+        let entries = toc_entries(
+            &region(source, encryption, toc_abs, toc_total).await?,
+            content_offset,
+        )?;
+        Ok(encryption.reader(entries))
+    }
 
-        if toc_offset < 0 {
-            return Err(FormatError::Corrupt("TocOffset introuvable"));
+    /// Fetch, decrypt and decompress one entry from an asynchronous [`ByteSource`], never the
+    /// complete archive.
+    ///
+    /// # Errors
+    /// The source cannot be read, or the payload is not a valid CRILAYLA stream.
+    pub async fn extract_from_source<S: ByteSource>(
+        &self,
+        entry: &CpkEntry,
+        source: &S,
+    ) -> Result<Vec<u8>, FormatError> {
+        if entry.size == 0 {
+            return Ok(Vec::new());
         }
-
-        let toc_abs = usize::try_from(toc_offset)
-            .map_err(|_| FormatError::Corrupt("CPK: TOC offset exceeds address space"))?;
-        let toc_container = read_region(toc_abs, 16)?;
-        let toc_table_size = u32::from_le_bytes(toc_container[8..12].try_into().unwrap()) as usize;
-        let toc_total = 16usize
-            .checked_add(toc_table_size)
-            .ok_or(FormatError::Corrupt("CPK: TOC size overflow"))?;
-
-        let toc_data = read_region(toc_abs, toc_total)?;
-        let toc_utf = parse_table_container(&toc_data, 0)?;
-
-        let mut entries = Vec::with_capacity(toc_utf.row_count());
-        for i in 0..toc_utf.row_count() {
-            let fname = toc_utf.get_str(i, "FileName").unwrap_or("").to_owned();
-            let dirname = toc_utf.get_str(i, "DirName").unwrap_or("").to_owned();
-            let file_off = toc_utf.get_i64(i, "FileOffset").unwrap_or(0);
-            let file_size = toc_utf.get_i64(i, "FileSize").unwrap_or(0) as u64;
-            let extract_size = toc_utf.get_i64(i, "ExtractSize").unwrap_or(0) as u64;
-            let offset = file_off
-                .checked_add(content_offset)
-                .and_then(|offset| u64::try_from(offset).ok())
-                .ok_or(FormatError::Corrupt("CPK: invalid file offset"))?;
-            let is_compressed = extract_size != file_size && file_size > 0;
-
-            entries.push(CpkEntry {
-                filename: fname,
-                directory: dirname,
-                offset,
-                size: file_size,
-                extract_size,
-                is_compressed,
-            });
-        }
-
-        Ok(CpkReader {
-            entries,
-            file_key,
-            is_encrypted,
-        })
+        let size = usize::try_from(entry.size)
+            .map_err(|_| FormatError::Corrupt("CPK: entry size exceeds address space"))?;
+        let raw = source.read_at(entry.offset, size).await?;
+        self.finish_entry(entry, raw)
     }
 
     /// Extrait et décompresse un fichier depuis le CPK.
@@ -1054,7 +996,14 @@ impl CpkReader {
         }
         let size = usize::try_from(entry.size)
             .map_err(|_| FormatError::Corrupt("CPK: entry size exceeds address space"))?;
-        let mut raw = read(entry.offset, size)?;
+        let raw = read(entry.offset, size)?;
+        self.finish_entry(entry, raw)
+    }
+
+    /// Decrypt and decompress the stored bytes of `entry` once they are read.
+    fn finish_entry(&self, entry: &CpkEntry, mut raw: Vec<u8>) -> Result<Vec<u8>, FormatError> {
+        let size = usize::try_from(entry.size)
+            .map_err(|_| FormatError::Corrupt("CPK: entry size exceeds address space"))?;
         if raw.len() != size {
             return Err(FormatError::TooShort {
                 got: raw.len(),
@@ -1073,6 +1022,132 @@ impl CpkReader {
             Ok(raw)
         }
     }
+}
+
+/// How the pack is enciphered, probed once from its first 16 bytes.
+#[derive(Clone, Copy)]
+struct Encryption {
+    is_encrypted: bool,
+    file_key: Option<u32>,
+}
+
+impl Encryption {
+    fn probe(first: &[u8], filename: &str) -> Result<Self, FormatError> {
+        if first.len() < 16 {
+            return Err(FormatError::TooShort {
+                got: first.len(),
+                need: 16,
+            });
+        }
+        let magic = u32::from_le_bytes(first[0..4].try_into().unwrap());
+        if magic == 0x204B5043 {
+            // "CPK " en LE
+            return Ok(Self {
+                is_encrypted: false,
+                file_key: None,
+            });
+        }
+        let name_with_appid = alloc::format!("002AB8F4-{}", filename);
+        let try_key = |k: u32| -> bool {
+            let mut test = [0u8; 4];
+            test.copy_from_slice(&first[0..4]);
+            decrypt_block(&mut test, 0, k);
+            u32::from_le_bytes(test) == 0x204B5043
+        };
+        [key_from_filename(&name_with_appid), key_from_filename(filename)]
+            .into_iter()
+            .find(|&k| try_key(k))
+            .map(|k| Self {
+                is_encrypted: true,
+                file_key: Some(k),
+            })
+            .ok_or(FormatError::BadMagic {
+                format: "CPK (non dechiffrable)",
+            })
+    }
+
+    /// Decrypt a metadata region read at `offset` and check that it is `size` bytes long.
+    fn region(self, mut region: Vec<u8>, offset: usize, size: usize) -> Result<Vec<u8>, FormatError> {
+        if region.len() != size {
+            return Err(FormatError::TooShort {
+                got: region.len(),
+                need: size,
+            });
+        }
+        if self.is_encrypted
+            && let Some(k) = self.file_key
+        {
+            decrypt_block(&mut region, offset as u64, k);
+        }
+        Ok(region)
+    }
+
+    fn reader(self, entries: Vec<CpkEntry>) -> CpkReader {
+        CpkReader {
+            entries,
+            file_key: self.file_key,
+            is_encrypted: self.is_encrypted,
+        }
+    }
+}
+
+fn check_metadata_size(size: usize) -> Result<usize, FormatError> {
+    if size > 64 * 1024 * 1024 {
+        return Err(FormatError::Corrupt("CPK metadata exceeds 64 MiB budget"));
+    }
+    Ok(size)
+}
+
+/// Total size (16-byte container plus its table) from a table container head.
+fn metadata_total(container: &[u8]) -> Result<usize, FormatError> {
+    let table_size = u32::from_le_bytes(
+        container
+            .get(8..12)
+            .and_then(|b| b.try_into().ok())
+            .ok_or(FormatError::Corrupt("CPK: truncated table container"))?,
+    ) as usize;
+    16usize
+        .checked_add(table_size)
+        .ok_or(FormatError::Corrupt("CPK: table size overflow"))
+}
+
+/// `(TocOffset, ContentOffset)` of the header table.
+fn toc_location(header_data: &[u8]) -> Result<(usize, i64), FormatError> {
+    let header_utf = parse_table_container(header_data, 0)?;
+    let toc_offset = header_utf.get_i64(0, "TocOffset").unwrap_or(-1);
+    let mut content_offset = header_utf.get_i64(0, "ContentOffset").unwrap_or(-1);
+    if content_offset < 0 || toc_offset < content_offset {
+        content_offset = toc_offset;
+    }
+    if toc_offset < 0 {
+        return Err(FormatError::Corrupt("TocOffset introuvable"));
+    }
+    let toc_abs = usize::try_from(toc_offset)
+        .map_err(|_| FormatError::Corrupt("CPK: TOC offset exceeds address space"))?;
+    Ok((toc_abs, content_offset))
+}
+
+fn toc_entries(toc_data: &[u8], content_offset: i64) -> Result<Vec<CpkEntry>, FormatError> {
+    let toc_utf = parse_table_container(toc_data, 0)?;
+    let mut entries = Vec::with_capacity(toc_utf.row_count());
+    for i in 0..toc_utf.row_count() {
+        let file_off = toc_utf.get_i64(i, "FileOffset").unwrap_or(0);
+        let file_size = toc_utf.get_i64(i, "FileSize").unwrap_or(0) as u64;
+        let extract_size = toc_utf.get_i64(i, "ExtractSize").unwrap_or(0) as u64;
+        let offset = file_off
+            .checked_add(content_offset)
+            .and_then(|offset| u64::try_from(offset).ok())
+            .ok_or(FormatError::Corrupt("CPK: invalid file offset"))?;
+        entries.push(CpkEntry {
+            filename: toc_utf.get_str(i, "FileName").unwrap_or("").to_owned(),
+            directory: toc_utf.get_str(i, "DirName").unwrap_or("").to_owned(),
+            offset,
+            size: file_size,
+            extract_size,
+            is_compressed: extract_size != file_size && file_size > 0,
+        });
+    }
+    Ok(entries)
 }
 
 // ---------------------------------------------------------------------------
@@ -1725,7 +1800,7 @@ mod tests {
     }
 
     /// Bout-en-bout sur le VRAI `cpk_list.cfg.bin` Steam s'il est présent (sinon skip,
-    /// comme le test iecode). Déchiffre (AES-256-CBC) → footer T2B `01 74 32 62` présent
+    /// comme le test de référence). Déchiffre (AES-256-CBC) → footer T2B `01 74 32 62` présent
     /// → cfgbin_parse → l'entrée racine contient des milliers de fichiers CPK.
     #[test]
     fn cpk_list_decrypts_real_file() {

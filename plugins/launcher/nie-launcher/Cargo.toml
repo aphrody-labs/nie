@@ -7,8 +7,14 @@ license-file = "LICENSE"
 publish = false
 description = "Native Rust launcher, save editor, and mod package manager for Inazuma Eleven: Victory Road"
 
+[lib]
+crate-type = ["rlib", "staticlib", "cdylib"]
+
 [lints]
 workspace = true
+
+[features]
+crlib = []
 
 [dependencies]
 nie-plugin = { workspace = true }

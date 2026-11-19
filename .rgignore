@@ -1,0 +1,13 @@
+# Default search surface of agents: first-party sources only. Audit the rest with `rg --no-ignore`.
+vendor/
+third_party/
+target/
+**/target/
+Cargo.lock
+gui/Cargo.lock
+os/Cargo.lock
+bindings/
+include/
+contract/openapi.json
+docs/research/log/*.json
+*.snap

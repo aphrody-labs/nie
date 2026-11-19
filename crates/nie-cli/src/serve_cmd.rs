@@ -12,6 +12,7 @@ use serde_json::{Value, json};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
+use crate::serve_app;
 use crate::serve_routes::{self, Route};
 use crate::serve_wiki;
 
@@ -163,6 +164,8 @@ pub(crate) struct HttpResponse {
     reason: &'static str,
     pub(crate) content_type: &'static str,
     cache_control: &'static str,
+    /// Further headers (`Content-Range`, `Content-Encoding`, ...).
+    pub(crate) headers: Vec<(&'static str, String)>,
     pub(crate) body: Vec<u8>,
 }
 
@@ -173,8 +176,15 @@ impl HttpResponse {
             reason,
             content_type: "application/json; charset=utf-8",
             cache_control: "no-store",
+            headers: Vec::new(),
             body: serde_json::to_vec(value).unwrap_or_else(|_| b"{}".to_vec()),
         }
+    }
+
+    /// Adds a header to the answer.
+    pub(crate) fn with_header(mut self, name: &'static str, value: impl Into<String>) -> Self {
+        self.headers.push((name, value.into()));
+        self
     }
 
     pub(crate) fn bytes(
@@ -189,18 +199,23 @@ impl HttpResponse {
             reason,
             content_type,
             cache_control,
+            headers: Vec::new(),
             body,
         }
     }
 
     fn into_wire(self, head_only: bool) -> Vec<u8> {
         let header = format!(
-            "HTTP/1.1 {} {}\r\nContent-Type: {}\r\nContent-Length: {}\r\nCache-Control: {}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: Authorization, Content-Type\r\nAccess-Control-Allow-Methods: GET, HEAD, POST, OPTIONS\r\nX-Content-Type-Options: nosniff\r\nConnection: close\r\n\r\n",
+            "HTTP/1.1 {} {}\r\nContent-Type: {}\r\nContent-Length: {}\r\nCache-Control: {}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: Authorization, Content-Type, Range\r\nAccess-Control-Allow-Methods: GET, HEAD, POST, OPTIONS\r\nAccess-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges\r\nX-Content-Type-Options: nosniff\r\nConnection: close\r\n{}\r\n",
             self.status,
             self.reason,
             self.content_type,
             self.body.len(),
-            self.cache_control
+            self.cache_control,
+            self.headers
+                .iter()
+                .map(|(name, value)| format!("{name}: {value}\r\n"))
+                .collect::<String>()
         );
         let mut out =
             Vec::with_capacity(header.len() + if head_only { 0 } else { self.body.len() });
@@ -307,6 +322,19 @@ async fn route_request(
     let query = parse_query(raw_query);
     let matched = serve_routes::match_route(method, raw_path);
     let route = matched.as_ref().map(|(route, _)| *route);
+
+    if route == Some(Route::Health) && raw_path.trim_end_matches('/').is_empty() && serve_app::wants_page(headers) {
+        return serve_app::to_app();
+    }
+
+    if route == Some(Route::AppIndex) {
+        return serve_app::app(None, headers);
+    }
+
+    if route == Some(Route::AppAsset) {
+        let name = matched.as_ref().and_then(|(_, params)| params.first());
+        return serve_app::app(name.map(String::as_str), headers);
+    }
 
     if route == Some(Route::Health) {
         let profile = if cfg!(feature = "host") {
@@ -595,6 +623,23 @@ async fn route_request(
         });
     }
 
+    if route == Some(Route::VfsStream) {
+        let token = state.raw_token.clone();
+        let headers = headers.clone();
+        let path = query.get("path").cloned();
+        return tokio::task::spawn_blocking(move || {
+            serve_app::stream(&vfs, token.as_ref(), &headers, path.as_deref())
+        })
+        .await
+        .unwrap_or_else(|_| {
+            HttpResponse::json(
+                500,
+                "Internal Server Error",
+                &json!({ "error": "task failed" }),
+            )
+        });
+    }
+
     if route == Some(Route::VfsRead) {
         // `decode=json|png` is derived data and stays public; any other mode returns the game's
         // own bytes and needs the configured bearer token. Refusals answer 404 so the origin
@@ -719,16 +764,8 @@ async fn route_request(
         });
     }
 
-    if let Some((
-        route @ (Route::WikiLanguages
-        | Route::WikiUnsourced
-        | Route::WikiList(_)
-        | Route::WikiRecord(_)
-        | Route::PageIndex
-        | Route::PageList(_)
-        | Route::PageRecord(_)),
-        params,
-    )) = matched
+    if let Some((route, params)) = matched
+        && route.is_wiki()
     {
         let wiki = match serve_wiki::shared(&state.wiki, &vfs) {
             Ok(wiki) => wiki,
@@ -738,10 +775,8 @@ async fn route_request(
         };
         let params: Vec<String> = params.iter().map(|p| percent_decode(p)).collect();
         return tokio::task::spawn_blocking(move || match route {
-            Route::PageIndex | Route::PageList(_) | Route::PageRecord(_) => {
-                serve_wiki::page_route(route, &params, &query, &wiki)
-            }
-            _ => serve_wiki::json_route(route, &params, &query, &wiki),
+            route if route.is_page() => serve_wiki::page_route(route, &params, &query, &wiki),
+            route => serve_wiki::json_route(route, &params, &query, &wiki),
         })
         .await
         .unwrap_or_else(|_| {
@@ -760,7 +795,7 @@ fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack.windows(needle.len()).position(|w| w == needle)
 }
 
-fn parse_query(raw: &str) -> HashMap<String, String> {
+pub(crate) fn parse_query(raw: &str) -> HashMap<String, String> {
     let mut map = HashMap::new();
     for pair in raw.split('&') {
         if pair.is_empty() {
@@ -772,7 +807,7 @@ fn parse_query(raw: &str) -> HashMap<String, String> {
     map
 }
 
-fn percent_decode(input: &str) -> String {
+pub(crate) fn percent_decode(input: &str) -> String {
     let bytes = input.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;

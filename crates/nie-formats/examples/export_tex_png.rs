@@ -18,6 +18,7 @@ use std::sync::{Arc, Mutex};
 
 use nie_formats::g4tx_decode;
 use nie_formats::vfs;
+use nie_formats::vfs_manifest::hex;
 use sha2::{Digest, Sha256};
 
 /// One requested image: the served relative path (`dx11/…/x.png` or `dx11/…/x.g4tx/name.png`).
@@ -156,6 +157,3 @@ fn main() {
     );
 }
 
-fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{b:02x}")).collect()
-}

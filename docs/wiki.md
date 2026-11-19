@@ -1,8 +1,7 @@
 # Wiki: the game's data, read from the VFS
 
-The Inazuma Eleven: Victory Road wiki lives in nie. It was on rosegriffon.fr until 2026-11-19, when
-Level-5 asked for a more factual version; rosegriffon.fr now keeps community content only and links
-here. Every page is computed from the installation's VFS at request time.
+The Inazuma Eleven: Victory Road wiki lives in nie. Level-5 asked for a factual version, so every page is computed from the installation's VFS at
+request time.
 
 ## Rules
 
@@ -28,19 +27,33 @@ here. Every page is computed from the installation's VFS at request time.
 
 The crate `crates/nie-wiki-vfs` computes every record (`Wiki`) and renders the HTML pages. Surfaces:
 
-- CLI: `nie wiki characters|character <key>|skills|skill <key>|teams|team <id>|languages|unsourced`
-  with `--lang de,fr`, `--json`, `-q`, `--limit`, `--offset` (MCP tool `cli_wiki`).
+- CLI: `nie wiki characters|character <key>|skills|skill <key>|teams|team <id>|tables|table <table>
+  <class>|catalog|languages|unsourced|verify` with `--lang de,fr`, `--json`, `-q`, `--class`,
+  `--limit`, `--offset` (MCP tool `cli_wiki`).
 - `nie serve`: JSON under `/v1/wiki/...`, HTML under `/wiki`, described by `/openapi.json`
   (see [serve.md](serve.md)).
 
 How the values are read:
 
-- Character: `chara_param` (element, positions, growth pattern, learned skills) joined to
-  `chara_base` (code, name, family name, description, gender, series id, team id). Gender is the
-  stored code (1 = male, 2 = female; the table also holds 0, 4 and 5 for props, an NPC and
-  monsters). Positions are the stored `chara_param` codes; the VFS has no label for them.
+- Characters: every `chara_param` entry and every `chara_base` entry is one record, never dropped.
+  A param joins the first base entry of its baseId (`param_and_base`); a param whose baseId names
+  no base entry keeps its own fields (`param_without_base`); a base entry no param names, or a
+  repeated id, is a record without param fields (`base_without_param`). Counts come from the
+  tables and are shown on the pages (`classes`).
+- Gender is the stored code (1 = male, 2 = female; the table also holds 0, 4 and 5 for props, an
+  NPC and monsters). Positions are the stored `chara_param` codes; the VFS has no label for them.
+  `__SORT_INDEX` and `CHARA_BASE_INFO_REF_BATTLE` entries are attached to the record of the same
+  position (`sort_index`, `battle`).
 - Names are `NOUN_INFO` rows of `chara_text`, keyed by (hash, form): form 0 is the full name, 11 and
-  12 its two parts. Descriptions are `TEXT_INFO` rows. Every form of every language is served.
+  12 its two parts; `chara_base` variables 3, 4 and 5 are the keys of the name, the family name and
+  a second family-name text. `chara_text_roma` rows of the same keys are the romanized names.
+  Descriptions are `TEXT_INFO` rows. Every form of every language is served.
+- Series: `chara_base` variable 15 names a `chara_series_config` entry whose
+  `charaSeriesNameTextId` is a `chara_add_info_text` row.
+- Learned skills: the ids of a `chara_param` entry name an entry of `skill_config` (skillID),
+  `aura_skill_config` (`AURA_CMD_INFO` variable 0) or `passive_skill_config` (`PASSIVE_SKILL_INFO`
+  variable 0), whose name key is a `skill_text` row. An id in none of the three, an entry with no
+  name key and a key no language holds are each shown as such.
 - Element labels are the `system_text` rows keyed by `crc32("element_type_<name>")`, the way the
   game hashes its enumeration keys.
 - Skill: all fields of a `skill_config` entry as stored, with the name (`skillNameId`) and
@@ -48,32 +61,54 @@ How the values are read:
 - Team: a `belong_team_config` entry, the name from `team_text`, each `teamEmblemId_*` resolved by
   hashing the CPK file names (`em010001.g4tx` hashes to `0xD5ABE1F0`); an id no file name hashes
   to stays unresolved.
+- Tables: every node class (T2B) or list (RDBN) of `chara_param`, `chara_base`,
+  `chara_series_config`, `seasonal_chara_param`, `chara_param_table_config`, `skill_config`,
+  `passive_skill_config`, `aura_skill_config`, `change_aura_skill_config`,
+  `override_skill_config`, `real_skill_config` and `belong_team_config` is served as stored. A T2B
+  file stores positional variables with no field names, so they are served positionally; text
+  references are labelled where a table's variable is verified to hold text keys (`name`,
+  `description`). In a T2B container (`X_LIST_BEG`) the nodes named `__SORT_INDEX` and `X_REF_Y`
+  are annotations of the records of `X`: entry k belongs to record k, and `X_REF_Y` holds the
+  `[offset, count]` slice of the class `P_Y` (the longest prefix `P` of `X` that has one).
+- The catalog lists every file of `data/common/gamedata` and whether a table above reads it; the
+  files marked `present` are not decoded.
 - The languages are the folders of `data/common/text` that hold `chara_text.cfg.bin`.
+
+## Conformance
+
+`nie wiki verify [--server <url>]` compares what a wiki serves to the VFS. The raw side reads the
+cfg.bin and text files with the `nie-formats` parsers directly. For every record of every family
+(not a sample) it rebuilds the expected record from the raw entry and reports each missing field,
+extra field and differing value: the characters, skills, teams, every table class, the table
+list, the catalog and the languages. It also fetches every page: the list pages must link every
+record, and each record page's stated provenance (path, table, index) must name an entry whose
+stored variables or fields equal what the page shows. It exits non-zero on any mismatch. Facts
+about the data that the wiki already shows as empty states (a skill with no name text key) are
+printed as notes, not counted as mismatches. Without `--server` the same route handlers answer in
+process; with it the routes of a running `nie serve` are fetched. The unit test builds a synthetic
+installation and requires zero mismatches.
 
 ## Sources
 
-The page families and their tables are listed in the VFS column of rosegriffon's
-`docs/research/inazuma-ecosystem-parity.md`. The rosegriffon tag `legacy-azalee-wiki`
-(commit `e4464109`, `apps/rg-website/src/app/wiki/**`) is a UX and feature reference only, never a
-data source. `crates/nie-wiki` and `crates/nie-zukan` read that legacy mirror and are replaced, not
-extended.
+The page families and their tables come from the VFS only: `nie vfs formats` and `nie wiki` list
+them. No external mirror is a data source.
 
 ## What the VFS labels and what it does not
 
-Measured on the installation by `crates/nie-wiki-vfs` (example `pages`):
+Measured on the installation by `nie wiki`:
 
 - Names: `chara_text` `NOUN_INFO` is keyed by (hash, form): form 0 full name, 11 family name,
   12 given name. All forms are kept.
-- Element is the only code with a text label: `system_text` key
-  `crc32("element_type_<wind|forest|fire|mountain>")`. "none" and "void" have no text row.
+- Element: `system_text` key `crc32("element_type_<wind|forest|fire|mountain>")`. "none" and
+  "void" have no text row. Series have a name through `chara_series_config`.
 - Position (`chara_param` variable 3), gender (`chara_base` variable 11: 1 male, 2 female; 0, 4
-  and 5 are props, an NPC and monsters), skill category and series id have no label in any of the
-  5871 gamedata files: they are served as stored codes.
+  and 5 are props, an NPC and monsters) and skill category have no label in any of the gamedata
+  files: they are served as stored codes.
 - 206 of 208 team emblems resolve; `0x86D317FE` and `0x339AD19E` match no CPK file name.
 - `data/common/gamedata/team/team_config_*.cfg.bin` (`TEAM_MEMBER_SKILL_CONFIG_INFO_LIST_BEG`,
-  9073 rows of 13 integers) is not decoded yet.
+  9073 rows of 13 integers) is listed in the catalog as present and not decoded.
 
 ## Hosting
 
-Public at https://nie.aphrody.app (own stack, see `docs/serve.md`), textures and models included,
+Public at the hostname configured on the tunnel (own stack, see `docs/serve.md`), textures and models included,
 by owner decision on 2026-11-19. The Level-5 partner admin reviews licensing after the deploy.

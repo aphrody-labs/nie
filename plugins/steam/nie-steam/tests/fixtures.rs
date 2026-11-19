@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Shared Bun/Rust VDF fixtures (`tests/fixtures`). The Bun parser of `packages/steam` reads
-//! the same files and must produce the same `*.expected.json`. `BUN_STEAM_WRITE_FIXTURES=1`
+//! the same files and must produce the same `*.expected.json`. `NIE_STEAM_WRITE_FIXTURES=1`
 //! regenerates the binary fixtures from the typed documents below.
 
 use std::path::PathBuf;
@@ -77,7 +77,7 @@ fn binary_fixtures_match_writer_and_expected() {
         ("types.bin.vdf", types(), "types.expected.json"),
     ] {
         let bytes = write_binary_vdf(&doc);
-        if std::env::var_os("BUN_STEAM_WRITE_FIXTURES").is_some() {
+        if std::env::var_os("NIE_STEAM_WRITE_FIXTURES").is_some() {
             std::fs::write(fixture(name), &bytes).unwrap();
         }
         let on_disk = std::fs::read(fixture(name)).unwrap();

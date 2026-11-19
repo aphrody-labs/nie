@@ -11,7 +11,7 @@
 use alloc::vec::Vec;
 use serde_json::Value;
 
-use crate::cfgbin::{field_bool, field_hash, field_pair, list_values};
+use crate::cfgbin::{field_bool, field_hash, field_pair, list_values, slice_ref};
 use crate::hash::HashId;
 
 /// `m_mapTagDataList` — une donnée de tag de map.
@@ -62,20 +62,13 @@ impl EventMapTagConfig {
     /// Ids de tag d'un event.
     #[must_use]
     pub fn tags_of_event(&self, s: &EventMapTagSetting) -> &[HashId] {
-        slice(&self.tag_ids, s.tag_id_list_ref)
+        slice_ref(&self.tag_ids, s.tag_id_list_ref)
     }
     /// Données de tag d'une info.
     #[must_use]
     pub fn data_of_info(&self, i: &MapTagInfo) -> &[MapTagData] {
-        slice(&self.tag_data, i.data)
+        slice_ref(&self.tag_data, i.data)
     }
-}
-
-fn slice<T>(list: &[T], range: [i64; 2]) -> &[T] {
-    let n = list.len();
-    let start = (range[0].max(0) as usize).min(n);
-    let end = start.saturating_add(range[1].max(0) as usize).min(n);
-    list.get(start..end).unwrap_or(&[])
 }
 
 /// Parse un `event_map_tag_config_*.cfg.bin.json`.

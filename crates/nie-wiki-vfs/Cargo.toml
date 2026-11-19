@@ -7,17 +7,32 @@ license = "MIT OR Apache-2.0"
 publish = false
 description = "Inazuma Eleven: Victory Road wiki pages computed from the game's VFS only"
 
+[lib]
+crate-type = ["rlib", "staticlib", "cdylib"]
+
 [lints]
 workspace = true
+
+[features]
+crlib = []
+# A synthetic installation builder for the tests of this crate and its consumers.
+testing = []
 
 [dependencies]
 crc32fast = { workspace = true, features = ["std"] }
 nie-data = { workspace = true, features = ["serde", "std"] }
-nie-explore = { workspace = true, features = ["host"] }
-nie-formats = { workspace = true, features = ["std", "remote-vfs"] }
+nie-explore = { workspace = true }
+nie-formats = { workspace = true, features = ["std"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true, features = ["std"] }
 
+# The native mounts (SFTP, rclone remotes, local files); the browser mounts through `Wiki::over`.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+nie-explore = { workspace = true, features = ["host"] }
+nie-formats = { workspace = true, features = ["remote-vfs"] }
+
 [dev-dependencies]
+blake3 = { workspace = true }
+nie-wiki-vfs = { path = ".", features = ["testing"] }
 tempfile = { workspace = true }

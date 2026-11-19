@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "plugins/*/*", "apps/*"]
+members = ["crates/*", "plugins/*/*", "apps/*", "xtask"]
 
 [workspace.package]
 version = "2.0.0"
@@ -24,24 +24,37 @@ perf = { level = "warn", priority = -1 }
 
 [workspace.dependencies]
 anyhow = { version = "1.0.104", default-features = false }
+async-trait = "0.1.92"
+bytes = { version = "1.12.2", default-features = false }
+nix = { version = "0.31.4", default-features = false, features = ["signal", "user"] }
+rcgen = { version = "0.14.10", default-features = false, features = ["pem"] }
+pingora-cache = { version = "0.9.1", default-features = false, features = ["rustls"] }
+pingora-core = { version = "0.9.1", default-features = false, features = ["rustls"] }
+pingora-http = "0.9.1"
+pingora-limits = "0.9.1"
+pingora-load-balancing = { version = "0.9.1", default-features = false, features = ["rustls"] }
+pingora-proxy = { version = "0.9.1", default-features = false, features = ["rustls"] }
 base64 = { version = "0.23.1", default-features = false, features = ["alloc"] }
 blake3 = { version = "1.8.7" }
 opendal = { version = "0.59.5", default-features = false, features = [
   "executors-tokio",
-  "http-transport-reqwest",
+  "http-transport-reqwest-rustls-no-provider",
   "layers-retry",
   "services-gdrive",
   "services-http",
   "services-s3",
 ] }
+opendal-http-transport-reqwest = { version = "0.59.5", default-features = false, features = ["rustls-no-provider"] }
 png = { version = "0.18.1", default-features = false }
 rayon = { version = "1.12.0", default-features = false }
 redis = { version = "1.8.2", default-features = false }
 reqwest = { version = "0.13.5", default-features = false }
-russh = { version = "=0.65.1", default-features = false, features = [
-  "aws-lc-rs",
-  "rsa",
-] }
+russh = { version = "=0.65.2", default-features = false, features = ["aws-lc-rs", "rsa"] }
+rustls = { version = "0.23.46", default-features = false, features = ["std", "tls12"] }
+rustls-graviola = "0.4.0"
+graviola = "0.4.5"
+nie-tls = { path = "crates/nie-tls", version = "2.0.0" }
+nie-ssh = { path = "crates/nie-ssh", version = "2.0.0" }
 russh-sftp = { version = "3.0.1", default-features = false }
 serde = { version = "1.0.229", default-features = false, features = [
   "derive",
@@ -52,13 +65,20 @@ serde_json = { version = "1.0.154", default-features = false, features = [
 ] }
 sha1 = { version = "0.11.0", default-features = false }
 sha2 = { version = "0.11.1", default-features = false }
-steamroom = "0.3.0"
-steamroom-client = "0.3.0"
+flate2 = "1.1.11"
+corosensei = { version = "0.3.4", default-features = false, features = ["default-stack"] }
+gix-hash = { version = "0.28.1", default-features = false, features = ["sha1"] }
+gix-index = { version = "0.58.0", default-features = false, features = ["sha1"] }
+proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
+steamroom = { version = "0.3.0", default-features = false }
+steamroom-client = { version = "0.3.0", default-features = false }
 ssh2-config = "0.9.0"
+syn = { version = "3.0.10", default-features = false, features = ["full", "visit", "parsing", "printing", "clone-impls"] }
 tempfile = { version = "3.27.0", default-features = false, features = [
   "getrandom",
 ] }
 thiserror = { version = "2.0.21", default-features = false }
+wgpu-profiler = { version = "0.28.0", default-features = false }
 tokio = { version = "1.54.1", default-features = false }
 tracing = { version = "0.1.44", default-features = false }
 tracing-subscriber = { version = "0.3.23", default-features = false }
@@ -79,13 +99,19 @@ bevy_math = { version = "0.20.1", default-features = false }
 bevy_mesh = { version = "0.20.1", default-features = false }
 bevy_reflect = { version = "0.20.1", default-features = false }
 bevy-wgpu-types = { package = "wgpu-types", version = "30.0.2", default-features = false }
+nie-assets = { path = "crates/nie-assets", version = "2.0.0" }
 nie-steam = { path = "plugins/steam/nie-steam", version = "2.0.0", default-features = false }
 nie-gpu = { path = "crates/nie-gpu", version = "2.0.0" }
 clap = { version = "4", features = ["derive", "env"] }
 console_error_panic_hook = "0.1.7"
 futures-lite = "2"
 rusqlite = { version = "0.43" }
+taplo = { version = "0.14.0", default-features = false }
 wasm-bindgen = { version = "0.2.130", default-features = false }
+js-sys = { version = "0.3.107", default-features = false }
+wasm-bindgen-futures = { version = "0.4.80", default-features = false }
+web-sys = { version = "0.3.107", default-features = false }
+crabtables = { version = "0.1.0", features = ["lang"] }
 crc32fast = { version = "1.5", default-features = false }
 image_dds = { version = "0.7", default-features = false }
 memmap2 = { version = "0.9" }
@@ -104,10 +130,45 @@ winnow = { version = "1.0.5", default-features = false, features = [
 wana_kana = "5.0.0"
 specta = { version = "2.0.0-rc.28", features = ["derive", "serde_json"] }
 aho-corasick = "1.1.5"
+# Terminal explorer (plugins/tui, crates/nie-explore feature `fm`): versions read live from crates.io on 2026-11-19.
+dirs = "7.0.0"
+image = { version = "0.25.10", default-features = false }
+nucleo = "0.5.0"
+openh264 = { version = "0.9.10", default-features = false, features = ["source"] }
+ratatui = { version = "0.30.2", default-features = false, features = ["crossterm", "layout-cache", "underline-color"] }
+ratatui-image = { version = "11.1.0", default-features = false, features = ["crossterm"] }
+tree-sitter-highlight = "0.27.2"
+tree-sitter-lua = "0.5.0"
+# Terminal window (`nie term`, crates/nie-explore feature `term`, plugins/tui feature `term`): rio 0.5.32 read live from index.crates.io on 2026-11-19.
+rio-vt = { version = "0.5.32", default-features = false, features = ["graphics"] }
+rio-graphics = { version = "0.5.32", default-features = false }
+rio-window = { version = "0.5.32", default-features = false, features = ["x11", "wayland", "wayland-dlopen"] }
+sugarloaf = { version = "0.5.32", features = ["wgpu"] }
 
 toml = "1.2.1"
-regex = { version = "1.13.1", default-features = false }
+semver = "1.0.28"
 sctrace = "0.19.0"
+regex = { version = "1.13.1", default-features = false }
+ureq = { version = "3.5.1", default-features = false }
+toml_edit = "0.25.19"
+brotli = { version = "9.1.3", default-features = false, features = ["std"] }
+tungstenite = { version = "0.30.0", default-features = false, features = ["handshake"] }
+windows = { version = "0.62.2", default-features = false }
+cranelift-codegen = "=0.137.1"
+cranelift-frontend = "=0.137.1"
+cranelift-jit = "=0.137.1"
+cranelift-module = "=0.137.1"
+cranelift-native = "=0.137.1"
+cranelift-object = "=0.137.1"
+iced-x86 = { version = "1.22.0", default-features = false, features = ["std", "decoder", "instr_info", "intel"] }
+libc = "0.2.191"
+libloading = "=0.9.0"
+target-lexicon = "=0.13.5"
+
+# steamroom 0.3.0 forces reqwest's default rustls provider (aws-lc). The fork branch nie/no-provider is
+# v0.3.0 plus upstream 4dd310cb (selectable provider) with the provider left to the host (nie-tls).
+# Drop this patch when steamroom publishes a release that carries that commit.
+[patch.crates-io]
 
 [profile.dev]
 split-debuginfo = "unpacked"
@@ -146,6 +207,11 @@ panic = "abort"
 debug = false
 strip = true
 incremental = false
+
+# The vendored PUC-Rio Lua 5.2 oracle of nie-lua (differential tests) is built optimised: its shift by a count
+# of 2^31 is undefined in C and only the optimised build matches the stock x86 behaviour modelled in rt/bit32.rs.
+[profile.dev.package.mlua-sys]
+opt-level = 2
 
 [profile.dev.build-override]
 codegen-units = 16

@@ -873,7 +873,7 @@ pub enum AvatarCmd {
     },
 }
 
-/// Les cinq fichiers de l'éditeur, déjà décodés en JSON forme iecode.
+/// Les cinq fichiers de l'éditeur, déjà décodés en JSON forme étiquetée.
 struct Sources {
     /// `chara_edit_<ver>.cfg.bin` — les 16 listes.
     catalogue: CharaEditConfig,
@@ -944,10 +944,10 @@ fn find_one(vfs: &Vfs, contains: &str, prefix: &str) -> Result<String> {
         .with_context(|| format!("{prefix}*.cfg.bin introuvable dans le VFS"))
 }
 
-/// Lit un `cfg.bin` du VFS et le rend en JSON forme iecode (RDBN à listes ou T2B, indifféremment).
+/// Lit un `cfg.bin` du VFS et le rend en JSON forme étiquetée (RDBN à listes ou T2B, indifféremment).
 fn read_json(vfs: &Vfs, path: &str) -> Result<Json> {
     let raw = vfs.read(path).with_context(|| format!("lecture {path}"))?;
-    cfgbin::to_iecode_json(&raw).with_context(|| format!("décodage cfg.bin {path}"))
+    cfgbin::to_tagged_json(&raw).with_context(|| format!("décodage cfg.bin {path}"))
 }
 
 impl Sources {

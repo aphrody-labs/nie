@@ -1,6 +1,6 @@
 # Maintainer: nie contributors
 # Vanilla upstream mainline (release candidate or release) kernel for the nie production host, beside the stock `linux`.
-# Inputs come from the environment, set by deploy/kernel/build.sh:
+# Inputs come from the environment, set by `cargo xtask kernel build` (xtask/src/kernel.rs):
 #   NIE_KERNEL_TAG     signed upstream tag, for example v7.4-rc3
 #   NIE_KERNEL_SHA256  sha256 of linux.tar, the `git archive` of that tag
 # SOURCE_DATE_EPOCH is the tagger time of the tag: it fixes every timestamp of the build.

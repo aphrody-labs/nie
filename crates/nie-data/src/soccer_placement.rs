@@ -10,7 +10,7 @@
 use alloc::vec::Vec;
 use serde_json::Value;
 
-use crate::cfgbin::{field_bool, field_hash, field_i64, field_pair, list_values};
+use crate::cfgbin::{field_bool, field_hash, field_i64, field_pair, list_values, slice_ref};
 use crate::hash::HashId;
 
 /// `m_charaPlacementData` — placement d'un joueur (position/rotation sur le terrain).
@@ -85,12 +85,12 @@ impl SoccerPlacementConfig {
     /// Catégories d'un placement nommé.
     #[must_use]
     pub fn categories_of(&self, p: &PlacementInfo) -> &[PlacementCategory] {
-        slice(&self.categories, p.category_data)
+        slice_ref(&self.categories, p.category_data)
     }
     /// Placements de perso d'une catégorie.
     #[must_use]
     pub fn charas_of(&self, c: &PlacementCategory) -> &[CharaPlacement] {
-        slice(&self.chara_placements, c.data)
+        slice_ref(&self.chara_placements, c.data)
     }
     /// Recherche un placement par son `placementId`.
     #[must_use]
@@ -99,13 +99,6 @@ impl SoccerPlacementConfig {
             .iter()
             .find(|p| p.placement_id == placement_id)
     }
-}
-
-fn slice<T>(list: &[T], range: [i64; 2]) -> &[T] {
-    let n = list.len();
-    let start = (range[0].max(0) as usize).min(n);
-    let end = start.saturating_add(range[1].max(0) as usize).min(n);
-    list.get(start..end).unwrap_or(&[])
 }
 
 /// Parse un `soccer_chara_placement_*.cfg.bin.json`.

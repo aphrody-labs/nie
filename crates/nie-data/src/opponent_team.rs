@@ -230,7 +230,7 @@ fn pair(v: &Value, key: &str) -> [i64; 2] {
     [a, b]
 }
 
-/// Parse le `opponent_team_config_*.cfg.bin.json` complet (forme iecode `lists`).
+/// Parse le `opponent_team_config_*.cfg.bin.json` complet (forme étiquetée `lists`).
 ///
 /// Port 1:1 de `parseContent` (`opponent-team-config.ts` l.66-112) : on parcourt les quatre
 /// listes nommées ; toute liste absente donne un `Vec` vide (`if (!content?.lists) return …`).

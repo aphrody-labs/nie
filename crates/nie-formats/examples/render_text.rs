@@ -111,7 +111,7 @@ fn main() {
     // Crop ciblé pleine résolution de la zone Latin (env CROP="x0,x1,y0,y1"), alpha en gris,
     // avec une grille tous les 100 px (repères de coordonnées atlas).
     let stride = aw * 4;
-    let crop: Vec<usize> = std::env::var("CROP")
+    let crop: Vec<usize> = std::env::var("NIE_EXAMPLE_CROP")
         .unwrap_or_else(|_| "1000,2600,1550,1790".into())
         .split(',')
         .filter_map(|s| s.parse().ok())
@@ -136,7 +136,7 @@ fn main() {
     // SCAN des bords de glyphes dans la rangée ASCII physique (y≈[955,1015]) : colonnes d'alpha
     // → spans de glyphes. Comparer aux col[3] métriques pour décoder le mapping X.
     {
-        let yb: usize = std::env::var("YROW")
+        let yb: usize = std::env::var("NIE_EXAMPLE_YROW")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(950);
@@ -184,8 +184,8 @@ fn main() {
     }
 
     // TEST rendu ASCII : blit une chaîne en forçant le Y physique de la rangée ASCII (env YBASE).
-    if let Ok(txt) = std::env::var("TEXT") {
-        let yb: u16 = std::env::var("YBASE")
+    if let Ok(txt) = std::env::var("NIE_EXAMPLE_TEXT") {
+        let yb: u16 = std::env::var("NIE_EXAMPLE_YBASE")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(946);
@@ -198,7 +198,7 @@ fn main() {
         let mut pen = 12i32;
         for c in txt.chars() {
             if let Some(m) = metrics.glyph(c as u32) {
-                let xoff: i32 = std::env::var("XOFF")
+                let xoff: i32 = std::env::var("NIE_EXAMPLE_XOFF")
                     .ok()
                     .and_then(|s| s.parse().ok())
                     .unwrap_or(0);

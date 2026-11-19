@@ -155,7 +155,7 @@ pub fn dir(src: &Path, out: &Path, quiet: bool) -> anyhow::Result<()> {
 }
 
 /// Liste récursivement les `*.cfg.bin` d'un répertoire (famille RDBN/T2B uniquement — les
-/// textures/lua n'ont pas de forme « iecode »).
+/// textures/lua n'ont pas de forme « étiquetée »).
 #[cfg(feature = "host")]
 fn collect_cfg_bin(dir: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
@@ -173,13 +173,13 @@ fn collect_cfg_bin(dir: &Path) -> Vec<PathBuf> {
     out
 }
 
-/// Régénère, à côté de chaque `*.cfg.bin` sous `dir`, le `*.cfg.bin.json` en forme **iecode**
-/// (`nie_formats::cfgbin::to_iecode_json` — RDBN `{lists}` / T2B `{entries}`) : c'est la forme
+/// Régénère, à côté de chaque `*.cfg.bin` sous `dir`, le `*.cfg.bin.json` en forme **étiquetée**
+/// (`nie_formats::cfgbin::to_tagged_json` — RDBN `{lists}` / T2B `{entries}`) : c'est la forme
 /// que lisent les parseurs typés de `nie-data` (golden tests, `export_*`), à distinguer du JSON
 /// structurel brut que rend `nie decode` sans `--typed`.
 ///
 /// `force=false` saute un `.json` déjà plus récent que son `.cfg.bin` (même convention que
-/// `IECODE.Core/Dump/DataPathExporter.cs`, pour rester idempotent sur un corpus déjà à jour).
+/// `DataPathExporter.cs`, pour rester idempotent sur un corpus déjà à jour).
 ///
 /// # Erreurs
 /// Si `dir` ne contient aucun `.cfg.bin`.
@@ -211,7 +211,7 @@ pub fn refresh_typed(dir: &Path, force: bool, quiet: bool) -> anyhow::Result<()>
             skipped_unparsed.fetch_add(1, Ordering::Relaxed);
             return;
         };
-        let Some(json) = nie_formats::cfgbin::to_iecode_json(&data) else {
+        let Some(json) = nie_formats::cfgbin::to_tagged_json(&data) else {
             skipped_unparsed.fetch_add(1, Ordering::Relaxed);
             return;
         };

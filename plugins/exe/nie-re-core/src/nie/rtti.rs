@@ -1,4 +1,4 @@
-//! Extraction RTTI MSVC 64-bit depuis `nie_eacpatched.exe`.
+//! Extraction RTTI MSVC 64-bit depuis `nie.exe`.
 //!
 //! ## Stratégie
 //!

@@ -1,7 +1,7 @@
 #![allow(clippy::pedantic)]
 //! Tests golden `nfc` — vraies valeurs du noeud `NFC_LOTTERY_INFO_LIST_BEG` tirées de :
 //! `data/common/gamedata/nfc/nfc_lottery_config.cfg.bin` (T2B, 85568 octets), extrait du
-//! VFS Steam IEVR via `nie-formats` (`cfgbin_to_t2b_iecode_root`).
+//! VFS Steam IEVR via `nie-formats` (`cfgbin_to_t2b_tagged_root`).
 //!
 //! Port 1:1 d'inagle `inagle` (`parseEntries`).
 //! Vérité terrain = sortie de l'extraction `nie-game/examples/extract_nfc` (loterie/table
@@ -21,7 +21,7 @@ use nie_data::hash::HashId;
 use nie_data::nfc::{NfcLotteryConfig, parse_nfc_lottery_config};
 use serde_json::{Value, json};
 
-// ─── Helpers de construction de la fixture (forme iecode `entries`) ──────────
+// ─── Helpers de construction de la fixture (forme étiquetée `entries`) ──────────
 
 fn int_var(v: i64) -> Value {
     json!({ "type": "Int", "value": v.to_string() })
@@ -110,7 +110,7 @@ const LOTTERY3_TABLE0: &[(i64, i64, i64)] = &[
     (-2009974859, 0, 40), // 0x883237B5
 ];
 
-/// Fixture complète : 3 loteries (1 table représentative chacune), forme iecode `entries`.
+/// Fixture complète : 3 loteries (1 table représentative chacune), forme étiquetée `entries`.
 fn fixture_nfc() -> Value {
     let mut children = Vec::new();
     children.extend(lottery_pair(0, 1, -878640993, LOTTERY1_TABLE0));

@@ -2,7 +2,7 @@
 //!
 //! ## Ground truth
 //!
-//! `data/common/chr/_test/default/edit_parameter.cfg.bin.json`, decoded to the iecode JSON form.
+//! `data/common/chr/_test/default/edit_parameter.cfg.bin.json`, decoded to the tagged JSON form.
 //! The tree is one `CHARA_EDIT_PARAM_LIST_BEG` holding flat sibling runs; grouping is carried by
 //! **order**, not by nesting:
 //!
@@ -30,7 +30,7 @@
 //!
 //! Node suffixes `_N` count occurrences of one name **inside one sibling group**, restarting at
 //! every level — the converter's own rule
-//! (`nie_formats::cfgbin::t2b_siblings_to_iecode_json`). On these documents a global tally would
+//! (`nie_formats::cfgbin::t2b_siblings_to_tagged_json`). On these documents a global tally would
 //! give the same names, because no node kind appears in two groups; the two rules are still not
 //! the same rule, and the coincidence is not something to build on.
 //!
@@ -333,10 +333,10 @@ impl CharaEditParam {
         Ok(out)
     }
 
-    /// Re-emits the document in the same iecode JSON form the converter produces.
+    /// Re-emits the document in the same tagged JSON form the converter produces.
     ///
     /// The `_N` suffix is counted **per sibling group**, which is the converter's own rule
-    /// (`nie_formats::cfgbin::t2b_siblings_to_iecode_json` restarts its tally at every level).
+    /// (`nie_formats::cfgbin::t2b_siblings_to_tagged_json` restarts its tally at every level).
     /// On these documents a global tally gives the same names, because no node kind appears in
     /// two different groups — but the two rules are not the same rule, and following the wrong
     /// one would only show up on the first document that breaks that coincidence.
@@ -435,7 +435,7 @@ impl CharaEditParam {
     /// that carries children without being named as a container, which the encoder refuses rather
     /// than dropping them.
     pub fn to_cfgbin(&self) -> Result<Vec<u8>, Error> {
-        nie_formats::cfgbin::encode_iecode_t2b(&self.to_value())
+        nie_formats::cfgbin::encode_tagged_t2b(&self.to_value())
             .map_err(|error| Error::Format(format!("encodage T2B : {error}")))
     }
 
@@ -446,7 +446,7 @@ impl CharaEditParam {
     /// Returns [`Error::Format`] when the bytes are not a T2B the repository can read, or when the
     /// decoded tree is not a `CHARA_EDIT_PARAM` document.
     pub fn from_cfgbin(bytes: &[u8]) -> Result<Self, Error> {
-        let value = nie_formats::cfgbin::t2b_to_iecode_json(bytes).ok_or_else(|| {
+        let value = nie_formats::cfgbin::t2b_to_tagged_json(bytes).ok_or_else(|| {
             Error::Format("les octets ne se relisent pas comme du T2B".to_string())
         })?;
         Self::parse(&value)

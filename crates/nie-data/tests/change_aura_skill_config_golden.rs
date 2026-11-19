@@ -2,7 +2,7 @@
 //! Tests golden `change_aura_skill_config` (table de remplacement d'aura par personnage) —
 //! VRAIES valeurs du dump RDBN à listes extrait du VFS :
 //! `data/common/gamedata/skill/change_aura_skill_config_1.01.73.00.cfg.bin`
-//! (décodé en forme iecode par `nie-model-serve::cfgbin_to_iecode_root`).
+//! (décodé en forme étiquetée par `nie-model-serve::cfgbin_to_tagged_root`).
 //!
 //! Référence de portage : `inagle`
 //! (`parseContent`, `buildChangeAuraSkillDatabase`). Le dump réel contient 227 lignes
@@ -16,7 +16,7 @@ use nie_data::change_aura_skill_config::{
 use nie_data::hash::HashId;
 use serde_json::json;
 
-/// Fixture = forme iecode `{ "lists": [...] }`, têtes (8 lignes) des deux listes réelles du dump
+/// Fixture = forme étiquetée `{ "lists": [...] }`, têtes (8 lignes) des deux listes réelles du dump
 /// `change_aura_skill_config_1.01.73.00.cfg.bin`.
 fn root_fixture() -> serde_json::Value {
     json!({

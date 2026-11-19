@@ -227,13 +227,13 @@ fn run_headless(
     // Windows cannot CreateProcess a .bat file. Keep user-controlled paths and arguments out of
     // cmd.exe's command text; this shim only expands quoted, per-argument environment variables.
     let mut env = vec![(
-        "YOLO_RE_GHIDRA_ARG_0".to_string(),
+        "NIE_RE_GHIDRA_ARG_0".to_string(),
         launcher.display().to_string(),
     )];
     let mut command = String::from("if 1==1 (");
-    command.push_str(" \"%YOLO_RE_GHIDRA_ARG_0%\"");
+    command.push_str(" \"%NIE_RE_GHIDRA_ARG_0%\"");
     for (index, arg) in args.iter().enumerate() {
-        let name = format!("YOLO_RE_GHIDRA_ARG_{}", index + 1);
+        let name = format!("NIE_RE_GHIDRA_ARG_{}", index + 1);
         env.push((name.clone(), arg.clone()));
         command.push_str(&format!(" \"%{name}%\""));
     }
@@ -526,7 +526,7 @@ mod tests {
     fn real_headless_export() {
         let input = PathBuf::from(
             std::env::var_os("NIE_GHIDRA_TEST_INPUT")
-                .or_else(|| std::env::var_os("YOLO_GHIDRA_TEST_INPUT"))
+                .or_else(|| std::env::var_os("NIE_GHIDRA_TEST_INPUT"))
                 .unwrap(),
         );
         let temp = tempfile::Builder::new()

@@ -24,18 +24,18 @@ winnow = { workspace = true }
 wana_kana = { workspace = true, optional = true }
 
 [[bin]]
-name = "export_passives"
-path = "src/bin/export_passives.rs"
+name = "nie-export-passives"
+path = "src/bin/nie-export-passives.rs"
 required-features = ["serde", "std"]
 
 [[bin]]
-name = "export_formations"
-path = "src/bin/export_formations.rs"
+name = "nie-export-formations"
+path = "src/bin/nie-export-formations.rs"
 required-features = ["serde", "std"]
 
 [[bin]]
-name = "export_skills"
-path = "src/bin/export_skills.rs"
+name = "nie-export-skills"
+path = "src/bin/nie-export-skills.rs"
 required-features = ["serde", "std"]
 
 # `typed` sits behind the `serde` feature; these goldens declare it so a default-feature run

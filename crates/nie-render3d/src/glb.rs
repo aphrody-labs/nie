@@ -966,8 +966,31 @@ pub fn parse(data: &[u8]) -> Result<Model> {
 ///
 /// # Errors
 /// Returns an error when malformed input or decoded textures exceed `max_texture_bytes`.
-#[allow(clippy::collapsible_if)]
 pub fn parse_with_texture_budget(data: &[u8], max_texture_bytes: usize) -> Result<Model> {
+    parse_inner(data, max_texture_bytes, None)
+}
+
+/// Parse a GLB for its geometry and materials only, taking the atlases from `textures` (one per
+/// glTF image, in image order) instead of inflating the embedded PNG. For an in-process caller
+/// that already holds the decoded RGBA8 (BC blocks decoded once), this skips the PNG inflate and
+/// yields exactly the [`Model`] that [`parse`] returns for a lossless PNG of the same pixels.
+///
+/// # Errors
+/// As [`parse`], plus when `textures` does not match the image count or exceeds the budget.
+pub fn parse_with_textures(
+    data: &[u8],
+    textures: Vec<Texture>,
+    max_texture_bytes: usize,
+) -> Result<Model> {
+    parse_inner(data, max_texture_bytes, Some(textures))
+}
+
+#[allow(clippy::collapsible_if)]
+fn parse_inner(
+    data: &[u8],
+    max_texture_bytes: usize,
+    supplied: Option<Vec<Texture>>,
+) -> Result<Model> {
     let source_chunks = chunks(data)?;
     let json = source_chunks
         .iter()
@@ -1044,7 +1067,22 @@ pub fn parse_with_texture_budget(data: &[u8], max_texture_bytes: usize) -> Resul
     // Décode les atlas PNG embarqués (indexés par numéro d'image glTF).
     let mut textures = Vec::new();
     let mut decoded_texture_bytes = 0usize;
-    if let Some(imgs) = root["images"].as_array() {
+    let from_png = supplied.is_none();
+    if let Some(ready) = supplied {
+        let count = root["images"].as_array().map_or(0, Vec::len);
+        anyhow::ensure!(
+            ready.len() == count,
+            "supplied textures ({}) do not match the glTF images ({count})",
+            ready.len()
+        );
+        decoded_texture_bytes = ready.iter().map(|t| t.rgba.len()).sum();
+        anyhow::ensure!(
+            decoded_texture_bytes <= max_texture_bytes,
+            "supplied textures exceed the aggregate budget"
+        );
+        textures = ready;
+    }
+    if let Some(imgs) = root["images"].as_array().filter(|_| from_png) {
         for im in imgs {
             let bvi = im["bufferView"].as_u64().context("image bufferView")? as usize;
             let bv = views.get(bvi).context("image bufferView hors limites")?;
@@ -1601,6 +1639,24 @@ mod tests {
         let model = parse_with_texture_budget(&glb, 4).expect("one RGBA texel fits the budget");
         assert_eq!(model.textures.len(), 1);
         assert_eq!(model.textures[0].rgba, [1, 2, 3, 4]);
+
+        // The in-process path hands the decoded RGBA over: same model, no PNG inflate.
+        let supplied = |rgba: Vec<u8>| Texture {
+            width: 1,
+            height: 1,
+            rgba,
+        };
+        let direct = parse_with_textures(&glb, vec![supplied(vec![1, 2, 3, 4])], 4)
+            .expect("supplied texture within budget");
+        assert_eq!(direct.textures.len(), model.textures.len());
+        assert_eq!(direct.textures[0].rgba, model.textures[0].rgba);
+        assert_eq!(direct.primitives.len(), model.primitives.len());
+        assert_eq!(direct.primitives[0].positions, model.primitives[0].positions);
+        assert!(parse_with_textures(&glb, Vec::new(), 4).is_err(), "image count mismatch");
+        assert!(
+            parse_with_textures(&glb, vec![supplied(vec![0; 8])], 4).is_err(),
+            "budget applies to supplied textures"
+        );
     }
 
     #[test]

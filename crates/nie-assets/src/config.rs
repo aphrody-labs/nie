@@ -3,7 +3,7 @@
 //! ```toml
 //! # A local install, `ssh://host/path`, `r2://remote/bucket/path`, `gdrive://remote/path`,
 //! # `rclone://remote/path` or `https://host/path` (HTTP range reads).
-//! source = "ssh://prd/srv/nie/steam/steamapps/common/INAZUMA ELEVEN Victory Road"
+//! source = "ssh://<game-host>/<game_dir>"
 //! cache_dir = "/var/cache/nie-assets"
 //! cache_max_mib = 4096
 //! ```

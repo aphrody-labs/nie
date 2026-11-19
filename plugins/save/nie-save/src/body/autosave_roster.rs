@@ -64,7 +64,7 @@
 //! ```
 //!
 //! **Validation forte** (2026-06-05 sur VPS) : 4534 ids non-nuls parsés correspondent
-//! à des entrées réelles de `inagle_characters` (miroir SQLite azalee). Aucun faux positif.
+//! à des entrées réelles de `inagle_characters` (miroir SQLite du wiki). Aucun faux positif.
 //!
 //! ### Champs OPAQUE (non parsés)
 //!
@@ -119,7 +119,7 @@ const TLV_HASH_PLAYTIME_SECS: u32 = 0x3A40_C52C;
 
 /// Identifiant d'un personnage possédé.
 ///
-/// Correspond à la colonne `id` de `inagle_characters` (miroir SQLite azalee).
+/// Correspond à la colonne `id` de `inagle_characters` (miroir SQLite du wiki).
 /// Format : u32 stocké en little-endian dans la save, ex. `0xF5E1E7CD`.
 /// **Ne pas confondre** avec `chara_id` (famille de personnage) : `id` est unique
 /// par variante de personnage.

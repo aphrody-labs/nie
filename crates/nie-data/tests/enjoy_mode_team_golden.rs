@@ -77,7 +77,7 @@ fn recherche_par_team_id() {
 
 #[cfg(feature = "serde")]
 #[test]
-fn dispatch_typed_atteint_azalee() {
+fn dispatch_typed_atteint_wiki() {
     use nie_data::typed::{decode_by_key, family_key};
     let Some(root) = load() else { return };
     assert_eq!(

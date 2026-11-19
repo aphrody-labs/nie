@@ -1,7 +1,7 @@
 //! CRILAYLA — détection magic + décompresseur complet.
 //!
-//! Port du décodeur C# `IECODE.Core.Formats.Criware.CriFs.Compression.CriLayla`
-//! (source : `iecode/src/IECODE.Core/Formats/Criware/CriFs/Compression/CriLayla.cs`).
+//! Port du décodeur C# `CriLayla`
+//! (source : `CriLayla.cs`).
 //!
 //! ## Format de fichier
 //!
@@ -318,42 +318,6 @@ impl BitReader {
         } else {
             // Aligné : 8 bits directs de l'octet courant.
             Ok(input[self.ptr])
-        }
-    }
-
-    /// `Read2` : lit 2 bits.
-    ///
-    /// Fast-path si ≥ 2 bits disponibles (ou si bits_left == 0 → charge un nouvel octet).
-    /// Slow-path si bits_left == 1 (croisement d'octets).
-    ///
-    /// Conservé pour complétion documentaire (le décompresseur utilise `read_max8(2, …)`
-    /// qui a la même sémantique mais est générique).
-    #[allow(dead_code)]
-    fn read2(&mut self, input: &[u8]) -> Result<u8, FormatError> {
-        const N: u32 = 2;
-        if self.bits_left >= N || self.bits_left == 0 {
-            // Fast-path (branchless dans le C#, branché ici pour la lisibilité).
-            if self.bits_left == 0 {
-                if self.ptr == 0x10 {
-                    return Err(FormatError::Corrupt("CRILAYLA : bitstream épuisé (read2)"));
-                }
-                self.ptr -= 1;
-                self.bits_left = 8;
-            }
-            self.bits_left -= N;
-            Ok((input[self.ptr] >> self.bits_left) & 0b11)
-        } else {
-            // bits_left == 1 : 1 bit de l'octet courant + 1 bit du suivant.
-            let high = input[self.ptr] & 1;
-            if self.ptr == 0x10 {
-                return Err(FormatError::Corrupt(
-                    "CRILAYLA : bitstream épuisé (read2 cross)",
-                ));
-            }
-            self.ptr -= 1;
-            let low = (input[self.ptr] >> 7) & 1;
-            self.bits_left = 7;
-            Ok((high << 1) | low)
         }
     }
 

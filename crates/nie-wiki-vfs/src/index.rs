@@ -2,7 +2,7 @@
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 
-use nie_formats::vfs::Vfs;
+use nie_formats::vfs_read::VfsRead;
 
 use crate::error::{Error, Result};
 use crate::model::Language;
@@ -13,18 +13,21 @@ const EXTENSION: &str = ".cfg.bin";
 
 /// The numeric version of `<stem>_<a>.<b>...cfg.bin`, or `None` when the name is another table.
 fn version_of(file: &str, stem: &str) -> Option<Vec<u64>> {
+    if file.strip_suffix(EXTENSION) == Some(stem) {
+        return Some(Vec::new());
+    }
     let rest = file.strip_prefix(stem)?.strip_prefix('_')?;
     let version = rest.strip_suffix(EXTENSION)?;
     version.split('.').map(|part| part.parse().ok()).collect()
 }
 
 /// The highest-versioned gamedata file of table `stem`.
-pub(crate) fn find_table(vfs: &Vfs, stem: &str) -> Result<String> {
-    vfs.iter_all()
-        .filter(|entry| entry.path.starts_with(GAMEDATA_DIR))
-        .filter_map(|entry| {
-            let file = entry.path.rsplit('/').next()?;
-            Some((version_of(file, stem)?, entry.path))
+pub(crate) fn find_table(vfs: &dyn VfsRead, stem: &str) -> Result<String> {
+    vfs.entries()
+        .filter(|(path, _)| path.starts_with(GAMEDATA_DIR))
+        .filter_map(|(path, _)| {
+            let file = path.rsplit('/').next()?;
+            Some((version_of(file, stem)?, path))
         })
         .max()
         .map(|(_, path)| path.to_owned())
@@ -55,11 +58,11 @@ fn tag_of(folder: &str) -> String {
 }
 
 /// The text languages: every folder under `data/common/text` that holds the character names.
-pub(crate) fn languages(vfs: &Vfs) -> Result<Vec<Language>> {
+pub(crate) fn languages(vfs: &dyn VfsRead) -> Result<Vec<Language>> {
     let folders: BTreeSet<&str> = vfs
-        .iter_all()
-        .filter_map(|entry| {
-            let rest = entry.path.strip_prefix(TEXT_DIR)?;
+        .entries()
+        .filter_map(|(path, _)| {
+            let rest = path.strip_prefix(TEXT_DIR)?;
             let (folder, file) = rest.split_once('/')?;
             (file == format!("chara_text{EXTENSION}")).then_some(folder)
         })
@@ -86,14 +89,14 @@ pub(crate) fn name_hash(file_stem: &str) -> u32 {
 }
 
 /// For each wanted id, the VFS files whose name (without extension) hashes to it.
-pub(crate) fn files_by_name_hash(vfs: &Vfs, wanted: &HashSet<u32>) -> HashMap<u32, Vec<String>> {
+pub(crate) fn files_by_name_hash(vfs: &dyn VfsRead, wanted: &HashSet<u32>) -> HashMap<u32, Vec<String>> {
     let mut found: HashMap<u32, Vec<String>> = HashMap::new();
-    for entry in vfs.iter_all() {
-        let file = entry.path.rsplit('/').next().unwrap_or(entry.path);
+    for (path, _) in vfs.entries() {
+        let file = path.rsplit('/').next().unwrap_or(path);
         let stem = file.split('.').next().unwrap_or(file);
         let hash = name_hash(stem);
         if wanted.contains(&hash) {
-            found.entry(hash).or_default().push(entry.path.to_owned());
+            found.entry(hash).or_default().push(path.to_owned());
         }
     }
     for paths in found.values_mut() {

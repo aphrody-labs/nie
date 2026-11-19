@@ -564,7 +564,7 @@ pub fn parse_text_info_node(node: &Node<'_>) -> Option<(HashId, String)> {
 /// Couvre les deux familles : `TEXT_INFO*` (texte à l'index 2) et `NOUN_INFO*` (index 5) ; les
 /// noeuds de liste `*_BEGIN*` sont écartés par le filtre `BEGIN`.
 ///
-/// Le préfixe est cherché **sans underscore final** : les dumps `*.cfg.bin.json` (iecode / inagle)
+/// Le préfixe est cherché **sans underscore final** : les dumps `*.cfg.bin.json` (étiquetée / inagle)
 /// suffixent les noeuds d'un index (`TEXT_INFO_0`), mais un T2B lu directement depuis le VFS par
 /// `nie_formats::cfgbin::cfgbin_parse` les nomme **`TEXT_INFO`** tout court. Exiger l'underscore
 /// rendait cette fonction muette (0 texte) sur la donnée live, alors qu'elle marchait sur les dumps.

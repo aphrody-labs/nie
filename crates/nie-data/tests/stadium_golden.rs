@@ -10,7 +10,7 @@
 //! condition(Int=0 ou String), imagePath(String), _(Int), _(Int)]`.
 //!
 //! La fixture `RAW` ci-dessous EST le dump réel (extrait via `nie_formats::cfgbin` +
-//! la conversion iecode de `nie-model-serve`). Aucune valeur inventée.
+//! la conversion étiquetée de `nie-model-serve`). Aucune valeur inventée.
 
 use nie_data::hash::HashId;
 use nie_data::stadium::{Stadium, parse_stadium_config};

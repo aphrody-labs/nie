@@ -4,7 +4,7 @@
 //!
 //! - Dump réel (VFS) : `data/common/gamedata/menu/emblem_resource_0.04.18.cfg.bin`.
 //! - Format **RDBN à listes** (`{ "lists": [ { "name", "typeName", "values" } ] }`), décodé en
-//!   forme iecode par `nie-model-serve::cfgbin_to_iecode_root` (cf. `read_values`).
+//!   forme étiquetée par `nie-model-serve::cfgbin_to_tagged_root` (cf. `read_values`).
 //! - Référence de portage : `inagle` (`parseContent`,
 //!   l.55-94), header inagle « vérifiée octet pour octet contre le .bin ».
 //!
@@ -86,7 +86,7 @@ pub struct Emblem {
 }
 
 impl Emblem {
-    /// Construit une entrée depuis un objet `values[]` (forme iecode) et le `base_path` commun.
+    /// Construit une entrée depuis un objet `values[]` (forme étiquetée) et le `base_path` commun.
     ///
     /// Port 1:1 d'inagle `parseContent` (l.69-91) : les champs absents valent `""` et
     /// `is_template = s_filePath.contains("<resourceID>") || emblemName == "default"`.
@@ -190,7 +190,7 @@ impl EmblemResourceDatabase {
 
 // ─── Parseur principal ───────────────────────────────────────────────────────────
 
-/// Parse un `emblem_resource_*.cfg.bin` complet (forme iecode `{ "lists": [...] }`).
+/// Parse un `emblem_resource_*.cfg.bin` complet (forme étiquetée `{ "lists": [...] }`).
 ///
 /// Port 1:1 d'inagle `parseContent` (`emblems.ts` l.55-94) : récupère d'abord le `basePath` de
 /// `m_EmblemResourceBasePathList[0]`, puis construit une entrée par ligne de

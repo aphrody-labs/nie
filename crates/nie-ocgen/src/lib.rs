@@ -23,7 +23,8 @@
 //! assembled here: assembly needs the `20_EDIT` archives, and [`plan`] reports their absence
 //! instead of substituting anything for them.
 
-#![forbid(unsafe_code)]
+#![cfg_attr(not(feature = "crlib"), forbid(unsafe_code))]
+#![cfg_attr(feature = "crlib", deny(unsafe_code))]
 
 pub mod avatar_document;
 #[cfg(feature = "cli")]
@@ -148,3 +149,7 @@ fn measure_against(
         .ok_or_else(|| Error::Palette(format!("planche \u{ab} {} \u{bb} absente", probe.sheet)))?;
     palette::measure_one(probe, sheet, rejection)
 }
+
+#[cfg(feature = "crlib")]
+#[allow(unsafe_code)]
+mod abi_generated;

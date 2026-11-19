@@ -49,7 +49,7 @@
 //!
 //! - `stat_hash` dans soccer/passive_skill_effect_config GRAND_TOTAL_INFO n'est pas dans
 //!   le dictionnaire CRC32 connu — le mapping stat_hash→nom de stat est probablement
-//!   dans un enum C# IECODE.Core non encore RE.
+//!   dans un enum C# d'origine non encore RE.
 //! - Les coordinateurs/managers n'ont PAS de cfg.bin dédié — leurs passives viennent
 //!   du wiki externe (inagle_coordinators), non parsables depuis gamedata seul.
 //! - `maxValue` dans GRAND_TOTAL_INFO = indice dans une table de stacking, pas un pourcentage.

@@ -290,7 +290,7 @@ impl Compositor {
             .map_err(|e| anyhow::anyhow!("display source: {e}"))?;
 
         info!(socket = %socket_path.display(), "wayland socket ready");
-        #[allow(unused_mut)]
+        #[allow(unused_mut, reason = "mutated only when the `xwayland` feature starts the window manager")]
         let mut comp = Self { state, display, event_loop, socket_path };
         if config.xwayland {
             #[cfg(feature = "xwayland")]

@@ -7,6 +7,9 @@ license-file = "LICENSE"
 publish = false
 description = "Static mod-authoring pipeline for IEVR avatar parameters and portrait assets"
 
+[lib]
+crate-type = ["rlib", "staticlib", "cdylib"]
+
 [lints]
 workspace = true
 
@@ -27,6 +30,7 @@ image = { version = "0.25.10", default-features = false, features = [
 clap = { version = "4.6", features = ["derive"], optional = true }
 
 [features]
+crlib = []
 default = []
 cli = ["dep:clap"]
 bc7 = ["nie-formats/textures-encode"]

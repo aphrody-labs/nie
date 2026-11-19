@@ -9,12 +9,22 @@ mod error;
 pub mod html;
 mod index;
 mod model;
+pub mod pages;
+mod tables;
+#[cfg(all(feature = "testing", not(target_arch = "wasm32")))]
+pub mod testing;
 mod text;
 mod wiki;
 
 pub use error::{Error, Result};
 pub use model::{
-    AffiliatedCharacter, Character, Coded, Emblem, Form, Id, LangText, Language, LearnedSkill,
-    Localized, NoSource, Provenance, Skill, Team, TeamRef, UNSOURCED,
+    AffiliatedCharacter, CatalogEntry, Character, CharacterClass, ClassCount, ClassInfo, ClassRole,
+    Coded, Emblem, Form, Id, LangText, Language, LearnedSkill, Localized, NoSource, Provenance,
+    RefItem, RefSlice, SeriesRef, Skill, SkillFamily, TableInfo, TableRecord, Team, TeamRef,
+    UNSOURCED,
 };
 pub use wiki::{Page, Query, Source, Wiki};
+
+#[cfg(feature = "crlib")]
+#[allow(unsafe_code)]
+mod abi_generated;

@@ -916,7 +916,7 @@
       ]
     }
   },
-  "$id": "https://rosegriffon.fr/schema/re/ir.json",
+  "$id": "urn:nie:schema:re:ir",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {

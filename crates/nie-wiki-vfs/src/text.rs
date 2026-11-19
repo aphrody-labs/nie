@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use nie_data::cfgbin::{Node, walk_named};
 use nie_data::text::sanitize_text;
-use nie_formats::vfs::Vfs;
+use nie_formats::vfs_read::VfsRead;
 
 use crate::error::{Error, Result};
 use crate::index::text_path;
@@ -48,7 +48,7 @@ pub(crate) struct TextTable {
 }
 
 impl TextTable {
-    pub(crate) fn load(vfs: &Vfs, language: &str, stem: &str) -> Result<Self> {
+    pub(crate) fn load(vfs: &dyn VfsRead, language: &str, stem: &str) -> Result<Self> {
         let path = text_path(language, stem);
         let json =
             nie_explore::game_data::decode_cfgbin(vfs, &path).map_err(|message| Error::Decode {

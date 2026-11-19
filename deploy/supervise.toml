@@ -1,0 +1,95 @@
+# The nie stack on the production host, run by `nie-deploy supervise` (no systemd unit, no container).
+# Embedded in the nie-deploy binary; `nie-deploy up --host prd` installs it as /etc/nie/supervise.toml.
+# prd's 443 belongs to the shared nginx, so the public hostname keeps the Cloudflare tunnel (the
+# `nie-edge` TLS listener on a Cloudflare origin port is the `nie-deploy cloudflare` path).
+
+# The game installation of this host; every entry below refers to it as `${game_dir}`.
+[vars]
+game_dir = "/srv/nie/steam/steamapps/common/INAZUMA ELEVEN Victory Road"
+steam_dir = "/srv/nie/steam"
+
+[supervisor]
+log_dir = "/var/log/nie"
+run_dir = "/run/nie"
+log_max_bytes = 10485760
+log_keep = 5
+install_dir = "/usr/local/bin"
+up_timeout_secs = 240
+
+[[path]]
+path = "/var/cache/nie"
+create = true
+user = "nie"
+mode = "0755"
+
+[[path]]
+path = "/var/lib/nie"
+create = true
+user = "nie"
+mode = "0755"
+
+[[path]]
+path = "/var/lib/nie-model/model-cache"
+create = true
+user = "nie"
+mode = "0755"
+
+[[path]]
+path = "/var/lib/nie-model"
+user = "nie"
+mode = "0755"
+
+# the service users traverse /etc/nie to the files they own; every secret in it is 0600 or 0640
+[[path]]
+path = "/etc/nie"
+mode = "0711"
+
+# the tunnel token stays 0600-class: root owns it, the group nie reads it
+[[path]]
+path = "/etc/nie/cloudflared.token"
+optional = true
+user = "root"
+group = "nie"
+mode = "0640"
+
+[[service]]
+name = "nie-serve"
+exec = ["/usr/local/bin/nie", "serve"]
+user = "nie"
+nofile = 65536
+env = { NIE_GAME_SOURCE = "${game_dir}", NIE_HOST = "127.0.0.1", NIE_PORT = "8796", NIE_CACHE_DIR = "/var/cache/nie", STATE_DIRECTORY = "/var/lib/nie", CACHE_DIRECTORY = "/var/cache/nie" }
+[service.health]
+url = "http://127.0.0.1:8796/health"
+contains = "\"vfsReady\":true"
+grace_secs = 180
+
+[[service]]
+name = "nie-model"
+exec = ["/usr/local/bin/nie-model-serve"]
+user = "nie"
+nofile = 65536
+env = { NIE_GAME_SOURCE = "${game_dir}", NIE_MODEL_SERVE_HOST = "127.0.0.1", NIE_PORT = "8797", NIE_CACHE_DIR = "/var/lib/nie-model/model-cache", STATE_DIRECTORY = "/var/lib/nie-model" }
+[service.health]
+url = "http://127.0.0.1:8797/health"
+grace_secs = 180
+
+# The public hostname: the tunnel connector. Ingress (hostname to 127.0.0.1:8796 and 8797) is
+# configured on the tunnel itself; /ready answers 200 once a connection to Cloudflare is up.
+[[service]]
+name = "nie-cloudflared"
+exec = ["/usr/bin/cloudflared", "tunnel", "--no-autoupdate", "--metrics", "127.0.0.1:20246", "--protocol", "auto", "run", "--token-file", "/etc/nie/cloudflared.token"]
+user = "nie"
+backoff_max_secs = 30
+[service.health]
+url = "http://127.0.0.1:20246/ready"
+grace_secs = 90
+
+# Game update from Steam, hourly, behind the shared heavy-work lock; off until an operator enables
+# it (credentials in /etc/nie/steam.env, the refresh token in ${steam_dir}/steam-tokens.json).
+[[service]]
+name = "nie-steam-update"
+enabled = false
+exec = ["/usr/bin/nice", "-n", "19", "/usr/bin/flock", "-w", "7200", "/var/lock/nie-heavy.lock", "/usr/local/bin/nie", "steam", "sync", "--out", "${game_dir}"]
+env_files = ["/etc/nie/steam.env"]
+env = { NIE_STEAM_STATE_DIR = "/var/lib/nie/steam" }
+every_secs = 3600

@@ -25,7 +25,7 @@ use alloc::{format, string::String, vec::Vec};
 use serde_json::Value;
 
 use crate::cfgbin::{
-    field_bool, field_f64, field_hash, field_i64, field_pair, field_str, list_values,
+    field_bool, field_f64, field_hash, field_i64, field_pair, field_str, list_values, slice_ref,
 };
 use crate::hash::HashId;
 
@@ -664,17 +664,6 @@ pub struct CharaEditConfig {
     pub fashion_body_info: Vec<CharaEditFashionBodyInfo>,
 }
 
-/// Découpe `[offset, count]` dans un `Vec`, en tolérant une plage hors bornes.
-fn slice_range<T>(all: &[T], offset: i64, count: i64) -> &[T] {
-    let start = usize::try_from(offset.max(0))
-        .unwrap_or(usize::MAX)
-        .min(all.len());
-    let end = usize::try_from(offset.max(0) + count.max(0))
-        .unwrap_or(usize::MAX)
-        .min(all.len());
-    &all[start..end]
-}
-
 impl CharaEditConfig {
     /// Les parts d'une catégorie (`faceSettingType`), résolues par sa plage.
     #[must_use]
@@ -683,7 +672,7 @@ impl CharaEditConfig {
             .iter()
             .find(|i| i.face_setting_type == face_setting_type)
             .map_or(&[][..], |i| {
-                slice_range(&self.parts, i.data_offset, i.data_count)
+                slice_ref(&self.parts, [i.data_offset, i.data_count])
             })
     }
 
@@ -694,7 +683,7 @@ impl CharaEditConfig {
             .iter()
             .find(|i| i.parts_type == parts_type)
             .map_or(&[][..], |i| {
-                slice_range(&self.params, i.data_offset, i.data_count)
+                slice_ref(&self.params, [i.data_offset, i.data_count])
             })
     }
 
@@ -705,7 +694,7 @@ impl CharaEditConfig {
             .iter()
             .find(|i| i.face_setting_type == face_setting_type)
             .map_or(&[][..], |i| {
-                slice_range(&self.colors, i.data_offset, i.data_count)
+                slice_ref(&self.colors, [i.data_offset, i.data_count])
             })
     }
 
@@ -716,7 +705,7 @@ impl CharaEditConfig {
             .iter()
             .find(|i| i.preset_id == preset_id)
             .map_or(&[][..], |i| {
-                slice_range(&self.preset_data, i.data_offset, i.data_count)
+                slice_ref(&self.preset_data, [i.data_offset, i.data_count])
             })
     }
 
@@ -727,7 +716,7 @@ impl CharaEditConfig {
             .iter()
             .find(|i| i.id == fashion_id)
             .map_or(&[][..], |i| {
-                slice_range(&self.fashion_body, i.data_offset, i.data_count)
+                slice_ref(&self.fashion_body, [i.data_offset, i.data_count])
             })
     }
 

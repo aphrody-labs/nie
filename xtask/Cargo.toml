@@ -1,0 +1,35 @@
+[package]
+name = "nie-xtask"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+description = "cargo xtask: the one developer and CI entrypoint behind the justfile (map, lint, fmt, test, compile, check, repro, kernel, os, web, app-pack, zed-branch, libernt-closure, bindings-smoke)"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "xtask"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true, features = ["std"] }
+blake3 = { workspace = true }
+brotli = { workspace = true }
+clap = { workspace = true }
+nie-tls = { workspace = true }
+regex = { workspace = true, features = ["std", "unicode"] }
+reqwest = { workspace = true, features = ["blocking", "rustls-no-provider"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+toml_edit = { workspace = true }
+taplo = { workspace = true }
+tungstenite = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

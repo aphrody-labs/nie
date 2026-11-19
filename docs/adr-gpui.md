@@ -15,7 +15,7 @@ everything else nie draws (explorer, viewers, wiki, terminal, desktop shell) is 
 
 ## Decision
 
-1. `vendor/zed` is a submodule of the aphrody-labs/zed fork, branch `nie`. `tools/zed-branch`
+1. `vendor/zed` is a submodule of the aphrody-labs/zed fork, branch `nie`. `cargo xtask zed-branch`
    regenerates it from upstream main: only the Apache-2.0 GPUI closure computed by `cargo metadata`
    on linux, windows-msvc and wasm32; every dependency from crates.io; no `[patch]`; wgpu 30.0.2.
 2. nie crates take path dependencies on `vendor/zed/crates/gpui*` (the one fork with source

@@ -21,7 +21,7 @@ required-features = ["host"]
 [lib]
 path = "src/main.rs"
 
-[package.metadata.rg-package]
+[package.metadata.nie-package]
 binary = "nie"
 install-package = "nie-cli"
 supported-os = ["linux", "macos", "windows"]
@@ -38,6 +38,7 @@ cloud = [
   "dep:nie-formats",
   "dep:nie-explore",
   "dep:nie-wiki-vfs",
+  "dep:crc32fast",
   "dep:tokio",
   "dep:futures-util",
   "dep:tokio-tungstenite",
@@ -60,6 +61,16 @@ cloud = [
   "dep:image_dds",
   "dep:image",
   "dep:png",
+  "dep:toml",
+  "dep:semver",
+  "dep:dirs",
+  "dep:goblin",
+  "dep:flate2",
+  "dep:syn",
+  "dep:gix-hash",
+  "dep:gix-index",
+  "dep:proc-macro2",
+  "dep:nie-syscalls",
 ]
 host = [
   "cloud",
@@ -73,6 +84,7 @@ host = [
   "dep:nie-viola",
   "dep:nie-launcher",
   "dep:nie-shell-desktop",
+  "dep:nie-tui",
   "dep:nie-lua",
   "dep:nie-ocgen",
   "dep:redis",
@@ -81,18 +93,22 @@ host = [
   "dep:goblin",
   "dep:iced-x86",
   "dep:ignore",
-  "dep:globset",
   "dep:grep-searcher",
   "dep:grep-regex",
 ]
 textures-encode = ["host", "nie-formats/textures-encode"]
+# `nie term`: the GPU terminal window of the tui plugin (rio-window, sugarloaf, a pty).
+term = ["host", "nie-tui/term"]
 
 [dependencies]
+nie-tls = { workspace = true }
 nie-data = { path = "../nie-data", version = "2.0.0", features = ["serde", "std"], optional = true }
 aho-corasick = { workspace = true }
 nie-formats = { path = "../nie-formats", version = "2.0.0", default-features = false, features = ["std", "serde", "textures", "audio-decode", "images", "remote-vfs"], optional = true }
 nie-explore = { path = "../nie-explore", version = "2.0.0", features = ["host"], optional = true }
 nie-wiki-vfs = { path = "../nie-wiki-vfs", version = "2.0.0", optional = true }
+nie-app = { path = "../nie-app", version = "2.0.0" }
+crc32fast = { workspace = true, features = ["std"], optional = true }
 futures-util = { version = "0.3", optional = true }
 nie-save = { path = "../../plugins/save/nie-save", version = "2.0.0", optional = true }
 nie-plugin = { workspace = true }
@@ -117,12 +133,20 @@ iced-x86 = { version = "1.22", optional = true }
 image_dds = { workspace = true, features = ["ddsfile", "image"], optional = true }
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "webp", "gif", "bmp", "tiff"], optional = true }
 png = { workspace = true, optional = true }
+toml = { workspace = true, optional = true }
+semver = { workspace = true, optional = true }
+dirs = { workspace = true, optional = true }
+flate2 = { workspace = true, optional = true }
+syn = { workspace = true, optional = true }
+gix-hash = { workspace = true, optional = true }
+gix-index = { workspace = true, optional = true }
+proc-macro2 = { workspace = true, optional = true }
 
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
 nie-steam = { workspace = true, features = ["depot", "index"], optional = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "sync", "macros", "time", "net"], optional = true }
 tokio-tungstenite = { version = "0.30", optional = true }
-reqwest = { workspace = true, features = ["http2", "rustls", "stream"], optional = true }
+reqwest = { workspace = true, features = ["http2", "rustls-no-provider", "stream"], optional = true }
 steamroom = { workspace = true, optional = true }
 nie-index = { path = "../../plugins/exe/nie-index", version = "2.0.0", features = ["host"], optional = true }
 nie-seed = { path = "../../plugins/exe/nie-seed", version = "2.0.0", features = ["host"], optional = true }
@@ -131,6 +155,7 @@ nie-re-core = { path = "../../plugins/exe/nie-re-core", version = "2.0.0", defau
 nie-trace = { path = "../../plugins/exe/nie-trace", version = "2.0.0", features = ["host"], optional = true }
 nie-computer-use = { path = "../../plugins/exe/nie-computer-use", version = "2.0.0", features = ["host"], optional = true }
 nie-viola = { path = "../../plugins/launcher/nie-viola", version = "2.0.0", optional = true }
+nie-tui = { path = "../../plugins/tui/nie-tui", version = "2.0.0", optional = true }
 nie-launcher = { path = "../../plugins/launcher/nie-launcher", version = "2.0.0", optional = true }
 nie-shell-desktop = { path = "../../plugins/shell-desktop/nie-shell-desktop", version = "2.0.0", optional = true }
 nie-lua = { path = "../nie-lua", version = "2.0.0", features = ["host"], optional = true }
@@ -138,11 +163,16 @@ nie-ocgen = { path = "../nie-ocgen", version = "2.0.0", features = ["cli"], opti
 redis = { workspace = true, features = ["r2d2"], optional = true }
 rmcp = { version = "3.10.0", features = ["server", "transport-io", "macros", "schemars"], optional = true }
 ignore = { version = "0.4", optional = true }
-globset = { version = "0.4", optional = true }
 grep-searcher = { version = "0.1", optional = true }
 grep-regex = { version = "0.1", optional = true }
 
 [dev-dependencies]
-crc32fast = { workspace = true, features = ["std"] }
+nie-wiki-vfs = { path = "../nie-wiki-vfs", version = "2.0.0", features = ["testing"] }
 nie-pe = { workspace = true }
 tempfile = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+nie-syscalls = { path = "../nie-syscalls", version = "2.0.0", optional = true }
+
+[package.metadata.cargo-shear]
+ignored = ["proc-macro2"] # `span-locations` feature: deps_audit reads syn span lines

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Steam depot acquisition, absorbed from `nie-re` (originally `nie-steam`, the Rust port
-//! of the iecode C# Steam layer) over `steamroom`, which owns the Steam protocol (CM, auth,
+//! of the reference C# Steam layer) over `steamroom`, which owns the Steam protocol (CM, auth,
 //! manifests, chunks, CDN).
 //!
 //! [`planning`] is platform-neutral and always available (also on `wasm32`); the CM client
@@ -23,7 +23,7 @@ pub mod options;
 /// Authenticated CM session, PICS and depot keys.
 #[cfg(feature = "depot")]
 pub mod session;
-/// Pluggable refresh-token stores (`STEAM_TOKEN_STORE`).
+/// Pluggable refresh-token stores (`NIE_STEAM_TOKEN_STORE`).
 #[cfg(feature = "depot")]
 pub mod token_backend;
 /// Per-account refresh-token and guard-data cache of the CM client.

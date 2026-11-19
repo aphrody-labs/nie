@@ -1,38 +1,22 @@
-//! `ssh://` and `sftp://` game sources over pure-Rust SSH (`russh`) and the SFTP subsystem.
+//! `ssh://` and `sftp://` game sources over pure-Rust SSH (`nie-ssh`) and the SFTP subsystem.
 //!
 //! Host keys are checked against `known_hosts`, identities come from `ssh-agent` and the
 //! `~/.ssh` keys, and `~/.ssh/config` (`HostName`, `User`, `Port`, `IdentityFile`, `ProxyJump`,
-//! `ConnectTimeout`) is honoured. Credentials never travel in the URI.
+//! `ConnectTimeout`) is honoured, all by `nie-ssh`. Credentials never travel in the URI.
 
 use super::Result;
-use russh::Preferred;
-use russh::client::{self, Handle};
-use russh::keys::agent::AgentIdentity;
-use russh::keys::agent::client::{AgentClient, AgentStream};
-use russh::keys::known_hosts::{check_known_hosts_path, known_host_keys_path};
-use russh::keys::{
-    Algorithm, Error as KeyError, HashAlg, PrivateKeyWithHashAlg, PublicKeyOrCertificate,
-    load_secret_key,
-};
+use nie_ssh::{Connection, HostKeyPolicy, Target};
 use russh_sftp::client::{Config as SftpConfig, RawSftpSession, error::Error as SftpError};
 use russh_sftp::protocol::{FileAttributes, OpenFlags, StatusCode};
-use ssh2_config::{ParseRule, SshConfig};
-use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
-use tokio::io::{AsyncRead, AsyncWrite};
-use tokio::net::TcpStream;
+use std::sync::Arc;
 use tokio::task::JoinHandle;
-use tokio::time::timeout;
 
-const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 const REQUEST_TIMEOUT_SECS: u64 = 30;
 /// Read size every SFTP server accepts; reads are pipelined `WINDOW` deep.
 const CHUNK: usize = 32 * 1024;
 const WINDOW: usize = 64;
-const DEFAULT_IDENTITIES: [&str; 3] = ["id_ed25519", "id_ecdsa", "id_rsa"];
 
 /// Where a source lives and how to reach it, before `~/.ssh/config` is applied.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -51,34 +35,7 @@ pub(super) struct SshSpec {
 
 /// Splits `[user@]host[:port]`, with `[v6]` brackets.
 fn split_authority(authority: &str) -> Result<(Option<String>, String, Option<u16>)> {
-    let (user, host_port) = match authority.rsplit_once('@') {
-        Some((user, rest)) if !user.is_empty() => (Some(user.to_owned()), rest),
-        Some(_) => return Err("invalid SSH user".to_owned()),
-        None => (None, authority),
-    };
-    let (host, port) = if let Some(bracketed) = host_port.strip_prefix('[') {
-        let (host, rest) = bracketed
-            .split_once(']')
-            .ok_or_else(|| "invalid SSH host".to_owned())?;
-        let port = match rest.strip_prefix(':') {
-            Some(port) => Some(port.parse().map_err(|_| "invalid SSH port".to_owned())?),
-            None if rest.is_empty() => None,
-            None => return Err("invalid SSH host".to_owned()),
-        };
-        (host.to_owned(), port)
-    } else {
-        match host_port.rsplit_once(':') {
-            Some((host, port)) => (
-                host.to_owned(),
-                Some(port.parse().map_err(|_| "invalid SSH port".to_owned())?),
-            ),
-            None => (host_port.to_owned(), None),
-        }
-    };
-    if host.is_empty() || host.starts_with('-') {
-        return Err("invalid SSH host".to_owned());
-    }
-    Ok((user, host, port))
+    nie_ssh::split_authority(authority).map_err(|e| e.to_string())
 }
 
 pub(super) fn parse_uri(source: &str) -> Result<SshSpec> {
@@ -113,414 +70,39 @@ fn join(root: &str, path: &str) -> String {
 }
 
 pub(super) fn home_dir() -> Option<PathBuf> {
-    ["HOME", "USERPROFILE"]
-        .iter()
-        .find_map(|key| std::env::var_os(key).filter(|v| !v.is_empty()))
-        .map(PathBuf::from)
+    nie_ssh::home_dir()
 }
 
-fn expand_tilde(path: &Path, home: &Path) -> PathBuf {
-    match path.strip_prefix("~") {
-        Ok(rest) => home.join(rest),
-        Err(_) => path.to_path_buf(),
-    }
-}
-
-/// One SSH endpoint with `ssh_config` applied.
-#[derive(Clone, Debug)]
-struct Hop {
-    host: String,
-    port: u16,
-    user: String,
-    identities: Vec<PathBuf>,
-    timeout: Duration,
-}
-
-fn default_user() -> Result<String> {
-    ["USER", "USERNAME", "LOGNAME"]
-        .iter()
-        .find_map(|key| std::env::var(key).ok().filter(|v| !v.is_empty()))
-        .ok_or_else(|| "SSH user unknown: use user@host or User in ~/.ssh/config".to_owned())
-}
-
-fn load_config(home: &Path) -> Result<Option<SshConfig>> {
-    let path = home.join(".ssh").join("config");
-    let Ok(file) = std::fs::File::open(&path) else {
-        return Ok(None);
-    };
-    SshConfig::default()
-        .home_dir(home)
-        .parse(
-            &mut std::io::BufReader::new(file),
-            ParseRule::ALLOW_UNKNOWN_FIELDS | ParseRule::ALLOW_UNSUPPORTED_FIELDS,
-        )
-        .map(Some)
-        .map_err(|e| format!("{}: {e}", path.display()))
-}
-
-fn resolve_hop(
-    config: Option<&SshConfig>,
-    home: &Path,
-    host: &str,
-    port: Option<u16>,
-    user: Option<&str>,
-    explicit_identities: &[PathBuf],
-) -> Result<(Hop, Vec<String>)> {
-    let params = config.map(|c| c.query(host));
-    let from_config = |f: fn(&ssh2_config::HostParams) -> Option<String>| {
-        params.as_ref().and_then(f).filter(|v| !v.is_empty())
-    };
-    let user = match user {
-        Some(user) => user.to_owned(),
-        None => match from_config(|p| p.user.clone()) {
-            Some(user) => user,
-            None => default_user()?,
-        },
-    };
-    let mut identities: Vec<PathBuf> = explicit_identities.to_vec();
-    if identities.is_empty() {
-        identities = params
-            .as_ref()
-            .and_then(|p| p.identity_file.clone())
-            .unwrap_or_default()
-            .iter()
-            .map(|p| expand_tilde(p, home))
-            .collect();
-    }
-    if identities.is_empty() {
-        identities = DEFAULT_IDENTITIES
-            .iter()
-            .map(|name| home.join(".ssh").join(name))
-            .collect();
-    }
-    identities.retain(|p| p.is_file());
-    let hop = Hop {
-        host: from_config(|p| p.host_name.clone()).unwrap_or_else(|| host.to_owned()),
-        port: port
-            .or_else(|| params.as_ref().and_then(|p| p.port))
-            .unwrap_or(22),
-        user,
-        identities,
-        timeout: params
-            .as_ref()
-            .and_then(|p| p.connect_timeout)
-            .unwrap_or(DEFAULT_CONNECT_TIMEOUT),
-    };
-    let jumps = params
-        .and_then(|p| p.proxy_jump)
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|j| !j.eq_ignore_ascii_case("none"))
-        .collect();
-    Ok((hop, jumps))
-}
-
-/// Jump hosts then the target, each resolved through `ssh_config`.
-fn resolve_chain(spec: &SshSpec, home: &Path) -> Result<Vec<Hop>> {
-    let config = if spec.use_config {
-        load_config(home)?
-    } else {
-        None
-    };
-    let (target, jumps) = resolve_hop(
-        config.as_ref(),
-        home,
-        &spec.host,
-        spec.port,
-        spec.user.as_deref(),
-        &spec.identity_files,
-    )?;
-    let mut chain = Vec::with_capacity(jumps.len() + 1);
-    for jump in jumps {
-        let jump = jump.strip_prefix("ssh://").unwrap_or(&jump);
-        let (user, host, port) = split_authority(jump)?;
-        chain.push(resolve_hop(config.as_ref(), home, &host, port, user.as_deref(), &[])?.0);
-    }
-    chain.push(target);
-    Ok(chain)
-}
-
-fn known_hosts_files(spec: &SshSpec, home: &Path) -> Vec<PathBuf> {
-    match &spec.known_hosts {
-        Some(path) => vec![path.clone()],
-        None => vec![
-            home.join(".ssh").join("known_hosts"),
-            PathBuf::from("/etc/ssh/ssh_known_hosts"),
-        ],
-    }
-}
-
-/// Verifies the server key against `known_hosts`; the reason of a refusal is kept for the error.
-struct Client {
-    host: String,
-    port: u16,
-    known_hosts: Vec<PathBuf>,
-    refusal: Arc<Mutex<Option<String>>>,
-}
-
-impl Client {
-    fn refuse(&self, reason: String) -> std::result::Result<bool, russh::Error> {
-        if let Ok(mut slot) = self.refusal.lock() {
-            *slot = Some(reason);
-        }
-        Ok(false)
-    }
-}
-
-impl client::Handler for Client {
-    type Error = russh::Error;
-
-    async fn check_server_key(
-        &mut self,
-        server_public_key: &PublicKeyOrCertificate,
-    ) -> std::result::Result<bool, Self::Error> {
-        let key = server_public_key.public_key();
-        for path in self.known_hosts.iter().filter(|p| p.is_file()) {
-            match check_known_hosts_path(&self.host, self.port, &key, path) {
-                Ok(true) => return Ok(true),
-                Ok(false) => {}
-                Err(KeyError::KeyChanged { line }) => {
-                    return self.refuse(format!(
-                        "host key of {} changed ({}:{line}); possible man-in-the-middle, refusing",
-                        self.host,
-                        path.display()
-                    ));
-                }
-                Err(e) => return self.refuse(format!("{}: {e}", path.display())),
-            }
-        }
-        let files: Vec<String> = self
-            .known_hosts
-            .iter()
-            .map(|p| p.display().to_string())
-            .collect();
-        self.refuse(format!(
-            "host key of {}:{} is not in known_hosts ({}); add it with `ssh-keyscan -p {} {}`",
-            self.host,
-            self.port,
-            files.join(", "),
-            self.port,
-            self.host
-        ))
-    }
-}
-
-/// Offer the algorithms already recorded in `known_hosts` first, as OpenSSH does.
-fn client_config(host: &str, port: u16, known_hosts: &[PathBuf]) -> client::Config {
-    let mut preferred = Preferred::default();
-    let mut algorithms: Vec<Algorithm> = Vec::new();
-    for path in known_hosts {
-        for (_, key) in known_host_keys_path(host, port, path).unwrap_or_default() {
-            match key.algorithm() {
-                Algorithm::Rsa { .. } => {
-                    for hash in [HashAlg::Sha512, HashAlg::Sha256] {
-                        algorithms.push(Algorithm::Rsa { hash: Some(hash) });
-                    }
-                }
-                other => algorithms.push(other),
-            }
+impl SshSpec {
+    fn target(&self) -> Target {
+        Target {
+            user: self.user.clone(),
+            host: self.host.clone(),
+            port: self.port,
+            use_config: self.use_config,
+            identity_files: self.identity_files.clone(),
+            known_hosts: self.known_hosts.clone(),
+            jumps: Vec::new(),
         }
     }
-    if !algorithms.is_empty() {
-        for default in preferred.key.iter() {
-            if !algorithms.contains(default) {
-                algorithms.push(default.clone());
-            }
-        }
-        preferred.key = Cow::Owned(algorithms);
-    }
-    client::Config {
-        inactivity_timeout: None,
-        keepalive_interval: Some(Duration::from_secs(30)),
-        keepalive_max: 4,
-        preferred,
-        ..client::Config::default()
-    }
-}
-
-#[cfg(unix)]
-async fn connect_agent() -> Option<AgentClient<Box<dyn AgentStream + Send + Unpin>>> {
-    AgentClient::connect_env()
-        .await
-        .ok()
-        .map(AgentClient::dynamic)
-}
-
-#[cfg(windows)]
-async fn connect_agent() -> Option<AgentClient<Box<dyn AgentStream + Send + Unpin>>> {
-    let pipe = std::env::var("SSH_AUTH_SOCK")
-        .ok()
-        .filter(|p| p.starts_with(r"\\.\pipe\"))
-        .unwrap_or_else(|| r"\\.\pipe\openssh-ssh-agent".to_owned());
-    AgentClient::connect_named_pipe(pipe)
-        .await
-        .ok()
-        .map(AgentClient::dynamic)
-}
-
-#[cfg(not(any(unix, windows)))]
-async fn connect_agent() -> Option<AgentClient<Box<dyn AgentStream + Send + Unpin>>> {
-    None
-}
-
-async fn rsa_hash(handle: &Handle<Client>, algorithm: &Algorithm) -> Option<HashAlg> {
-    if matches!(algorithm, Algorithm::Rsa { .. }) {
-        handle
-            .best_supported_rsa_hash()
-            .await
-            .ok()
-            .flatten()
-            .flatten()
-    } else {
-        None
-    }
-}
-
-/// ssh-agent identities first, then the identity files, like OpenSSH.
-async fn authenticate(handle: &mut Handle<Client>, hop: &Hop) -> Result<()> {
-    let mut notes: Vec<String> = Vec::new();
-    if let Some(mut agent) = connect_agent().await {
-        match agent.request_identities().await {
-            Ok(identities) => {
-                for identity in identities {
-                    let AgentIdentity::PublicKey { key, .. } = identity else {
-                        continue;
-                    };
-                    let hash = rsa_hash(handle, &key.algorithm()).await;
-                    match handle
-                        .authenticate_publickey_with(hop.user.as_str(), key, hash, &mut agent)
-                        .await
-                    {
-                        Ok(result) if result.success() => return Ok(()),
-                        Ok(_) => {}
-                        Err(e) => notes.push(format!("ssh-agent: {e}")),
-                    }
-                }
-            }
-            Err(e) => notes.push(format!("ssh-agent: {e}")),
-        }
-    }
-    for path in &hop.identities {
-        let key = match load_secret_key(path, None) {
-            Ok(key) => key,
-            Err(KeyError::KeyIsEncrypted) => {
-                notes.push(format!(
-                    "{} is passphrase protected: load it into ssh-agent",
-                    path.display()
-                ));
-                continue;
-            }
-            Err(e) => {
-                notes.push(format!("{}: {e}", path.display()));
-                continue;
-            }
-        };
-        let hash = rsa_hash(handle, &key.algorithm()).await;
-        match handle
-            .authenticate_publickey(
-                hop.user.as_str(),
-                PrivateKeyWithHashAlg::new(Arc::new(key), hash),
-            )
-            .await
-        {
-            Ok(result) if result.success() => return Ok(()),
-            Ok(_) => notes.push(format!("{} was refused", path.display())),
-            Err(e) => notes.push(format!("{}: {e}", path.display())),
-        }
-    }
-    let detail = if notes.is_empty() {
-        "no ssh-agent identity or ~/.ssh key available".to_owned()
-    } else {
-        notes.join("; ")
-    };
-    Err(format!(
-        "ssh authentication to {}@{} failed: {detail}",
-        hop.user, hop.host
-    ))
-}
-
-async fn open_session<S>(hop: &Hop, known_hosts: &[PathBuf], stream: S) -> Result<Handle<Client>>
-where
-    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
-{
-    let refusal = Arc::new(Mutex::new(None));
-    let handler = Client {
-        host: hop.host.clone(),
-        port: hop.port,
-        known_hosts: known_hosts.to_vec(),
-        refusal: refusal.clone(),
-    };
-    let config = Arc::new(client_config(&hop.host, hop.port, known_hosts));
-    let mut handle =
-        match timeout(hop.timeout, client::connect_stream(config, stream, handler)).await {
-            Ok(Ok(handle)) => handle,
-            Ok(Err(e)) => {
-                let reason = refusal.lock().ok().and_then(|mut slot| slot.take());
-                return Err(reason.unwrap_or_else(|| {
-                    format!("ssh handshake with {}:{} failed: {e}", hop.host, hop.port)
-                }));
-            }
-            Err(_) => {
-                return Err(format!(
-                    "ssh handshake with {}:{} timed out",
-                    hop.host, hop.port
-                ));
-            }
-        };
-    authenticate(&mut handle, hop).await?;
-    Ok(handle)
-}
-
-/// Connects the chain; every jump session must stay alive as long as the target.
-async fn dial(chain: &[Hop], known_hosts: &[PathBuf]) -> Result<Vec<Handle<Client>>> {
-    let mut sessions: Vec<Handle<Client>> = Vec::with_capacity(chain.len());
-    for hop in chain {
-        let handle = if let Some(previous) = sessions.last() {
-            let channel = timeout(
-                hop.timeout,
-                previous.channel_open_direct_tcpip(
-                    hop.host.clone(),
-                    u32::from(hop.port),
-                    "127.0.0.1",
-                    0,
-                ),
-            )
-            .await
-            .map_err(|_| format!("ssh jump to {}:{} timed out", hop.host, hop.port))?
-            .map_err(|e| format!("ssh jump to {}:{}: {e}", hop.host, hop.port))?;
-            open_session(hop, known_hosts, channel.into_stream()).await?
-        } else {
-            let tcp = timeout(
-                hop.timeout,
-                TcpStream::connect((hop.host.as_str(), hop.port)),
-            )
-            .await
-            .map_err(|_| format!("connecting to {}:{} timed out", hop.host, hop.port))?
-            .map_err(|e| format!("connecting to {}:{}: {e}", hop.host, hop.port))?;
-            let _ = tcp.set_nodelay(true);
-            open_session(hop, known_hosts, tcp).await?
-        };
-        sessions.push(handle);
-    }
-    Ok(sessions)
 }
 
 struct Conn {
     sftp: Arc<RawSftpSession>,
-    /// Jump hosts first, the target session last; kept so the tunnels stay open.
-    sessions: Vec<Handle<Client>>,
+    /// The session (jump hosts included); kept so the tunnels stay open.
+    ssh: Connection,
 }
 
 impl Conn {
     fn alive(&self) -> bool {
-        self.sessions.last().is_some_and(|h| !h.is_closed())
+        !self.ssh.is_closed()
     }
 }
 
 /// A lazily reconnecting SFTP view of one remote directory.
 pub(super) struct Ssh {
-    chain: Vec<Hop>,
-    known_hosts: Vec<PathBuf>,
+    target: Target,
+    home: PathBuf,
     root: String,
     conn: Option<Conn>,
 }
@@ -544,10 +126,9 @@ fn describe(path: &str, error: &SftpError) -> String {
 impl Ssh {
     /// Connects and checks that the root is a directory, so a bad source fails at mount time.
     pub async fn connect(spec: &SshSpec, home: &Path) -> Result<Self> {
-        let chain = resolve_chain(spec, home)?;
         let mut ssh = Self {
-            chain,
-            known_hosts: known_hosts_files(spec, home),
+            target: spec.target(),
+            home: home.to_path_buf(),
             root: spec.root.clone(),
             conn: None,
         };
@@ -567,18 +148,15 @@ impl Ssh {
     }
 
     async fn dial(&self) -> Result<Conn> {
-        let sessions = dial(&self.chain, &self.known_hosts).await?;
-        let target = sessions.last().ok_or("ssh chain is empty")?;
-        let channel = target
-            .channel_open_session()
+        let ssh = Connection::connect(&self.target, &self.home, HostKeyPolicy::Strict)
             .await
-            .map_err(|e| format!("ssh session: {e}"))?;
-        channel
-            .request_subsystem(true, "sftp")
+            .map_err(|e| e.to_string())?;
+        let stream = ssh
+            .open_subsystem("sftp")
             .await
-            .map_err(|e| format!("sftp subsystem refused: {e}"))?;
+            .map_err(|e| e.to_string())?;
         let sftp = RawSftpSession::new_with_config(
-            channel.into_stream(),
+            stream,
             SftpConfig {
                 request_timeout_secs: REQUEST_TIMEOUT_SECS,
                 ..SftpConfig::default()
@@ -587,7 +165,7 @@ impl Ssh {
         sftp.init().await.map_err(|e| format!("sftp init: {e}"))?;
         Ok(Conn {
             sftp: Arc::new(sftp),
-            sessions,
+            ssh,
         })
     }
 
@@ -828,47 +406,11 @@ mod tests {
         assert_eq!(join("/srv", ""), "/srv");
     }
 
-    #[test]
-    fn ssh_config_supplies_host_name_port_user_identity_and_jumps() {
-        let home = tempfile::tempdir().unwrap();
-        let ssh = home.path().join(".ssh");
-        std::fs::create_dir_all(&ssh).unwrap();
-        std::fs::write(ssh.join("deploy_key"), "k").unwrap();
-        std::fs::write(
-            ssh.join("config"),
-            "Host prd\n  HostName 10.0.0.7\n  Port 2222\n  User deploy\n  IdentityFile ~/.ssh/deploy_key\n  ProxyJump bastion\n  ConnectTimeout 7\n\nHost bastion\n  HostName 192.0.2.1\n  User jump\n",
-        )
-        .unwrap();
-        let spec = parse_uri("ssh://prd/srv/game").unwrap();
-        let chain = resolve_chain(&spec, home.path()).unwrap();
-        assert_eq!(chain.len(), 2);
-        assert_eq!(
-            (
-                chain[0].host.as_str(),
-                chain[0].user.as_str(),
-                chain[0].port
-            ),
-            ("192.0.2.1", "jump", 22)
-        );
-        assert_eq!(
-            (
-                chain[1].host.as_str(),
-                chain[1].user.as_str(),
-                chain[1].port
-            ),
-            ("10.0.0.7", "deploy", 2222)
-        );
-        assert_eq!(chain[1].identities, vec![ssh.join("deploy_key")]);
-        assert_eq!(chain[1].timeout, Duration::from_secs(7));
-        let overridden = parse_uri("ssh://other@prd:2200/srv").unwrap();
-        let chain = resolve_chain(&overridden, home.path()).unwrap();
-        assert_eq!((chain[1].user.as_str(), chain[1].port), ("other", 2200));
-    }
-
     /// A real `russh` server on 127.0.0.1 serving a temp directory; its tests use Unix paths.
     #[cfg(unix)]
     mod live {
         use super::super::*;
+        use std::time::Duration;
         use russh::keys::ssh_key::private::{Ed25519Keypair, KeypairData};
         use russh::keys::ssh_key::{LineEnding, PrivateKey};
         use russh::server::{Auth, Msg, Server as _, Session};

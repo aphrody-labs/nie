@@ -8,7 +8,6 @@
 //! - Save container coordinator (`002AB8F4-USERDATALIVE`)
 //! - In-memory VFS streaming IPC channel
 
-pub mod eac;
 pub mod error;
 pub mod package;
 pub mod save;
@@ -17,7 +16,6 @@ pub mod team;
 pub mod ut;
 pub mod vfs;
 
-pub use eac::{EacCheckSite, EacScanReport, patch_eac_buffer, patch_eac_file, scan_eac_sites};
 pub use error::{LauncherError, Result};
 pub use package::{PackageHeader, inspect_package_header};
 pub use save::SaveSession;
@@ -51,3 +49,7 @@ impl nie_plugin::Plugin for LauncherPlugin {
         }
     }
 }
+
+#[cfg(feature = "crlib")]
+#[allow(unsafe_code)]
+mod abi_generated;

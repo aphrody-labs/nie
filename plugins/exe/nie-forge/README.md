@@ -13,4 +13,4 @@ cargo run -p nie-forge -- --help
 
 The `nie-forge` CLI provides `split`, `build`, `verify`, `report`, `match`, and `unit` commands. Its reference binary and registry inputs are supplied by the analyst; it does not download or modify game installations.
 
-Source is ported from Aphrody Labs' `bun-os` workspace. See [LICENSE](LICENSE).
+See [LICENSE](LICENSE).

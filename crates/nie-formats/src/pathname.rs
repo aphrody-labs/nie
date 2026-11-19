@@ -1,6 +1,6 @@
 //! Manipulation de noms de chemins d'assets, portée **byte-exact** du moteur Level-5 (`lives::`).
 //!
-//! [`file_stem`] reproduit `FUN_140452820` (@`0x140452820`, `nie_eacpatched.exe`, ~171 callers) :
+//! [`file_stem`] reproduit `FUN_140452820` (@`0x140452820`, `nie.exe`, ~171 callers) :
 //! le *file-stem* d'un chemin d'asset = **basename sans dernière extension** (retire le répertoire
 //! au dernier `/` ou `\`, puis l'extension au dernier `.`). Utilitaire central de la couche asset.
 //!

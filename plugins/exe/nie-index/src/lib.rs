@@ -3,7 +3,8 @@
 //! [`memory`] is portable to WebAssembly and searches caller-provided entries without
 //! filesystem, database, process, or network access. The default `host` feature retains
 //! the SQLite/Redis-backed [`Db`], ingestion, and aggregate-query APIs used by native tools.
-#![forbid(unsafe_code)]
+#![cfg_attr(not(feature = "crlib"), forbid(unsafe_code))]
+#![cfg_attr(feature = "crlib", deny(unsafe_code))]
 #![allow(clippy::pedantic)]
 
 pub mod memory;
@@ -35,7 +36,7 @@ pub mod fts;
     not(all(target_arch = "wasm32", target_os = "unknown"))
 ))]
 mod host {
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
 
     use rusqlite::Connection;
     use thiserror::Error;
@@ -45,18 +46,21 @@ mod host {
     /// Resolve the reverse-engineering SQLite database used by native bindings.
     ///
     /// An explicit caller path wins, allowing the CLI and MCP host to retain their
-    /// `NIE_SQLITE` compatibility override. The fallback is anchored to the
-    /// workspace layout from this owning crate rather than a user home directory
-    /// or a caller's current working directory.
+    /// `NIE_SQLITE` compatibility override. The fallback lives under the
+    /// repository the caller runs in, never in a user home directory.
     #[must_use]
     pub fn resolve_re_database_path(override_path: Option<PathBuf>) -> PathBuf {
         override_path.unwrap_or_else(default_re_database_path)
     }
 
-    /// Return the repository-local fallback for the RE knowledge database.
+    /// Return the repository-local fallback for the RE knowledge database: `var/nie.sqlite`
+    /// under the current directory, never a path fixed at build time.
     #[must_use]
     pub fn default_re_database_path() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../var/nie.sqlite")
+        std::env::current_dir()
+            .unwrap_or_default()
+            .join("var")
+            .join("nie.sqlite")
     }
 
     /// Schéma SQL embarqué.
@@ -436,7 +440,7 @@ mod host {
             Ok(())
         }
 
-        /// Format Level-5 documenté (savoir iecode/inagle). Renvoie son id.
+        /// Format Level-5 documenté (savoir de référence). Renvoie son id.
         pub fn format(
             conn: &Connection,
             name: &str,
@@ -678,3 +682,7 @@ mod host {
     not(all(target_arch = "wasm32", target_os = "unknown"))
 ))]
 pub use host::*;
+
+#[cfg(feature = "crlib")]
+#[allow(unsafe_code)]
+mod abi_generated;

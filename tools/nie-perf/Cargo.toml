@@ -1,0 +1,37 @@
+[package]
+name = "nie-perf"
+version = "2.0.0"
+edition = "2024"
+rust-version = "1.100"
+license = "Apache-2.0"
+publish = false
+description = "Synthetic-fixture benchmarks of the nie hot paths (VFS reads, texture decode, GPU frame time), driven by hyperfine"
+
+# Standalone: the root workspace never resolves this crate (it pulls rayon and a wgpu stack that
+# nie-formats must not carry). Path dependencies still inherit their own workspace.
+[workspace]
+
+[features]
+default = []
+# Texture benchmark through `encode_rgba_to_png_fast`.
+fast-png = []
+# Viewport frame benchmark on the nie-render3d wgpu renderer.
+gpu = ["dep:nie-render3d", "dep:nie-gpu", "dep:pollster"]
+# Same, reading GPU pass times from the renderer's timestamp queries.
+gpu-timing = ["gpu"]
+
+[dependencies]
+anyhow = "1.0.104"
+blake3 = "1.8.7"
+nie-formats = { path = "../../crates/nie-formats", version = "2.0.0", default-features = false, features = ["std", "serde", "textures"] }
+png = { version = "0.18.1", default-features = false }
+rayon = "1.12.0"
+serde_json = "1.0.154"
+nie-render3d = { path = "../../crates/nie-render3d", version = "2.0.0", default-features = false, features = ["gpu"], optional = true }
+nie-gpu = { path = "../../crates/nie-gpu", version = "2.0.0", optional = true }
+pollster = { version = "1.0.1", optional = true }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+debug = false

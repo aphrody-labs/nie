@@ -54,8 +54,8 @@ in a row. One instance per host (flock on `/run/nie/supervisor.lock`); its state
 `deploy/supervise.toml` (embedded in the binary) describes the host: `nie serve` on
 `127.0.0.1:8796` and `nie-model-serve` on `127.0.0.1:8797` as user `nie`, and the Cloudflare
 tunnel connector for the public hostname (prd's 443 belongs to the shared nginx; the `nie-edge`
-TLS listener on a Cloudflare origin port is the `nie-deploy cloudflare` path). `/srv/nie/steam` is
-the Steam library of the game: `steamapps/common/INAZUMA ELEVEN Victory Road` and
+TLS listener on a Cloudflare origin port is the `nie-deploy cloudflare` path). The Steam library of the game
+(`[vars] steam_dir` of that file) holds `steamapps/common/<game>` (`game_dir`) and
 `steamapps/appmanifest_2799860.acf`. Steam tooling state (manifest cache, depot downloader) lives in
 `/var/lib/nie/steam`, never inside the game directory.
 
@@ -66,7 +66,7 @@ nie-deploy up                                                                   
 ```
 
 `up` uploads the binaries of `--bin-dir` whose SHA-256 differs (atomic rename), installs
-`/etc/nie/supervise.toml`, installs the start at boot (`/etc/cron.d/nie-deploy`, a one-minute `supervise --detach` watchdog that is a
+`/etc/nie/supervise.toml`, installs the start at boot (`/etc/cron.d/nie-deploy`, `@reboot` plus a one-minute `supervise --detach` watchdog that is a
 no-op while the supervisor runs; else a managed block in `/etc/rc.local` where the rc-local generator
 exists; `status` reports `boot_hook`), starts the supervisor detached when it is not running, restarts it when its
 configuration or binary changed, restarts the services when their binaries changed, and waits until
@@ -166,12 +166,12 @@ Three steps on any Linux host:
    built first, then embedded, on the build host or in CI:
 
    ```
-   cargo run --release --manifest-path tools/nie-app-pack/Cargo.toml -- --repo . --out dist/app
+   just app-pack dist/app
    NIE_APP_DIST=$PWD/dist/app cargo build --locked --release --target x86_64-unknown-linux-musl \
        --no-default-features -p nie-cli --features nie-cli/cloud --bin nie
    ```
 
-   `nie-app-pack` runs `cargo build -p nie-wasm --target wasm32-unknown-unknown`, `wasm-bindgen`
+   `cargo xtask app-pack` runs `cargo build -p nie-wasm --target wasm32-unknown-unknown`, `wasm-bindgen`
    at the version `Cargo.lock` pins (it refuses another), `wasm-opt -Oz`, then renames every file
    with the first eight hex digits of its BLAKE3 and writes a brotli copy of each file it shrinks.
    A binary built without `NIE_APP_DIST` serves no app: `/app` answers 404 with the reason.
@@ -216,10 +216,9 @@ answers 416; one answer carries at most 128 MiB. A mount over SSH or an rclone r
 
 ### Browser check
 
-`tools/nie-app-pack/browser-check.ts` (Bun) drives headless Chrome against a running server and
-fails unless: the page loads, `navigator.gpu` exists, the console has no error, and the same files
-mounted over HTTP `Range` and over a directory handle (the origin-private file system holding a
-copy) give the BLAKE3 of the native VFS for every file. It takes a synthetic installation written
-by `cargo run -p nie-wiki-vfs --features testing --example synth_install -- <dir> 50`; no game byte
-is involved. The run on the build host and its screenshots are recorded in
+The browser proof is agent-browser (DOM probe and screenshot) against a running `nie serve`; `just ci-browser`
+runs the same page in headless Chrome through `cargo xtask web shot` (a minimal CDP client in Rust) and
+fails unless the page loads, `navigator.gpu` exists and the console has no error. It takes a synthetic
+installation written by `cargo run -p nie-wiki-vfs --features testing --example synth_install -- <dir> 50`;
+no game byte is involved. The run on the build host and its screenshots are recorded in
 `docs/research/log/2026-11-19-wasm-app.md`.

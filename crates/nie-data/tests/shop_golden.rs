@@ -6,7 +6,7 @@
 //! nameHash @var1 (réinterprétés u32 = `>>> 0`), itemId @var2 collecté en `Set` (dédup,
 //! ordre conservé). Valeurs extraites via l'exemple jetable `nie-model-serve` (supprimé après).
 //!
-//! Disposition nie (`cfgbin_to_t2b_iecode_root`) : l'item-list `SHOP_INFO_ITEM_LIST_BEG_x`
+//! Disposition nie (`cfgbin_to_t2b_tagged_root`) : l'item-list `SHOP_INFO_ITEM_LIST_BEG_x`
 //! est un *frère* du shop `SHOP_INFO_x`, ses items lui étant rattachés séquentiellement.
 
 mod common;
@@ -300,7 +300,7 @@ fn shop2_dedup_set_87_items() {
 #[test]
 fn validation_byte_a_byte_vrai_fichier() {
     // Validation contre le vrai dump si présent (fichier hors VCS). Source :
-    // data/common/gamedata/shop/shop_config_3.00.22.cfg.bin.json (forme iecode T2B).
+    // data/common/gamedata/shop/shop_config_3.00.22.cfg.bin.json (forme étiquetée T2B).
     let path = "shop/shop_config_3.00.22.cfg.bin.json";
     if !std::path::Path::new(path).exists() {
         return;

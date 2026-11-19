@@ -1,0 +1,20 @@
+[package]
+name = "nie-health"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+description = "Container healthcheck: one HTTP GET over std sockets, exit 0 when the answer is 200 and holds the expected text."
+
+[lints]
+workspace = true
+
+[lib]
+name = "nie_health"
+path = "src/lib.rs"
+
+[[bin]]
+name = "nie-health"
+path = "src/main.rs"

@@ -3,7 +3,7 @@
 //! `data/common/gamedata/players_universe/players_universe_config_1.03.59.00.cfg.bin`
 //! et `players_universe_event_config.cfg.bin`
 //! (montés depuis `/mnt/c/Program Files (x86)/Steam/steamapps/common/INAZUMA ELEVEN
-//! Victory Road`, extraits via `nie_formats::cfgbin` → forme iecode `lists`).
+//! Victory Road`, extraits via `nie_formats::cfgbin` → forme étiquetée `lists`).
 //!
 //! Port 1:1 d'inagle `parsers/constellation.ts` + `parsers/star-sign.ts`. Layout `lists` :
 //! 10 listes (config) + 1 liste (event). Les valeurs ci-dessous sont les **vraies** lignes
@@ -22,7 +22,7 @@ use serde_json::json;
 //  Fixture embarquée — vraies lignes extraites du dump (sous-ensemble représentatif).
 // ════════════════════════════════════════════════════════════════════════════════
 
-/// Reconstruit un `root` iecode `{ lists: [...] }` avec les vraies lignes du dump.
+/// Reconstruit un `root` étiquetée `{ lists: [...] }` avec les vraies lignes du dump.
 fn fixture() -> serde_json::Value {
     json!({
         "lists": [

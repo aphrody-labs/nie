@@ -5,7 +5,7 @@ ConditionPathExists=/etc/kernel-promote/required
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/nie-kernel-promote
+ExecStart=/usr/local/bin/xtask kernel promote
 TimeoutStartSec=400
 
 [Install]

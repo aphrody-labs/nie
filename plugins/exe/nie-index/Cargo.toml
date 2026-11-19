@@ -7,10 +7,14 @@ license = "Apache-2.0"
 publish = false
 description = "Bounded in-memory and SQLite-backed knowledge index for reverse engineering"
 
+[lib]
+crate-type = ["rlib", "staticlib", "cdylib"]
+
 [lints]
 workspace = true
 
 [features]
+crlib = []
 default = ["host"]
 host = [
   "dep:anyhow",

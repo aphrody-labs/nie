@@ -1,0 +1,32 @@
+[package]
+name = "nie-sshd"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+description = "SSH server in pure Rust on russh: public-key authentication only, exec, SFTP and port forwarding, listening on WireGuard addresses or a systemd socket. Runs beside OpenSSH on its own port."
+
+[lints]
+workspace = true
+
+[lib]
+name = "nie_sshd"
+path = "src/lib.rs"
+
+[[bin]]
+name = "nie-sshd"
+path = "src/main.rs"
+
+[target.'cfg(unix)'.dependencies]
+anyhow = { workspace = true, features = ["std"] }
+clap = { workspace = true }
+nix = { workspace = true, features = ["fs", "net", "user"] }
+russh = { workspace = true }
+russh-sftp = { workspace = true }
+tokio = { workspace = true, features = ["io-util", "macros", "net", "process", "rt-multi-thread", "signal", "sync", "time"] }
+
+[target.'cfg(unix)'.dev-dependencies]
+nie-ssh = { workspace = true }
+tempfile = { workspace = true }

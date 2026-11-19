@@ -7,28 +7,15 @@
 //! centaine de modules) contre des octets lus en direct du VFS : ils consomment tous la même
 //! forme `&serde_json::Value`, produite ici une fois pour toutes plutôt que par module.
 
-use nie_formats::cfgbin::{CfgBinFile, CfgEntry, RdbnList, RdbnRow, RdbnValue, Value as T2bValue};
+use nie_formats::cfgbin::{
+    CfgBinFile, CfgEntry, RdbnList, RdbnRow, RdbnValue, Value as T2bValue, t2b_value_to_tagged_json,
+};
 use serde_json::{Map, Value, json};
-
-/// Converts one decoded T2B variable to the canonical inagle JSON representation.
-///
-/// This small operation is public because host adapters that need an indexed or otherwise
-/// presentation-specific entry tree must still share the exact scalar wire representation.
-#[must_use]
-pub fn t2b_value_to_json(v: &T2bValue) -> Value {
-    match v {
-        T2bValue::String(s) => json!({ "type": "String", "value": s }),
-        // `value` est TOUJOURS une chaîne dans la forme inagle (cf. nie_data::cfgbin) — les
-        // helpers `Var::as_i64`/`as_f64` re-parsent cette chaîne.
-        T2bValue::Int(i) => json!({ "type": "Int", "value": i.to_string() }),
-        T2bValue::Float(f) => json!({ "type": "Float", "value": f.to_string() }),
-    }
-}
 
 fn t2b_entry_to_json(e: &CfgEntry) -> Value {
     json!({
         "name": e.name,
-        "variables": e.variables.iter().map(t2b_value_to_json).collect::<Vec<_>>(),
+        "variables": e.variables.iter().map(t2b_value_to_tagged_json).collect::<Vec<_>>(),
         "children": e.children.iter().map(t2b_entry_to_json).collect::<Vec<_>>(),
     })
 }
@@ -46,7 +33,7 @@ fn json_to_t2b_value(v: &Value) -> Result<T2bValue, String> {
         .and_then(Value::as_str)
         .ok_or("variable sans champ \"type\"")?;
     // `value` est TOUJOURS une chaîne dans la forme inagle (même convention que
-    // `t2b_value_to_json` en sens inverse) — on la re-parse selon `type`.
+    // `t2b_value_to_tagged_json` en sens inverse) — on la re-parse selon `type`.
     let raw = v
         .get("value")
         .and_then(Value::as_str)
@@ -369,15 +356,15 @@ mod tests {
     #[test]
     fn t2b_scalar_wire_representation_is_canonical() {
         assert_eq!(
-            t2b_value_to_json(&T2bValue::String("text".to_owned())),
+            t2b_value_to_tagged_json(&T2bValue::String("text".to_owned())),
             json!({ "type": "String", "value": "text" })
         );
         assert_eq!(
-            t2b_value_to_json(&T2bValue::Int(-42)),
+            t2b_value_to_tagged_json(&T2bValue::Int(-42)),
             json!({ "type": "Int", "value": "-42" })
         );
         assert_eq!(
-            t2b_value_to_json(&T2bValue::Float(1.5)),
+            t2b_value_to_tagged_json(&T2bValue::Float(1.5)),
             json!({ "type": "Float", "value": "1.5" })
         );
     }

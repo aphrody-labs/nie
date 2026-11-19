@@ -178,7 +178,7 @@ pub fn which(name: &str) -> Option<PathBuf> {
 /// Locate an engine checkout containing the emulator core used by recompilation.
 #[must_use]
 pub fn find_root() -> Option<PathBuf> {
-    if let Some(r) = std::env::var_os("RG_ENGINE_ROOT") {
+    if let Some(r) = std::env::var_os("NIE_ENGINE_ROOT") {
         let p = PathBuf::from(r);
         if p.join("crates/bun-engine-core/Cargo.toml").is_file() {
             return Some(p);
@@ -207,21 +207,15 @@ pub fn find_re_root() -> Option<PathBuf> {
         }
         None
     }
-    // `NIE_RE_ROOT` names the yolo-re workspace; the former `YOLO_RE_ROOT` is read only as an alias.
+    // `NIE_RE_ROOT` names the RE workspace.
     if let Some(root) = std::env::var_os("NIE_RE_ROOT")
-        .or_else(|| std::env::var_os("YOLO_RE_ROOT"))
         .map(PathBuf::from)
         && let Some(found) = resolve_workspace(&root)
     {
         return Some(found);
     }
-    if let Ok(cwd) = std::env::current_dir()
-        && let Some(root) = cwd.ancestors().find_map(resolve_workspace)
-    {
-        return Some(root);
-    }
-    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
-    manifest.ancestors().find_map(resolve_workspace)
+    let cwd = std::env::current_dir().ok()?;
+    cwd.ancestors().find_map(resolve_workspace)
 }
 
 /// SHA-256 hex digest.

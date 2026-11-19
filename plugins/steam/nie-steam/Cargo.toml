@@ -10,10 +10,14 @@ license.workspace = true
 repository.workspace = true
 description = "Steam plugin of nie: VDF text/binary parser and writer, install and library discovery, client configuration, Proton launch tuning, Remote Play state, native depot client over steamroom, read-only SQLite index of a local install."
 
+[lib]
+crate-type = ["rlib", "staticlib", "cdylib"]
+
 [lints]
 workspace = true
 
 [features]
+crlib = []
 default = []
 depot = [
   "dep:anyhow",

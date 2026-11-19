@@ -46,7 +46,7 @@ fn open_read(pid: i32) -> Option<Handle> {
 fn last_error_hint(code: u32) -> &'static str {
     match code {
         5 => {
-            " (ERROR_ACCESS_DENIED — EAC actif ? lance nie.exe directement sans EACLauncher, ou en admin)"
+            " (ERROR_ACCESS_DENIED — le process n'est pas accessible à ce compte)"
         }
         87 => " (ERROR_INVALID_PARAMETER — plage partiellement non mappée)",
         299 => " (ERROR_PARTIAL_COPY — la plage chevauche un trou non mappé)",

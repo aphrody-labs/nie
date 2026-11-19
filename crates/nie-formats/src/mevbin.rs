@@ -1,6 +1,6 @@
 //! Parseur de fichiers `.mevbin` (MEVBIN — Motion Event Binary, Level-5 IEVR).
 //!
-//! Port Rust de `IECODE.Core/Formats/Level5/MevbinDocument.cs`.
+//! Port Rust de `MevbinDocument.cs`.
 //!
 //! ## Format
 //!
@@ -40,7 +40,7 @@ use crate::cfgbin::{Format, Value, cfgbin_parse};
 /// Événement déclenché à un instant donné de l'animation.
 ///
 /// Provient d'un record `EVENT_n` du cfg.bin sous-jacent (3 champs).
-/// Miroir exact de `MevbinEvent` C# (`IECODE.Core`).
+/// Miroir exact de `MevbinEvent` C# (le C# d'origine).
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct MevbinEvent {

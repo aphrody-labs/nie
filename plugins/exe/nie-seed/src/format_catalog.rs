@@ -1,11 +1,11 @@
-//! Ingestion du catalogue de formats exporté par iecode (`iecode export-knowledge`).
+//! Ingestion du catalogue de formats exporté par un outil externe (`export-knowledge`).
 //!
-//! iecode (C# .NET 10) ne peut pas être appelé depuis nie (full-Rust). Il publie
+//! L'outil de référence (C# .NET 10) ne peut pas être appelé depuis nie (full-Rust). Il publie
 //! donc son savoir sur les formats binaires LEVEL-5 / CRIWARE d'IEVR sous forme d'un
 //! artefact JSON stable et versionné, produit par :
 //!
 //! ```sh
-//! iecode export-knowledge --out <catalogue.json>
+//! export-knowledge --out <catalogue.json>
 //! ```
 //!
 //! Ce module lit ce JSON et l'ingère comme ancres de vérité :
@@ -17,7 +17,7 @@
 //! ```json
 //! {
 //!   "schema_version": 1,
-//!   "generator": "iecode",
+//!   "generator": "tagged",
 //!   "game": "Inazuma Eleven: Victory Road",
 //!   "format_count": 31,
 //!   "formats": [
@@ -40,7 +40,7 @@
 //! ```
 //!
 //! Contrairement à [`crate::formats`] (catalogue minimal codé en dur : nom + magic),
-//! ce module récupère le savoir COMPLET d'iecode, y compris le layout des champs
+//! ce module récupère le savoir COMPLET du format étiqueté, y compris le layout des champs
 //! d'en-tête, sans dupliquer la connaissance dans le code Rust.
 
 #[cfg(all(
@@ -68,7 +68,7 @@ use thiserror::Error;
 use tracing::debug;
 
 /// Version de schéma supportée par cet ingesteur. Doit correspondre au
-/// `schema_version` produit par `iecode export-knowledge`.
+/// `schema_version` produit par `export-knowledge`.
 pub const SUPPORTED_SCHEMA_VERSION: i64 = 1;
 
 /// Resource limits applied while parsing an exported format catalog.
@@ -232,7 +232,7 @@ pub enum CatalogParseError {
     },
 }
 
-/// Parse and validate an exported iecode format catalog from bytes.
+/// Parse and validate an exported format catalog from bytes.
 ///
 /// The input-size check happens before JSON allocation. Limits on entries, fields,
 /// and strings are then enforced before the catalog is returned to a caller such
@@ -367,10 +367,10 @@ pub struct CatalogStats {
     pub fields: usize,
 }
 
-/// Ingère le catalogue de formats iecode depuis le fichier JSON `path`.
+/// Ingère le catalogue de formats de référence depuis le fichier JSON `path`.
 ///
-/// Source déclarée pour les formats : `"iecode-catalog"` (distincte de la source
-/// `"iecode"` du catalogue minimal codé en dur dans [`crate::formats`], pour tracer
+/// Source déclarée pour les formats : `"format-catalog"` (distincte de la source
+/// `"reference"` du catalogue minimal codé en dur dans [`crate::formats`], pour tracer
 /// l'origine machine-readable).
 ///
 /// L'opération est idempotente : ré-ingérer le même catalogue ne crée pas de doublon
@@ -387,7 +387,7 @@ pub struct CatalogStats {
 ))]
 pub fn ingest_format_catalog(db: &mut Db, path: &Path) -> Result<CatalogStats> {
     let raw = std::fs::read_to_string(path)
-        .with_context(|| format!("lecture du catalogue iecode : {}", path.display()))?;
+        .with_context(|| format!("lecture du catalogue de référence : {}", path.display()))?;
 
     let doc: FormatCatalog = serde_json::from_str(&raw)
         .with_context(|| format!("JSON invalide : {}", path.display()))?;
@@ -401,7 +401,7 @@ pub fn ingest_format_catalog(db: &mut Db, path: &Path) -> Result<CatalogStats> {
     }
 
     debug!(
-        "catalogue iecode : generator={} formats={}",
+        "catalogue de référence : generator={} formats={}",
         doc.generator,
         doc.formats.len()
     );
@@ -418,7 +418,7 @@ pub fn ingest_format_catalog(db: &mut Db, path: &Path) -> Result<CatalogStats> {
             &tx,
             &fmt.name,
             fmt.magic.as_deref(),
-            "iecode-catalog",
+            "format-catalog",
             fmt.doc.as_deref(),
         )
         .with_context(|| format!("ingest format({})", fmt.name))?;
@@ -489,7 +489,7 @@ mod tests {
 
     const SAMPLE: &str = r#"{
         "schema_version": 1,
-        "generator": "iecode",
+        "generator": "tagged",
         "game": "Inazuma Eleven: Victory Road",
         "format_count": 2,
         "formats": [
@@ -527,7 +527,7 @@ mod tests {
             parse_format_catalog_bytes(SAMPLE.as_bytes(), CatalogLimits::default()).unwrap();
 
         assert_eq!(catalog.schema_version, SUPPORTED_SCHEMA_VERSION);
-        assert_eq!(catalog.generator, "iecode");
+        assert_eq!(catalog.generator, "tagged");
         assert_eq!(
             catalog.game.as_deref(),
             Some("Inazuma Eleven: Victory Road")
@@ -639,7 +639,7 @@ mod tests {
                 r.get(0)
             })
             .unwrap();
-        assert_eq!(src, "iecode-catalog");
+        assert_eq!(src, "format-catalog");
 
         std::fs::remove_file(&path).ok();
     }

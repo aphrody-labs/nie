@@ -344,7 +344,7 @@ where
     /// Renvoie `(pid, base_du_module)` si le jeu tourne, `None` sinon.
     pub find_process: Rc<F>,
     /// Lit `len` octets à `addr`. `None` si la lecture échoue (adresse non mappée, process absent,
-    /// permission refusée — EAC actif, p. ex.).
+    /// permission refusée, p. ex.).
     pub read: Rc<R>,
 }
 

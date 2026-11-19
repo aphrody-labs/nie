@@ -6,7 +6,7 @@
 //! Port 1:1 d'inagle `inagle`
 //! (`parseContent`, l.66-112) : clé typotée Level-5 `meetingtEventId` lue telle quelle,
 //! `meetingCond` non exposé (comme inagle). Valeurs ci-dessous extraites telles quelles du
-//! dump (via `cfgbin::read_values` → forme iecode), aucune valeur inventée.
+//! dump (via `cfgbin::read_values` → forme étiquetée), aucune valeur inventée.
 
 mod common;
 
@@ -85,7 +85,7 @@ fn practice_matches_head() -> Vec<Value> {
     ]
 }
 
-/// Fixture iecode complète : les 4 listes (3 entrées réelles chacune).
+/// Fixture étiquetée complète : les 4 listes (3 entrées réelles chacune).
 fn node_fixture() -> Value {
     json!({
         "lists": [

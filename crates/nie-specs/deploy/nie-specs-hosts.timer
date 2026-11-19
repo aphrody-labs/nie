@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh nie host specs daily
+
+[Timer]
+OnCalendar=*-*-* 04:47:00
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

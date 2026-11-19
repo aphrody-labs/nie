@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun --no-install --no-env-file tools/claude/goal-stop.ts",
+            "command": "cargo xtask claude-stop",
             "timeout": 10
           }
         ]
