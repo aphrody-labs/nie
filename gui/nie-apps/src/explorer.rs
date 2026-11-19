@@ -104,10 +104,10 @@ impl FmBackend {
                     let ctx = Context { vfs: &vfs, cache: cache.as_deref(), cancelled: &poll };
                     let preview = preview::build(&ctx, &request);
                     let _ = started;
-                    if !flag.load(Ordering::Relaxed) {
-                        if let Ok(mut done) = done.lock() {
-                            done.push((id, preview));
-                        }
+                    if !flag.load(Ordering::Relaxed)
+                        && let Ok(mut done) = done.lock()
+                    {
+                        done.push((id, preview));
                     }
                 });
             }

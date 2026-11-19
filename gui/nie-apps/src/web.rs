@@ -32,11 +32,24 @@ fn preferences() -> Preferences {
     }
 }
 
+/// `?backend=webgl` or `?backend=webgpu` picks the graphics API; WebGPU with a WebGL fallback otherwise.
+fn backend() -> gpui_platform::WebBackendPreference {
+    let search = web_sys::window().and_then(|w| w.location().search().ok()).unwrap_or_default();
+    match search.trim_start_matches('?').split('&').find_map(|p| p.strip_prefix("backend=")) {
+        Some("webgl") => gpui_platform::WebBackendPreference::WebGl,
+        Some("webgpu") => gpui_platform::WebBackendPreference::WebGpu,
+        _ => gpui_platform::WebBackendPreference::Auto,
+    }
+}
+
 /// Starts the explorer in the page. Called by the generated JavaScript when the module loads.
 #[wasm_bindgen(start)]
 pub fn start() {
     gpui_platform::web_init();
-    let app = gpui_platform::single_threaded_web();
+    use gpui::Platform as _;
+    let platform = std::rc::Rc::new(gpui_web::WebPlatform::new_with_backend(false, backend()));
+    let fetch = std::sync::Arc::new(gpui_web::FetchHttpClient::new(platform.foreground_executor().to_send()));
+    let app = gpui::Application::with_platform(platform).with_http_client(fetch);
     let handle = app.run_embedded(|cx: &mut App| {
         if let Err(error) = cx.text_system().add_fonts(FONTS.iter().map(|f| Cow::Borrowed(*f)).collect()) {
             web_sys::console::error_1(&format!("failed to load fonts: {error:#}").into());

@@ -15,7 +15,14 @@ fn main() -> Result<()> {
     let vfs = Arc::new(nie_formats::vfs::open_source(source.as_deref()).context("mount the game")?);
     let cache = ThumbCache::open(Some(vfs.game_data_dir())).ok().map(Arc::new);
     let theme = nie_apps::theme_of_game(Some(&vfs), Preferences::from_env());
-    let backend = FmBackend::new(vfs, cache);
+    let mut backend = FmBackend::new(vfs, cache);
+    // NIE_EXPLORER_CD opens a folder first, as `nie fm --cd` does.
+    if let Ok(dir) = std::env::var("NIE_EXPLORER_CD") {
+        if backend.fm_mut().reveal_path(&dir) {
+            backend.fm_mut().run(&nie_explore::fm::Action::Enter);
+        }
+        backend.sync();
+    }
     gpui_platform::application().run(move |cx| {
         Settings::install(cx, theme);
         open(cx, backend);

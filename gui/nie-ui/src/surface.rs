@@ -30,7 +30,7 @@ pub struct Rgba8 {
 #[must_use]
 pub fn render_image(frame: &Rgba8) -> Option<Arc<RenderImage>> {
     let mut bgra = frame.rgba.clone();
-    for px in bgra.chunks_exact_mut(4) {
+    for px in bgra.as_chunks_mut::<4>().0 {
         px.swap(0, 2);
     }
     let buffer = RgbaImage::from_raw(frame.width, frame.height, bgra)?;

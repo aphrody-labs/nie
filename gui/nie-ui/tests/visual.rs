@@ -44,7 +44,7 @@ fn palette() -> Vec<nie_data::font_color::FontColor> {
 
 fn harness() -> HeadlessAppContext {
     let text = Arc::new(gpui_wgpu::CosmicTextSystem::new_without_system_fonts("IBM Plex Sans"));
-    let cx = HeadlessAppContext::with_platform(text, Arc::new(()), || gpui_platform::current_headless_renderer());
+    let cx = HeadlessAppContext::with_platform(text, Arc::new(()), gpui_platform::current_headless_renderer);
     cx.text_system().add_fonts(FONTS.iter().map(|f| Cow::Borrowed(*f)).collect()).expect("fonts");
     cx
 }

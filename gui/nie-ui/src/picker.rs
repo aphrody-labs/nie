@@ -135,12 +135,14 @@ impl Picker {
                 cx.notify();
             }
             _ => {
-                if !ks.modifiers.control && !ks.modifiers.platform && !ks.modifiers.alt {
-                    if let Some(text) = ks.key_char.as_deref() {
-                        self.query.push_str(text);
-                        self.rescore();
-                        cx.notify();
-                    }
+                if !ks.modifiers.control
+                    && !ks.modifiers.platform
+                    && !ks.modifiers.alt
+                    && let Some(text) = ks.key_char.as_deref()
+                {
+                    self.query.push_str(text);
+                    self.rescore();
+                    cx.notify();
                 }
             }
         }

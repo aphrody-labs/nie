@@ -202,8 +202,16 @@ impl Theme {
         let target = preferences.contrast_target();
         let black = Rgb(0, 0, 0);
         let white = Rgb(255, 255, 255);
-        let (mut background, mut text) =
-            (colours.first().copied().unwrap_or(black), colours.last().copied().unwrap_or(white));
+        // The text is the least saturated of the light entries (a near-white, not a bright yellow);
+        // the background is the darkest entry.
+        let lightest = colours.last().copied().unwrap_or(white);
+        let text0 = colours
+            .iter()
+            .copied()
+            .filter(|c| c.luminance() >= 0.7 * lightest.luminance())
+            .min_by(|a, b| a.hsl().1.total_cmp(&b.hsl().1))
+            .unwrap_or(lightest);
+        let (mut background, mut text) = (colours.first().copied().unwrap_or(black), text0);
         // The darkest entry is the background; the lightest is the text. Each moves toward its
         // extreme until the contrast target is met.
         for step in 0..=20 {
