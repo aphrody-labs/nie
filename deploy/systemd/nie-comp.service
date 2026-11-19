@@ -1,0 +1,27 @@
+[Unit]
+Description=nie-comp: the nie session compositor (Wayland, smithay) on the user session
+Documentation=https://github.com/aphrody-labs/nie/blob/main/docs/research/log/2026-11-19-nie-comp.md
+After=graphical-session-pre.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+# Headless by default (no GPU, DRM or display: CI and prd). On a seat, set NIE_COMP_ARGS=--drm
+# in ~/.config/nie/comp.env (the binary must be built with the `drm` feature).
+Environment=NIE_COMP_ARGS=--headless
+Environment=NIE_COMP_SOCKET=nie-0
+EnvironmentFile=-%h/.config/nie/comp.env
+# The socket is %t/nie-0 (XDG_RUNTIME_DIR); clients use WAYLAND_DISPLAY=nie-0.
+ExecStart=/usr/local/bin/nie-comp $NIE_COMP_ARGS
+Restart=on-failure
+RestartSec=2
+KillSignal=SIGTERM
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=default.target

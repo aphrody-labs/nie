@@ -1,0 +1,52 @@
+[package]
+name = "nie-comp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+description = "The nie session compositor: a Wayland compositor on smithay (xdg-shell, wlr-layer-shell, seat, shm, dmabuf, presentation-time) with a CPU headless backend for CI and screenshots, a winit backend for nested runs and a DRM/KMS plus libinput backend."
+
+[lints]
+workspace = true
+
+[lib]
+name = "nie_comp"
+path = "src/lib.rs"
+
+[[bin]]
+name = "nie-comp"
+path = "src/main.rs"
+
+[features]
+default = []
+# Nested window on a host Wayland or X11 session (GLES through EGL).
+winit = ["smithay/backend_winit"]
+# DRM/KMS scanout, libinput and a libseat session (build-checked; booted only on a seat-owning host).
+drm = [
+  "smithay/backend_drm",
+  "smithay/backend_gbm",
+  "smithay/backend_libinput",
+  "smithay/backend_udev",
+  "smithay/backend_session_libseat",
+  "smithay/renderer_gl",
+]
+# XWayland for X11 clients such as Steam.
+xwayland = ["smithay/xwayland"]
+
+[target.'cfg(target_os = "linux")'.dependencies]
+anyhow = { workspace = true, features = ["std"] }
+calloop = { workspace = true, features = ["signals"] }
+clap = { workspace = true }
+pixman = { workspace = true }
+png = { workspace = true }
+smithay = { workspace = true, features = ["desktop", "renderer_pixman", "wayland_frontend"] }
+tracing = { workspace = true, features = ["std"] }
+tracing-subscriber = { workspace = true, features = ["ansi", "env-filter", "fmt", "std"] }
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+tempfile = { workspace = true }
+wayland-client = { workspace = true }
+wayland-protocols = { workspace = true, features = ["client"] }
+wayland-protocols-wlr = { workspace = true, features = ["client"] }
