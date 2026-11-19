@@ -153,5 +153,9 @@ bevy = [
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false
 
+# Feature switches only: enable the browser entropy backend of every getrandom major in the graph.
 [package.metadata.cargo-machete]
-ignored = ["getrandom"]
+ignored = ["getrandom", "getrandom_02", "getrandom_04"]
+
+[package.metadata.cargo-shear]
+ignored = ["getrandom_04"]

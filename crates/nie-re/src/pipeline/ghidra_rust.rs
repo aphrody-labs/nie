@@ -98,15 +98,15 @@ impl StageAdapter for RustDecompiler {
                     );
                 }
             };
-            if ctx.opts.discover_functions {
-                if let Err(error) = program.discover_functions() {
-                    return report(
-                        Stage::Decompile,
-                        self.id(),
-                        StageStatus::Failed,
-                        format!("function discovery failed: {error}"),
-                    );
-                }
+            if ctx.opts.discover_functions
+                && let Err(error) = program.discover_functions()
+            {
+                return report(
+                    Stage::Decompile,
+                    self.id(),
+                    StageStatus::Failed,
+                    format!("function discovery failed: {error}"),
+                );
             }
             let mut discovered = 0usize;
             match program.functions() {
@@ -160,7 +160,7 @@ impl StageAdapter for RustDecompiler {
             let first = entry.map(|address| (address, addresses.remove(&address).flatten()));
             for (address, name) in first
                 .into_iter()
-                .chain(addresses.into_iter())
+                .chain(addresses)
                 .take(ctx.opts.max_functions)
             {
                 let (code, error) = match program.decompile(address) {

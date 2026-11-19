@@ -69,8 +69,6 @@ jobs:
         run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates pkg-config
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # vendor/bevy and vendor/dioxus are submodules of the aphrody-labs forks (relative URLs).
-          submodules: true
           persist-credentials: false
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Build nie and nie-model-serve (host profile)
@@ -116,7 +114,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          submodules: true
           persist-credentials: false
       - name: Toolchain
         shell: bash

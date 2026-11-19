@@ -50,9 +50,11 @@ mod tests {
 
     #[test]
     fn nie_camera_state_computes_finite_view_projection() {
-        let mut s = CameraState::default();
-        s.pos = [0.0, 5.0, 12.0];
-        s.ref_pos = [0.0, 1.0, 0.0];
+        let s = CameraState {
+            pos: [0.0, 5.0, 12.0],
+            ref_pos: [0.0, 1.0, 0.0],
+            ..CameraState::default()
+        };
         let comp = NieCameraState::from(s);
         let vp = comp.view_projection(16.0 / 9.0);
         assert!(vp.is_finite());

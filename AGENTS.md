@@ -6,12 +6,13 @@ loads game data from the installation the user owns and keeps a football craft l
 
 ## Rules
 
-- Rust 2024 workspace, one copy per crate. The Bevy family is the `vendor/bevy` fork (`=0.20.0-dev`)
-  and Dioxus the `vendor/dioxus` fork, both git submodules with relative URLs wired through
-  `[patch.crates-io]`. Other dependency versions are read live from crates.io
-  (`curl -A nie https://crates.io/api/v1/crates/<name>`). A third-party Bevy crate needs its own fork
-  under `vendor/` first, because crates.io releases require `bevy ^0.20` and cannot resolve against a
-  prerelease. Never edit a fork from here; fix it upstream in its repository and let `vendor-sync` bump.
+- Rust 2024 workspace, one copy per crate. Every third-party crate comes from crates.io releases,
+  versions read live (`curl -A nie https://crates.io/api/v1/crates/<name>`) and declared once in
+  `[workspace.dependencies]`; members use `workspace = true`. No forks, no `[patch]`, no vendored
+  third-party code. `cargo shear` stays clean (feature-only dependencies are listed in
+  `[package.metadata.cargo-shear] ignored`).
+- The only submodules are aphrody-labs/iecode-dotnet and iecode-cpp under `iecode/` (private,
+  `update = none`, so public CI skips them): `git submodule update --init --checkout iecode/dotnet`.
 - Never ship, copy or commit a game asset. Game data is read in place through `nie-assets`
   (`game://`) from a local path, SSH, or an rclone remote. Tests build synthetic fixtures in a temp
   directory.

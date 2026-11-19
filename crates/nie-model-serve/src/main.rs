@@ -7651,7 +7651,7 @@ mod tests {
     #[cfg(feature = "real-audio")]
     #[test]
     fn hca_ievr_dechiffrement_cle_correcte() {
-        const AWB_PATH: &str = concat!("data/cross-apk/work/laneE-audio/staging/c00001001.awb");
+        const AWB_PATH: &str = "data/cross-apk/work/laneE-audio/staging/c00001001.awb";
 
         let data = std::fs::read(AWB_PATH)
             .expect("fichier AWB absent — lancer avec `--features real-audio` sur le VPS IEVR");

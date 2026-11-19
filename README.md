@@ -28,20 +28,20 @@ games/          craft manifests, one TOML file per football game
 contract/       nie-app.json and aphrody-store.toml (generated), openapi.json
 design/         design tokens
 docs/           bevy-ecosystem.toml: Bevy crates and their use in nie
-vendor/         git submodules: aphrody-labs/bevy and aphrody-labs/dioxus forks
+iecode/         git submodules (private): aphrody-labs/iecode-dotnet and aphrody-labs/iecode-cpp
 ```
 
 ## Bevy base
 
-`vendor/bevy` and `vendor/dioxus` are submodules of the aphrody-labs forks (relative URLs),
-wired through `[patch.crates-io]` in the root `Cargo.toml`. Bevy is pinned `=0.20.0-dev`, the
-fork's version; the crates.io 0.20.1 release is not used. `.github/workflows/vendor-sync.yml`
-runs each fork's `rg-sync`, bumps the submodule pointers and pushes them to `main` only when the
-workspace check and the headless asset test pass. `docs/bevy-ecosystem.toml` maps every Bevy
-crate to its use in nie, with versions read from crates.io. After cloning:
+Bevy 0.20.1 and every other dependency come from crates.io releases, declared once in
+`[workspace.dependencies]`; nothing is forked or patched. `docs/bevy-ecosystem.toml` maps every
+Bevy crate to its use in nie, with versions read from crates.io.
+
+The iecode engines are private submodules marked `update = none`, so a plain clone and CI skip
+them. With access to aphrody-labs:
 
 ```
-git submodule update --init --depth 1
+git submodule update --init --checkout iecode/dotnet iecode/cpp
 ```
 
 ## Game assets
@@ -157,8 +157,7 @@ beyond primitive meshes.
 
 ## Versions
 
-Bevy `=0.20.0-dev` and Dioxus 0.8.0-alpha.3 come from the vendored forks, everything else from
-crates.io. Rust 1.100.0 (`rust-toolchain.toml`).
+Bevy 0.20.1, Dioxus 0.8.0-alpha.3 and everything else come from crates.io. Rust 1.100.0 (`rust-toolchain.toml`).
 
 ## Build
 

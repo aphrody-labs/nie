@@ -46,7 +46,6 @@ bevy_reflect = { workspace = true, optional = true }
 # `Extent3d`, `TextureDimension`, `TextureFormat` : bevy_image 0.19 uses the wgpu-types 29 family.
 bevy-wgpu-types = { workspace = true, optional = true }
 # `stream::iter` pour énumérer un dossier du VFS ; dépendance de `bevy_asset`, pas un crate de plus.
-futures-lite = { workspace = true, optional = true }
 
 [features]
 default = []
@@ -60,5 +59,4 @@ bevy = [
   "dep:bevy_mesh",
   "dep:bevy_reflect",
   "dep:bevy-wgpu-types",
-  "dep:futures-lite",
 ]

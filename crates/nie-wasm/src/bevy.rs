@@ -31,7 +31,7 @@ pub struct NieWasmBevyPlugin;
 impl Plugin for NieWasmBevyPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<WasmViewport>()
-            .add_plugins((NieAssetPlugin::default(), NieRender3dPlugin));
+            .add_plugins((NieAssetPlugin, NieRender3dPlugin));
     }
 }
 

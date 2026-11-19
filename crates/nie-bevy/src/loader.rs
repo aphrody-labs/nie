@@ -95,18 +95,10 @@ impl AssetLoader for G4mdLoader {
             path: sibling_path.display().to_string(),
             reason: error.to_string(),
         };
-        let mg = {
-            let mut reader = load_context
-                .read_asset(sibling)
-                .await
-                .map_err(|error| dependency(&error))?;
-            let mut bytes = Vec::new();
-            reader
-                .read_to_end(&mut bytes)
-                .await
-                .map_err(|error| dependency(&error))?;
-            bytes
-        };
+        let mg = load_context
+            .read_asset_bytes(sibling)
+            .await
+            .map_err(|error| dependency(&error))?;
 
         let meshes = meshes_from_g4md_g4mg(&md, &mg)?;
         let submesh_count = meshes.len();

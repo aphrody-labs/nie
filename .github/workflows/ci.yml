@@ -24,9 +24,6 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-        with:
-          # vendor/bevy and vendor/dioxus are submodules of the aphrody-labs forks (relative URLs).
-          submodules: true
       - name: Toolchain
         # rust-toolchain.toml pins the compiler, its components and the wasm32 target.
         run: rustup show active-toolchain || rustup toolchain install
@@ -57,8 +54,6 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: true
       - name: Toolchain
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2
@@ -73,8 +68,6 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: true
       - name: System libraries
         # Bevy, winit and eframe link against ALSA, udev, Wayland and xkbcommon through pkg-config.
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev libgl1-mesa-dev
@@ -92,8 +85,6 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: true
       - name: Toolchain
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2

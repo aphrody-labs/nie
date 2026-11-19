@@ -89,8 +89,10 @@ fn un_conteneur_bc7_se_reparse_et_se_redecode() {
     // aplats doivent revenir très proches ; le seuil est là pour attraper un canal inversé ou un
     // en-tête mal écrit, pas pour noter le compresseur.
     let ecart_max = rgba
-        .chunks_exact(4)
-        .zip(decode.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(decode.as_chunks::<4>().0)
         .flat_map(|(attendu, obtenu)| {
             (0..3).map(move |canal| i32::from(attendu[canal]).abs_diff(i32::from(obtenu[canal])))
         })

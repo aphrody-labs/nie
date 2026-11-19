@@ -1758,7 +1758,12 @@ mod tests {
 
         // Le fond est effacé en transparent : tout pixel opaque vient du triangle. En exiger un
         // nombre plancher (et pas « au moins un ») distingue un vrai rendu d'un artefact isolé.
-        let opaques = pixels.chunks_exact(4).filter(|p| p[3] > 200).count();
+        let opaques = pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| p[3] > 200)
+            .count();
         assert!(
             opaques > 200,
             "trop peu de pixels rendus ({opaques}) — le triangle n'a pas été dessiné"
@@ -1766,7 +1771,9 @@ mod tests {
 
         // La texture est rouge pur, modulée par l'éclairage : le canal rouge doit dominer.
         let sample = pixels
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .find(|p| p[3] > 200)
             .expect("au moins un pixel opaque");
         assert!(
@@ -1913,7 +1920,9 @@ mod tests {
 
         // Le vert domine nettement : la ligne est en vert pur, le modèle en argile grise.
         let verts = |px: &[u8]| {
-            px.chunks_exact(4)
+            px.as_chunks::<4>()
+                .0
+                .iter()
                 .filter(|p| p[3] > 200 && p[1] > 150 && p[0] < 100 && p[2] < 100)
                 .count()
         };

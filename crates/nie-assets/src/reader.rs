@@ -6,10 +6,10 @@ use std::sync::Arc;
 use crate::cache::DiskCache;
 use crate::files::GameFiles;
 use bevy_app::App;
+use bevy_asset::AssetApp;
 use bevy_asset::io::{
     AssetReader, AssetReaderError, AssetSourceBuilder, AssetSourceId, PathStream, Reader, VecReader,
 };
-use bevy_asset::{AssetApp, CowArc};
 
 /// The asset source name: `game://data/common/...`.
 pub const GAME_SOURCE: &str = "game";
@@ -68,22 +68,14 @@ impl VfsAssetReader {
 }
 
 impl AssetReader for VfsAssetReader {
-    async fn read<'a>(
-        &'a self,
-        path: CowArc<'a, Path>,
-    ) -> Result<impl Reader + 'a, AssetReaderError> {
-        let path: &Path = &path;
+    async fn read<'a>(&'a self, path: &'a Path) -> Result<impl Reader + 'a, AssetReaderError> {
         self.fetch(&Self::logical(path))
             .map(VecReader::new)
             .ok_or_else(|| AssetReaderError::NotFound(path.to_path_buf()))
     }
 
-    async fn read_meta<'a>(
-        &'a self,
-        path: CowArc<'a, Path>,
-    ) -> Result<impl Reader + 'a, AssetReaderError> {
+    async fn read_meta<'a>(&'a self, path: &'a Path) -> Result<impl Reader + 'a, AssetReaderError> {
         // CPK archives carry no `.meta` files; report that instead of inventing an empty reader.
-        let path: &Path = &path;
         Err::<VecReader, _>(AssetReaderError::NotFound(path.to_path_buf()))
     }
 

@@ -10,8 +10,5 @@ description = "Achillea rules in pure Rust: Elo and AP, ranked matchmaking and s
 [lints]
 workspace = true
 
-[dependencies]
-serde = { workspace = true }
-
 [dev-dependencies]
 serde_json = { workspace = true, features = ["std"] }

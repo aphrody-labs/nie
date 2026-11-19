@@ -1,9 +1,3 @@
-[submodule "vendor/bevy"]
-	path = vendor/bevy
-	url = ../bevy
-[submodule "vendor/dioxus"]
-	path = vendor/dioxus
-	url = ../dioxus
 [submodule "iecode/dotnet"]
 	path = iecode/dotnet
 	url = ../iecode-dotnet
