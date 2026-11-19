@@ -45,7 +45,7 @@ walkdir = "2.5.0"
 flate2 = "1.1.11"
 anyhow = { workspace = true }
 
-# Standard crates.io RE libraries merged from rosegriffon (nie-re-core, nie-pe)
+# Standard crates.io RE libraries used by nie-re-core and nie-pe
 aes = "0.9.4"
 md5 = { package = "md-5", version = "0.11.0" }
 hex = "0.4"

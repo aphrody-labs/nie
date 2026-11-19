@@ -5,7 +5,7 @@ the operator owns, in place, through the VFS (`nie-formats`).
 
 | image / binary | what it is for |
 |---|---|
-| `ghcr.io/aphrody-labs/nie` / `nie serve` | JSON API: VFS listing and lookup, format detection and decoding, game-data queries, wiki registry, design tokens |
+| `ghcr.io/aphrody-labs/nie` / `nie serve` | JSON API: VFS listing and lookup, format detection and decoding, game-data queries |
 | `ghcr.io/aphrody-labs/nie-model-serve` / `nie-model-serve` | asset origin for a CDN: decoded textures (PNG), audio (WAV), video (MP4), cfg as JSON, models (GLB), raw bytes behind a token |
 
 Release archives (`nie-v<version>-x86_64-unknown-linux-gnu.tar.gz`,
@@ -27,7 +27,6 @@ Environment variables (a flag of the same name wins). The image sets `NIE_HOST=0
 | `NIE_HTTP_AUTH_TOKEN` | unset | bearer sent to an `https://` source |
 | `NIE_CACHE_DIR` | `<game>/var/model-cache` | `nie-model-serve` cache of assembled GLB, mixed WAV and MP4; `/var/lib/nie/model-cache` in the image |
 | `RCLONE_CONFIG` | rclone default | rclone configuration for `r2://`, `s3://`, `gdrive://`, `rclone://` sources |
-| `RG_CRAWL_DATA_ROOT`, `RG_CRON_SHARED_ROOT` | unset | optional directories where `/v1/wiki/mods` looks for `community-mods-index.json` |
 
 `nie serve` flags: `--strict` exits at startup when the source cannot be mounted; `--stateless`
 makes `/ready` healthy without a VFS (format and registry worker mode).
@@ -84,8 +83,6 @@ All responses carry `Access-Control-Allow-Origin: *` and `X-Content-Type-Options
 | `GET /v1/vfs/remotes` | 200 `{remotes}` (rclone remotes); 503 without rclone |
 | `POST /v1/formats/detect` | body = bytes; 200 `{format, size}` |
 | `POST /v1/formats/decode?name=&format=` | body = bytes; `format=png` returns `image/png` (G4TX), else the decoded structure as JSON; 422 when unreadable |
-| `GET /v1/wiki/games?locale=&slug=&era=&status=&q=` | 200 `{schemaVersion, locale, total, eras, games[]}`, or with `slug` `{schemaVersion, locale, localized, game}`; 404 unknown slug |
-| `GET /v1/wiki/mods?game=&lang=&q=&limit=` | 200 `{schemaVersion, totalHubs, totalWikiSources, hubs[], wikiSources[], snapshot}` |
 | `GET /v1/vfs/info` | 200 `{source, entries, cpks, transport:{ioCalls, payloadBytes}}`; 503 without VFS |
 | `GET /v1/vfs/find?q=&ext=&limit=` | 200 `{count, items:[{path, size, cpk}]}`, `limit` 1 to 500 (default 50) |
 | `GET /v1/vfs/stat?path=` | 200 `{path, size, cpk}`; 400 invalid path, 404 unknown |

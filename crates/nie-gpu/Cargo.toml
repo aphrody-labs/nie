@@ -8,7 +8,7 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 publish = false
-description = "Shared wgpu instance, adapter, device and surface-configuration boundary of the Rose Griffon renderers."
+description = "Shared wgpu instance, adapter, device and surface-configuration boundary of the nie renderers."
 
 [lib]
 name = "nie_gpu"

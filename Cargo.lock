@@ -4027,7 +4027,6 @@ dependencies = [
  "nie-lua",
  "nie-ocgen",
  "nie-pe",
- "nie-pkg",
  "nie-plugin",
  "nie-queue",
  "nie-re-core",
@@ -4243,19 +4242,6 @@ name = "nie-pe"
 version = "1.4.8"
 dependencies = [
  "nie-re",
-]
-
-[[package]]
-name = "nie-pkg"
-version = "1.4.8"
-dependencies = [
- "blake3",
- "clap",
- "serde",
- "taffy",
- "tempfile",
- "thiserror 2.0.21",
- "toml",
 ]
 
 [[package]]
@@ -6730,17 +6716,6 @@ checksum = "8e1d1b10ced5ca923a1fcb8d03e96b8d3268065d724548c0211415ff6ac6bac4"
 dependencies = [
  "core-foundation-sys",
  "libc",
-]
-
-[[package]]
-name = "taffy"
-version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31f7bd2d97198df05186f93a3a3c306845f40e8b3c22bf9279cdd7e5cf5fea7d"
-dependencies = [
- "serde",
- "slotmap",
- "smallvec",
 ]
 
 [[package]]

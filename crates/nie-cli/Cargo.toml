@@ -43,7 +43,6 @@ cloud = [
   "dep:reqwest",
   "dep:nie-save",
   "dep:nie-render3d",
-  "dep:nie-pkg",
   "dep:clap",
   "dep:anyhow",
   "dep:tracing",
@@ -94,7 +93,6 @@ nie-explore = { path = "../nie-explore", version = "1.4.8", features = ["host"],
 futures-util = { version = "0.3", optional = true }
 nie-save = { path = "../../plugins/save/nie-save", version = "1.4.8", optional = true }
 nie-plugin = { workspace = true }
-nie-pkg = { path = "../nie-pkg", version = "1.4.8", optional = true }
 nie-render3d = { path = "../nie-render3d", version = "1.4.8", default-features = false, optional = true }
 clap = { workspace = true, features = ["color"], optional = true }
 anyhow = { workspace = true, features = ["std"], optional = true }
