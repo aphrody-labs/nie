@@ -50,6 +50,15 @@ Built binaries on the build host: `/srv/xbuild/nie/target/release/{nie,nie-mcp,n
   `rust-toolchain.toml` copied from the fork's, a nightly kept out of the stable main workspace):
   `nie-os` (kernel) and `nie-ostd-vfs` (ostd component) take `ostd` from crates.io, never from the
   git branch; built, ktested and booted only on `fr1` (KVM) or in CI, never on the PC.
+- `vendor/kitesurf` is the aphrody-labs/kitesurf fork (Apache-2.0 browser engine on Blitz, Stylo,
+  Taffy, Parley and boa; `branch = nie`, `main` mirrors cloudflare/kitesurf). Upstream merges go into
+  `nie` by merge commit, never rebase; fixes are PRs to cloudflare/kitesurf. Its `crates/browser-*`
+  path crates are the patched engine crates: browser engine forks (this one and the crate forks
+  behind it) are allowed as pinned submodules under `vendor/`, and `[patch]` entries are allowed only
+  to point at them. `crates/nie-browser` (the native CDP host and the wasm build) takes them by path
+  from `vendor/kitesurf/crates`; the rest of the workspace never depends on kitesurf sources.
+  `nie-browser deps` reports each vendored crate against crates.io into `docs/specs/kitesurf-deps.md`;
+  the engine builds, tests and wasm builds run only on `fr1` or in CI, never on the PC.
 - Never ship, copy or commit a game asset. Game data is read in place through `nie-assets`
   (`game://`) from a local path, SSH, or an rclone remote. Tests build synthetic fixtures in a temp
   directory.

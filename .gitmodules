@@ -25,3 +25,9 @@
 	branch = main
 	update = none
 	shallow = true
+[submodule "vendor/kitesurf"]
+	path = vendor/kitesurf
+	url = ../kitesurf.git
+	branch = nie
+	update = none
+	shallow = true
