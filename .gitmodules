@@ -8,3 +8,8 @@
 	url = ../iecode-cpp
 	update = none
 	shallow = true
+[submodule "third_party/qemu-wasm"]
+	path = third_party/qemu-wasm
+	url = ../qemu-wasm
+	update = none
+	shallow = true

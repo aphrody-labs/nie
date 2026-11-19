@@ -31,8 +31,12 @@ Built binaries on the build host: `/srv/xbuild/nie/target/release/{nie,nie-mcp,n
   `[workspace.dependencies]`; members use `workspace = true`. No forks, no `[patch]`, no vendored
   third-party code. `cargo shear` stays clean (feature-only dependencies are listed in
   `[package.metadata.cargo-shear] ignored`).
-- The only submodules are aphrody-labs/iecode-dotnet and iecode-cpp under `iecode/` (private,
-  `update = none`, so public CI skips them): `git submodule update --init --checkout iecode/dotnet`.
+- Submodules: aphrody-labs/iecode-dotnet and iecode-cpp under `iecode/` (private, `update = none`,
+  so public CI skips them): `git submodule update --init --checkout iecode/dotnet`. A pinned
+  aphrody-labs fork is allowed as a submodule (`third_party/<name>` or `vendor/<name>`, relative URL,
+  `update = none`, `shallow = true`) only for an engine no crates.io crate covers, such as
+  `third_party/qemu-wasm` (the browser QEMU with the TCG to Wasm backend); nie crates never depend on
+  its sources, and `[patch]` stays forbidden.
 - Never ship, copy or commit a game asset. Game data is read in place through `nie-assets`
   (`game://`) from a local path, SSH, or an rclone remote. Tests build synthetic fixtures in a temp
   directory.
