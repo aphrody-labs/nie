@@ -21,11 +21,11 @@ the only stack still on an alpha release.
 1. **Bevy owns everything that runs in the game world**: simulation, rendering, assets over the
    VFS (`game://`), in-game menus and HUD (`bevy_ui` and `bevy_feathers`), headless CI, and the
    web build through wasm32 and WebGPU. `nie-sim` stays on `bevy_app`, `bevy_ecs` and `bevy_math`
-   only. Bevy comes from crates.io releases (0.20.1 today), never from a fork.
+   only. Bevy comes from crates.io releases (0.20.1 today).
 2. **NSH (the GPUI native shell) owns every out-of-game tool**: studio, launcher, editors
    (cfg.bin, Lua, textures, models), the zukan and wiki viewers, and the desktop, mobile and
    headless app surfaces. `nie-shell` becomes a real NSH app crate. A viewport embeds the Bevy
-   render through wgpu texture sharing, not a second renderer.
+   render by sharing its wgpu texture.
 3. **Dioxus is retired.** The web product is the rosegriffon Next.js site, which calls `nie serve`
    over HTTP (see `docs/serve.md`). The in-browser game is the Bevy wasm build. Delete nie-web,
    nie-ui-dioxus, the Dioxus bridge of nie-ui-bevy and the `dioxus_web` and `dioxus_desktop`
