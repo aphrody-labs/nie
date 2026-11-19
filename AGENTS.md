@@ -53,5 +53,5 @@ Built binaries on the build host: `/srv/xbuild/nie/target/release/{nie,nie-mcp,n
   it. Route iecode through nie's VFS instead of fixing the duplicate decoders.
 - Nine text languages ship (`de en es fr it ja pt zh_hans zh_hant`, all translated). The
   `nie vfs cat` preview of a text file prints NOUN_INFO names in Japanese for most of them: compare
-  raw bytes or decode with `nie decode` before concluding a language is missing.
+  raw bytes before concluding a language is missing.
 - Licensing questions go to the Level-5 partner review: list them, change nothing.
