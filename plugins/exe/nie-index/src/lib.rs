@@ -8,6 +8,13 @@
 
 pub mod memory;
 
+/// Bounded read-only reports over the RE knowledge database.
+#[cfg(all(
+    feature = "host",
+    not(all(target_arch = "wasm32", target_os = "unknown"))
+))]
+pub mod re_report;
+
 /// Atlas — index unique de toutes les surfaces RE du dépôt (fichiers, crates, docs,
 /// digest de la base de connaissance, unités de forge, outils, métriques, écarts).
 #[cfg(all(

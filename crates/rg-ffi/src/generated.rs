@@ -6,7 +6,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 /// ABI version of this library.
 #[unsafe(no_mangle)]
 pub extern "C" fn rg_ffi_abi_version() -> u32 {
-    1
+    2
 }
 
 /// Frees a string returned by this library.
@@ -18,25 +18,6 @@ pub unsafe extern "C" fn rg_string_free(s: *mut c_char) {
     if !s.is_null() {
         drop(unsafe { CString::from_raw(s) });
     }
-}
-
-/// Percent-encodes a VFS path segment by segment. Free the result with rg_string_free.
-///
-/// # Safety
-/// Pointer arguments must be valid for the stated lengths (strings NUL-terminated).
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn rg_sitemap_encode_path(path: *const c_char) -> *mut c_char {
-    if path.is_null() {
-        return std::ptr::null_mut();
-    }
-    let Ok(path) = unsafe { CStr::from_ptr(path) }.to_str() else {
-        return std::ptr::null_mut();
-    };
-    catch_unwind(AssertUnwindSafe(|| match crate::impls::rg_sitemap_encode_path(path) {
-        Some(out) => CString::new(out).map_or(std::ptr::null_mut(), CString::into_raw),
-        None => std::ptr::null_mut(),
-    }))
-    .unwrap_or(std::ptr::null_mut())
 }
 
 /// Decodes a cfg.bin (RDBN or T2B) and returns its SQL script; dialect 0 = PostgreSQL, 1 = SQLite. NULL when the bytes are not a cfg.bin. Free the result with rg_string_free.

@@ -35,5 +35,4 @@ the only stack still on an alpha release.
   for tools.
 - The Dioxus removal also drops `dioxus-desktop`, which today pulls the full `image` codec set
   (AVIF, EXR and others) into the lockfile.
-- azalee-app loses its nie-ui-dioxus dependency and moves to NSH or to the rosegriffon site.
-- Remaining work: azalee-app moves to NSH or to the rosegriffon site.
+- azalee-app is deleted; the web product is the rosegriffon site.

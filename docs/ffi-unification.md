@@ -17,7 +17,7 @@ Five C ABIs exist today, and none of them is complete:
 | ABI | Location | Exports | Style |
 |---|---|---|---|
 | `nie_*` | `crates/nie-ffi/src/lib.rs` (3101 LOC, `[lib] name = "iecode"`, cdylib+rlib) | about 75 | Hand-written. Values returned by value or through `_out`. `NieBytes{ptr,len,cap}`. Thread-local `LAST_ERROR`. One `catch_unwind`, at line 661. |
-| `rg_*` | `crates/rg-ffi` (generated from `crates/rg-ffi-contract/contract.json`, `abi_version 1`) | 2 + `rg_ffi_abi_version` + `rg_string_free` | Contract-first. Emits a C header, a Rust extern layer, bun:ffi bindings and an OpenAPI document. Drift test in `crates/rg-ffi/tests/in_sync.rs`. |
+| `rg_*` | `crates/rg-ffi` (generated from `crates/rg-ffi-contract/contract.json`, `abi_version 2`) | 1 + `rg_ffi_abi_version` + `rg_string_free` | Contract-first. Emits a C header, a Rust extern layer, bun:ffi bindings and an OpenAPI document. Drift test in `crates/rg-ffi/tests/in_sync.rs`. |
 | `iecode_*` | `apps/iecode-dotnet/Ffi/Native/IecodeNative.cs` (NativeAOT, `NativeLib=Shared`) | 10 | `UnmanagedCallersOnly`. Returns an int status. Uses `NativeMemory`. A second bridge, `NodeApiBridge.cs` (node-api-dotnet JSExport). |
 | C++ | `tools/iecode-cpp` (`iecode_core STATIC`, `src/include/iecode/export.h`) | no C ABI, C++ API only | vcpkg feature `iecode-cpp` pulls bgfx, capstone, directxtex, openssl, cpp-httplib, tree-sitter, zstd, libwebp and others. |
 | wasm-bindgen | `crates/nie-wasm/src/lib.rs` | 108 `#[wasm_bindgen]` items | A separate surface over the same crates. |

@@ -13,6 +13,7 @@ workspace = true
 [features]
 default = ["host"]
 host = [
+  "dep:anyhow",
   "dep:ignore",
   "dep:r2d2",
   "dep:redis",
@@ -28,6 +29,7 @@ serde = { workspace = true }
 thiserror = { workspace = true }
 
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
+anyhow = { workspace = true, features = ["std"], optional = true }
 ignore = { version = "0.4", optional = true }
 rusqlite = { version = "0.43", optional = true, features = ["bundled"] }
 sha2 = { workspace = true, optional = true }

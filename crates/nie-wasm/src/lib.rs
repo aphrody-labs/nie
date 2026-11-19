@@ -78,8 +78,6 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::pedantic)]
 
-#[cfg(feature = "bevy")]
-pub mod bevy;
 pub mod native_audio;
 pub use native_audio::{audio_bank_cue_to_wav, audio_bank_json, audio_cue_to_wav};
 
@@ -87,9 +85,6 @@ pub mod native_video;
 pub use native_video::{
     usm_audio_track_wav, usm_elementary_video_bytes, usm_metadata_json, usm_video_track_bytes,
 };
-
-#[cfg(all(target_arch = "wasm32", feature = "webgpu"))]
-pub mod web_viewer;
 
 use nie_formats::{FileFormat, cfgbin, cpk, crilayla, detect};
 
@@ -102,11 +97,6 @@ use wasm_bindgen::prelude::*;
 // Initialiseur de hook de panique
 // ---------------------------------------------------------------------------
 
-/// Installe le hook de panique `console_error_panic_hook`.
-///
-/// Appeler cette fonction UNE FOIS au démarrage (après `await init()`) pour que
-/// toute panique Rust apparaisse dans la console du navigateur avec un message
-/// lisible au lieu d'une erreur Wasm opaque. Conservée pour compat ; le hook est
 /// désormais aussi installé automatiquement par [`__wasm_start`] (best practice).
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub fn init_panic_hook() {
@@ -114,8 +104,6 @@ pub fn init_panic_hook() {
     console_error_panic_hook::set_once();
 }
 
-/// Point d'entrée **auto-exécuté à l'instanciation** du module (attribut `start`,
-/// best practice wasm-bindgen) : installe le hook de panique sans dépendre d'un
 /// appel JS explicite — toute panique reste lisible même si l'hôte oublie l'init.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen(start)]
@@ -127,10 +115,6 @@ pub fn __wasm_start() {
 // detect_format
 // ---------------------------------------------------------------------------
 
-/// Détecte le format d'un tampon d'octets et retourne son nom court.
-///
-/// Retourne l'une des chaînes suivantes :
-/// `"CPK"`, `"@UTF"`, `"CRILAYLA"`, `"HCA"`, `"ACB"`, `"AWB"`, `"USM"`,
 /// `"cfg.bin"`, `"G4MG"`, `"G4MD"`, `"G4TX"`, `"G4SK"`, `"G4PK"`, `"G4NV"`, `"?"`.
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub fn detect_format(bytes: &[u8]) -> String {
@@ -142,11 +126,6 @@ pub fn detect_format(bytes: &[u8]) -> String {
     fmt.name().to_owned()
 }
 
-/// Describes one VFS entry with `nie-explore`'s shared format dispatcher.
-///
-/// The JSON result is versioned and always valid, including for unknown input:
-/// `{ "schemaVersion": 1, "path": "...", "recognized": true, "lines": [...] }`.
-/// Parsing stays entirely in WebAssembly; native filesystem search and the instrumented Lua VM
 /// are excluded from this dependency edge.
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 #[must_use]
@@ -161,430 +140,10 @@ pub fn vfs_content_summary(path: &str, bytes: &[u8]) -> String {
     .to_string()
 }
 
-fn binary_triage_impl(bytes: &[u8], strings_limit: u32) -> Result<String, String> {
-    let limit = usize::try_from(strings_limit)
-        .unwrap_or(bun_re::STRINGS_SAMPLE_LIMIT)
-        .min(256);
-    let report = bun_re::triage_bounded(bytes, limit).map_err(|error| error.to_string())?;
-    serde_json::to_string(&report).map_err(|error| error.to_string())
-}
-
-/// Inspects PE/ELF bytes with the shared pure-Rust reverse-engineering engine.
-/// The string sample is capped at 256 entries to keep the browser result bounded.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn binary_triage_json(bytes: &[u8], strings_limit: u32) -> Result<String, JsValue> {
-    binary_triage_impl(bytes, strings_limit).map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native test surface for [`binary_triage_json`].
-#[cfg(not(target_arch = "wasm32"))]
-pub fn binary_triage_json(bytes: &[u8], strings_limit: u32) -> Result<String, String> {
-    binary_triage_impl(bytes, strings_limit)
-}
-
-const MAX_ASSEMBLY_SOURCE_BYTES: usize = 16 * 1024;
-const MAX_ASSEMBLY_INSTRUCTIONS: usize = 1024;
-const MAX_ASSEMBLY_OUTPUT_BYTES: usize = 64 * 1024;
-
-fn assemble_x64_impl(source: &str, virtual_address: u64) -> Result<Vec<u8>, String> {
-    if source.len() > MAX_ASSEMBLY_SOURCE_BYTES {
-        return Err(format!(
-            "assembly source exceeds {MAX_ASSEMBLY_SOURCE_BYTES} bytes"
-        ));
-    }
-    let instructions = nie_pe::asm::parse_line(source).map_err(|error| error.to_string())?;
-    if instructions.len() > MAX_ASSEMBLY_INSTRUCTIONS {
-        return Err(format!(
-            "assembly source exceeds {MAX_ASSEMBLY_INSTRUCTIONS} instructions"
-        ));
-    }
-    let bytes = nie_pe::asm::encode_at(&instructions, virtual_address);
-    if bytes.len() > MAX_ASSEMBLY_OUTPUT_BYTES {
-        return Err(format!(
-            "assembly output exceeds {MAX_ASSEMBLY_OUTPUT_BYTES} bytes"
-        ));
-    }
-    Ok(bytes)
-}
-
-/// Assembles bounded x86-64 source with `nie-asm`'s verified MSVC encoding rules.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn assemble_x64(source: &str, virtual_address: u64) -> Result<Vec<u8>, JsValue> {
-    assemble_x64_impl(source, virtual_address).map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native test surface for [`assemble_x64`].
-#[cfg(not(target_arch = "wasm32"))]
-pub fn assemble_x64(source: &str, virtual_address: u64) -> Result<Vec<u8>, String> {
-    assemble_x64_impl(source, virtual_address)
-}
-
-/// Compares an original and rebuilt executable with `nie-pe`'s byte-exact forge metric.
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[must_use]
-pub fn pe_byte_diff_json(reference: &[u8], rebuilt: &[u8], max_ranges: u32) -> String {
-    let report = nie_pe::diff::compare(reference, rebuilt, (max_ranges as usize).min(256));
-    let ranges: Vec<_> = report
-        .ranges
-        .iter()
-        .map(|range| serde_json::json!({ "offset": range.off, "length": range.len }))
-        .collect();
-    serde_json::json!({
-        "schemaVersion": 1,
-        "referenceLength": report.len_ref,
-        "rebuiltLength": report.len_got,
-        "bytesDiffering": report.bytes_differing,
-        "identicalRatio": report.ratio_identical(),
-        "identical": report.is_identical(),
-        "ranges": ranges,
-        "truncated": report.truncated,
-    })
-    .to_string()
-}
-
-fn forge_lift_x64_impl(bytes: &[u8], virtual_address: u64) -> Result<String, String> {
-    let lifted = nie_forge::lift::lift_body_text(bytes, virtual_address).map_err(|blockage| {
-        serde_json::json!({
-            "cause": blockage.cause,
-            "sample": blockage.sample,
-        })
-        .to_string()
-    })?;
-    Ok(serde_json::json!({
-        "schemaVersion": 1,
-        "byteLength": lifted.byte_len,
-        "instructionCount": lifted.instruction_count,
-        "source": lifted.source,
-    })
-    .to_string())
-}
-
-/// Lifts a bounded x86-64 body to `nie-forge`'s byte-exact assembly dialect.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn forge_lift_x64_json(bytes: &[u8], virtual_address: u64) -> Result<String, JsValue> {
-    forge_lift_x64_impl(bytes, virtual_address).map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native test surface for [`forge_lift_x64_json`].
-#[cfg(not(target_arch = "wasm32"))]
-pub fn forge_lift_x64_json(bytes: &[u8], virtual_address: u64) -> Result<String, String> {
-    forge_lift_x64_impl(bytes, virtual_address)
-}
-
-const MAX_MINIDUMP_INPUT_BYTES: usize = 128 * 1024 * 1024;
-
-fn minidump_summary_impl(bytes: &[u8]) -> Result<String, String> {
-    if bytes.len() > MAX_MINIDUMP_INPUT_BYTES {
-        return Err(format!(
-            "minidump input exceeds {MAX_MINIDUMP_INPUT_BYTES} bytes"
-        ));
-    }
-    let dump = bun_re::minidump::Minidump::from_bytes(bytes).map_err(|error| error.to_string())?;
-    let summary = dump.summary();
-    Ok(serde_json::json!({
-        "schemaVersion": 1,
-        "moduleCount": summary.module_count,
-        "rangeCount": summary.range_count,
-        "regionCount": summary.region_count,
-        "mappedBytes": summary.mapped_bytes,
-    })
-    .to_string())
-}
-
-/// Parses uploaded Windows minidump bytes and returns metadata without captured memory.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn minidump_summary_json(bytes: &[u8]) -> Result<String, JsValue> {
-    minidump_summary_impl(bytes).map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native test surface for [`minidump_summary_json`].
-#[cfg(not(target_arch = "wasm32"))]
-pub fn minidump_summary_json(bytes: &[u8]) -> Result<String, String> {
-    minidump_summary_impl(bytes)
-}
-
-fn ievr_pe_inspect_impl(bytes: &[u8]) -> Result<String, String> {
-    bun_re::pe::inspect_bytes_json(bytes).map_err(|error| error.to_string())
-}
-
-/// Produces a bounded detailed PE report with sections, imports, and named exports.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn ievr_pe_inspect_json(bytes: &[u8]) -> Result<String, JsValue> {
-    ievr_pe_inspect_impl(bytes).map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native test surface for [`ievr_pe_inspect_json`].
-#[cfg(not(target_arch = "wasm32"))]
-pub fn ievr_pe_inspect_json(bytes: &[u8]) -> Result<String, String> {
-    ievr_pe_inspect_impl(bytes)
-}
-
-fn pdata_inspect_impl(bytes: &[u8], max_roots: u32) -> Result<String, String> {
-    bun_re::pdata::inspect_json(bytes, max_roots)
-}
-
-/// Inspects a PE `.pdata` table with exact counters and a bounded root sample.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn pdata_inspect_json(bytes: &[u8], max_roots: u32) -> Result<String, JsValue> {
-    pdata_inspect_impl(bytes, max_roots).map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native test surface for [`pdata_inspect_json`].
-#[cfg(not(target_arch = "wasm32"))]
-pub fn pdata_inspect_json(bytes: &[u8], max_roots: u32) -> Result<String, String> {
-    pdata_inspect_impl(bytes, max_roots)
-}
-
-fn aob_scan_impl(pattern: &str, bytes: &[u8], max_hits: u32) -> Result<String, String> {
-    let max_hits = usize::try_from(max_hits).map_err(|error| error.to_string())?;
-    let report = nie_trace::scan_bytes_bounded(pattern, bytes, max_hits)
-        .map_err(|error| error.to_string())?;
-    Ok(serde_json::json!({
-        "schemaVersion": 1,
-        "patternBytes": report.pattern_bytes,
-        "scannedBytes": report.scanned_bytes,
-        "offsets": report.offsets,
-        "truncated": report.truncated,
-    })
-    .to_string())
-}
-
-/// Scans uploaded bytes with `nie-trace`'s bounded wildcard AOB engine.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn aob_scan_json(pattern: &str, bytes: &[u8], max_hits: u32) -> Result<String, JsValue> {
-    aob_scan_impl(pattern, bytes, max_hits).map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native test surface for [`aob_scan_json`].
-#[cfg(not(target_arch = "wasm32"))]
-pub fn aob_scan_json(pattern: &str, bytes: &[u8], max_hits: u32) -> Result<String, String> {
-    aob_scan_impl(pattern, bytes, max_hits)
-}
-
-fn offline_image_inspect_impl(bytes: &[u8], request_json: &str) -> Result<String, String> {
-    nie_computer_use::offline_image::inspect_offline_image_json(bytes, request_json)
-        .map_err(|error| error.to_string())
-}
-
-/// Resolves and hashes bounded ranges in a caller-supplied linear `nie.exe` image.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn offline_image_inspect_json(bytes: &[u8], request_json: &str) -> Result<String, JsValue> {
-    offline_image_inspect_impl(bytes, request_json).map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native test surface for [`offline_image_inspect_json`].
-#[cfg(not(target_arch = "wasm32"))]
-pub fn offline_image_inspect_json(bytes: &[u8], request_json: &str) -> Result<String, String> {
-    offline_image_inspect_impl(bytes, request_json)
-}
-
-const MAX_KNOWLEDGE_INDEX_JSON_BYTES: usize = 16 * 1024 * 1024;
-
-fn knowledge_search_impl(
-    entries_json: &str,
-    query: &str,
-    max_results: u32,
-) -> Result<String, String> {
-    if entries_json.len() > MAX_KNOWLEDGE_INDEX_JSON_BYTES {
-        return Err(format!(
-            "knowledge index JSON exceeds {MAX_KNOWLEDGE_INDEX_JSON_BYTES} bytes"
-        ));
-    }
-    let entries: Vec<nie_index::memory::KnowledgeEntry> =
-        serde_json::from_str(entries_json).map_err(|error| error.to_string())?;
-    let index = nie_index::memory::MemoryIndex::new(entries).map_err(|error| error.to_string())?;
-    let result = index
-        .search(query, max_results as usize)
-        .map_err(|error| error.to_string())?;
-    serde_json::to_string(&result).map_err(|error| error.to_string())
-}
-
-/// Searches bounded caller-owned `nie.exe` knowledge without SQLite, Redis, or host access.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn knowledge_search_json(
-    entries_json: &str,
-    query: &str,
-    max_results: u32,
-) -> Result<String, JsValue> {
-    knowledge_search_impl(entries_json, query, max_results)
-        .map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native test surface for [`knowledge_search_json`].
-#[cfg(not(target_arch = "wasm32"))]
-pub fn knowledge_search_json(
-    entries_json: &str,
-    query: &str,
-    max_results: u32,
-) -> Result<String, String> {
-    knowledge_search_impl(entries_json, query, max_results)
-}
-
-fn character_parts_catalog_impl(bytes: &[u8], source: &str) -> Result<String, String> {
-    let catalog = nie_model_serve::catalog::decode_character_parts_catalog(
-        bytes,
-        source,
-        &nie_model_serve::catalog::CatalogDecodeLimits::default(),
-    )
-    .map_err(|error| error.to_string())?;
-    serde_json::to_string(&catalog).map_err(|error| error.to_string())
-}
-
-/// Decodes a bounded `chara_parts_*.cfg.bin` catalog supplied by the browser.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn character_parts_catalog_json(bytes: &[u8], source: &str) -> Result<String, JsValue> {
-    character_parts_catalog_impl(bytes, source).map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native test surface for [`character_parts_catalog_json`].
-#[cfg(not(target_arch = "wasm32"))]
-pub fn character_parts_catalog_json(bytes: &[u8], source: &str) -> Result<String, String> {
-    character_parts_catalog_impl(bytes, source)
-}
-
-fn chara_model_catalog_impl(bytes: &[u8], source: &str) -> Result<String, String> {
-    let catalog = nie_model_serve::catalog::decode_chara_model_catalog(
-        bytes,
-        source,
-        &nie_model_serve::catalog::CatalogDecodeLimits::default(),
-    )
-    .map_err(|error| error.to_string())?;
-    serde_json::to_string(&catalog).map_err(|error| error.to_string())
-}
-
-/// Decodes a bounded `chara_model_*.cfg.bin` catalog supplied by the browser.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn chara_model_catalog_json(bytes: &[u8], source: &str) -> Result<String, JsValue> {
-    chara_model_catalog_impl(bytes, source).map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native test surface for [`chara_model_catalog_json`].
-#[cfg(not(target_arch = "wasm32"))]
-pub fn chara_model_catalog_json(bytes: &[u8], source: &str) -> Result<String, String> {
-    chara_model_catalog_impl(bytes, source)
-}
-
-fn zukan_rank_impl(
-    entry_json: &str,
-    candidates_json: &str,
-    max_results: u32,
-) -> Result<String, String> {
-    nie_zukan::api::rank_json(entry_json, candidates_json, max_results)
-}
-
-/// Ranks official-encyclopedia candidates with the shared deterministic matcher.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn zukan_rank_json(
-    entry_json: &str,
-    candidates_json: &str,
-    max_results: u32,
-) -> Result<String, JsValue> {
-    zukan_rank_impl(entry_json, candidates_json, max_results)
-        .map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native test surface for [`zukan_rank_json`].
-#[cfg(not(target_arch = "wasm32"))]
-pub fn zukan_rank_json(
-    entry_json: &str,
-    candidates_json: &str,
-    max_results: u32,
-) -> Result<String, String> {
-    zukan_rank_impl(entry_json, candidates_json, max_results)
-}
-
-fn format_catalog_validate_impl(bytes: &[u8]) -> Result<String, String> {
-    let catalog = nie_seed::format_catalog::parse_format_catalog_bytes(
-        bytes,
-        nie_seed::format_catalog::CatalogLimits::default(),
-    )
-    .map_err(|error| error.to_string())?;
-    serde_json::to_string(&catalog).map_err(|error| error.to_string())
-}
-
-/// Validates and canonicalizes a bounded `iecode`/IEVR format catalog in browser memory.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn format_catalog_validate_json(bytes: &[u8]) -> Result<String, JsValue> {
-    format_catalog_validate_impl(bytes).map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native test surface for [`format_catalog_validate_json`].
-#[cfg(not(target_arch = "wasm32"))]
-pub fn format_catalog_validate_json(bytes: &[u8]) -> Result<String, String> {
-    format_catalog_validate_impl(bytes)
-}
-
-const MAX_STEAM_PLANNING_JSON_BYTES: usize = 8 * 1024 * 1024;
-
-fn steam_select_depots_impl(depots_json: &str, selection_json: &str) -> Result<String, String> {
-    if depots_json.len() > MAX_STEAM_PLANNING_JSON_BYTES
-        || selection_json.len() > MAX_STEAM_PLANNING_JSON_BYTES
-    {
-        return Err(format!(
-            "Steam planning JSON exceeds {MAX_STEAM_PLANNING_JSON_BYTES} bytes"
-        ));
-    }
-    let depots: Vec<nie_steam::depot::planning::DepotRecord> =
-        serde_json::from_str(depots_json).map_err(|error| error.to_string())?;
-    let selection: nie_steam::depot::planning::DepotSelection =
-        serde_json::from_str(selection_json).map_err(|error| error.to_string())?;
-    let depot_ids = nie_steam::depot::planning::select_depot_ids(
-        &depots,
-        &selection,
-        nie_steam::depot::planning::PlanningLimits::default(),
-    )
-    .map_err(|error| error.to_string())?;
-    Ok(serde_json::json!({
-        "schemaVersion": 1,
-        "depotIds": depot_ids,
-    })
-    .to_string())
-}
-
-/// Selects Steam depots from caller-supplied metadata without credentials or host access.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn steam_select_depots_json(
-    depots_json: &str,
-    selection_json: &str,
-) -> Result<String, JsValue> {
-    steam_select_depots_impl(depots_json, selection_json).map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native test surface for [`steam_select_depots_json`].
-#[cfg(not(target_arch = "wasm32"))]
-pub fn steam_select_depots_json(depots_json: &str, selection_json: &str) -> Result<String, String> {
-    steam_select_depots_impl(depots_json, selection_json)
-}
-
 // ---------------------------------------------------------------------------
 // crilayla_decompress
 // ---------------------------------------------------------------------------
 
-/// Décompresse un tampon CRILAYLA.
-///
-/// Retourne les octets décompressés, ou lève une `Error` JS si le format est invalide.
-///
-/// En JS :
-/// ```text
-/// try {
-///   const raw = crilayla_decompress(bytes); // Uint8Array
-/// } catch (e) {
-///   console.error("Décompression échouée :", e);
-/// }
 /// ```
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
@@ -592,9 +151,6 @@ pub fn crilayla_decompress(bytes: &[u8]) -> Result<Vec<u8>, JsValue> {
     crilayla::decompress(bytes).map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
-/// Décompresse un tampon CRILAYLA (version native, sans JsValue).
-///
-/// En natif, retourne `Err(String)` au lieu de `Err(JsValue)`.
 /// Utiliser [`crilayla_decompress`] en cible wasm32.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn crilayla_decompress(bytes: &[u8]) -> Result<Vec<u8>, String> {
@@ -605,23 +161,6 @@ pub fn crilayla_decompress(bytes: &[u8]) -> Result<Vec<u8>, String> {
 // utf_table_json
 // ---------------------------------------------------------------------------
 
-/// Parse une table `@UTF` et retourne son contenu sérialisé en JSON.
-///
-/// Le JSON a la structure suivante :
-///
-/// ```text
-/// {
-///   "nom": "NomDeLaTable",
-///   "colonnes": [{ "nom": "ColA", "type": "U32" }, ...],
-///   "lignes": [[42, "hello"], ...]
-/// }
-/// ```
-///
-/// En JS :
-/// ```text
-/// const json = utf_table_json(bytes);
-/// const table = JSON.parse(json);
-/// console.log(table.nom, table.lignes.length);
 /// ```
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
@@ -698,7 +237,6 @@ fn utf_value_to_json(v: &cpk::UtfValue) -> serde_json::Value {
 // nie-data — lookup skill / aura / item (résolution hissatsu)
 // ===========================================================================
 
-/// Logique commune `skill_lookup` : parse `skill_config` (+ `skill_text` optionnel)
 /// et émet la liste des techniques avec nom/élément/catégorie/puissance résolus.
 fn skill_lookup_impl(skill_config_json: &str, skill_text_json: &str) -> Result<String, String> {
     use nie_data::skill::{SkillTextMaps, join_skill_text, parse_skill_config, parse_skill_text};
@@ -741,14 +279,6 @@ fn skill_lookup_impl(skill_config_json: &str, skill_text_json: &str) -> Result<S
         .pipe_ok()
 }
 
-/// Parse un `skill_config.cfg.bin.json` (et un `skill_text.cfg.bin.json` optionnel)
-/// et retourne les techniques résolues (nom/élément/catégorie/puissance).
-///
-/// - `skill_config_json` : contenu JSON du dump `skill_config_*.cfg.bin.json`.
-/// - `skill_text_json` : contenu JSON du `skill_text_*.cfg.bin.json` (chaîne vide
-///   pour ignorer la jointure nom/description).
-///
-/// Retourne un JSON `{ "count": N, "skills": [ { skillId, skillIdStr, name, element,
 /// category, powerMin, powerMax, … }, … ] }`, ou lève une `Error` JS si le JSON est invalide.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
@@ -762,7 +292,6 @@ pub fn skill_lookup(skill_config_json: &str, skill_text_json: &str) -> Result<St
     skill_lookup_impl(skill_config_json, skill_text_json)
 }
 
-/// Logique commune `aura_lookup` : parse `aura_skill_config` (+ `skill_config`
 /// optionnel pour la résolution du hissatsu lié) et émet les auras.
 fn aura_lookup_impl(aura_config_json: &str, skill_config_json: &str) -> Result<String, String> {
     use nie_data::aura::{build_skill_map, parse_all_aura_cmds, resolve_aura_hissatsu};
@@ -802,14 +331,6 @@ fn aura_lookup_impl(aura_config_json: &str, skill_config_json: &str) -> Result<S
         .pipe_ok()
 }
 
-/// Parse un `aura_skill_config.cfg.bin.json` (et un `skill_config.cfg.bin.json`
-/// optionnel pour résoudre le hissatsu lié) et retourne les auras.
-///
-/// - `aura_config_json` : contenu du dump `aura_skill_config_*.cfg.bin.json`.
-/// - `skill_config_json` : contenu du `skill_config_*.cfg.bin.json` (chaîne vide
-///   pour ignorer la résolution `config.skillId1 → SkillInfo`).
-///
-/// Retourne un JSON `{ "count": N, "auras": [ { auraId, assetCode, subType, element,
 /// config, hissatsu }, … ] }`, ou lève une `Error` JS si le JSON est invalide.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
@@ -852,11 +373,6 @@ fn item_lookup_impl(item_config_json: &str) -> Result<String, String> {
         .pipe_ok()
 }
 
-/// Parse un `item_config.cfg.bin.json` et retourne les objets (catégorie + stats).
-///
-/// - `item_config_json` : contenu du dump `item_config_*.cfg.bin.json`.
-///
-/// Retourne un JSON `{ "count": N, "items": [ { itemId, category, nameId, price,
 /// stats, internalCode, … }, … ] }`, ou lève une `Error` JS si le JSON est invalide.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
@@ -953,7 +469,6 @@ fn nw_rdbn_value_to_json(v: &nie_formats::cfgbin::RdbnValue) -> serde_json::Valu
     }
 }
 
-/// Liste de frères T2B -> forme iecode, avec réplication du suffixe d'index `<base>_<i>`
 /// d'iecode (exigé par `walk_named`) et variables `{type, value:"<string>"}`.
 fn nw_t2b_siblings(siblings: &[nie_formats::cfgbin::CfgEntry]) -> Vec<serde_json::Value> {
     use nie_formats::cfgbin::Value as CfgValue;
@@ -1010,7 +525,6 @@ fn nw_cfgbin_to_iecode(data: &[u8]) -> Option<serde_json::Value> {
     }
 }
 
-/// Impl partagée : `cfg.bin` brut + nom de fichier -> `{family, data}` (famille typée) ou
 /// `{family:null, key, generic}` (RDBN/T2B brut iecode).
 fn cfgbin_typed_json_impl(bytes: &[u8], filename: &str) -> Result<String, String> {
     let root = nw_cfgbin_to_iecode(bytes).ok_or("cfg.bin non décodable (ni RDBN ni T2B)")?;
@@ -1057,7 +571,6 @@ pub fn cfgbin_menu_setting_json(bytes: &[u8]) -> Result<String, String> {
     cfgbin_menu_setting_json_impl(bytes)
 }
 
-/// Résout une table de texte complète depuis les octets d'un `*_text.cfg.bin` :
 /// rend un objet JSON `{ "<hash>": "texte", ... }` indexable en O(1) côté navigateur.
 fn cfgbin_text_map_json_impl(bytes: &[u8]) -> Result<String, String> {
     let root = nw_cfgbin_to_iecode(bytes).ok_or("cfg.bin non décodable (ni RDBN ni T2B)")?;
@@ -1105,48 +618,6 @@ pub fn cfgbin_lookup_text(bytes: &[u8], target_hash: u32) -> Option<String> {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn cfgbin_lookup_text(bytes: &[u8], target_hash: u32) -> Option<String> {
     cfgbin_lookup_text_impl(bytes, target_hash)
-}
-
-// ── Bytecode Lua 5.2 (scripts du jeu) ──────────────────────────────────────────
-// Le decodeur est celui du depot (`nie_lua::bytecode`), compile sans la VM : un `.lua.bin`
-// se lit donc dans le navigateur, sans passer par un service.
-
-fn lua_bytecode_json_impl(bytes: &[u8]) -> Result<String, String> {
-    let chunk = nie_lua::bytecode::parse(bytes).map_err(|e| e.to_string())?;
-    let proto = &chunk.main;
-    let constantes: Vec<serde_json::Value> = proto
-        .constants
-        .iter()
-        .map(|c| serde_json::Value::String(c.display()))
-        .collect();
-    let out = serde_json::json!({
-        "instructions": proto.total_instructions(),
-        "prototypes": proto.total_protos(),
-        "params": proto.num_params,
-        "constantes": constantes,
-        "source": proto.source,
-    });
-    serde_json::to_string(&out).map_err(|e| e.to_string())
-}
-
-/// Décode un `.lua.bin` du jeu (bytecode Lua 5.2) en résumé JSON.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn lua_bytecode_json(bytes: &[u8]) -> Result<String, JsValue> {
-    lua_bytecode_json_impl(bytes).map_err(|e| JsValue::from_str(&e))
-}
-
-/// Décode un `.lua.bin` du jeu (version native).
-#[cfg(not(target_arch = "wasm32"))]
-pub fn lua_bytecode_json(bytes: &[u8]) -> Result<String, String> {
-    lua_bytecode_json_impl(bytes)
-}
-
-/// Vrai si les octets commencent par la signature d'un bytecode Lua 5.2.
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[must_use]
-pub fn is_lua_bytecode(bytes: &[u8]) -> bool {
-    nie_lua::bytecode::parse(bytes).is_ok()
 }
 
 // ── G4TX -> PNG (textures décodées NATIVEMENT in-browser) ──────────────────────
@@ -1239,40 +710,6 @@ pub fn avatar_composition_json(catalog_json: &str, state_json: &str) -> Result<S
     avatar_composition_json_impl(catalog_json, state_json)
 }
 
-fn avatar_reference_import_json_impl(
-    catalog_json: &str,
-    state_json: &str,
-    reference: &str,
-) -> Result<String, String> {
-    if catalog_json.len() > 16 * 1024 * 1024
-        || state_json.len() > 64 * 1024
-        || reference.len() > 100_000
-    {
-        return Err("Avatar reference input exceeds size limit".into());
-    }
-    let catalog = serde_json::from_str::<nie_data::avatar::AvatarCatalog>(catalog_json)
-        .map_err(|error| error.to_string())?;
-    let state = serde_json::from_str::<nie_data::avatar::AvatarState>(state_json)
-        .map_err(|error| error.to_string())?;
-    let imported = nie_data::avatar_reference::import_avatar_reference(&catalog, &state, reference)
-        .map_err(|error| error.to_string())?;
-    match imported {
-        nie_data::avatar_reference::AvatarReferenceImport::ZukanQuery {
-            query,
-            reference_only,
-        } => {
-            let internal_code = zukan_character_id(&query)?;
-            serde_json::to_string(&serde_json::json!({
-                "kind": "zukan_player",
-                "internalCode": internal_code,
-                "referenceOnly": reference_only,
-            }))
-            .map_err(|error| error.to_string())
-        }
-        other => serde_json::to_string(&other).map_err(|error| error.to_string()),
-    }
-}
-
 fn export_avatar_oc_document_json_impl(
     catalog_json: &str,
     state_json: &str,
@@ -1318,58 +755,6 @@ pub fn export_avatar_oc_document_json(
     export_avatar_oc_document_json_impl(catalog_json, state_json, metadata_json)
 }
 
-fn zukan_character_id(query: &str) -> Result<String, String> {
-    let decoded = nie_zukan::forge::decode_q(query).map_err(|error| error.to_string())?;
-    let value: serde_json::Value =
-        serde_json::from_str(&decoded).map_err(|error| error.to_string())?;
-    let internal_code = ["character_id", "filter_chara_id_str"]
-        .iter()
-        .find_map(|key| value.get(key)?.as_array()?.first()?.as_str())
-        .filter(|code| {
-            let bytes = code.as_bytes();
-            bytes.len() == 9
-                && bytes[0].eq_ignore_ascii_case(&b'c')
-                && bytes[1..].iter().all(u8::is_ascii_digit)
-        })
-        .ok_or_else(|| "Zukan query does not identify one character".to_string())?;
-    Ok(internal_code.to_ascii_lowercase())
-}
-
-#[cfg(test)]
-mod avatar_reference_tests {
-    use super::zukan_character_id;
-
-    #[test]
-    fn decodes_the_measured_zukan_model_query_through_nie_zukan() {
-        assert_eq!(
-            zukan_character_id("hN2cl56NnpyLmo2glpvdxaTdnM_Kz83LyM_P3aKC").as_deref(),
-            Ok("c05024700")
-        );
-        assert!(zukan_character_id("not-a-zukan-query").is_err());
-    }
-}
-
-/// Validate and import an editable OC project or a reference-only canonical player identity.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn avatar_reference_import_json(
-    catalog_json: &str,
-    state_json: &str,
-    reference: &str,
-) -> Result<String, JsValue> {
-    avatar_reference_import_json_impl(catalog_json, state_json, reference)
-        .map_err(|error| JsValue::from_str(&error))
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub fn avatar_reference_import_json(
-    catalog_json: &str,
-    state_json: &str,
-    reference: &str,
-) -> Result<String, String> {
-    avatar_reference_import_json_impl(catalog_json, state_json, reference)
-}
-
 /// Compile a measured native screen through the shared portable scene owner.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
@@ -1405,11 +790,6 @@ pub fn menu_animation_bindings_json(bytes: &[u8]) -> Result<String, String> {
     menu_animation_bindings_json_impl(bytes)
 }
 
-/// Derives one static menu layer from the exact three Level-5 assets that define it.
-///
-/// The browser owns asynchronous VFS acquisition. This function intentionally receives one
-/// OBJBIN, one G4PKM and one G4TX buffer rather than a synthetic in-memory VFS, then applies the
-/// same pure parser and placement path as the native renderer. Dynamic C++/Lua state is not
 /// implied by this static bind-pose result.
 fn menu_static_layer_json_impl(
     objbin_bytes: &[u8],
@@ -1483,32 +863,6 @@ pub fn menu_static_layer_json(
     menu_static_layer_json_impl(objbin_bytes, g4pkm_bytes, g4tx_bytes, g4tx_path)
 }
 
-/// Compile an observed Lua menu state into the same lossless scene used by the native host.
-/// This does not execute Lua or infer missing assets and transforms.
-fn menu_runtime_scene_json_impl(state_json: &str) -> Result<String, String> {
-    let state: nie_lua::MenuState =
-        serde_json::from_str(state_json).map_err(|error| error.to_string())?;
-    serde_json::to_string(&nie_lua::menu_scene::MenuScene::from_state(&state))
-        .map_err(|error| error.to_string())
-}
-
-/// Portable scene compiler over caller-supplied, observed Lua menu state.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn menu_runtime_scene_json(state_json: &str) -> Result<String, JsValue> {
-    menu_runtime_scene_json_impl(state_json).map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native counterpart of the browser scene ABI for cross-surface contract tests.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn menu_runtime_scene_json(state_json: &str) -> Result<String, String> {
-    menu_runtime_scene_json_impl(state_json)
-}
-
-/// Feuille de sprites d'un atlas `.g4tx` : régions nommées avec leur rectangle, en JSON.
-///
-/// `g4tx_info_json` rend la structure brute du conteneur ; celle-ci rend ce qu'une interface
-/// attend — un manifeste `{nom, largeur, hauteur, sprites[{nom, classe, x, y, largeur, hauteur}]}`
 /// directement consommable pour positionner une icône, avec ou sans CSS.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
@@ -1683,194 +1037,6 @@ pub fn cpk_extract_file(
 // nie-save — parsing de saves IEVR côté navigateur (privacy-first)
 // ===========================================================================
 
-/// Résumé du conteneur Lives (champs sérialisables, sans les corps bruts).
-///
-/// Structure JSON retournée par [`parse_save_json`] :
-///
-/// ```text
-/// {
-///   "slot_name": "002AB8F4-USERDATALIVE",
-///   "key": 1320666147,
-///   "blobs": [
-///     {
-///       "filename": "AUTOSAVE_data.bin",
-///       "subtype": "Autosave",
-///       "size": 12345678,
-///       "crc32": 305419896
-///     },
-///     ...
-///   ],
-///   "headersave": { ... },   // présent si blob HEADERSAVE parsé
-///   "autosave": { ... }      // présent si blob AUTOSAVE parsé
-/// }
-/// ```
-///
-/// Les corps bruts (> 12 Mo pour AUTOSAVE) ne sont jamais sérialisés.
-fn parse_save_impl(bytes: &[u8], filename: &str) -> Result<String, String> {
-    use nie_save::{
-        BlobSubtype,
-        body::{
-            autosave::parse_autosave_layout, autosave_roster::parse_autosave_roster,
-            headersave::parse_headersave,
-        },
-    };
-
-    let container = nie_save::parse(bytes, filename).map_err(|e| e.to_string())?;
-
-    // --- Résumé des blobs (sans les corps bruts) ---
-    let blobs_summary: Vec<serde_json::Value> = container
-        .entries
-        .iter()
-        .zip(container.blobs.iter())
-        .map(|(entry, blob)| {
-            let subtype = match blob.header.subtype {
-                BlobSubtype::System => "System",
-                BlobSubtype::Autosave => "Autosave",
-                BlobSubtype::Headersave => "Headersave",
-                BlobSubtype::Unknown(_) => "Unknown",
-            };
-            serde_json::json!({
-                "filename": entry.filename,
-                "subtype":  subtype,
-                "size":     entry.size,
-                "crc32":    entry.crc32,
-                "field8":   blob.header.field8,
-            })
-        })
-        .collect();
-
-    // --- Parse HEADERSAVE si présent ---
-    let headersave_json: Option<serde_json::Value> = container
-        .blob_by_subtype(BlobSubtype::Headersave)
-        .and_then(|blob| {
-            parse_headersave(&blob.body).ok().map(|hs| {
-                let ts = &hs.save_timestamp;
-                let slots: Vec<serde_json::Value> = hs
-                    .slots
-                    .iter()
-                    .enumerate()
-                    .map(|(i, s)| {
-                        let dt = s.slot_datetime.as_ref().map(|d| {
-                            serde_json::json!({
-                                "year":   d.year,
-                                "month":  d.month,
-                                "day":    d.day,
-                                "hour":   d.hour,
-                                "minute": d.minute,
-                                "second": d.second,
-                            })
-                        });
-                        serde_json::json!({
-                            "index":         i,
-                            "is_active":     s.is_active,
-                            "section_role":  s.section_role,
-                            "slot_variant":  s.slot_variant,
-                            "slot_datetime": dt,
-                            "playtime_secs": s.playtime_secs,
-                        })
-                    })
-                    .collect();
-                serde_json::json!({
-                    "format_version": hs.format_version,
-                    "max_slots":      hs.max_slots,
-                    "used_slots":     hs.used_slots,
-                    "player_name":    hs.player_name,
-                    "level_str":      hs.level_str,
-                    "unique_id":      hs.unique_id,
-                    "save_timestamp": {
-                        "year":   ts.year,
-                        "month":  ts.month,
-                        "day":    ts.day,
-                        "hour":   ts.hour,
-                        "minute": ts.minute,
-                        "second": ts.second,
-                    },
-                    "slots": slots,
-                })
-            })
-        });
-
-    // --- Parse AUTOSAVE (layout + roster + scalaires) si présent ---
-    let autosave_json: Option<serde_json::Value> = container
-        .blob_by_subtype(BlobSubtype::Autosave)
-        .and_then(|blob| {
-            // Layout macroscopique (sections + table CharaParam)
-            let layout = parse_autosave_layout(&blob.body).ok()?;
-
-            // Roster + scalaires (section EEFF 0x0510)
-            let roster = parse_autosave_roster(&blob.body).ok()?;
-
-            let scalars_json = roster.scalars.as_ref().map(|s| {
-                let (h, m, sec) = s.playtime_hms();
-                serde_json::json!({
-                    "save_year":    s.save_year,
-                    "save_month":   s.save_month,
-                    "save_day":     s.save_day,
-                    "save_hour":    s.save_hour,
-                    "save_minute":  s.save_minute,
-                    "save_second":  s.save_second,
-                    "playtime_secs": s.playtime_secs,
-                    "playtime_hms": { "h": h, "m": m, "s": sec },
-                })
-            });
-
-            // Le roster complet peut être ~18 Ko de JSON (4534 ids × 12 chars) —
-            // acceptable dans un contexte navigateur (la save elle-même fait 12 Mo).
-            let owned_ids: Vec<u32> = roster.owned.iter().map(|c| c.raw()).collect();
-
-            Some(serde_json::json!({
-                "version":            layout.version,
-                "opaque_4":           layout.opaque_4,
-                "scalar_record_count": layout.scalar_record_count,
-                "chara_slot_count":   layout.chara_param_slots.len(),
-                "section2_range":     layout.section2_range,
-                "main_data_range":    layout.main_data_range,
-                "scalars":            scalars_json,
-                "roster_slots":       roster.roster_slots,
-                "owned_count":        roster.owned.len(),
-                "owned_ids":          owned_ids,
-            }))
-        });
-
-    let result = serde_json::json!({
-        "slot_name":  container.slot_name,
-        "key":        container.key,
-        "blobs":      blobs_summary,
-        "headersave": headersave_json,
-        "autosave":   autosave_json,
-    });
-
-    serde_json::to_string(&result).map_err(|e| e.to_string())
-}
-
-/// Déchiffre et parse un fichier de sauvegarde IEVR, retourne un JSON résumé.
-///
-/// La save ne quitte PAS le navigateur : tout le traitement est effectué
-/// client-side dans le module WebAssembly.
-///
-/// - `bytes` : contenu brut du fichier de sauvegarde (ex. `002AB8F4-USERDATALIVE`).
-/// - `filename` : nom de base du fichier (sert à dériver la clé CRC32).
-///
-/// Retourne un JSON avec :
-/// - `slot_name`, `key` : métadonnées du conteneur.
-/// - `blobs` : liste des entrées (filename, subtype, size, crc32, field8).
-/// - `headersave` : champs HEADERSAVE parsés (joueur, niveau, horodatage, slots).
-/// - `autosave` : layout macroscopique + scalaires + roster complet (owned_ids).
-///
-/// Lève une `Error` JS (wasm32) ou retourne `Err(String)` (natif) si le fichier
-/// est invalide ou la clé ne correspond pas au nom.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn parse_save_json(bytes: &[u8], filename: &str) -> Result<String, JsValue> {
-    parse_save_impl(bytes, filename).map_err(|e| JsValue::from_str(&e))
-}
-
-/// Déchiffre et parse une save IEVR (version native, sans `JsValue`).
-#[cfg(not(target_arch = "wasm32"))]
-pub fn parse_save_json(bytes: &[u8], filename: &str) -> Result<String, String> {
-    parse_save_impl(bytes, filename)
-}
-
 // ---------------------------------------------------------------------------
 // RGBA8 frame shared with JavaScript
 // ---------------------------------------------------------------------------
@@ -1904,215 +1070,6 @@ impl FrameBuffer {
 // ---------------------------------------------------------------------------
 // Portable camera controller (nie-camera state and interpolation)
 // ---------------------------------------------------------------------------
-
-#[cfg(any(target_arch = "wasm32", test))]
-#[derive(Default)]
-struct CameraTimeline {
-    state: nie_camera::CameraState,
-    transition: Option<nie_camera::ctrl::InterPolate>,
-}
-
-#[cfg(any(target_arch = "wasm32", test))]
-impl CameraTimeline {
-    fn transition_to(
-        &mut self,
-        target: nie_camera::CameraState,
-        duration: f32,
-        fade_code: i32,
-    ) -> Result<(), String> {
-        validate_camera_state(&target)?;
-        if !duration.is_finite() || duration < 0.0 {
-            return Err("duration must be a finite non-negative number".to_owned());
-        }
-
-        if duration <= f32::EPSILON {
-            self.state = target;
-            self.transition = None;
-        } else {
-            self.transition = Some(nie_camera::ctrl::InterPolate::new(
-                self.state,
-                target,
-                duration,
-                nie_camera::ctrl::FadeType::from_code(fade_code),
-            ));
-        }
-        Ok(())
-    }
-
-    fn step(&mut self, dt: f32) {
-        if !dt.is_finite() || dt <= 0.0 {
-            return;
-        }
-
-        if let Some(mut transition) = self.transition.take() {
-            self.state = transition.step(dt);
-            if transition.active() {
-                self.transition = Some(transition);
-            }
-        }
-    }
-
-    fn active(&self) -> bool {
-        self.transition.is_some()
-    }
-
-    fn state_json(&self, aspect: f32) -> Result<String, String> {
-        if !aspect.is_finite() || aspect <= 0.0 {
-            return Err("aspect must be a finite positive number".to_owned());
-        }
-
-        validate_camera_state(&self.state)?;
-
-        let (distance, azimuth, altitude) = self.state.orbit();
-        let view_matrix = self.state.view_matrix();
-        let projection_matrix = self.state.projection_matrix(aspect);
-        if ![distance, azimuth, altitude]
-            .into_iter()
-            .chain(view_matrix.into_iter().flatten())
-            .chain(projection_matrix.into_iter().flatten())
-            .all(f32::is_finite)
-        {
-            return Err("camera state produces non-finite derived values".to_owned());
-        }
-        serde_json::to_string(&serde_json::json!({
-            "schemaVersion": 1,
-            "active": self.active(),
-            "position": self.state.pos,
-            "referencePosition": self.state.ref_pos,
-            "fovDegrees": self.state.fov_deg,
-            "rollDegrees": self.state.roll_deg,
-            "nearClip": self.state.near,
-            "farClip": self.state.far,
-            "orbit": {
-                "distance": distance,
-                "azimuthRadians": azimuth,
-                "altitudeRadians": altitude,
-            },
-            "viewMatrix": view_matrix,
-            "projectionMatrix": projection_matrix,
-        }))
-        .map_err(|error| format!("camera state: {error}"))
-    }
-}
-
-#[cfg(any(target_arch = "wasm32", test))]
-fn validate_camera_state(state: &nie_camera::CameraState) -> Result<(), String> {
-    if state
-        .pos
-        .iter()
-        .chain(state.ref_pos.iter())
-        .chain([&state.fov_deg, &state.roll_deg, &state.near, &state.far])
-        .any(|value| !value.is_finite())
-    {
-        return Err("camera values must be finite numbers".to_owned());
-    }
-    if !(0.0 < state.fov_deg && state.fov_deg < 180.0) {
-        return Err("fovDegrees must be between 0 and 180".to_owned());
-    }
-    if state.near <= 0.0 || state.far <= state.near {
-        return Err("clip planes must satisfy 0 < nearClip < farClip".to_owned());
-    }
-
-    let delta = [
-        f64::from(state.ref_pos[0]) - f64::from(state.pos[0]),
-        f64::from(state.ref_pos[1]) - f64::from(state.pos[1]),
-        f64::from(state.ref_pos[2]) - f64::from(state.pos[2]),
-    ];
-    let distance_squared = delta.into_iter().map(|axis| axis * axis).sum::<f64>();
-    if !distance_squared.is_finite()
-        || distance_squared <= f64::from(f32::EPSILON).powi(2)
-        || distance_squared > f64::from(f32::MAX)
-    {
-        return Err("camera position must define a finite, non-zero view direction".to_owned());
-    }
-    let horizontal_squared = delta[0] * delta[0] + delta[2] * delta[2];
-    if horizontal_squared <= f64::from(f32::EPSILON).powi(2) {
-        return Err("camera view direction cannot be parallel to the up axis".to_owned());
-    }
-    if !state
-        .view_matrix()
-        .into_iter()
-        .flatten()
-        .chain(state.projection_matrix(1.0).into_iter().flatten())
-        .all(f32::is_finite)
-    {
-        return Err("camera state produces non-finite matrices".to_owned());
-    }
-    Ok(())
-}
-
-/// Browser camera backed by `nie-camera`'s portable `CameraState` and
-/// `CCameraCtrlInterPolate` controller math.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-#[derive(Default)]
-pub struct WasmCamera {
-    timeline: CameraTimeline,
-}
-
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-impl WasmCamera {
-    /// Creates a camera with the verified `nie-camera` default state.
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> WasmCamera {
-        WasmCamera::default()
-    }
-
-    /// Starts a deterministic transition to a complete camera state.
-    /// Fade codes mirror `m_FadeType`: 0 linear, 1 ease-in, 2 ease-out, and all
-    /// other observed values (including 6) use the controller's smooth curve.
-    #[allow(clippy::too_many_arguments)]
-    pub fn transition_to(
-        &mut self,
-        position_x: f32,
-        position_y: f32,
-        position_z: f32,
-        reference_x: f32,
-        reference_y: f32,
-        reference_z: f32,
-        fov_degrees: f32,
-        roll_degrees: f32,
-        near_clip: f32,
-        far_clip: f32,
-        duration: f32,
-        fade_code: i32,
-    ) -> Result<(), JsValue> {
-        self.timeline
-            .transition_to(
-                nie_camera::CameraState {
-                    pos: [position_x, position_y, position_z],
-                    ref_pos: [reference_x, reference_y, reference_z],
-                    fov_deg: fov_degrees,
-                    roll_deg: roll_degrees,
-                    near: near_clip,
-                    far: far_clip,
-                },
-                duration,
-                fade_code,
-            )
-            .map_err(|error| JsValue::from_str(&error))
-    }
-
-    /// Advances the active transition by `dt` seconds. Invalid or non-positive
-    /// deltas are ignored so host clock glitches cannot rewind the controller.
-    pub fn step(&mut self, dt: f32) {
-        self.timeline.step(dt);
-    }
-
-    /// Whether a transition still has time remaining.
-    #[wasm_bindgen(getter)]
-    pub fn active(&self) -> bool {
-        self.timeline.active()
-    }
-
-    /// Serializes camera state, orbit values, and row-major view/projection matrices.
-    pub fn state_json(&self, aspect: f32) -> Result<String, JsValue> {
-        self.timeline
-            .state_json(aspect)
-            .map_err(|error| JsValue::from_str(&error))
-    }
-}
 
 /// Thin bitmap-text ABI over the shared native font decoder.
 #[cfg(target_arch = "wasm32")]
@@ -2158,14 +1115,12 @@ impl WasmBitmapFont {
     }
 }
 
-/// Returns the embedded JSON catalog of the 38 native menu screens and their paired assets
 /// from `data/menu/screen-inventory.json`.
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub fn menu_screens_catalog_json() -> String {
     include_str!("../fixtures/screen-inventory.json").to_string()
 }
 
-/// Returns the exact initial VFS requirements and measured discovery rules without embedding
 /// any copyrighted resource bytes in the WebAssembly module.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
@@ -2217,9 +1172,6 @@ pub fn preloaded_vfs_read(bundle: &[u8], path: &str) -> Result<Vec<u8>, String> 
         .ok_or_else(|| "VFS path is absent from the preloaded bundle".to_owned())
 }
 
-/// One validated startup archive retained in WebAssembly memory.
-///
-/// Construct this once per downloaded bundle. Reusing it avoids re-validating every CRC and
 /// recopying the complete archive for each requested VFS file.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
@@ -2260,10 +1212,6 @@ impl PreloadedVfs {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Tests natifs
-// ---------------------------------------------------------------------------
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2280,9 +1228,7 @@ mod tests {
         error
     }
 
-    /// Le chemin que `MenuComposer` emprunte, éprouvé en natif : sans octets, rien n'est dessiné
-    /// et rien n'est inventé. Le binding lui-même ne vit que sur `wasm32` (il tient un
-    /// `FrameBuffer` partagé avec JS), mais sa plomberie est celle-ci.
+    /// Without bytes nothing is drawn and nothing is invented.
     #[test]
     fn the_browser_asset_store_draws_nothing_without_bytes() {
         use nie_formats::menu_layout::{MenuAssets, MenuLayout, Visibility};
@@ -2319,40 +1265,6 @@ mod tests {
         let entries = value["entries"].as_array().expect("entries array");
         assert_eq!(entries.len(), 38);
         assert_eq!(value["capture_count"], 38);
-    }
-
-    #[test]
-    fn menu_runtime_scene_matches_native_compiler_without_losing_layer_state() {
-        let mut state = nie_lua::MenuState::default();
-        let object = state.layer(10).obj(20);
-        object.visible = false;
-        object.active = false;
-        object.scale = Some(1.25);
-        object.sprite_cell_id = Some(7);
-        object.use_save_button = Some(true);
-        object.native_field_0x124_by_index.insert(3, 99);
-        object.sub_item(0).params.insert(15, 25);
-        state.layer(11).obj(20).text = Some("Separate layer".into());
-        state.groups.insert(30, false);
-        let expected = nie_lua::menu_scene::MenuScene::from_state(&state);
-        let input = serde_json::to_string(&state).unwrap();
-        let output = menu_runtime_scene_json(&input).unwrap();
-        let actual: nie_lua::menu_scene::MenuScene = serde_json::from_str(&output).unwrap();
-        assert_eq!(actual, expected);
-        assert_eq!(actual.layers.len(), 2);
-        assert_eq!(
-            actual.layers[&10].objects[&20].sub_items[&0].params[&15],
-            25
-        );
-        assert!(actual.layers[&11].objects[&20].visible);
-        assert_eq!(serde_json::to_string(&expected).unwrap(), output);
-    }
-
-    #[test]
-    fn menu_runtime_scene_rejects_missing_or_invalid_observed_state() {
-        assert!(menu_runtime_scene_json("{}").is_err());
-        assert!(menu_runtime_scene_json("null").is_err());
-        assert!(menu_runtime_scene_json("invalid").is_err());
     }
 
     #[test]
@@ -2444,7 +1356,6 @@ mod tests {
         assert_eq!(json["anchor"], serde_json::json!({ "x": 0.5, "y": 0.5 }));
     }
 
-    /// Builds a minimal valid OBJBIN with one render component. The test owns the raw format
     /// fixture so the WebAssembly boundary is exercised rather than bypassed with `MenuObject`.
     fn synthetic_menu_objbin() -> Vec<u8> {
         #[derive(Clone, Copy)]
@@ -2633,440 +1544,9 @@ mod tests {
     }
 
     #[test]
-    fn binary_triage_json_exposes_bounded_shared_report() {
-        let bytes = b"not an executable but contains BROWSER_STRING";
-        let json: serde_json::Value = serde_json::from_str(
-            &binary_triage_json(bytes, u32::MAX).expect("unknown bytes should still triage"),
-        )
-        .expect("triage report should be valid JSON");
-
-        assert_eq!(json["format"], "unknown");
-        assert_eq!(json["size"], bytes.len());
-        assert_eq!(json["sha256"].as_str().map(str::len), Some(64));
-        assert!(
-            json["strings_sample"]
-                .as_array()
-                .is_some_and(|rows| rows.len() <= 256)
-        );
-    }
-
-    #[test]
-    fn assemble_x64_uses_msvc_encoding_and_rejects_unbounded_input() {
-        assert_eq!(
-            assemble_x64("mov al, 1 ; ret", 0x1400_0000).expect("valid assembly should encode"),
-            [0xB0, 0x01, 0xC3]
-        );
-        assert!(assemble_x64("not_an_instruction", 0).is_err());
-        assert!(assemble_x64(&" ".repeat(MAX_ASSEMBLY_SOURCE_BYTES + 1), 0).is_err());
-    }
-
-    #[test]
-    fn pe_byte_diff_json_uses_bounded_forge_report() {
-        let json: serde_json::Value =
-            serde_json::from_str(&pe_byte_diff_json(&[1, 2, 3, 4, 5], &[1, 9, 8, 4], 1))
-                .expect("PE diff should serialize");
-        assert_eq!(json["bytesDiffering"], 3);
-        assert_eq!(json["identical"], false);
-        assert_eq!(
-            json["ranges"],
-            serde_json::json!([{ "offset": 1, "length": 2 }])
-        );
-    }
-
-    #[test]
-    fn forge_lift_x64_json_exposes_byte_exact_source_and_blockers() {
-        let json: serde_json::Value = serde_json::from_str(
-            &forge_lift_x64_json(&[0xB0, 0x01, 0xC3], 0x1_4004_d750)
-                .expect("supported body should lift"),
-        )
-        .expect("lift report should be valid JSON");
-        assert_eq!(json["byteLength"], 3);
-        assert_eq!(json["instructionCount"], 2);
-        assert_eq!(json["source"], "mov al, 0x1 ; ret");
-
-        let blocker = forge_lift_x64_json(&[0x66, 0x0F, 0x38, 0xDC, 0xC1, 0xC3], 0x1_4000_0000)
-            .expect_err("unsupported dialect instruction should be reported");
-        let blocker: serde_json::Value =
-            serde_json::from_str(&error_text(blocker)).expect("blocker should be structured JSON");
-        assert_eq!(blocker["cause"], "aesenc");
-    }
-
-    #[test]
-    fn minidump_summary_json_rejects_untrusted_non_dump_bytes() {
-        let error = minidump_summary_json(b"not a dump")
-            .expect_err("non-minidump bytes must not produce metadata");
-        let error = error_text(error);
-        assert!(error.contains("minidump") || error.contains("MDMP"));
-    }
-
-    #[test]
-    fn ievr_pe_inspect_json_returns_a_bounded_detailed_report() {
-        let pe_offset = 0x80usize;
-        let optional_header_size = 240usize;
-        let headers_size = 0x200usize;
-        let mut bytes = vec![0u8; headers_size + 0x200];
-        bytes[0..2].copy_from_slice(b"MZ");
-        bytes[0x3c..0x40].copy_from_slice(&(pe_offset as u32).to_le_bytes());
-        bytes[pe_offset..pe_offset + 4].copy_from_slice(b"PE\0\0");
-        let coff = pe_offset + 4;
-        bytes[coff..coff + 2].copy_from_slice(&0x8664u16.to_le_bytes());
-        bytes[coff + 2..coff + 4].copy_from_slice(&1u16.to_le_bytes());
-        bytes[coff + 16..coff + 18].copy_from_slice(&(optional_header_size as u16).to_le_bytes());
-        let optional = coff + 20;
-        bytes[optional..optional + 2].copy_from_slice(&0x020bu16.to_le_bytes());
-        bytes[optional + 24..optional + 32].copy_from_slice(&0x1_4000_0000u64.to_le_bytes());
-        bytes[optional + 32..optional + 36].copy_from_slice(&0x1000u32.to_le_bytes());
-        bytes[optional + 36..optional + 40].copy_from_slice(&0x200u32.to_le_bytes());
-        bytes[optional + 60..optional + 64].copy_from_slice(&(headers_size as u32).to_le_bytes());
-        bytes[optional + 68..optional + 70].copy_from_slice(&2u16.to_le_bytes());
-        bytes[optional + 108..optional + 112].copy_from_slice(&16u32.to_le_bytes());
-        let section = optional + optional_header_size;
-        bytes[section..section + 5].copy_from_slice(b".text");
-        bytes[section + 8..section + 12].copy_from_slice(&0x180u32.to_le_bytes());
-        bytes[section + 12..section + 16].copy_from_slice(&0x1000u32.to_le_bytes());
-        bytes[section + 16..section + 20].copy_from_slice(&0x200u32.to_le_bytes());
-        bytes[section + 20..section + 24].copy_from_slice(&(headers_size as u32).to_le_bytes());
-        bytes[section + 36..section + 40].copy_from_slice(&0x6000_0020u32.to_le_bytes());
-
-        let json: serde_json::Value = serde_json::from_str(
-            &ievr_pe_inspect_json(&bytes).expect("synthetic PE should inspect"),
-        )
-        .expect("PE report should be valid JSON");
-        assert_eq!(json["machine"], "AMD64");
-        assert_eq!(json["is64Bit"], true);
-        assert_eq!(json["sections"][0]["name"], ".text");
-    }
-
-    #[test]
-    fn pdata_inspect_json_rejects_a_pe_without_pdata() {
-        let error = pdata_inspect_json(b"not a PE", 16)
-            .expect_err("invalid PE bytes must not produce roots");
-        let error = error_text(error);
-        assert!(error.contains("PE") || error.contains("goblin"));
-    }
-
-    #[test]
-    fn aob_scan_json_reports_overlapping_hits_and_truncation() {
-        let json: serde_json::Value = serde_json::from_str(
-            &aob_scan_json("AA ??", &[0xAA, 1, 0xAA, 2, 0xAA, 3], 2)
-                .expect("bounded AOB scan should succeed"),
-        )
-        .expect("AOB report should be valid JSON");
-        assert_eq!(json["patternBytes"], 2);
-        assert_eq!(json["offsets"], serde_json::json!([0, 2]));
-        assert_eq!(json["truncated"], true);
-    }
-
-    #[test]
-    fn offline_image_inspect_json_preserves_full_width_addresses() {
-        let json: serde_json::Value = serde_json::from_str(
-            &offline_image_inspect_json(
-                &[0, 1, 2, 3, 4, 5, 6, 7],
-                r#"{"imageBase":"0x140000000","ranges":[{"space":"va","address":"0x140000002","length":3}]}"#,
-            )
-            .expect("bounded offline range should inspect"),
-        )
-        .expect("offline image report should be valid JSON");
-        assert_eq!(json["imageBase"], "0x140000000");
-        assert_eq!(json["ranges"][0]["fileOffset"], "0x2");
-        assert_eq!(json["ranges"][0]["va"], "0x140000002");
-        assert_eq!(json["ranges"][0]["hex"], "020304");
-    }
-
-    #[test]
-    fn knowledge_search_json_keeps_vfs_and_executable_stems_exact() {
-        let entries = serde_json::json!([
-            {
-                "address": "0x140001000",
-                "name": "funcLuaMenuCommand",
-                "subsystem": "mainmenu01",
-                "role": "dispatch G4TX",
-                "anchors": ["data/dx11/menu/mainmenu01.g4tx"],
-                "confidence": 1.0
-            },
-            {
-                "address": "0xffffffffffffffff",
-                "name": "other",
-                "subsystem": "unrelated",
-                "role": null,
-                "anchors": [],
-                "confidence": 0.5
-            }
-        ]);
-        let json: serde_json::Value = serde_json::from_str(
-            &knowledge_search_json(&entries.to_string(), "mainmenu01 G4TX", 8)
-                .expect("bounded knowledge search should succeed"),
-        )
-        .expect("knowledge search should be valid JSON");
-        assert_eq!(json["totalMatches"], 1);
-        assert_eq!(json["hits"][0]["entry"]["name"], "funcLuaMenuCommand");
-        assert_eq!(json["hits"][0]["entry"]["address"], "0x140001000");
-    }
-
-    #[test]
-    fn chara_model_catalog_json_decodes_the_shared_t2b_catalog() {
-        use nie_formats::cfgbin::{CfgEntry, Value};
-
-        let body = CfgEntry {
-            name: "CHARA_BODY_INFO".to_owned(),
-            variables: vec![
-                Value::Int(7),
-                Value::String("_common/c000101/c000101.objbin".to_owned()),
-                Value::Int(0),
-                Value::Int(8),
-                Value::Int(1),
-                Value::Int(0),
-                Value::Int(2),
-            ],
-            children: Vec::new(),
-        };
-        let entries = [CfgEntry {
-            name: "CHARA_BODY_INFO_LIST_BEG".to_owned(),
-            variables: vec![Value::Int(1)],
-            children: vec![body],
-        }];
-        let encoded = nie_formats::cfgbin::encode_t2b(&entries);
-        let json: serde_json::Value = serde_json::from_str(
-            &chara_model_catalog_json(&encoded, "chara_model_0.07.22.cfg.bin")
-                .expect("bounded model catalog should decode"),
-        )
-        .expect("model catalog should be valid JSON");
-        assert_eq!(json["source"], "chara_model_0.07.22.cfg.bin");
-        assert_eq!(json["bodies"]["7"]["type_idx"], 1);
-        assert_eq!(
-            json["bodies"]["7"]["objbin"],
-            "_common/c000101/c000101.objbin"
-        );
-    }
-
-    #[test]
-    fn zukan_rank_json_uses_the_shared_stable_matcher() {
-        let entry = serde_json::json!({
-            "name": "Mark",
-            "position": "GK",
-            "element": "Wind",
-            "game": "Inazuma Eleven",
-        });
-        let candidates = serde_json::json!([
-            {
-                "id": "later",
-                "nameEn": "Mark",
-                "position": "GK",
-                "element": "Wind",
-                "rarityLabel": "Normal",
-                "series": "Inazuma Eleven 2",
-            },
-            {
-                "id": "best",
-                "nameEn": "Mark",
-                "position": "GK",
-                "element": "Wind",
-                "rarityLabel": "Normal",
-                "series": "Inazuma Eleven",
-            },
-        ]);
-        let json: serde_json::Value = serde_json::from_str(
-            &zukan_rank_json(&entry.to_string(), &candidates.to_string(), 2)
-                .expect("matching input should rank"),
-        )
-        .expect("ranking should be valid JSON");
-        assert_eq!(json["results"][0]["candidateId"], "best");
-        assert_eq!(json["results"][1]["candidateId"], "later");
-    }
-
-    #[test]
-    fn format_catalog_validate_json_reuses_the_bounded_seed_parser() {
-        let source = serde_json::json!({
-            "schema_version": 1,
-            "generator": "iecode",
-            "game": "Inazuma Eleven: Victory Road",
-            "format_count": 1,
-            "formats": [{
-                "name": "G4TX",
-                "extensions": ["g4tx"],
-                "magic": "G4TX",
-                "header_size": 96,
-                "fields": [{"offset": 0, "size": 4, "type": "magic", "name": "Magic"}],
-            }],
-        });
-        let json: serde_json::Value = serde_json::from_str(
-            &format_catalog_validate_json(source.to_string().as_bytes())
-                .expect("bounded catalog should validate"),
-        )
-        .expect("catalog should serialize as JSON");
-        assert_eq!(json["schema_version"], 1);
-        assert_eq!(json["formats"][0]["name"], "G4TX");
-        assert_eq!(json["formats"][0]["fields"][0]["type"], "magic");
-    }
-
-    #[test]
-    fn steam_select_depots_json_uses_portable_platform_policy() {
-        let depots = serde_json::json!([
-            {
-                "depotId": 100,
-                "hasContent": true,
-                "operatingSystems": ["windows"],
-                "architecture": "64",
-                "language": "english",
-                "hasManifestSection": true,
-            },
-            {
-                "depotId": 200,
-                "hasContent": true,
-                "operatingSystems": ["linux"],
-                "architecture": "64",
-                "language": "english",
-                "hasManifestSection": true,
-            },
-        ]);
-        let selection = serde_json::json!({
-            "explicitDepots": [],
-            "allPlatforms": false,
-            "operatingSystem": "windows",
-            "architecture": "64",
-            "language": "english",
-        });
-        let json: serde_json::Value = serde_json::from_str(
-            &steam_select_depots_json(&depots.to_string(), &selection.to_string())
-                .expect("portable depot selection should succeed"),
-        )
-        .expect("depot selection should be valid JSON");
-        assert_eq!(json["depotIds"], serde_json::json!([100]));
-    }
-
-    #[test]
     fn init_panic_hook_ne_panique_pas() {
         // En natif, le hook est une no-op wasm ; la fonction ne doit pas paniquer.
         init_panic_hook();
-    }
-
-    #[test]
-    fn camera_snapshot_exposes_verified_state_orbit_and_matrices() {
-        let camera = CameraTimeline::default();
-        let json: serde_json::Value = serde_json::from_str(
-            &camera
-                .state_json(16.0 / 9.0)
-                .expect("default camera should serialize"),
-        )
-        .expect("camera state should be valid JSON");
-
-        assert_eq!(json["schemaVersion"], 1);
-        assert_eq!(json["active"], false);
-        assert_eq!(json["position"], serde_json::json!([0.0, 2.5, 10.0]));
-        assert_eq!(
-            json["referencePosition"],
-            serde_json::json!([0.0, 0.0, 0.0])
-        );
-        assert_eq!(json["fovDegrees"], 45.0);
-        assert_eq!(json["orbit"]["distance"], camera.state.length());
-        let assert_matrix = |actual: &serde_json::Value, expected: [[f32; 4]; 4]| {
-            let rows = actual.as_array().expect("matrix should be an array");
-            assert_eq!(rows.len(), 4);
-            for (actual_row, expected_row) in rows.iter().zip(expected) {
-                let values = actual_row
-                    .as_array()
-                    .expect("matrix row should be an array");
-                assert_eq!(values.len(), 4);
-                for (actual_value, expected_value) in values.iter().zip(expected_row) {
-                    let difference = (actual_value
-                        .as_f64()
-                        .expect("matrix value should be numeric")
-                        - f64::from(expected_value))
-                    .abs();
-                    assert!(difference < 1e-6, "matrix value differs by {difference}");
-                }
-            }
-        };
-        assert_matrix(&json["viewMatrix"], camera.state.view_matrix());
-        assert_matrix(
-            &json["projectionMatrix"],
-            camera.state.projection_matrix(16.0 / 9.0),
-        );
-        assert!(camera.state_json(0.0).is_err());
-        assert!(camera.state_json(f32::NAN).is_err());
-    }
-
-    #[test]
-    fn camera_timeline_uses_deterministic_linear_controller_steps() {
-        let mut camera = CameraTimeline::default();
-        let target = nie_camera::CameraState {
-            pos: [8.0, 6.0, 2.0],
-            ref_pos: [4.0, 2.0, 0.0],
-            fov_deg: 65.0,
-            roll_deg: 20.0,
-            near: 0.2,
-            far: 800.0,
-        };
-        camera
-            .transition_to(target, 2.0, 0)
-            .expect("valid transition should start");
-
-        camera.step(f32::NAN);
-        camera.step(-1.0);
-        assert_eq!(camera.state, nie_camera::CameraState::default());
-        assert!(camera.active());
-
-        camera.step(0.5);
-        assert_eq!(camera.state.pos, [2.0, 3.375, 8.0]);
-        assert_eq!(camera.state.ref_pos, [1.0, 0.5, 0.0]);
-        assert_eq!(camera.state.fov_deg, 50.0);
-        assert_eq!(camera.state.roll_deg, 5.0);
-        assert!(camera.active());
-
-        camera.step(1.5);
-        assert_eq!(camera.state, target);
-        assert!(!camera.active());
-        camera.step(1.0);
-        assert_eq!(camera.state, target);
-    }
-
-    #[test]
-    fn camera_timeline_maps_observed_fade_and_rejects_invalid_states() {
-        let mut camera = CameraTimeline::default();
-        let target = nie_camera::CameraState {
-            pos: [10.0, 2.5, 10.0],
-            ..nie_camera::CameraState::default()
-        };
-        camera
-            .transition_to(target, 4.0, 6)
-            .expect("observed fade code should start");
-        camera.step(1.0);
-        assert_eq!(camera.state.pos[0], 1.5625);
-
-        camera
-            .transition_to(target, 0.0, 0)
-            .expect("zero duration should snap");
-        assert_eq!(camera.state, target);
-        assert!(!camera.active());
-
-        let invalid_fov = nie_camera::CameraState {
-            fov_deg: 180.0,
-            ..target
-        };
-        assert!(camera.transition_to(invalid_fov, 1.0, 0).is_err());
-        let invalid_clip = nie_camera::CameraState {
-            near: 2.0,
-            far: 1.0,
-            ..target
-        };
-        assert!(camera.transition_to(invalid_clip, 1.0, 0).is_err());
-        let coincident = nie_camera::CameraState {
-            ref_pos: target.pos,
-            ..target
-        };
-        assert!(camera.transition_to(coincident, 1.0, 0).is_err());
-        let overflow = nie_camera::CameraState {
-            pos: [3.0e38, 3.0e38, 3.0e38],
-            ..target
-        };
-        assert!(camera.transition_to(overflow, 1.0, 0).is_err());
-        let vertical = nie_camera::CameraState {
-            pos: [0.0, 10.0, 0.0],
-            ref_pos: [0.0, 0.0, 0.0],
-            ..target
-        };
-        assert!(camera.transition_to(vertical, 1.0, 0).is_err());
-        assert!(camera.transition_to(target, f32::INFINITY, 0).is_err());
     }
 
     #[test]
@@ -3206,8 +1686,6 @@ mod tests {
     // nie-data — lookup skill / aura / item
     // -----------------------------------------------------------------------
 
-    /// Construit un `skill_config.cfg.bin.json` minimal (`lists`) avec la 1re valeur
-    /// RÉELLE vérifiée (whs00010, « Trampoline du tonnerre », skillID 0x63BDA8A4,
     /// element=1 Vent, category=1 Tir, power 70→440). Source : `nie_data::skill`.
     fn skill_config_fixture() -> String {
         serde_json::json!({
@@ -3288,7 +1766,6 @@ mod tests {
         assert!(skill_lookup("{pas du json", "").is_err());
     }
 
-    /// `aura_skill_config.cfg.bin.json` minimal avec le noeud RÉEL `AURA_CMD_INFO_0`
     /// (assetCode wks00020, element var8=3 Feu, sub_type Keshin). Source : `nie_data::aura`.
     fn aura_config_fixture() -> String {
         // 19 variables, ordre du dump vérifié.
@@ -3380,7 +1857,6 @@ mod tests {
         assert_eq!(h["power"][1], 640);
     }
 
-    /// `item_config.cfg.bin.json` minimal avec le noeud RÉEL `ITEM_SHOES_INFO_0`
     /// (itemId 0x6D5D11A0, price 1401, stats 30/31, internalCode eq_sh110001).
     fn item_config_fixture() -> String {
         let raw = [
@@ -3441,118 +1917,10 @@ mod tests {
     fn item_lookup_json_invalide_erreur() {
         assert!(item_lookup("nope").is_err());
     }
-
-    // -----------------------------------------------------------------------
-    // nie-save — parse_save_json
-    // -----------------------------------------------------------------------
-
-    /// Construit un conteneur Lives synthétique minimal (1 blob HEADERSAVE),
-    /// chiffre avec la clé CRC32 du nom, puis vérifie que parse_save_json
-    /// retourne le bon slot_name et les bonnes métadonnées de blob.
-    #[test]
-    fn parse_save_json_conteneur_minimal() {
-        use nie_save::{
-            BLOB_MAGIC, BLOB_SUBTYPE_HEADERSAVE, Blob, BlobHeader, BlobSubtype, DATA_START,
-            DIR_OFFSET, LIVES_CONST2, LIVES_MAGIC, crc32_of_pub, decrypt_block, key_from_filename,
-        };
-
-        let slot = "DEADBEEF-USERDATALIVE";
-
-        // Corps minimal du blob HEADERSAVE (1 octet pour passer les bornes)
-        let body = vec![0u8; 4];
-        let blob = Blob {
-            header: BlobHeader {
-                subtype: BlobSubtype::Headersave,
-                payload_size: body.len() as u32,
-                field8: 0xABCD_1234,
-            },
-            body,
-        };
-        let blob_bytes = {
-            let mut v = Vec::new();
-            v.extend_from_slice(&BLOB_MAGIC.to_be_bytes());
-            v.extend_from_slice(&BLOB_SUBTYPE_HEADERSAVE.to_be_bytes());
-            v.extend_from_slice(&(blob.body.len() as u32).to_le_bytes());
-            v.extend_from_slice(&blob.header.field8.to_le_bytes());
-            v.extend_from_slice(&blob.body);
-            v
-        };
-        let blob_crc = crc32_of_pub(&blob_bytes);
-
-        // Construire le header plaintext (0x800)
-        let mut hdr = vec![0u8; DATA_START];
-        hdr[8..12].copy_from_slice(&LIVES_CONST2.to_le_bytes());
-        let sn = slot.as_bytes();
-        hdr[0x10..0x10 + sn.len()].copy_from_slice(sn);
-        hdr[DIR_OFFSET..DIR_OFFSET + 4].copy_from_slice(&blob_crc.to_le_bytes());
-        hdr[DIR_OFFSET + 4..DIR_OFFSET + 8]
-            .copy_from_slice(&(blob_bytes.len() as u32).to_le_bytes());
-        hdr[DIR_OFFSET + 8..DIR_OFFSET + 12].copy_from_slice(&0u32.to_le_bytes());
-        let fname = b"HEADERSAVE_data.bin";
-        hdr[DIR_OFFSET + 12..DIR_OFFSET + 12 + fname.len()].copy_from_slice(fname);
-        let hdr_crc = crc32_of_pub(&hdr[8..DATA_START]);
-        hdr[4..8].copy_from_slice(&hdr_crc.to_le_bytes());
-        hdr[0..4].copy_from_slice(&LIVES_MAGIC.to_le_bytes());
-
-        let mut plain = hdr;
-        plain.extend_from_slice(&blob_bytes);
-
-        let key = key_from_filename(slot);
-        let mut enc = plain.clone();
-        decrypt_block(&mut enc, 0, key);
-
-        let json_str = parse_save_json(&enc, slot).expect("parse_save_json ne doit pas échouer");
-        let json: serde_json::Value = serde_json::from_str(&json_str).expect("JSON valide");
-
-        assert_eq!(json["slot_name"], slot);
-        assert_eq!(json["key"], key);
-
-        let blobs = json["blobs"].as_array().expect("blobs est un tableau");
-        assert_eq!(blobs.len(), 1);
-        assert_eq!(blobs[0]["filename"], "HEADERSAVE_data.bin");
-        assert_eq!(blobs[0]["subtype"], "Headersave");
-        assert_eq!(blobs[0]["field8"], 0xABCD_1234u32);
-
-        // Le blob HEADERSAVE body fait 4 octets (trop court pour parse_headersave) →
-        // headersave doit être null (pas d'erreur fatale).
-        assert!(
-            json["headersave"].is_null(),
-            "headersave null sur body trop court"
-        );
-        // Pas de blob AUTOSAVE → autosave null.
-        assert!(json["autosave"].is_null());
-    }
-
-    /// Vérifie que parse_save_json retourne une erreur sur un fichier vide.
-    #[test]
-    fn parse_save_json_tampon_vide_erreur() {
-        assert!(parse_save_json(&[], "TEST-LIVE").is_err());
-    }
-
-    /// Vérifie que parse_save_json retourne une erreur sur une mauvaise clé.
-    #[test]
-    fn parse_save_json_mauvaise_cle_erreur() {
-        // On encode avec "DEADBEEF-USERDATALIVE" mais on parse avec un autre nom.
-        use nie_save::{
-            DATA_START, LIVES_CONST2, LIVES_MAGIC, crc32_of_pub, decrypt_block, key_from_filename,
-        };
-        let slot = "DEADBEEF-USERDATALIVE";
-        let mut hdr = vec![0u8; DATA_START];
-        hdr[8..12].copy_from_slice(&LIVES_CONST2.to_le_bytes());
-        let hdr_crc = crc32_of_pub(&hdr[8..DATA_START]);
-        hdr[4..8].copy_from_slice(&hdr_crc.to_le_bytes());
-        hdr[0..4].copy_from_slice(&LIVES_MAGIC.to_le_bytes());
-        let key = key_from_filename(slot);
-        let mut enc = hdr;
-        decrypt_block(&mut enc, 0, key);
-        // Parser avec un nom différent → mauvaise clé → BadMagic.
-        assert!(parse_save_json(&enc, "CAFEBABE-LIVE").is_err());
-    }
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests_sprite_sheet {
-    /// Golden VFS : la feuille de sprites d'un atlas réel du jeu doit sortir de la FFI wasm avec
     /// ses régions et leurs rectangles — c'est ce que l'explorateur et le web consomment.
     #[test]
     fn feuille_de_sprites_d_un_atlas_reel() {
@@ -3625,27 +1993,6 @@ impl nie_formats::menu_layout::MenuAssets for AssetsNavigateur {
     }
 }
 
-/// Un écran de menu composé DANS la page, par le compositeur de référence du dépôt.
-///
-/// ## Ce que ça change
-///
-/// Le site dessinait ces layouts en DOM (`packages/inacord-ui/src/shell/layout-render.tsx`) : un
-/// `<img>` par objet, positionné par un `transform` CSS. Cette voie ne sait faire ni
-/// l'échantillonnage bilinéaire, ni la rotation autour d'une ancre, ni la teinte, ni le mélange
-/// additif — les quatre opérations que le jeu applique. Ici, c'est `nie_formats::menu_layout`,
-/// exactement le même code que `nie-game --compose-layout` et que `/api/v1/menu/render/{screen}`.
-///
-/// ## Le protocole, et pourquoi il est en trois temps
-///
-/// Le compositeur est synchrone et ne connaît pas le réseau. La page demande donc d'abord ce
-/// qu'il faut ([`MenuComposer::required_assets`]), va le chercher comme elle veut, le lui donne
-/// ([`MenuComposer::provide_asset`]), puis compose. Les pixels ne traversent jamais la frontière
-/// JS : [`MenuComposer::render`] rend le RAPPORT, et l'image se lit dans la mémoire WebAssembly
-/// par [`MenuComposer::frame_ptr`]/[`MenuComposer::frame_len`].
-///
-/// ## Ce que ça ne prétend pas
-///
-/// Rien ici ne dit que l'image est conforme à `nie.exe`. C'est la composition des données que le
 /// layout porte : un objet sans pixels est compté `skipped`, jamais remplacé.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
@@ -3660,11 +2007,6 @@ pub struct MenuComposer {
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 impl MenuComposer {
-    /// Construit le compositeur depuis un layout JSON.
-    ///
-    /// `assume_unknown_visible` choisit la politique de visibilité : le layout STATIQUE de
-    /// `nie-site` ne résout aucune visibilité et pose `visible: null` — composé sous la règle de
-    /// l'export runtime, il rendrait une image vide. L'export runtime, lui, la résout : passer
     /// `false` est alors la bonne réponse.
     #[wasm_bindgen(constructor)]
     pub fn new(layout_json: &str, assume_unknown_visible: bool) -> Result<MenuComposer, JsValue> {
@@ -3696,31 +2038,17 @@ impl MenuComposer {
         self.layout.object_count()
     }
 
-    /// L'écran porte-t-il un libellé RÉSOLU ? L'atlas de police pèse des dizaines de mégaoctets :
     /// la page ne le télécharge que si un texte va s'en servir.
     #[wasm_bindgen(getter)]
     pub fn needs_font(&self) -> bool {
         self.layout.has_text_labels()
     }
 
-    /// Dépose les octets d'un `.g4tx`. Une clé inconnue du layout est acceptée et ignorée à la
     /// composition : c'est au layout de dire ce qu'il emploie, pas à l'appelant de le deviner.
     pub fn provide_asset(&mut self, key: &str, bytes: &[u8]) {
         self.assets.octets.insert(key.to_owned(), bytes.to_vec());
     }
 
-    /// Dépose la police : l'atlas `font.g4tx`, les métriques `font.cfg.bin` et, facultativement,
-    /// la palette `font_color.cfg.bin`.
-    ///
-    /// La palette est ce qui donne un RVB au jeton `[C…]` d'un libellé. Sans elle les libellés
-    /// colorés sortent en blanc — le comportement d'avant le 2026-09-13 — plutôt qu'avec une
-    /// teinte devinée. Elle pèse 7 525 octets contre 42 MiB pour l'atlas : son coût n'est pas la
-    /// raison pour laquelle elle est facultative ; sa disponibilité chez l'hôte l'est.
-    ///
-    /// # Errors
-    ///
-    /// Rejette quand l'atlas ou les métriques sont illisibles — une police à moitié chargée
-    /// dessinerait des glyphes faux, ce qui est pire qu'aucun libellé. Une palette illisible ne
     /// rejette pas : elle se lit vide, et le texte reste blanc.
     pub fn provide_font(
         &mut self,
@@ -3748,11 +2076,6 @@ impl MenuComposer {
         Ok(())
     }
 
-    /// Compose l'écran et rend le RAPPORT en JSON (`drawn`, `sprites`, `regions`, `texts`,
-    /// `skipped`). Les pixels restent en mémoire WebAssembly, cf. [`MenuComposer::frame_ptr`].
-    ///
-    /// # Errors
-    ///
     /// Rejette quand le rapport n'est pas sérialisable, ce qui ne dépend pas de l'appelant.
     pub fn render(&mut self, width: u32, height: u32) -> Result<String, JsValue> {
         let composee = self.layout.compose(&self.assets, width, height);
@@ -3773,7 +2096,6 @@ impl MenuComposer {
         .map_err(|error| JsValue::from_str(&error.to_string()))
     }
 
-    /// Décalage de la dernière image RGBA8 dans `WebAssembly.Memory`. Invalidé par le prochain
     /// [`MenuComposer::render`].
     pub fn frame_ptr(&self) -> usize {
         self.frame.pointer()
@@ -3793,10 +2115,6 @@ impl MenuComposer {
 // source d'octets abstraite ; ce pont branche cette source sur des octets que la page a
 // téléchargés elle-même depuis `/f/{path}`. Le même code, les mêmes octets, le même JSON.
 
-/// Les octets que la page a téléchargés, vus par le constructeur de layout.
-///
-/// La résolution d'un nom logique (`chara_bank_menu.g4pkm`) vers un chemin réel n'est pas
-/// devinée : l'appelant la déclare avec [`MenuScreenBuilder::provide_companion`], parce qu'elle
 /// dépend du montage et que seule la machine qui porte le jeu la connaît.
 #[cfg(target_arch = "wasm32")]
 #[derive(Default)]
@@ -3816,28 +2134,6 @@ impl nie_formats::menu_screen::MenuSource for FichiersNavigateur {
     }
 }
 
-/// Construit le layout d'un écran de menu dans le navigateur.
-///
-/// ## L'ordre d'usage
-///
-/// 1. `new(screen_spec_json)` — le nom de l'écran, son canvas et ses calques, tels que
-///    `/api/v1/menu/{screen}` les publie ;
-/// 2. `required_files()` — les chemins d'`.objbin` à télécharger, puis `provide_file` pour
-///    chacun ;
-/// 3. `required_companions()` — les noms logiques que ces `.objbin` désignent ; `provide_companion`
-///    dit où chacun vit, `provide_file` en donne les octets ;
-/// 4. `build(locale, menu_text_json, visibility_json)` — le layout, au schéma
-///    `nie.menu.layout/v1`.
-///
-/// Deux tours sont nécessaires parce qu'un `.objbin` ne se lit pas sans être téléchargé, et que
-/// ce qu'il désigne ne se connaît pas avant de l'avoir lu. C'est le jeu lui-même qui impose cet
-/// ordre, pas ce pont.
-///
-/// ## Ce que ça ne prétend pas
-///
-/// Un fichier absent de la table n'est pas inventé : le calque sort dans
-/// `diagnostics.objectsUnreadable`, l'objet garde `transform: null` et
-/// `placementSource: "unresolved"`. Le layout construit avec la moitié des octets dit qu'il lui
 /// manque la moitié des octets.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
@@ -3849,7 +2145,6 @@ pub struct MenuScreenBuilder {
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 impl MenuScreenBuilder {
-    /// `screen_spec_json` : `{ screen, cfg, canvas: [w, h], items: [{ layer, objbin }],
     /// layersMissing: [] }`.
     #[wasm_bindgen(constructor)]
     pub fn new(screen_spec_json: &str) -> Result<MenuScreenBuilder, JsValue> {
@@ -3871,9 +2166,6 @@ impl MenuScreenBuilder {
             .collect()
     }
 
-    /// Les noms logiques que les `.objbin` FOURNIS désignent — squelettes et textures.
-    ///
-    /// Vide tant qu'aucun `.objbin` n'est chargé : la liste se lit dans les octets, elle ne se
     /// devine pas depuis le nom de l'écran.
     #[wasm_bindgen]
     pub fn required_companions(&self) -> Vec<String> {
@@ -3920,10 +2212,6 @@ impl MenuScreenBuilder {
             .insert(logical.to_owned(), path.to_owned());
     }
 
-    /// Le layout, au schéma `nie.menu.layout/v1`.
-    ///
-    /// `menu_text_json` : `[[hash, "texte"], …]` — les libellés de la locale, que la page tient
-    /// de `/api/v1/text`. Une liste vide rend un layout sans libellé, ce qui est exact.
     /// `visibility_json` : `{ "<crc32>": true }` — ce que l'exécution Lua a résolu, ou `{}`.
     #[wasm_bindgen]
     pub fn build(
@@ -4004,11 +2292,6 @@ impl From<NwScreenSpec> for nie_formats::menu_screen::ScreenSpec {
 // La chaîne complète tient alors dans le module : les octets `.g4md`/`.g4mg` du jeu, tels que
 // `/f/{path}` les sert, passent par [`model_to_glb`] puis par ce rendu. Aucun serveur ne dessine.
 
-/// Le CRC-32 d'un nom, tel que le jeu l'emploie pour adresser ses objets.
-///
-/// `layer_id == crc32(nom)` dans les scènes de menu, et l'identifiant d'un objet suit la même
-/// règle : c'est la clé qui relie un objet du layout à son objet d'exécution. Le navigateur
-/// l'avait réécrit en TypeScript — vingt lignes qui devaient rester d'accord avec
 /// `nie_formats::cfgbin::crc32` sans que rien ne le vérifie. Ici, c'est la MÊME fonction.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
@@ -4023,326 +2306,10 @@ pub fn crc32(value: &str) -> u32 {
     nie_formats::cfgbin::crc32(value.as_bytes())
 }
 
-/// Rend un modèle 3D du jeu en image, sur le processeur.
-///
-/// ## Ce que c'est
-///
-/// `nie_render3d::render`, le rastériseur que `nie-render3d --verify` compare au chemin GPU et
-/// que les golden natifs figent. Pas une seconde implémentation : la même fonction, appelée
-/// depuis le navigateur.
-///
-/// ## Ce que ça ne prétend pas
-///
-/// Ce n'est pas le rendu de `nie.exe`. C'est le rendu des DONNÉES du jeu — géométrie, textures,
-/// pose de liaison — par un rastériseur de ce dépôt. La conformité pixel au jeu n'est pas
-/// mesurée ici, et rien dans cette surface ne l'affirme.
-///
-/// ## Le budget de textures
-///
-/// Un GLB compressé de quelques centaines de kilooctets peut décompresser en dizaines de
-/// mégaoctets de RGBA. Le budget est appliqué AVANT toute allocation, depuis les en-têtes PNG :
-/// c'est ce qui empêche un modèle mal formé de faire grandir le tas WebAssembly sans borne.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub struct ModelRenderer {
-    model: nie_render3d::glb::Model,
-    texture_references: Vec<nie_render3d::glb::TextureReference>,
-    frame: FrameBuffer,
-    width: u32,
-    height: u32,
-}
-
-/// Budget de textures décodées d'un modèle, en octets. 256 MiB : au-delà, un seul modèle
-/// remplirait le tas d'un onglet, et le refus est préférable à un plantage d'allocation.
-const MODEL_TEXTURE_BUDGET: usize = 256 * 1024 * 1024;
-
-/// Analyse un GLB sous le budget de textures du navigateur.
-fn model_parse_impl(glb: &[u8]) -> Result<nie_render3d::glb::Model, String> {
-    nie_render3d::glb::parse_with_texture_budget(glb, MODEL_TEXTURE_BUDGET)
-        .map_err(|error| error.to_string())
-}
-
-fn model_replace_texture_glb_impl(glb: &[u8], index: usize, png: &[u8]) -> Result<Vec<u8>, String> {
-    nie_render3d::glb::replace_texture_png(glb, index, png, MODEL_TEXTURE_BUDGET)
-        .map_err(|error| error.to_string())
-}
-
-fn model_validate_editor_png_impl(png: &[u8]) -> Result<Vec<u32>, String> {
-    let (width, height) =
-        nie_render3d::glb::validate_editor_png(png).map_err(|error| error.to_string())?;
-    Ok(vec![width, height])
-}
-
-/// Decode a standalone editor PNG in Rust and return `[width, height]`.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn model_validate_editor_png(png: &[u8]) -> Result<Vec<u32>, JsValue> {
-    model_validate_editor_png_impl(png).map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native counterpart used by cross-host and unit tests.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn model_validate_editor_png(png: &[u8]) -> Result<Vec<u32>, String> {
-    model_validate_editor_png_impl(png)
-}
-
-/// Replace one embedded GLB image with PNG bytes and return a reparsed GLB.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-pub fn model_replace_texture_glb(glb: &[u8], index: usize, png: &[u8]) -> Result<Vec<u8>, JsValue> {
-    model_replace_texture_glb_impl(glb, index, png).map_err(|error| JsValue::from_str(&error))
-}
-
-/// Native counterpart used by cross-host and unit tests.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn model_replace_texture_glb(glb: &[u8], index: usize, png: &[u8]) -> Result<Vec<u8>, String> {
-    model_replace_texture_glb_impl(glb, index, png)
-}
-
-#[cfg(any(target_arch = "wasm32", test))]
-fn model_replace_texture_png_impl(
-    model: &mut nie_render3d::glb::Model,
-    texture_references: &[nie_render3d::glb::TextureReference],
-    index: usize,
-    png: &[u8],
-) -> Result<(), String> {
-    let source = texture_references
-        .get(index)
-        .ok_or_else(|| {
-            format!(
-                "texture index {index} out of range (model has {})",
-                texture_references.len()
-            )
-        })?
-        .source;
-    if png.len() > nie_render3d::glb::EDITOR_MAX_PNG_BYTES {
-        return Err("PNG exceeds the 32 MiB editor limit".to_owned());
-    }
-    let retained = model
-        .textures
-        .iter()
-        .enumerate()
-        .filter(|(position, _)| *position != source)
-        .try_fold(0usize, |total, (_, texture)| {
-            total.checked_add(texture.rgba.len())
-        })
-        .ok_or_else(|| "texture budget overflow".to_owned())?;
-    let remaining = MODEL_TEXTURE_BUDGET
-        .checked_sub(retained)
-        .ok_or_else(|| "model already exceeds the texture budget".to_owned())?;
-    let replacement = nie_render3d::glb::decode_png(png, remaining)
-        .map_err(|error| format!("replacement PNG: {error}"))?;
-    let target = model
-        .textures
-        .get_mut(source)
-        .ok_or_else(|| format!("texture {index}: image source {source} out of range"))?;
-    *target = replacement;
-    Ok(())
-}
-
-/// Rend un GLB en image RGBA8 — le pendant natif de [`ModelRenderer`].
-///
-/// Existe pour que la chaîne complète (octets du jeu → GLB → pixels) soit éprouvable par un
-/// test qui tourne sur une machine portant le jeu, sans navigateur ni GPU.
-///
-/// # Errors
-///
-/// Rend l'erreur du lecteur GLB quand les octets n'en sont pas un, ou quand les textures
-/// décodées dépassent le budget.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn model_render_rgba(
-    glb: &[u8],
-    angle: f32,
-    width: u32,
-    height: u32,
-) -> Result<Vec<u8>, String> {
-    let model = model_parse_impl(glb)?;
-    Ok(nie_render3d::render::render(&model, angle, width, height))
-}
-
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-impl ModelRenderer {
-    /// Construit le rendu depuis un GLB — celui que [`model_to_glb`] produit à partir des
-    /// `.g4md`/`.g4mg` du jeu, ou tout autre GLB que l'appelant possède.
-    #[wasm_bindgen(constructor)]
-    pub fn new(glb: &[u8]) -> Result<ModelRenderer, JsValue> {
-        let texture_references = nie_render3d::glb::texture_references(glb)
-            .map_err(|error| JsValue::from_str(&error.to_string()))?;
-        let model = model_parse_impl(glb).map_err(|error| JsValue::from_str(&error))?;
-        Ok(ModelRenderer {
-            model,
-            texture_references,
-            frame: FrameBuffer::default(),
-            width: 0,
-            height: 0,
-        })
-    }
-
-    /// Le nombre de primitives du modèle — ce qui sera réellement rasterisé.
-    #[wasm_bindgen(getter)]
-    pub fn primitives(&self) -> usize {
-        self.model.primitives.len()
-    }
-
-    /// Le nombre de textures décodées que le modèle porte.
-    #[wasm_bindgen(getter)]
-    pub fn textures(&self) -> usize {
-        self.texture_references.len()
-    }
-
-    /// Dimensions `[width, height]` of one decoded texture, or an empty array for a bad index.
-    pub fn texture_size(&self, index: usize) -> Vec<u32> {
-        let Some(reference) = self.texture_references.get(index) else {
-            return Vec::new();
-        };
-        self.model
-            .textures
-            .get(reference.source)
-            .map_or_else(Vec::new, |texture| vec![texture.width, texture.height])
-    }
-
-    /// Measured glTF texture name, falling back to its image name when present.
-    pub fn texture_name(&self, index: usize) -> Option<String> {
-        self.texture_references
-            .get(index)
-            .and_then(|texture| texture.name.clone())
-    }
-
-    /// Replace one decoded model texture with a bounded PNG for this renderer session.
-    ///
-    /// The GLB bytes and the VFS stay unchanged. Subsequent [`ModelRenderer::render`] calls use
-    /// the replacement, so an exported PNG is proof of the real Rust-side mutation rather than a
-    /// CSS overlay. The public index addresses glTF `textures[]`, not `images[]`.
-    pub fn replace_texture_png(&mut self, index: usize, png: &[u8]) -> Result<(), JsValue> {
-        model_replace_texture_png_impl(&mut self.model, &self.texture_references, index, png)
-            .map_err(|error| JsValue::from_str(&error))
-    }
-
-    /// Rend une image à `angle` radians autour de l'axe vertical.
-    ///
-    /// L'image reste dans la mémoire WebAssembly : elle se lit par
-    /// [`ModelRenderer::frame_ptr`]/[`ModelRenderer::frame_len`], comme celle de [`MenuComposer`],
-    /// pour qu'aucun tampon RGBA ne traverse la frontière à chaque image.
-    #[wasm_bindgen]
-    pub fn render(&mut self, angle: f32, width: u32, height: u32) -> Result<(), JsValue> {
-        if width == 0 || height == 0 || width > 4096 || height > 4096 {
-            return Err(JsValue::from_str("dimensions hors bornes (1..=4096)"));
-        }
-        if !angle.is_finite() {
-            return Err(JsValue::from_str("angle non fini"));
-        }
-        self.frame.replace(nie_render3d::render::render(
-            &self.model,
-            angle,
-            width,
-            height,
-        ));
-        self.width = width;
-        self.height = height;
-        Ok(())
-    }
-
-    /// Offset de l'image RGBA8 dans la mémoire du module.
-    #[wasm_bindgen]
-    pub fn frame_ptr(&self) -> usize {
-        self.frame.pointer()
-    }
-
-    /// Longueur de l'image, en octets — `width * height * 4` après un rendu.
-    #[wasm_bindgen]
-    pub fn frame_len(&self) -> usize {
-        self.frame.len()
-    }
-
-    /// Les dimensions du dernier rendu, `[largeur, hauteur]` — `[0, 0]` avant le premier.
-    #[wasm_bindgen(getter)]
-    pub fn size(&self) -> Vec<u32> {
-        vec![self.width, self.height]
-    }
-}
-
-#[cfg(test)]
-mod tests_model_texture_session {
-    use super::{model_replace_texture_png_impl, model_validate_editor_png_impl};
-    use nie_render3d::glb::{Model, Primitive, Texture, TextureReference};
-
-    fn textured_quad(color: [u8; 4]) -> Model {
-        Model {
-            primitives: vec![Primitive {
-                positions: vec![
-                    [-1.0, -1.0, 0.0],
-                    [1.0, -1.0, 0.0],
-                    [1.0, 1.0, 0.0],
-                    [-1.0, 1.0, 0.0],
-                ],
-                normals: vec![[0.0, 0.0, 1.0]; 4],
-                uv: vec![[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
-                indices: vec![0, 1, 2, 0, 2, 3],
-                texture: Some(0),
-            }],
-            textures: vec![Texture {
-                width: 1,
-                height: 1,
-                rgba: color.to_vec(),
-            }],
-        }
-    }
-
-    #[test]
-    fn png_replacement_changes_rust_rendered_pixels() {
-        let mut model = textured_quad([255, 0, 0, 255]);
-        let before = nie_render3d::render::render(&model, 0.0, 96, 96);
-        let blue_png = nie_formats::g4tx_decode::encode_rgba_to_png(&[0, 0, 255, 255], 1, 1)
-            .expect("encode fixture PNG");
-
-        let references = [TextureReference {
-            source: 0,
-            name: Some("albedo".to_owned()),
-        }];
-        model_replace_texture_png_impl(&mut model, &references, 0, &blue_png)
-            .expect("replace texture");
-        let after = nie_render3d::render::render(&model, 0.0, 96, 96);
-
-        assert_ne!(
-            before, after,
-            "the Rust renderer must consume the replacement"
-        );
-        assert!(before.as_chunks::<4>().0.iter().any(|p| p[0] > p[2] + 40));
-        assert!(after.as_chunks::<4>().0.iter().any(|p| p[2] > p[0] + 40));
-    }
-
-    #[test]
-    fn png_replacement_rejects_bad_indices_and_payloads() {
-        let mut model = textured_quad([255, 0, 0, 255]);
-        let references = [TextureReference {
-            source: 0,
-            name: None,
-        }];
-        assert!(model_replace_texture_png_impl(&mut model, &references, 1, b"png").is_err());
-        assert!(model_replace_texture_png_impl(&mut model, &references, 0, b"not png").is_err());
-    }
-
-    #[test]
-    fn standalone_editor_png_is_decoded_by_rust() {
-        let png =
-            nie_formats::g4tx_decode::encode_rgba_to_png(&[255, 0, 0, 255, 0, 255, 0, 255], 2, 1)
-                .expect("encode fixture PNG");
-        assert_eq!(model_validate_editor_png_impl(&png).unwrap(), [2, 1]);
-        assert!(model_validate_editor_png_impl(b"\x89PNG\r\n\x1a\ninvalid").is_err());
-    }
-}
-
 #[cfg(test)]
 mod tests_screen_spec {
     use super::NwScreenSpec;
 
-    /// La spécification que le navigateur ENVOIE se relit ici, au champ près.
-    ///
-    /// `MenuScreenBuilder::new` n'existe que sur `wasm32`, donc rien ne vérifiait la seule chose
-    /// qui puisse casser silencieusement entre les deux côtés : le nom des champs. La route
-    /// `/api/v1/screens/{screen}` rend `layers_missing` en snake_case, `menu-layout.ts` le
-    /// convertit en `layersMissing`, et une divergence ne se verrait qu'à l'écran — un layout
     /// sans calques manquants déclarés, donc des diagnostics faux.
     #[test]
     fn la_specification_envoyee_par_le_navigateur_se_relit() {
@@ -4366,7 +2333,6 @@ mod tests_screen_spec {
         assert_eq!(spec.layers_missing, ["declare_mais_absent"]);
     }
 
-    /// Les champs facultatifs le sont vraiment : un écran sans calque manquant ne doit pas
     /// faire échouer la lecture, sinon le navigateur perdrait les écrans les plus sains.
     #[test]
     fn les_champs_facultatifs_tolerent_labsence() {

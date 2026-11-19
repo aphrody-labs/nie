@@ -73,8 +73,6 @@ host = [
   "dep:nie-viola",
   "dep:nie-launcher",
   "dep:nie-lua",
-  "dep:nie-wiki",
-  "dep:nie-zukan",
   "dep:nie-ocgen",
   "dep:redis",
   "dep:schemars",
@@ -132,8 +130,6 @@ nie-computer-use = { path = "../../plugins/exe/nie-computer-use", version = "1.4
 nie-viola = { path = "../../plugins/launcher/nie-viola", version = "1.4.8", optional = true }
 nie-launcher = { path = "../../plugins/launcher/nie-launcher", version = "1.4.8", optional = true }
 nie-lua = { path = "../nie-lua", version = "1.4.8", features = ["host"], optional = true }
-nie-wiki = { path = "../nie-wiki", version = "1.4.8", optional = true }
-nie-zukan = { path = "../nie-zukan", version = "1.4.8", optional = true }
 nie-ocgen = { path = "../nie-ocgen", version = "1.4.8", features = ["cli"], optional = true }
 redis = { workspace = true, features = ["r2d2"], optional = true }
 rmcp = { version = "3.10.0", features = ["server", "transport-io", "macros", "schemars"], optional = true }

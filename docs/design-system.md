@@ -18,9 +18,8 @@ any agent using the Figma MCP on this repository.
 Rules:
 - A token name is the game's own identifier (the `FONT_COLOR` entry, the font file stem). Never
   rename to a generic scale (`primary`, `gray-500`).
-- Token values are read from the VFS at export time. `design/tokens.json` and `design/rg-m3.json`
-  are a hand-made Rose Griffon brand set, not the game's; they are scheduled for removal and are
-  never a source for nie.
+- Token values are read from the VFS at export time. The hand-made Rose Griffon brand sets
+  (`design/tokens.json`, `design/rg-m3.json`) are removed and were never a source for nie.
 
 ## 2. Components: menu screens
 
@@ -57,8 +56,8 @@ Code:
 - Decoding and export: Rust (`nie-formats`, `nie-data`, `nie-explore`), no UI framework.
 - Rendering: Bevy (game world, `nie-bevy`) and NSH for tools, see `docs/adr-ui-stack.md`.
 - Serving: `nie serve` and `nie-model-serve` (`docs/serve.md`), images on ghcr.
-- `crates/nie-ui-tree`: a generic UI tree (`UiNode`, `Theme`, `render_html`) used by azalee-app;
-  it is not the game's UI and does not feed the Figma export.
+- The generic UI tree crate (`nie-ui-tree`) and its consumers are deleted; no crate here renders a
+  UI that is not the game's.
 
 ## 4. Assets
 

@@ -54,10 +54,7 @@ bevy_ecs = { version = "0.20.1", default-features = false, features = ["std"] }
 bevy_image = { version = "0.20.1", default-features = false, features = [
   "bevy_reflect",
 ] }
-bevy_color = { version = "0.20.1", default-features = false }
 bevy_math = { version = "0.20.1", default-features = false }
-bevy_text = { version = "0.20.1", default-features = false }
-bevy_ui = { version = "0.20.1", default-features = false }
 bevy_mesh = { version = "0.20.1", default-features = false }
 bevy_reflect = { version = "0.20.1", default-features = false }
 bevy-wgpu-types = { package = "wgpu-types", version = "30.0.2", default-features = false }
@@ -68,29 +65,17 @@ console_error_panic_hook = "0.1.7"
 futures-lite = "2"
 rusqlite = { version = "0.43" }
 wasm-bindgen = { version = "0.2.130", default-features = false }
-wasm-bindgen-futures = "0.4"
-web-sys = { version = "0.3.107", default-features = false }
 crc32fast = { version = "1.5", default-features = false }
-nie-re-core = { path = "plugins/exe/nie-re-core", version = "1.4.8" }
 image_dds = { version = "0.7", default-features = false }
 memmap2 = { version = "0.9" }
-nie-camera = { default-features = false, path = "crates/nie-camera", version = "1.4.8" }
-nie-computer-use = { default-features = false, path = "plugins/exe/nie-computer-use", version = "1.4.8" }
 nie-data = { path = "crates/nie-data", version = "1.4.8" }
 nie-explore = { default-features = false, path = "crates/nie-explore", version = "1.4.8" }
-nie-forge = { default-features = false, path = "plugins/exe/nie-forge", version = "1.4.8" }
 nie-formats = { default-features = false, path = "crates/nie-formats", version = "1.4.8" }
 nie-index = { default-features = false, path = "plugins/exe/nie-index", version = "1.4.8" }
 nie-lua = { default-features = false, path = "crates/nie-lua", version = "1.4.8" }
-nie-model-serve = { default-features = false, path = "crates/nie-model-serve", version = "1.4.8" }
 nie-plugin = { path = "crates/nie-plugin", version = "1.4.8" }
 nie-pe = { default-features = false, path = "plugins/exe/nie-pe", version = "1.4.8" }
-nie-render3d = { default-features = false, path = "crates/nie-render3d", version = "1.4.8" }
 nie-save = { default-features = false, path = "plugins/save/nie-save", version = "1.4.8" }
-nie-seed = { default-features = false, path = "plugins/exe/nie-seed", version = "1.4.8" }
-nie-trace = { default-features = false, path = "plugins/exe/nie-trace", version = "1.4.8" }
-nie-wiki = { path = "crates/nie-wiki", version = "1.4.8" }
-nie-zukan = { default-features = false, path = "crates/nie-zukan", version = "1.4.8" }
 # Same feature set as bevy_ui: taffy's default `float_layout`/`table` features add `Style` fields that bevy_ui
 # does not initialise, and Cargo unifies features across the workspace.
 taffy = { version = "0.15.1", default-features = false, features = ["std", "taffy_tree", "block_layout", "flexbox", "grid", "content_size"] }

@@ -11,16 +11,13 @@ extern "C" {
 #endif
 
 /* Rose Griffon Rust/Bun contract 1.0.0 */
-#define RG_FFI_ABI_VERSION 1u
+#define RG_FFI_ABI_VERSION 2u
 
 /* ABI version of the loaded library; compare with RG_FFI_ABI_VERSION. */
 uint32_t rg_ffi_abi_version(void);
 
 /* Frees a string returned by this library. NULL is accepted. */
 void rg_string_free(char *s);
-
-/* Percent-encodes a VFS path segment by segment. Free the result with rg_string_free. */
-char * rg_sitemap_encode_path(const char *path);
 
 /* Decodes a cfg.bin (RDBN or T2B) and returns its SQL script; dialect 0 = PostgreSQL, 1 = SQLite. NULL when the bytes are not a cfg.bin. Free the result with rg_string_free. */
 char * rg_cfgbin_to_sql(const uint8_t *data, size_t data_len, int32_t dialect);

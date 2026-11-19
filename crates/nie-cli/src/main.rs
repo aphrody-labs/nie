@@ -8,8 +8,6 @@ mod output;
 mod plugins;
 #[cfg(feature = "host")]
 pub use output::CapturedCommand;
-#[cfg(feature = "host")]
-pub mod api;
 
 // The CLI is also an in-process library for the native MCP server. These
 // macros preserve normal terminal output while allowing one command running
@@ -93,15 +91,6 @@ fn parse_addr(s: &str) -> Result<i64, String> {
             .map_err(|e| e.to_string()),
         None => s.parse::<i64>().map_err(|e| e.to_string()),
     }
-}
-
-#[cfg(feature = "host")]
-fn default_data_root() -> PathBuf {
-    std::env::var_os("NIE_REPO_ROOT")
-        .map(PathBuf::from)
-        .or_else(|| std::env::current_dir().ok())
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("data")
 }
 
 #[derive(Parser)]
@@ -623,12 +612,6 @@ enum Cmd {
         #[command(subcommand)]
         op: SaveOp,
     },
-    /// Exploration game-data depuis le miroir SQLite (personnages, skills, items, équipes).
-    #[cfg(feature = "host")]
-    Wiki {
-        #[command(subcommand)]
-        op: WikiOp,
-    },
     /// Construit le manifeste CRC32->chemin pour tous les fichiers .g4md/.g4mg des CPK.
     /// Utilisé pour résoudre les ModelIdCrc des inagle_uniforms vers les chemins réels.
     #[cfg(feature = "host")]
@@ -690,7 +673,7 @@ enum Cmd {
     },
     /// Explorateur du VFS (CPK) : liste/cherche/prévisualise/extrait les ~254 800 fichiers du
     /// jeu, avec décodage structuré par format (G4MT/G4SK/G4MD/G4TX/…) et recherche de
-    /// personnage/technique par nom, ID ou code interne via le miroir wiki.
+    /// personnage/technique par nom, ID ou code interne.
     Vfs {
         #[command(subcommand)]
         op: VfsOp,
@@ -1149,7 +1132,7 @@ enum VfsOp {
         limit: usize,
         /// Sortie JSON (tableau compact sur une ligne) — pour consommation programmatique
         /// (ex. `nie_bridge.py` de l'addon Blender `plugins/nie-blender`, recherche de fichiers sans
-        /// dépendre du miroir wiki contrairement à `chara`/`waza`).
+        /// dépendre d'un index contrairement à `chara`/`waza`).
         #[arg(long, short = 'j')]
         json: bool,
         #[arg(long)]
@@ -1228,14 +1211,14 @@ enum VfsOp {
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Search native VFS characters by localized name, hash or internal code. Explicit --db opts into wiki.
+    /// Search native VFS characters by localized name, hash or internal code.
     /// puis liste ses fichiers dans le VFS (modèles, textures, animations…).
     Chara {
         /// Nom/ID/code interne — laisser vide avec `--element`/`--position` pour lister la
         /// catégorie entière (substitué en `""`, qui matche `LIKE '%%'` côté SQL).
         #[arg(default_value = "")]
         query: String,
-        /// N'affiche que les résultats wiki, sans lister les fichiers VFS associés.
+        /// N'affiche que les résultats, sans lister les fichiers VFS associés.
         #[arg(long)]
         no_paths: bool,
         /// Filtre par élément (ex. `Feu`, `Vent`, `Forêt`, `Montagne`, `Néant`), insensible à la casse.
@@ -1251,11 +1234,9 @@ enum VfsOp {
         #[arg(long, short = 'n', default_value_t = 50)]
         limit: usize,
         #[arg(long)]
-        db: Option<PathBuf>,
-        #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Search native VFS skills by localized name, hash or internal code. Explicit --db opts into wiki.
+    /// Search native VFS skills by localized name, hash or internal code.
     Waza {
         /// Nom/ID/code interne — laisser vide avec `--category`/`--element` pour lister la
         /// catégorie entière.
@@ -1274,8 +1255,6 @@ enum VfsOp {
         json: bool,
         #[arg(long, short = 'n', default_value_t = 50)]
         limit: usize,
-        #[arg(long)]
-        db: Option<PathBuf>,
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
@@ -1741,679 +1720,6 @@ enum QueueOp {
     Len,
     /// Vide la frontière.
     Reset,
-}
-
-#[cfg(feature = "host")]
-#[derive(Subcommand)]
-enum WikiOp {
-    /// Print an exact joined character card as JSON using the shared wiki library.
-    Card {
-        id: String,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-    },
-    /// Rank supplied encyclopedia candidates without network access or database writes.
-    ZukanRank {
-        #[arg(long)]
-        entry: std::path::PathBuf,
-        #[arg(long)]
-        candidates: std::path::PathBuf,
-        #[arg(long, default_value_t = 10)]
-        max_results: u32,
-    },
-    /// Profil complet d'un personnage (stats, techniques, auras).
-    Chara {
-        /// Nom, ID ou code interne du personnage (ex: "Mark", "0x99A1C150", "c01000010").
-        query: String,
-        /// Sortie JSON machine.
-        #[arg(long, short = 'j')]
-        json: bool,
-        /// Chemin vers le miroir SQLite (override NIE_WIKI_DB / SQLITE_DB_PATH).
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-    },
-    /// Profil d'une technique / skill.
-    Skill {
-        /// Nom, ID ou code interne de la technique (ex: "Tempête du désert", "whd00580").
-        query: String,
-        #[arg(long, short = 'j')]
-        json: bool,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-        /// Root containing the canonical main, passive and aura skill corpora.
-        #[arg(long, env = "DATA_ROOT")]
-        data_root: Option<std::path::PathBuf>,
-    },
-    /// Profil d'un item / objet.
-    Item {
-        /// Nom, ID ou code interne de l'objet.
-        query: String,
-        #[arg(long, short = 'j')]
-        json: bool,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-    },
-    /// Profil d'une équipe.
-    Team {
-        /// Nom, ID ou code interne de l'équipe (ex: "Raimon", "0xF01BB293").
-        query: String,
-        #[arg(long, short = 'j')]
-        json: bool,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-        /// Root containing `all-gamedata/teams.json`.
-        #[arg(long, env = "DATA_ROOT")]
-        data_root: Option<std::path::PathBuf>,
-    },
-    /// Compare deux personnages côte à côte (stats interpolées, moveset, diff).
-    Compare {
-        /// Premier personnage (nom / ID / code interne).
-        chara1: String,
-        /// Deuxième personnage.
-        chara2: String,
-        /// Niveau pour l'interpolation de stats (1–99).
-        #[arg(long, short = 'l', default_value = "99")]
-        level: u8,
-        #[arg(long, short = 'j')]
-        json: bool,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-        #[arg(long, env = "DATA_ROOT", default_value = "data")]
-        data_root: std::path::PathBuf,
-    },
-    /// Recherche multi-tables (characters / skills / items / teams / auras / keshins / souls).
-    Search {
-        /// Terme de recherche.
-        query: String,
-        /// Nombre maximum de résultats (défaut 20).
-        #[arg(long, short = 'n', default_value = "20")]
-        limit: usize,
-        #[arg(long, short = 'j')]
-        json: bool,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-    },
-    /// List auras, Keshins, Souls, Miximax and awakenings from the IEVR mirror.
-    AuraList {
-        #[arg(long)]
-        query: Option<String>,
-        #[arg(long)]
-        type_slug: Option<String>,
-        #[arg(long, default_value_t = 1)]
-        page: u32,
-        #[arg(long, default_value_t = 50)]
-        limit: u32,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-    },
-    /// Resolve an aura by identifier, asset code or family.
-    Aura {
-        id: String,
-        #[arg(long)]
-        type_slug: Option<String>,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-    },
-    /// List historical and special tactics from the IEVR mirror.
-    TacticList {
-        #[arg(long)]
-        query: Option<String>,
-        #[arg(long, default_value_t = 1)]
-        page: u32,
-        #[arg(long, default_value_t = 50)]
-        limit: u32,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-    },
-    /// Resolve a tactic by ID, internal code or slug.
-    Tactic {
-        id: String,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-    },
-    /// List IEVR passive skills from the mirror.
-    PassiveList {
-        #[arg(long)]
-        query: Option<String>,
-        #[arg(long)]
-        category: Option<String>,
-        #[arg(long)]
-        boost_type: Option<String>,
-        #[arg(long, default_value_t = 1)]
-        page: u32,
-        #[arg(long, default_value_t = 60)]
-        limit: u32,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-    },
-    /// Resolve a passive by ID or embedded identifier.
-    Passive {
-        id: String,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-    },
-    /// List global passive scaling rules.
-    PassiveScaling {
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-    },
-    /// Exécute une requête SQL read-only sur le miroir et affiche le résultat.
-    ///
-    /// Seuls SELECT, PRAGMA, EXPLAIN et WITH … SELECT sont autorisés.
-    Db {
-        /// Requête SQL (ex: "SELECT COUNT(*) FROM inagle_characters").
-        sql: String,
-        #[arg(long, short = 'j')]
-        json: bool,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-    },
-    /// Génère une équipe aléatoire depuis le miroir.
-    ///
-    /// Requiert un seed explicite — le RNG non seédé est interdit dans nie.
-    RandomTeam {
-        /// Seed entier pour le PRNG (déterministe).
-        #[arg(long, short = 's')]
-        seed: u64,
-        /// Formation (ex: 4-4-2, 4-3-3, 3-5-2). Défaut: 4-4-2.
-        #[arg(long, short = 'f', default_value = "4-4-2")]
-        formation: String,
-        /// Filtre élément (Feu/Vent/Forêt/Montagne/Néant). Optionnel.
-        #[arg(long, short = 'e')]
-        element: Option<String>,
-        /// Filtre style de jeu. Optionnel.
-        #[arg(long, short = 'p')]
-        playstyle: Option<String>,
-        #[arg(long, short = 'j')]
-        json: bool,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-    },
-    /// Gère les compositions d'équipes depuis le miroir (actions: list / show / calc).
-    ///
-    /// Note : list/add/delete dans PostgreSQL (user_teams) nécessitent DATABASE_URL.
-    /// La partie miroir SQLite (inagle_team_build) est accessible sans réseau.
-    TeamBuilder {
-        /// Action : list | show <id> | calc <id>.
-        action: String,
-        /// Arguments de l'action (ex: ID pour show/calc).
-        #[arg(trailing_var_arg = true)]
-        args: Vec<String>,
-        #[arg(long, short = 'j')]
-        json: bool,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-    },
-    /// Diagnostic du miroir SQLite, Redis, dépôt et processus.
-    Status {
-        #[arg(long, short = 'j')]
-        json: bool,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-        #[arg(long, env = "REDIS_URL", default_value = "redis://127.0.0.1:6379/0")]
-        redis_url: String,
-    },
-    /// Commande Redis simple (get / set / del) sur db0 par défaut.
-    Redis {
-        /// Commande : get | set | del.
-        cmd: String,
-        /// Clé Redis.
-        key: String,
-        /// Valeur (requis pour set).
-        val: Option<String>,
-        /// URL Redis complète (ex: redis://127.0.0.1/3 pour db3).
-        #[arg(long, default_value = "redis://127.0.0.1/0")]
-        redis_url: String,
-        #[arg(long, short = 'j')]
-        json: bool,
-    },
-    /// Audite la cohérence du miroir (counts, nulls sur tables clés).
-    Audit {
-        #[arg(long, short = 'j')]
-        json: bool,
-        #[arg(long, env = "NIE_WIKI_DB")]
-        db: Option<std::path::PathBuf>,
-        /// Root containing `all-gamedata/skills.json`.
-        #[arg(long, env = "DATA_ROOT")]
-        data_root: Option<std::path::PathBuf>,
-    },
-    /// Recherche dans le corpus narratif canonique.
-    Dialogue {
-        /// Texte à rechercher (FR / EN / JA).
-        #[arg(default_value = "")]
-        query: String,
-        /// Filtre par nom ou identifiant du locuteur.
-        #[arg(long, short = 's')]
-        speaker: Option<String>,
-        /// Nombre de résultats max (défaut 10).
-        #[arg(long, short = 'n', default_value = "10")]
-        limit: usize,
-        #[arg(long, short = 'j')]
-        json: bool,
-        /// Racine contenant `all-gamedata/story_text_database.json`.
-        #[arg(long, env = "DATA_ROOT")]
-        data_root: Option<std::path::PathBuf>,
-    },
-}
-
-#[cfg(feature = "host")]
-fn wiki_cmd(op: WikiOp) -> anyhow::Result<()> {
-    use nie_wiki::{mirror, query, render};
-
-    match op {
-        WikiOp::Card { id, db } => {
-            let card = api::execute_wiki(api::WikiCommand::CharacterCard { id, database: db })?;
-            println!("{}", serde_json::to_string_pretty(&card)?);
-        }
-        WikiOp::ZukanRank {
-            entry,
-            candidates,
-            max_results,
-        } => {
-            fn bounded_json(path: &std::path::Path, limit: usize) -> anyhow::Result<String> {
-                use std::io::Read;
-                let file = std::fs::File::open(path)
-                    .map_err(|_| anyhow::anyhow!("Ranking input could not be opened"))?;
-                let mut bytes = Vec::new();
-                file.take(limit as u64 + 1)
-                    .read_to_end(&mut bytes)
-                    .map_err(|_| anyhow::anyhow!("Ranking input could not be read"))?;
-                anyhow::ensure!(bytes.len() <= limit, "Ranking input exceeds its byte limit");
-                String::from_utf8(bytes)
-                    .map_err(|_| anyhow::anyhow!("Ranking input must be UTF-8 JSON"))
-            }
-            let entry = bounded_json(&entry, nie_zukan::api::MAX_ZUKAN_ENTRY_JSON_BYTES)?;
-            let candidates =
-                bounded_json(&candidates, nie_zukan::api::MAX_ZUKAN_CANDIDATES_JSON_BYTES)?;
-            let output = nie_zukan::api::rank_json(&entry, &candidates, max_results)
-                .map_err(anyhow::Error::msg)?;
-            println!("{output}");
-        }
-        // ─── Commandes existantes ────────────────────────────────────────────
-        WikiOp::Chara { query: q, json, db } => {
-            let conn = mirror::open(db.as_deref())?;
-            let matches = query::search_characters(&conn, &q)?;
-
-            if matches.is_empty() {
-                if json {
-                    println!("[]");
-                } else {
-                    println!("Aucun personnage trouve pour : \"{}\"", q);
-                }
-                return Ok(());
-            }
-
-            if matches.len() > 1 && !json {
-                // Vérifier si c'est une correspondance exacte sur un seul personnage logique
-                let first_chara_id = &matches[0].chara_id;
-                let all_same = matches.iter().all(|m| &m.chara_id == first_chara_id);
-                if !all_same {
-                    println!("Plusieurs personnages correspondent a \"{}\" :", q);
-                    for m in &matches {
-                        println!(
-                            "  - {} / {} (ID: {} | Code: {})",
-                            m.name_fr.as_deref().unwrap_or("N/A"),
-                            m.name_en.as_deref().unwrap_or("N/A"),
-                            m.id,
-                            m.internal_code.as_deref().unwrap_or("N/A"),
-                        );
-                    }
-                    return Ok(());
-                }
-            }
-
-            // Charger le profil complet du premier match
-            let target_id = &matches[0].id;
-            let profile = query::get_character(&conn, target_id)?
-                .ok_or_else(|| anyhow::anyhow!("profil introuvable pour {}", target_id))?;
-
-            if json {
-                println!("{}", serde_json::to_string_pretty(&profile)?);
-            } else {
-                println!("{}", render::render_chara_profile(&profile, &conn));
-            }
-        }
-
-        WikiOp::Skill {
-            query: q,
-            json,
-            db: _,
-            data_root,
-        } => {
-            let data_root = data_root
-                .or_else(|| std::env::var_os("DATA_PATH").map(std::path::PathBuf::from))
-                .unwrap_or_else(default_data_root);
-            let result = api::execute_wiki(api::WikiCommand::SkillLookup {
-                query: q.clone(),
-                data_root,
-            })?;
-            if json {
-                println!("{}", serde_json::to_string_pretty(&result)?);
-            } else {
-                println!("{}", render::render_skill_value(&result, &q));
-            }
-        }
-
-        WikiOp::Item { query: q, json, db } => {
-            let result = api::execute_wiki(api::WikiCommand::ItemLookup {
-                query: q.clone(),
-                database: db,
-            })?;
-            if json {
-                println!("{}", serde_json::to_string_pretty(&result)?);
-            } else {
-                println!("{}", render::render_item_value(&result, &q));
-            }
-        }
-
-        WikiOp::Team {
-            query: q,
-            json,
-            db,
-            data_root,
-        } => {
-            let data_root = data_root
-                .or_else(|| std::env::var_os("DATA_PATH").map(std::path::PathBuf::from))
-                .unwrap_or_else(default_data_root);
-            let result = api::execute_wiki(api::WikiCommand::TeamLookup {
-                query: q.clone(),
-                database: db,
-                data_root,
-            })?;
-            if json {
-                println!("{}", serde_json::to_string_pretty(&result)?);
-            } else {
-                println!("{}", render::render_team_value(&result, &q));
-            }
-        }
-
-        // ─── Nouvelles commandes ─────────────────────────────────────────────
-        WikiOp::Compare {
-            chara1,
-            chara2,
-            level,
-            json,
-            db,
-            data_root,
-        } => {
-            anyhow::ensure!(
-                (1..=99).contains(&level),
-                "le niveau doit être compris entre 1 et 99 (reçu: {})",
-                level
-            );
-            let result = api::execute_wiki(api::WikiCommand::Compare {
-                chara1,
-                chara2,
-                level,
-                database: db,
-                data_root,
-            })?;
-            if json {
-                println!("{}", serde_json::to_string_pretty(&result)?);
-            } else {
-                let result: nie_wiki::model::CompareResult = serde_json::from_value(result)?;
-                println!("{}", render::render_compare(&result));
-            }
-        }
-
-        WikiOp::Search {
-            query: q,
-            limit,
-            json,
-            db,
-        } => {
-            let results = api::execute_wiki(api::WikiCommand::Search {
-                query: q,
-                limit,
-                database: db,
-            })?;
-            if json {
-                println!("{}", serde_json::to_string_pretty(&results)?);
-            } else {
-                let results: Vec<nie_wiki::model::SearchResult> = serde_json::from_value(results)?;
-                println!("{}", render::render_search_results(&results));
-            }
-        }
-
-        WikiOp::AuraList {
-            query,
-            type_slug,
-            page,
-            limit,
-            db,
-        } => {
-            let value = api::execute_wiki(api::WikiCommand::AuraList {
-                query,
-                type_slug,
-                page,
-                limit,
-                database: db,
-            })?;
-            println!("{}", serde_json::to_string_pretty(&value)?);
-        }
-        WikiOp::Aura { id, type_slug, db } => {
-            let value = api::execute_wiki(api::WikiCommand::Aura {
-                id,
-                type_slug,
-                database: db,
-            })?;
-            println!("{}", serde_json::to_string_pretty(&value)?);
-        }
-        WikiOp::TacticList {
-            query,
-            page,
-            limit,
-            db,
-        } => {
-            let value = api::execute_wiki(api::WikiCommand::TacticList {
-                query,
-                page,
-                limit,
-                database: db,
-            })?;
-            println!("{}", serde_json::to_string_pretty(&value)?);
-        }
-        WikiOp::Tactic { id, db } => {
-            let value = api::execute_wiki(api::WikiCommand::Tactic { id, database: db })?;
-            println!("{}", serde_json::to_string_pretty(&value)?);
-        }
-        WikiOp::PassiveList {
-            query,
-            category,
-            boost_type,
-            page,
-            limit,
-            db,
-        } => {
-            let value = api::execute_wiki(api::WikiCommand::PassiveList {
-                query,
-                category,
-                boost_type,
-                page,
-                limit,
-                database: db,
-            })?;
-            println!("{}", serde_json::to_string_pretty(&value)?);
-        }
-        WikiOp::Passive { id, db } => {
-            let value = api::execute_wiki(api::WikiCommand::Passive { id, database: db })?;
-            println!("{}", serde_json::to_string_pretty(&value)?);
-        }
-        WikiOp::PassiveScaling { db } => {
-            let value = api::execute_wiki(api::WikiCommand::PassiveScaling { database: db })?;
-            println!("{}", serde_json::to_string_pretty(&value)?);
-        }
-
-        WikiOp::Db { sql, json, db } => {
-            if sql.trim().is_empty() {
-                anyhow::bail!("requête SQL vide");
-            }
-            let conn = mirror::open(db.as_deref())?;
-            let rows = query::exec_readonly_sql(&conn, &sql)?;
-            if json {
-                println!("{}", serde_json::to_string_pretty(&rows)?);
-            } else {
-                println!("Resultats ({} lignes) :", rows.len());
-                println!("{}", render::render_ascii_table(&rows));
-            }
-        }
-
-        WikiOp::RandomTeam {
-            seed,
-            formation,
-            element,
-            playstyle,
-            json,
-            db,
-        } => {
-            let team = api::execute_wiki(api::WikiCommand::RandomTeam {
-                seed,
-                formation,
-                element,
-                playstyle,
-                database: db,
-            })?;
-            if json {
-                println!("{}", serde_json::to_string_pretty(&team)?);
-            } else {
-                let team: nie_wiki::model::RandomTeam = serde_json::from_value(team)?;
-                println!("{}", render::render_random_team(&team));
-            }
-        }
-
-        WikiOp::TeamBuilder {
-            action,
-            args,
-            json,
-            db,
-        } => match action.as_str() {
-            "list" => {
-                let entries = api::execute_wiki(api::WikiCommand::TeamBuilderList {
-                    database: db.clone(),
-                })?;
-                if json {
-                    println!("{}", serde_json::to_string_pretty(&entries)?);
-                } else {
-                    let entries: Vec<nie_wiki::model::TeamBuildEntry> =
-                        serde_json::from_value(entries)?;
-                    println!("{}", render::render_team_build_list(&entries));
-                }
-            }
-            "show" | "calc" => {
-                let id = args.first().ok_or_else(|| {
-                    anyhow::anyhow!("Usage: nie wiki team-builder {} <id>", action)
-                })?;
-                let entry = api::execute_wiki(api::WikiCommand::TeamBuilderEntry {
-                    id: id.clone(),
-                    database: db.clone(),
-                });
-                match entry {
-                    Err(error) if error.to_string().contains("not found") => {
-                        if json {
-                            println!("null");
-                        } else {
-                            println!("Aucune entree trouvee pour : \"{}\"", id);
-                        }
-                    }
-                    Ok(e) => {
-                        if json {
-                            println!("{}", serde_json::to_string_pretty(&e)?);
-                        } else {
-                            let e: nie_wiki::model::TeamBuildEntry = serde_json::from_value(e)?;
-                            println!("{}", render::render_team_build_entry(&e));
-                        }
-                    }
-                    Err(error) => return Err(error),
-                }
-            }
-            other => {
-                anyhow::bail!(
-                    "action inconnue : '{}'. Actions supportées depuis le miroir : list / show <id> / calc <id>.\n\
-                         Note : add/delete/save opèrent sur PostgreSQL (user_teams) et ne sont pas portés ici.",
-                    other
-                );
-            }
-        },
-
-        WikiOp::Status {
-            json,
-            db,
-            redis_url,
-        } => {
-            let db_path = mirror::resolve(db.as_deref())?;
-            let conn = mirror::open(Some(&db_path))?;
-            let report = query::status_report(&conn, &db_path, &redis_url)?;
-            if json {
-                println!("{}", serde_json::to_string_pretty(&report)?);
-            } else {
-                println!("{}", render::render_status(&report));
-            }
-        }
-
-        WikiOp::Redis {
-            cmd,
-            key,
-            val,
-            redis_url,
-            json,
-        } => {
-            let result = query::redis_cmd(&redis_url, &cmd, &key, val.as_deref())?;
-            if json {
-                let output = if cmd.eq_ignore_ascii_case("get") {
-                    serde_json::json!({ "key": key, "value": result })
-                } else {
-                    serde_json::json!({ "success": true, "key": key })
-                };
-                println!("{}", serde_json::to_string_pretty(&output)?);
-            } else {
-                match cmd.to_ascii_lowercase().as_str() {
-                    "get" => println!("{}", serde_json::to_string_pretty(&result)?),
-                    "set" => println!("Clé Redis {key} mise à jour avec succès."),
-                    "del" => println!("Clé Redis {key} supprimée avec succès."),
-                    _ => unreachable!("redis_cmd validates the operation"),
-                }
-            }
-        }
-
-        WikiOp::Audit {
-            json,
-            db,
-            data_root,
-        } => {
-            let conn = mirror::open(db.as_deref())?;
-            let data_root = data_root
-                .or_else(|| std::env::var_os("DATA_PATH").map(std::path::PathBuf::from))
-                .unwrap_or_else(default_data_root);
-            let skills = data_root.join("all-gamedata/skills.json");
-            let report = query::audit_mirror(&conn, &skills)?;
-            if json {
-                println!("{}", serde_json::to_string_pretty(&report)?);
-            } else {
-                println!("{}", render::render_audit(&report));
-            }
-        }
-
-        WikiOp::Dialogue {
-            query: q,
-            speaker,
-            limit,
-            json,
-            data_root,
-        } => {
-            let data_root = data_root
-                .or_else(|| std::env::var_os("DATA_PATH").map(std::path::PathBuf::from))
-                .unwrap_or_else(default_data_root);
-            let database = data_root.join("all-gamedata/story_text_database.json");
-            let matches = query::search_dialogues(&database, &q, speaker.as_deref(), limit)?;
-            if json {
-                println!("{}", serde_json::to_string_pretty(&matches)?);
-            } else {
-                println!("{}", render::render_dialogues(&matches, &q));
-            }
-        }
-    }
-
-    Ok(())
 }
 
 /// Opérations Steam — mêmes noms et mêmes variables d'environnement que le binaire `nie-steam-depot`,
@@ -3595,7 +2901,6 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
         } => recover_cmd(&db, &exe, dry_run, ghidra_csv.as_deref()),
         Cmd::Save { op } => save_cmd(op),
         #[cfg(feature = "host")]
-        Cmd::Wiki { op } => wiki_cmd(op),
         #[cfg(feature = "host")]
         Cmd::UniformMap { game_dir, out } => uniform_map(&racine_jeu(game_dir), &out),
         #[cfg(feature = "host")]
@@ -6830,14 +6135,12 @@ fn vfs_cmd(op: VfsOp) -> anyhow::Result<()> {
             position,
             json,
             limit,
-            db,
             game_dir,
         } => {
             let opts = SearchOpts {
                 show_paths: !no_paths,
                 json,
                 limit,
-                db: db.as_deref(),
                 game_dir,
             };
             vfs_search_chara(&query, element.as_deref(), position.as_deref(), opts)
@@ -6849,14 +6152,12 @@ fn vfs_cmd(op: VfsOp) -> anyhow::Result<()> {
             element,
             json,
             limit,
-            db,
             game_dir,
         } => {
             let opts = SearchOpts {
                 show_paths: !no_paths,
                 json,
                 limit,
-                db: db.as_deref(),
                 game_dir,
             };
             vfs_search_waza(&query, category.as_deref(), element.as_deref(), opts)
@@ -6942,7 +6243,7 @@ fn vfs_ls(prefix: &str, game_dir: Option<PathBuf>) -> anyhow::Result<()> {
 }
 
 /// Une entrée de `nie vfs find --json` — même convention compacte-sur-une-ligne que
-/// [`SearchJsonEntry`] (`chara`/`waza`), mais SANS dépendance au miroir wiki : `find` marche sur
+/// [`SearchJsonEntry`] (`chara`/`waza`), mais sans index préalable : `find` marche sur
 /// n'importe quelle install du jeu (VFS seul), c'est la recherche « fichiers » générique que
 /// `nie_bridge.py` (addon Blender `plugins/nie-blender`) utilise pour son panneau de recherche.
 #[derive(serde::Serialize)]
@@ -7517,47 +6818,16 @@ fn vfs_formats(
     Ok(())
 }
 
-/// Vrai si `have` (optionnel) contient `want`, insensible à la casse — `want=None` = pas de
-/// filtre. Sous-chaîne plutôt qu'égalité stricte : les catégories réelles du miroir sont
-/// bilingues (ex. `"Tir/Shoot"`, `"Défense/Block"`) — `--category Tir` doit matcher.
-#[cfg(feature = "host")]
-fn matches_filter(have: Option<&str>, want: Option<&str>) -> bool {
-    match want {
-        None => true,
-        Some(w) => have.is_some_and(|h| h.to_lowercase().contains(&w.to_lowercase())),
-    }
-}
-
-/// Entrée JSON d'un résultat de recherche chara/waza (`--json`) — consommée par
-/// `plugins/nie-blender/nie_bridge.py` (panneau de recherche Blender) ou tout autre script.
-#[cfg(feature = "host")]
-#[derive(serde::Serialize)]
-struct SearchJsonEntry {
-    id: String,
-    internal_code: Option<String>,
-    name_fr: Option<String>,
-    name_en: Option<String>,
-    name_ja: Option<String>,
-    /// Élément (chara/waza) ou poste (chara uniquement, réutilise ce champ).
-    element: Option<String>,
-    /// Poste (chara) ou catégorie (waza).
-    category_or_position: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    is_hyper: Option<bool>,
-    related_paths: Vec<String>,
-}
-
 /// Options communes à `vfs_search_chara`/`vfs_search_waza` (regroupées pour l'arité — clippy
 /// `too_many_arguments`), indépendantes des filtres de catégorie propres à chaque famille.
-struct SearchOpts<'a> {
+struct SearchOpts {
     show_paths: bool,
     json: bool,
     limit: usize,
-    db: Option<&'a std::path::Path>,
     game_dir: Option<PathBuf>,
 }
 
-/// Cherche un personnage dans le miroir wiki (nom FR/EN/JA, ID ou code interne), avec filtres
+/// Cherche un personnage dans les `.cfg.bin` du VFS (nom, ID ou code interne), avec filtres
 /// optionnels par élément/poste (catégorie), puis liste ses fichiers dans le VFS (le code
 /// interne, ex. `c01000100`, apparaît dans les chemins modèle/texture/anim du personnage).
 fn vfs_domain_search(
@@ -7612,223 +6882,49 @@ fn vfs_search_chara(
     query: &str,
     element: Option<&str>,
     position: Option<&str>,
-    opts: SearchOpts<'_>,
+    opts: SearchOpts,
 ) -> anyhow::Result<()> {
     let SearchOpts {
         show_paths,
         json,
         limit,
-        db,
         game_dir,
     } = opts;
-
-    if db.is_none() {
-        return vfs_domain_search(
-            "characters",
-            query,
-            &[("element", element), ("position", position)],
-            show_paths,
-            json,
-            limit,
-            game_dir,
-        );
-    }
-    #[cfg(not(feature = "host"))]
-    {
-        let _ = db;
-        anyhow::bail!("--db wiki SQLite mirror requires the `host` feature");
-    }
-    #[cfg(feature = "host")]
-    {
-        use nie_wiki::{mirror, query as wiki_query};
-        let conn = mirror::open(db)?;
-        let mut matches = wiki_query::search_characters(&conn, query)?;
-        matches.retain(|m| {
-            matches_filter(m.element.as_deref(), element)
-                && matches_filter(m.position.as_deref(), position)
-        });
-
-        if matches.is_empty() {
-            if json {
-                println!("[]");
-            } else {
-                println!(
-                    "Aucun personnage trouvé pour « {query} » (miroir wiki, filtres compris)."
-                );
-            }
-            return Ok(());
-        }
-
-        let vfs = if show_paths || json {
-            Some(open_vfs(game_dir)?)
-        } else {
-            None
-        };
-
-        if json {
-            let entries: Vec<SearchJsonEntry> = matches
-                .iter()
-                .map(|m| SearchJsonEntry {
-                    id: m.id.clone(),
-                    internal_code: m.internal_code.clone(),
-                    name_fr: m.name_fr.clone(),
-                    name_en: m.name_en.clone(),
-                    name_ja: m.name_ja.clone(),
-                    element: m.element.clone(),
-                    category_or_position: m.position.clone(),
-                    is_hyper: None,
-                    related_paths: match (&vfs, m.internal_code.as_deref()) {
-                        (Some(vfs), Some(code)) => vfs
-                            .iter()
-                            .filter(|(p, _)| p.contains(code))
-                            .map(|(p, _)| p.to_string())
-                            .collect(),
-                        _ => Vec::new(),
-                    },
-                })
-                .collect();
-            println!("{}", serde_json::to_string(&entries)?);
-            return Ok(());
-        }
-
-        for m in &matches {
-            println!(
-                "{} / {} (ID {} | code {})",
-                m.name_fr.as_deref().unwrap_or("?"),
-                m.name_en.as_deref().unwrap_or("?"),
-                m.id,
-                m.internal_code.as_deref().unwrap_or("?"),
-            );
-            if let (Some(vfs), Some(code)) = (&vfs, m.internal_code.as_deref()) {
-                vfs_print_related(vfs, code, limit);
-            }
-        }
-        Ok(())
-    }
+    vfs_domain_search(
+        "characters",
+        query,
+        &[("element", element), ("position", position)],
+        show_paths,
+        json,
+        limit,
+        game_dir,
+    )
 }
 
-/// Cherche une technique/waza dans le miroir wiki (nom FR/EN/JA, ID ou code interne), avec
-/// filtres optionnels par catégorie/élément, puis liste ses fichiers dans le VFS (le code
-/// interne, ex. `whs00010`, apparaît dans les chemins de cut-in/telop/vidéo de la technique).
+/// Cherche une technique dans les `.cfg.bin` du VFS (nom, ID ou code interne), avec filtres
+/// optionnels par catégorie/élément, puis liste ses fichiers dans le VFS (le code interne, ex.
+/// `whs00010`, apparaît dans les chemins de cut-in/telop/vidéo de la technique).
 fn vfs_search_waza(
     query: &str,
     category: Option<&str>,
     element: Option<&str>,
-    opts: SearchOpts<'_>,
+    opts: SearchOpts,
 ) -> anyhow::Result<()> {
     let SearchOpts {
         show_paths,
         json,
         limit,
-        db,
         game_dir,
     } = opts;
-
-    if db.is_none() {
-        return vfs_domain_search(
-            "skills",
-            query,
-            &[("category", category), ("element", element)],
-            show_paths,
-            json,
-            limit,
-            game_dir,
-        );
-    }
-    #[cfg(not(feature = "host"))]
-    {
-        let _ = db;
-        anyhow::bail!("--db wiki SQLite mirror requires the `host` feature");
-    }
-    #[cfg(feature = "host")]
-    {
-        use nie_wiki::{mirror, query as wiki_query};
-        let conn = mirror::open(db)?;
-        let mut matches = wiki_query::search_skills(&conn, query)?;
-        matches.retain(|m| {
-            matches_filter(m.category.as_deref(), category)
-                && matches_filter(m.element.as_deref(), element)
-        });
-
-        if matches.is_empty() {
-            if json {
-                println!("[]");
-            } else {
-                println!(
-                    "Aucune technique trouvée pour « {query} » (miroir wiki, filtres compris)."
-                );
-            }
-            return Ok(());
-        }
-
-        let vfs = if show_paths || json {
-            Some(open_vfs(game_dir)?)
-        } else {
-            None
-        };
-
-        if json {
-            let entries: Vec<SearchJsonEntry> = matches
-                .iter()
-                .map(|m| SearchJsonEntry {
-                    id: m.id.clone(),
-                    internal_code: m.internal_code.clone(),
-                    name_fr: m.name_fr.clone(),
-                    name_en: m.name_en.clone(),
-                    name_ja: m.name_ja.clone(),
-                    element: m.element.clone(),
-                    category_or_position: m.category.clone(),
-                    is_hyper: Some(m.is_hyper),
-                    related_paths: match (&vfs, m.internal_code.as_deref()) {
-                        (Some(vfs), Some(code)) => vfs
-                            .iter()
-                            .filter(|(p, _)| p.contains(code))
-                            .map(|(p, _)| p.to_string())
-                            .collect(),
-                        _ => Vec::new(),
-                    },
-                })
-                .collect();
-            println!("{}", serde_json::to_string(&entries)?);
-            return Ok(());
-        }
-
-        for m in &matches {
-            println!(
-                "{} / {} (ID {} | code {}){}",
-                m.name_fr.as_deref().unwrap_or("?"),
-                m.name_en.as_deref().unwrap_or("?"),
-                m.id,
-                m.internal_code.as_deref().unwrap_or("?"),
-                if m.is_hyper { "  [hyper]" } else { "" },
-            );
-            if let (Some(vfs), Some(code)) = (&vfs, m.internal_code.as_deref()) {
-                vfs_print_related(vfs, code, limit);
-            }
-        }
-        Ok(())
-    }
-}
-
-/// Liste les chemins VFS contenant `needle` (code interne d'un chara/waza), bornés à `limit`.
-#[cfg(feature = "host")]
-fn vfs_print_related(vfs: &nie_formats::vfs::Vfs, needle: &str, limit: usize) {
-    let mut hits: Vec<&str> = vfs
-        .iter()
-        .filter(|(p, _)| p.contains(needle))
-        .map(|(p, _)| p)
-        .collect();
-    hits.sort_unstable();
-    let total = hits.len();
-    for p in hits.iter().take(limit) {
-        println!("    {p}");
-    }
-    let capped = if total > limit {
-        format!(" (limité à {limit})")
-    } else {
-        String::new()
-    };
-    println!("    → {total} fichier(s) VFS contenant « {needle} »{capped}\n");
+    vfs_domain_search(
+        "skills",
+        query,
+        &[("category", category), ("element", element)],
+        show_paths,
+        json,
+        limit,
+        game_dir,
+    )
 }
 
 #[cfg(test)]

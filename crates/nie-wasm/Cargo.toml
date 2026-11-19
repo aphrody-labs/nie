@@ -23,87 +23,25 @@ nie-formats = { workspace = true, features = ["serde", "textures", "audio-decode
 # nie-data (lookup skill/aura/item) avec la feature `serde` pour sérialiser les résultats en JSON
 # côté navigateur.
 nie-data = { workspace = true, features = ["serde"] }
-nie-save = { workspace = true, features = ["serde"] }
-# Le rendu 3D des VRAIS modèles du jeu. `default-features = false` retire `clap` (l'exécutable)
-# et laisse le rastériseur CPU pur Rust : aucun GPU requis, et c'est exactement le code dont les
-# tests golden natifs vérifient la sortie.
-nie-render3d.workspace = true
-# Decodeur de bytecode Lua 5.2 SANS la VM : `default-features = false` retire mlua (Lua
-# vendored en C), qui ne se construit pas pour wasm32. Le module `bytecode` est pur Rust.
-nie-lua = { workspace = true, default-features = false }
 # Shared VFS content dispatcher. Native filesystem search and the Lua VM remain behind
 # nie-explore's disabled `host` feature; browser bytes use the same portable parsers as the CLI.
 nie-explore = { workspace = true, default-features = false }
-# Byte-exact executable comparison from the PE forge, without its optional serde surface.
-nie-pe.workspace = true
-# Bounded x86-64 lifting and blocker diagnostics from the executable forge. Database-backed
-# reference storage stays outside the browser through the disabled `redb` feature.
-nie-forge = { workspace = true, default-features = false }
-# Single RE core (bun-re): safe in-memory minidump parsing (the browser wrapper exposes metadata
-# only and never copies captured process memory back into JavaScript) and portable `.pdata`
-# inspection. The `nie` feature (SQLite, filesystem) stays disabled.
-nie-re-core.workspace = true
-# Credential-free Steam depot selection/collision planning; the `depot` client feature (network,
-# token cache) stays disabled.
-nie-steam = { workspace = true }
-bevy_app = { workspace = true, optional = true }
-bevy_asset = { workspace = true, optional = true }
-bevy_ecs = { workspace = true, optional = true }
-nie-bevy = { path = "../../plugins/bevy/nie-bevy", version = "1.4.8", optional = true }
-# Portable AOB scanning only; live process memory and patching remain behind the host feature.
-nie-trace = { workspace = true, default-features = false }
-# Pure official-encyclopedia matching; network, SQLite and CLI dependencies stay host-only.
-nie-zukan = { workspace = true, default-features = false }
-# Validated format-catalog parsing; database/path ingestion remains behind the host feature.
-nie-seed = { workspace = true, default-features = false }
-# Bounded offline image address/range inspection; process, SQLite and network probes stay host-only.
-nie-computer-use = { workspace = true, default-features = false }
-# Deterministic search over caller-owned reverse-engineering knowledge; SQLite and Redis stay host-only.
-nie-index = { workspace = true, default-features = false }
-# Bounded T2B character/model catalogs extracted from the HTTP binding.
-nie-model-serve = { workspace = true, default-features = false }
 serde = { workspace = true, features = ["std", "derive"] }
 serde_json = { workspace = true }
-# (cridecoder arrive via nie-formats feature `audio-decode` — plus de dép directe)
 
 # wasm-bindgen est épinglé à une version EXACTE dans le Cargo.toml racine : le CLI
 # `wasm-bindgen` doit porter la même, sinon les bindings générés sont rejetés.
 # Gate via cfg(target_arch = "wasm32") dans le code source.
 wasm-bindgen.workspace = true
-# Referenced by the code `#[wasm_bindgen]` generates for the async `WebGpuViewer::create`.
-wasm-bindgen-futures = { workspace = true, optional = true }
 
 # Browser entropy support for transitive getrandom 0.3 consumers.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-# Camera state, projection/view matrices and the verified interpolation controller are pure
-# Rust. Host process memory and SQLite tooling stay excluded from the browser dependency graph.
-nie-camera = { workspace = true, default-features = false }
 console_error_panic_hook.workspace = true
 getrandom = { version = "0.3.4", default-features = false, features = [
   "wasm_js",
 ] }
 getrandom_02 = { package = "getrandom", version = "0.2.17", default-features = false, features = ["js"] }
 getrandom_04 = { package = "getrandom", version = "0.4.3", default-features = false, features = ["wasm_js"] }
-web-sys = { workspace = true, optional = true, features = ["HtmlCanvasElement"] }
-
-[features]
-default = []
-# Présentation WebGPU du viewport 3D. Le rastériseur CPU, lui, n'est derrière AUCUNE feature :
-# c'est le seul rendu 3D qu'un moteur sans WebGPU puisse faire, et c'est celui dont la sortie
-# est vérifiée par les tests golden natifs de `nie-render3d`.
-# Rust-owned WebGPU presentation of the 3D viewport (`web_viewer`).
-webgpu = ["nie-render3d/webgpu", "dep:wasm-bindgen-futures", "dep:web-sys"]
-# WebGL2 fallback when the browser has no WebGPU (+~2 MiB).
-webgl = ["webgpu", "nie-render3d/webgl"]
-# Bevy 0.20.1 ECS/App/Asset plugin integration for browser targets.
-bevy = [
-  "dep:bevy_app",
-  "dep:bevy_asset",
-  "dep:bevy_ecs",
-  "nie-bevy",
-  "nie-bevy/bevy",
-  "nie-render3d/bevy",
-]
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false
@@ -113,8 +51,4 @@ wasm-opt = false
 ignored = ["getrandom", "getrandom_02", "getrandom_04"]
 
 [package.metadata.cargo-shear]
-ignored = ["getrandom_04", "wasm-bindgen-futures"]
-
-# The camera timeline is compiled for native unit tests as well.
-[dev-dependencies]
-nie-camera = { workspace = true, default-features = false }
+ignored = ["getrandom_04"]

@@ -16,7 +16,6 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 nie-cfgsql = { path = "../nie-cfgsql", version = "1.4.8" }
-nie-sitemap = { path = "../nie-sitemap", version = "1.4.8" }
 
 [dev-dependencies]
 rg-ffi-contract = { path = "../rg-ffi-contract", version = "1.4.8" }

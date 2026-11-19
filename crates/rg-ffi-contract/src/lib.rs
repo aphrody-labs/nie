@@ -500,17 +500,17 @@ mod tests {
     #[test]
     fn contract_is_valid_and_complete() {
         let c = load();
-        assert!(c.functions.len() >= 2);
+        assert!(!c.functions.is_empty());
         let h = emit_c_header(&c);
         for f in &c.functions {
             assert!(h.contains(&format!("{}(", f.name)), "{} in header", f.name);
         }
-        assert!(h.contains("rg_string_free") && h.contains("RG_FFI_ABI_VERSION 1u"));
+        assert!(h.contains("rg_string_free") && h.contains("RG_FFI_ABI_VERSION 2u"));
     }
 
     #[test]
     fn ts_names_are_camel_case() {
-        assert_eq!(camel("rg_sitemap_encode_path"), "sitemapEncodePath");
+        assert_eq!(camel("rg_cfgbin_to_sql"), "cfgbinToSql");
         assert_eq!(camel("season_k"), "seasonK");
     }
 

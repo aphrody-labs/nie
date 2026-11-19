@@ -317,12 +317,6 @@ define_cli_tools!(
         "Read, decrypt, encrypt, or edit IEVR save files. Non-read subcommands write data."
     ),
     (
-        CliWiki,
-        "cli_wiki",
-        "wiki",
-        "Query characters, skills, items, teams, comparisons, search, SQL, and deterministic team generation."
-    ),
-    (
         CliUniformMap,
         "cli_uniform_map",
         "uniform-map",
@@ -408,27 +402,6 @@ struct AssetRequest {
 struct QueryRequest {
     sql: String,
     limit: Option<usize>,
-}
-
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-#[serde(deny_unknown_fields)]
-struct WikiCardRequest {
-    id: String,
-}
-
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-#[serde(deny_unknown_fields)]
-struct WikiSearchRequest {
-    query: String,
-    limit: Option<usize>,
-}
-
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct ZukanRankRequest {
-    entry: Value,
-    candidates: Value,
-    max_results: u32,
 }
 
 #[derive(Debug, Default, serde::Deserialize, schemars::JsonSchema)]
@@ -632,76 +605,6 @@ async fn fetch_model_asset_from(request: AssetRequest, base: &str) -> Compatibil
 #[tool_router(router = compatibility_router)]
 impl NieMcpServer {
     #[tool(
-        name = "wiki_character_card",
-        description = "Read an exact character card with native stat anchors, learned skills and auras from the configured wiki mirror. No network access or writes."
-    )]
-    async fn wiki_character_card(
-        &self,
-        Parameters(request): Parameters<WikiCardRequest>,
-    ) -> CompatibilityResult {
-        blocking_json(move || {
-            anyhow::ensure!(
-                !request.id.is_empty() && request.id.len() <= 256,
-                "Invalid character ID"
-            );
-            let conn = nie_wiki::mirror::open(None)
-                .map_err(|_| anyhow::anyhow!("Wiki data is unavailable"))?;
-            let card = nie_wiki::cards::character(&conn, &request.id)
-                .map_err(|_| anyhow::anyhow!("Character card could not be read"))?
-                .ok_or_else(|| anyhow::anyhow!("Character was not found"))?;
-            Ok(serde_json::to_value(card)?)
-        })
-        .await
-    }
-
-    #[tool(
-        name = "wiki_search",
-        description = "Search characters, techniques and items using the shared read-only wiki query owner."
-    )]
-    async fn wiki_search(
-        &self,
-        Parameters(request): Parameters<WikiSearchRequest>,
-    ) -> CompatibilityResult {
-        blocking_json(move || {
-            let limit = request.limit.unwrap_or(20);
-            anyhow::ensure!(
-                (1..=100).contains(&limit),
-                "Require limit between 1 and 100"
-            );
-            anyhow::ensure!(
-                !request.query.trim().is_empty() && request.query.len() <= 256,
-                "Invalid search query"
-            );
-            let conn = nie_wiki::mirror::open(None)
-                .map_err(|_| anyhow::anyhow!("Wiki data is unavailable"))?;
-            let result = nie_wiki::query::search_all(&conn, &request.query, limit)
-                .map_err(|_| anyhow::anyhow!("Wiki search could not be completed"))?;
-            Ok(serde_json::to_value(result)?)
-        })
-        .await
-    }
-
-    #[tool(
-        name = "zukan_rank",
-        description = "Rank supplied official-encyclopedia entries against supplied candidates with the shared bounded native matcher. Suggestions only; no identity assignment, network request or write."
-    )]
-    async fn zukan_rank(
-        &self,
-        Parameters(request): Parameters<ZukanRankRequest>,
-    ) -> CompatibilityResult {
-        blocking_json(move || {
-            let output = nie_zukan::api::rank_json(
-                &request.entry.to_string(),
-                &request.candidates.to_string(),
-                request.max_results,
-            )
-            .map_err(anyhow::Error::msg)?;
-            Ok(serde_json::from_str(&output)?)
-        })
-        .await
-    }
-
-    #[tool(
         name = "rg_api_health",
         description = "Report the health of the native nie MCP process and its in-process CLI binding."
     )]
@@ -842,7 +745,7 @@ impl NieMcpServer {
 
     #[tool(
         name = "re_query",
-        description = "Run a read-only SQL query through the canonical `nie wiki db` library path."
+        description = "Run a read-only SQL query on the reverse-engineering knowledge database."
     )]
     async fn compatibility_re_query(
         &self,
@@ -851,10 +754,10 @@ impl NieMcpServer {
         let limit = request.limit.unwrap_or(50).clamp(1, 1_000);
         blocking_json(move || {
             let connection = open_re_database()?;
-            let page = nie_wiki::query::exec_readonly_sql_page(
+            let page = nie_index::re_report::exec_readonly_sql_page(
                 &connection,
                 &request.sql,
-                nie_wiki::query::SqliteQueryOptions::re_database(limit),
+                nie_index::re_report::SqliteQueryOptions::re_database(limit),
             )?;
             Ok(json!({ "rows": page.rows, "truncated": page.truncated, "columns": page.columns }))
         })
@@ -878,8 +781,11 @@ impl NieMcpServer {
                 .map(super::parse_addr)
                 .transpose()
                 .map_err(anyhow::Error::msg)?;
-            let mut report =
-                nie_wiki::query::re_function_report(&connection, request.name.as_deref(), address)?;
+            let mut report = nie_index::re_report::re_function_report(
+                &connection,
+                request.name.as_deref(),
+                address,
+            )?;
             report["query"] = json!({"name":request.name,"vaddr":request.vaddr});
             Ok(report)
         })
@@ -893,7 +799,7 @@ impl NieMcpServer {
     async fn compatibility_re_coverage(&self) -> CompatibilityResult {
         blocking_json(move || {
             let connection = open_re_database()?;
-            nie_wiki::query::re_coverage_report(&connection)
+            nie_index::re_report::re_coverage_report(&connection)
         })
         .await
     }
@@ -1129,7 +1035,7 @@ mod tests {
         use clap::CommandFactory as _;
 
         let tools = NieMcpServer::all_tools().list_all();
-        assert_eq!(tools.len(), 66);
+        assert_eq!(tools.len(), 62);
         let commands = crate::Cli::command()
             .get_subcommands()
             .map(clap::Command::get_name)
@@ -1137,7 +1043,7 @@ mod tests {
             .filter(|name| !matches!(*name, "mcp" | "serve"))
             .map(str::to_owned)
             .collect::<Vec<_>>();
-        assert_eq!(commands.len(), 46);
+        assert_eq!(commands.len(), 45);
         for command in commands {
             let tool_name = format!("cli_{}", command.replace('-', "_"));
             assert!(
@@ -1179,8 +1085,8 @@ mod tests {
             "nie_explore::mcp_vfs::stat(",
             "nie_explore::mcp_vfs::cat(",
             "nie_explore::mcp_vfs::asset(",
-            "nie_wiki::query::re_function_report(",
-            "nie_wiki::query::re_coverage_report(",
+            "nie_index::re_report::re_function_report(",
+            "nie_index::re_report::re_coverage_report(",
         ] {
             assert!(source.contains(call), "missing shared-owner call {call}");
         }

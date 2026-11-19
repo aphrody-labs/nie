@@ -13,11 +13,11 @@ crates/
   nie-formats nie-data nie-explore nie-index nie-lua ...   game formats, data, VFS and CPK readers
   nie-assets    Bevy asset source `game://` over the VFS: local path, SSH, rclone (R2, Google Drive)
   nie-bevy      G4TX and G4MD/G4MG as Bevy assets
-  nie-render3d nie-gpu nie-camera nie-ui*   renderers and the wgpu host
+  nie-render3d nie-gpu nie-camera   renderers and the wgpu host
   nie-cli nie-model-serve nie-explore nie-launcher    command line, services and mod tooling
   nie-shell     app and launcher contract for the aphrody native GPUI shell
   nie-re nie-steam nie-re-core   reverse engineering and Steam libraries (from rosegriffon)
-  azalee-app rg-ffi*   site and FFI crates of the ecosystem
+  rg-ffi*   generated C ABI
 tools/steam-index
 contract/       nie-app.json and aphrody-store.toml (generated), openapi.json
 design/         design tokens
