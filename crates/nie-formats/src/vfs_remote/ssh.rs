@@ -791,338 +791,6 @@ async fn read_handle(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use russh::keys::ssh_key::private::{Ed25519Keypair, KeypairData};
-    use russh::keys::ssh_key::{LineEnding, PrivateKey};
-    use russh::server::{Auth, Msg, Server as _, Session};
-    use russh::{Channel, ChannelId};
-    use russh_sftp::protocol::{Attrs, Data, File, Handle as SftpHandle, Name, Status, Version};
-    use sha2::{Digest, Sha256};
-    use std::collections::{HashMap, HashSet};
-    use std::net::SocketAddr;
-
-    fn test_key(label: &str) -> PrivateKey {
-        let seed: [u8; 32] = Sha256::digest(label.as_bytes()).into();
-        PrivateKey::new(
-            KeypairData::Ed25519(Ed25519Keypair::from_seed(&seed)),
-            label,
-        )
-        .unwrap()
-    }
-
-    #[derive(Clone)]
-    struct TestServer {
-        root: PathBuf,
-        client_key: russh::keys::PublicKey,
-    }
-
-    impl russh::server::Server for TestServer {
-        type Handler = TestSession;
-
-        fn new_client(&mut self, _: Option<SocketAddr>) -> TestSession {
-            TestSession {
-                root: self.root.clone(),
-                client_key: self.client_key.clone(),
-                channels: HashMap::new(),
-            }
-        }
-    }
-
-    struct TestSession {
-        root: PathBuf,
-        client_key: russh::keys::PublicKey,
-        channels: HashMap<ChannelId, Channel<Msg>>,
-    }
-
-    impl russh::server::Handler for TestSession {
-        type Error = russh::Error;
-
-        async fn auth_publickey(
-            &mut self,
-            _user: &str,
-            key: russh::server::VerifiedPublicKey<'_>,
-        ) -> std::result::Result<Auth, Self::Error> {
-            Ok(if key.public_key.key_data() == self.client_key.key_data() {
-                Auth::Accept
-            } else {
-                Auth::reject()
-            })
-        }
-
-        async fn channel_open_session(
-            &mut self,
-            channel: Channel<Msg>,
-            reply: russh::server::ChannelOpenHandle,
-            _session: &mut Session,
-        ) -> std::result::Result<(), Self::Error> {
-            self.channels.insert(channel.id(), channel);
-            reply.accept().await;
-            Ok(())
-        }
-
-        async fn subsystem_request(
-            &mut self,
-            channel_id: ChannelId,
-            name: &str,
-            session: &mut Session,
-        ) -> std::result::Result<(), Self::Error> {
-            if name == "sftp"
-                && let Some(channel) = self.channels.remove(&channel_id)
-            {
-                session.channel_success(channel_id)?;
-                let handler = TestSftp {
-                    root: self.root.clone(),
-                    listed: HashSet::new(),
-                };
-                russh_sftp::server::run(channel.into_stream(), handler).await;
-            } else {
-                session.channel_failure(channel_id)?;
-            }
-            Ok(())
-        }
-    }
-
-    struct TestSftp {
-        root: PathBuf,
-        listed: HashSet<String>,
-    }
-
-    impl TestSftp {
-        fn allowed(&self, path: &str) -> std::result::Result<PathBuf, StatusCode> {
-            let path = PathBuf::from(path);
-            if path.starts_with(&self.root) && !path.components().any(|c| c.as_os_str() == "..") {
-                Ok(path)
-            } else {
-                Err(StatusCode::PermissionDenied)
-            }
-        }
-
-        fn attrs(path: &Path) -> std::result::Result<FileAttributes, StatusCode> {
-            let meta = std::fs::metadata(path).map_err(|_| StatusCode::NoSuchFile)?;
-            let mut attrs = FileAttributes::empty();
-            attrs.size = Some(meta.len());
-            attrs.permissions = Some(if meta.is_dir() { 0o040755 } else { 0o100644 });
-            Ok(attrs)
-        }
-    }
-
-    fn ok(id: u32) -> Status {
-        Status {
-            id,
-            status_code: StatusCode::Ok,
-            error_message: "Ok".into(),
-            language_tag: "en-US".into(),
-        }
-    }
-
-    impl russh_sftp::server::Handler for TestSftp {
-        type Error = StatusCode;
-
-        fn unimplemented(&self) -> Self::Error {
-            StatusCode::OpUnsupported
-        }
-
-        async fn init(
-            &mut self,
-            _version: u32,
-            _extensions: HashMap<String, String>,
-        ) -> std::result::Result<Version, Self::Error> {
-            Ok(Version::new())
-        }
-
-        async fn open(
-            &mut self,
-            id: u32,
-            filename: String,
-            _flags: OpenFlags,
-            _attrs: FileAttributes,
-        ) -> std::result::Result<SftpHandle, Self::Error> {
-            let path = self.allowed(&filename)?;
-            if !path.is_file() {
-                return Err(StatusCode::NoSuchFile);
-            }
-            Ok(SftpHandle {
-                id,
-                handle: filename,
-            })
-        }
-
-        async fn close(
-            &mut self,
-            id: u32,
-            handle: String,
-        ) -> std::result::Result<Status, Self::Error> {
-            self.listed.remove(&handle);
-            Ok(ok(id))
-        }
-
-        async fn read(
-            &mut self,
-            id: u32,
-            handle: String,
-            offset: u64,
-            len: u32,
-        ) -> std::result::Result<Data, Self::Error> {
-            use std::io::{Read, Seek, SeekFrom};
-            let mut file =
-                std::fs::File::open(self.allowed(&handle)?).map_err(|_| StatusCode::NoSuchFile)?;
-            file.seek(SeekFrom::Start(offset))
-                .map_err(|_| StatusCode::Failure)?;
-            // Answer at most 20000 bytes per request: clients must cope with short reads.
-            let mut data = Vec::new();
-            file.take(u64::from(len).min(20_000))
-                .read_to_end(&mut data)
-                .map_err(|_| StatusCode::Failure)?;
-            if data.is_empty() {
-                return Err(StatusCode::Eof);
-            }
-            Ok(Data { id, data })
-        }
-
-        async fn opendir(
-            &mut self,
-            id: u32,
-            path: String,
-        ) -> std::result::Result<SftpHandle, Self::Error> {
-            if !self.allowed(&path)?.is_dir() {
-                return Err(StatusCode::NoSuchFile);
-            }
-            Ok(SftpHandle { id, handle: path })
-        }
-
-        async fn readdir(
-            &mut self,
-            id: u32,
-            handle: String,
-        ) -> std::result::Result<Name, Self::Error> {
-            if !self.listed.insert(handle.clone()) {
-                return Err(StatusCode::Eof);
-            }
-            let mut files = Vec::new();
-            for entry in
-                std::fs::read_dir(self.allowed(&handle)?).map_err(|_| StatusCode::Failure)?
-            {
-                let entry = entry.map_err(|_| StatusCode::Failure)?;
-                let name = entry.file_name().to_string_lossy().into_owned();
-                files.push(File::new(name, Self::attrs(&entry.path())?));
-            }
-            Ok(Name { id, files })
-        }
-
-        async fn fstat(
-            &mut self,
-            id: u32,
-            handle: String,
-        ) -> std::result::Result<Attrs, Self::Error> {
-            Ok(Attrs {
-                id,
-                attrs: Self::attrs(&self.allowed(&handle)?)?,
-            })
-        }
-
-        async fn stat(&mut self, id: u32, path: String) -> std::result::Result<Attrs, Self::Error> {
-            Ok(Attrs {
-                id,
-                attrs: Self::attrs(&self.allowed(&path)?)?,
-            })
-        }
-
-        async fn realpath(
-            &mut self,
-            id: u32,
-            path: String,
-        ) -> std::result::Result<Name, Self::Error> {
-            Ok(Name {
-                id,
-                files: vec![File::dummy(path)],
-            })
-        }
-    }
-
-    struct Fixture {
-        port: u16,
-        home: tempfile::TempDir,
-        root: tempfile::TempDir,
-        host_key: PrivateKey,
-        _server: std::thread::JoinHandle<()>,
-    }
-
-    fn payload() -> Vec<u8> {
-        (0..200_000u32).map(|i| (i % 251) as u8).collect()
-    }
-
-    fn fixture(authorised: bool) -> Fixture {
-        let root = tempfile::tempdir().unwrap();
-        std::fs::create_dir_all(root.path().join("packs/sub")).unwrap();
-        std::fs::write(root.path().join("packs/a.bin"), payload()).unwrap();
-        std::fs::write(root.path().join("packs/empty.bin"), b"").unwrap();
-        let home = tempfile::tempdir().unwrap();
-        let ssh = home.path().join(".ssh");
-        std::fs::create_dir_all(&ssh).unwrap();
-        let client_key = test_key("nie-test-client");
-        let key_pem = client_key.to_openssh(LineEnding::LF).unwrap();
-        std::fs::write(ssh.join("id_ed25519"), key_pem.as_bytes()).unwrap();
-        let host_key = test_key("nie-test-host");
-        let accepted = if authorised {
-            client_key.public_key().clone()
-        } else {
-            test_key("nie-test-other").public_key().clone()
-        };
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-        listener.set_nonblocking(true).unwrap();
-        let port = listener.local_addr().unwrap().port();
-        let mut server = TestServer {
-            root: root.path().to_path_buf(),
-            client_key: accepted,
-        };
-        let config = Arc::new(russh::server::Config {
-            keys: vec![host_key.clone()],
-            auth_rejection_time: Duration::from_millis(1),
-            auth_rejection_time_initial: Some(Duration::ZERO),
-            ..Default::default()
-        });
-        let thread = std::thread::spawn(move || {
-            let runtime = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
-            runtime.block_on(async move {
-                let listener = tokio::net::TcpListener::from_std(listener).unwrap();
-                let _ = server.run_on_socket(config, &listener).await;
-            });
-        });
-        Fixture {
-            port,
-            home,
-            root,
-            host_key,
-            _server: thread,
-        }
-    }
-
-    fn trust_host(f: &Fixture, key: &PrivateKey) {
-        let line = format!(
-            "[127.0.0.1]:{} {}\n",
-            f.port,
-            key.public_key().to_openssh().unwrap()
-        );
-        std::fs::write(f.home.path().join(".ssh/known_hosts"), line).unwrap();
-    }
-
-    fn uri(f: &Fixture) -> String {
-        format!(
-            "ssh://tester@127.0.0.1:{}{}",
-            f.port,
-            f.root.path().display()
-        )
-    }
-
-    fn run<T>(f: impl Future<Output = T>) -> T {
-        tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(f)
-    }
 
     #[test]
     fn uri_splits_user_host_port_and_root() {
@@ -1197,91 +865,437 @@ mod tests {
         assert_eq!((chain[1].user.as_str(), chain[1].port), ("other", 2200));
     }
 
-    #[test]
-    fn sftp_ranges_lists_and_missing_files_over_a_real_ssh_session() {
-        let f = fixture(true);
-        trust_host(&f, &f.host_key);
-        let spec = parse_uri(&uri(&f)).unwrap();
-        run(async {
-            let mut ssh = Ssh::connect(&spec, f.home.path()).await.unwrap();
-            let data = payload();
-            // Spans several 32 KiB requests and a server that answers 20000 bytes at a time.
-            assert_eq!(
-                ssh.read("packs/a.bin", Some((1_000, 150_000)))
-                    .await
-                    .unwrap(),
-                data[1_000..151_000]
-            );
-            assert_eq!(
-                ssh.read("packs/a.bin", Some((3, 4))).await.unwrap(),
-                data[3..7]
-            );
-            assert_eq!(ssh.read("packs/a.bin", None).await.unwrap(), data);
-            assert_eq!(ssh.read("packs/empty.bin", None).await.unwrap(), b"");
-            assert!(
-                ssh.read("packs/a.bin", Some((199_990, 100)))
-                    .await
-                    .unwrap_err()
-                    .contains("truncated")
-            );
-            assert!(ssh.read("packs/none.bin", None).await.is_err());
-            assert_eq!(
-                ssh.list("packs").await.unwrap(),
-                ["a.bin", "empty.bin", "sub/"]
-            );
-            assert_eq!(ssh.list("").await.unwrap(), ["packs/"]);
-        });
-    }
+    /// A real `russh` server on 127.0.0.1 serving a temp directory; its tests use Unix paths.
+    #[cfg(unix)]
+    mod live {
+        use super::super::*;
+        use russh::keys::ssh_key::private::{Ed25519Keypair, KeypairData};
+        use russh::keys::ssh_key::{LineEnding, PrivateKey};
+        use russh::server::{Auth, Msg, Server as _, Session};
+        use russh::{Channel, ChannelId};
+        use russh_sftp::protocol::{
+            Attrs, Data, File, Handle as SftpHandle, Name, Status, Version,
+        };
+        use sha2::{Digest, Sha256};
+        use std::collections::{HashMap, HashSet};
+        use std::net::SocketAddr;
 
-    #[test]
-    fn mount_inside_a_running_tokio_runtime_does_not_nest_runtimes() {
-        let f = fixture(true);
-        trust_host(&f, &f.host_key);
-        let source = uri(&f);
-        let home = f.home.path().to_path_buf();
-        let outer = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        outer.block_on(async {
-            let storage = super::super::RemoteStorage::connect_in(&source, Some(home)).unwrap();
-            assert_eq!(storage.range("packs/a.bin", 3, 4).unwrap(), payload()[3..7]);
-            assert_eq!(
-                storage.list("packs").unwrap(),
-                ["a.bin", "empty.bin", "sub/"]
-            );
-            assert_eq!(storage.stats().1, 4);
-        });
-    }
+        fn test_key(label: &str) -> PrivateKey {
+            let seed: [u8; 32] = Sha256::digest(label.as_bytes()).into();
+            PrivateKey::new(
+                KeypairData::Ed25519(Ed25519Keypair::from_seed(&seed)),
+                label,
+            )
+            .unwrap()
+        }
 
-    #[test]
-    fn dropped_session_is_rebuilt_on_the_next_read() {
-        let f = fixture(true);
-        trust_host(&f, &f.host_key);
-        let spec = parse_uri(&uri(&f)).unwrap();
-        run(async {
-            let mut ssh = Ssh::connect(&spec, f.home.path()).await.unwrap();
-            ssh.conn = None;
-            assert_eq!(
-                ssh.read("packs/a.bin", Some((0, 4))).await.unwrap(),
-                payload()[..4]
-            );
-        });
-    }
+        #[derive(Clone)]
+        struct TestServer {
+            root: PathBuf,
+            client_key: russh::keys::PublicKey,
+        }
 
-    #[test]
-    fn unknown_changed_and_unauthorised_hosts_are_refused() {
-        let f = fixture(true);
-        let spec = parse_uri(&uri(&f)).unwrap();
-        let unknown = run(Ssh::connect(&spec, f.home.path())).err().unwrap();
-        assert!(unknown.contains("not in known_hosts"), "{unknown}");
-        trust_host(&f, &test_key("nie-test-impostor"));
-        let changed = run(Ssh::connect(&spec, f.home.path())).err().unwrap();
-        assert!(changed.contains("changed"), "{changed}");
-        let denied = fixture(false);
-        trust_host(&denied, &denied.host_key);
-        let spec = parse_uri(&uri(&denied)).unwrap();
-        let refused = run(Ssh::connect(&spec, denied.home.path())).err().unwrap();
-        assert!(refused.contains("authentication"), "{refused}");
+        impl russh::server::Server for TestServer {
+            type Handler = TestSession;
+
+            fn new_client(&mut self, _: Option<SocketAddr>) -> TestSession {
+                TestSession {
+                    root: self.root.clone(),
+                    client_key: self.client_key.clone(),
+                    channels: HashMap::new(),
+                }
+            }
+        }
+
+        struct TestSession {
+            root: PathBuf,
+            client_key: russh::keys::PublicKey,
+            channels: HashMap<ChannelId, Channel<Msg>>,
+        }
+
+        impl russh::server::Handler for TestSession {
+            type Error = russh::Error;
+
+            async fn auth_publickey(
+                &mut self,
+                _user: &str,
+                key: russh::server::VerifiedPublicKey<'_>,
+            ) -> std::result::Result<Auth, Self::Error> {
+                Ok(if key.public_key.key_data() == self.client_key.key_data() {
+                    Auth::Accept
+                } else {
+                    Auth::reject()
+                })
+            }
+
+            async fn channel_open_session(
+                &mut self,
+                channel: Channel<Msg>,
+                reply: russh::server::ChannelOpenHandle,
+                _session: &mut Session,
+            ) -> std::result::Result<(), Self::Error> {
+                self.channels.insert(channel.id(), channel);
+                reply.accept().await;
+                Ok(())
+            }
+
+            async fn subsystem_request(
+                &mut self,
+                channel_id: ChannelId,
+                name: &str,
+                session: &mut Session,
+            ) -> std::result::Result<(), Self::Error> {
+                if name == "sftp"
+                    && let Some(channel) = self.channels.remove(&channel_id)
+                {
+                    session.channel_success(channel_id)?;
+                    let handler = TestSftp {
+                        root: self.root.clone(),
+                        listed: HashSet::new(),
+                    };
+                    russh_sftp::server::run(channel.into_stream(), handler).await;
+                } else {
+                    session.channel_failure(channel_id)?;
+                }
+                Ok(())
+            }
+        }
+
+        struct TestSftp {
+            root: PathBuf,
+            listed: HashSet<String>,
+        }
+
+        impl TestSftp {
+            fn allowed(&self, path: &str) -> std::result::Result<PathBuf, StatusCode> {
+                let path = PathBuf::from(path);
+                if path.starts_with(&self.root) && !path.components().any(|c| c.as_os_str() == "..")
+                {
+                    Ok(path)
+                } else {
+                    Err(StatusCode::PermissionDenied)
+                }
+            }
+
+            fn attrs(path: &Path) -> std::result::Result<FileAttributes, StatusCode> {
+                let meta = std::fs::metadata(path).map_err(|_| StatusCode::NoSuchFile)?;
+                let mut attrs = FileAttributes::empty();
+                attrs.size = Some(meta.len());
+                attrs.permissions = Some(if meta.is_dir() { 0o040755 } else { 0o100644 });
+                Ok(attrs)
+            }
+        }
+
+        fn ok(id: u32) -> Status {
+            Status {
+                id,
+                status_code: StatusCode::Ok,
+                error_message: "Ok".into(),
+                language_tag: "en-US".into(),
+            }
+        }
+
+        impl russh_sftp::server::Handler for TestSftp {
+            type Error = StatusCode;
+
+            fn unimplemented(&self) -> Self::Error {
+                StatusCode::OpUnsupported
+            }
+
+            async fn init(
+                &mut self,
+                _version: u32,
+                _extensions: HashMap<String, String>,
+            ) -> std::result::Result<Version, Self::Error> {
+                Ok(Version::new())
+            }
+
+            async fn open(
+                &mut self,
+                id: u32,
+                filename: String,
+                _flags: OpenFlags,
+                _attrs: FileAttributes,
+            ) -> std::result::Result<SftpHandle, Self::Error> {
+                let path = self.allowed(&filename)?;
+                if !path.is_file() {
+                    return Err(StatusCode::NoSuchFile);
+                }
+                Ok(SftpHandle {
+                    id,
+                    handle: filename,
+                })
+            }
+
+            async fn close(
+                &mut self,
+                id: u32,
+                handle: String,
+            ) -> std::result::Result<Status, Self::Error> {
+                self.listed.remove(&handle);
+                Ok(ok(id))
+            }
+
+            async fn read(
+                &mut self,
+                id: u32,
+                handle: String,
+                offset: u64,
+                len: u32,
+            ) -> std::result::Result<Data, Self::Error> {
+                use std::io::{Read, Seek, SeekFrom};
+                let mut file = std::fs::File::open(self.allowed(&handle)?)
+                    .map_err(|_| StatusCode::NoSuchFile)?;
+                file.seek(SeekFrom::Start(offset))
+                    .map_err(|_| StatusCode::Failure)?;
+                // Answer at most 20000 bytes per request: clients must cope with short reads.
+                let mut data = Vec::new();
+                file.take(u64::from(len).min(20_000))
+                    .read_to_end(&mut data)
+                    .map_err(|_| StatusCode::Failure)?;
+                if data.is_empty() {
+                    return Err(StatusCode::Eof);
+                }
+                Ok(Data { id, data })
+            }
+
+            async fn opendir(
+                &mut self,
+                id: u32,
+                path: String,
+            ) -> std::result::Result<SftpHandle, Self::Error> {
+                if !self.allowed(&path)?.is_dir() {
+                    return Err(StatusCode::NoSuchFile);
+                }
+                Ok(SftpHandle { id, handle: path })
+            }
+
+            async fn readdir(
+                &mut self,
+                id: u32,
+                handle: String,
+            ) -> std::result::Result<Name, Self::Error> {
+                if !self.listed.insert(handle.clone()) {
+                    return Err(StatusCode::Eof);
+                }
+                let mut files = Vec::new();
+                for entry in
+                    std::fs::read_dir(self.allowed(&handle)?).map_err(|_| StatusCode::Failure)?
+                {
+                    let entry = entry.map_err(|_| StatusCode::Failure)?;
+                    let name = entry.file_name().to_string_lossy().into_owned();
+                    files.push(File::new(name, Self::attrs(&entry.path())?));
+                }
+                Ok(Name { id, files })
+            }
+
+            async fn fstat(
+                &mut self,
+                id: u32,
+                handle: String,
+            ) -> std::result::Result<Attrs, Self::Error> {
+                Ok(Attrs {
+                    id,
+                    attrs: Self::attrs(&self.allowed(&handle)?)?,
+                })
+            }
+
+            async fn stat(
+                &mut self,
+                id: u32,
+                path: String,
+            ) -> std::result::Result<Attrs, Self::Error> {
+                Ok(Attrs {
+                    id,
+                    attrs: Self::attrs(&self.allowed(&path)?)?,
+                })
+            }
+
+            async fn realpath(
+                &mut self,
+                id: u32,
+                path: String,
+            ) -> std::result::Result<Name, Self::Error> {
+                Ok(Name {
+                    id,
+                    files: vec![File::dummy(path)],
+                })
+            }
+        }
+
+        struct Fixture {
+            port: u16,
+            home: tempfile::TempDir,
+            root: tempfile::TempDir,
+            host_key: PrivateKey,
+            _server: std::thread::JoinHandle<()>,
+        }
+
+        fn payload() -> Vec<u8> {
+            (0..200_000u32).map(|i| (i % 251) as u8).collect()
+        }
+
+        fn fixture(authorised: bool) -> Fixture {
+            let root = tempfile::tempdir().unwrap();
+            std::fs::create_dir_all(root.path().join("packs/sub")).unwrap();
+            std::fs::write(root.path().join("packs/a.bin"), payload()).unwrap();
+            std::fs::write(root.path().join("packs/empty.bin"), b"").unwrap();
+            let home = tempfile::tempdir().unwrap();
+            let ssh = home.path().join(".ssh");
+            std::fs::create_dir_all(&ssh).unwrap();
+            let client_key = test_key("nie-test-client");
+            let key_pem = client_key.to_openssh(LineEnding::LF).unwrap();
+            std::fs::write(ssh.join("id_ed25519"), key_pem.as_bytes()).unwrap();
+            let host_key = test_key("nie-test-host");
+            let accepted = if authorised {
+                client_key.public_key().clone()
+            } else {
+                test_key("nie-test-other").public_key().clone()
+            };
+            let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+            listener.set_nonblocking(true).unwrap();
+            let port = listener.local_addr().unwrap().port();
+            let mut server = TestServer {
+                root: root.path().to_path_buf(),
+                client_key: accepted,
+            };
+            let config = Arc::new(russh::server::Config {
+                keys: vec![host_key.clone()],
+                auth_rejection_time: Duration::from_millis(1),
+                auth_rejection_time_initial: Some(Duration::ZERO),
+                ..Default::default()
+            });
+            let thread = std::thread::spawn(move || {
+                let runtime = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap();
+                runtime.block_on(async move {
+                    let listener = tokio::net::TcpListener::from_std(listener).unwrap();
+                    let _ = server.run_on_socket(config, &listener).await;
+                });
+            });
+            Fixture {
+                port,
+                home,
+                root,
+                host_key,
+                _server: thread,
+            }
+        }
+
+        fn trust_host(f: &Fixture, key: &PrivateKey) {
+            let line = format!(
+                "[127.0.0.1]:{} {}\n",
+                f.port,
+                key.public_key().to_openssh().unwrap()
+            );
+            std::fs::write(f.home.path().join(".ssh/known_hosts"), line).unwrap();
+        }
+
+        fn uri(f: &Fixture) -> String {
+            format!(
+                "ssh://tester@127.0.0.1:{}{}",
+                f.port,
+                f.root.path().display()
+            )
+        }
+
+        fn run<T>(f: impl Future<Output = T>) -> T {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(f)
+        }
+
+        #[test]
+        fn sftp_ranges_lists_and_missing_files_over_a_real_ssh_session() {
+            let f = fixture(true);
+            trust_host(&f, &f.host_key);
+            let spec = parse_uri(&uri(&f)).unwrap();
+            run(async {
+                let mut ssh = Ssh::connect(&spec, f.home.path()).await.unwrap();
+                let data = payload();
+                // Spans several 32 KiB requests and a server that answers 20000 bytes at a time.
+                assert_eq!(
+                    ssh.read("packs/a.bin", Some((1_000, 150_000)))
+                        .await
+                        .unwrap(),
+                    data[1_000..151_000]
+                );
+                assert_eq!(
+                    ssh.read("packs/a.bin", Some((3, 4))).await.unwrap(),
+                    data[3..7]
+                );
+                assert_eq!(ssh.read("packs/a.bin", None).await.unwrap(), data);
+                assert_eq!(ssh.read("packs/empty.bin", None).await.unwrap(), b"");
+                assert!(
+                    ssh.read("packs/a.bin", Some((199_990, 100)))
+                        .await
+                        .unwrap_err()
+                        .contains("truncated")
+                );
+                assert!(ssh.read("packs/none.bin", None).await.is_err());
+                assert_eq!(
+                    ssh.list("packs").await.unwrap(),
+                    ["a.bin", "empty.bin", "sub/"]
+                );
+                assert_eq!(ssh.list("").await.unwrap(), ["packs/"]);
+            });
+        }
+
+        #[test]
+        fn mount_inside_a_running_tokio_runtime_does_not_nest_runtimes() {
+            let f = fixture(true);
+            trust_host(&f, &f.host_key);
+            let source = uri(&f);
+            let home = f.home.path().to_path_buf();
+            let outer = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            outer.block_on(async {
+                let storage =
+                    crate::vfs_remote::RemoteStorage::connect_in(&source, Some(home)).unwrap();
+                assert_eq!(storage.range("packs/a.bin", 3, 4).unwrap(), payload()[3..7]);
+                assert_eq!(
+                    storage.list("packs").unwrap(),
+                    ["a.bin", "empty.bin", "sub/"]
+                );
+                assert_eq!(storage.stats().1, 4);
+            });
+        }
+
+        #[test]
+        fn dropped_session_is_rebuilt_on_the_next_read() {
+            let f = fixture(true);
+            trust_host(&f, &f.host_key);
+            let spec = parse_uri(&uri(&f)).unwrap();
+            run(async {
+                let mut ssh = Ssh::connect(&spec, f.home.path()).await.unwrap();
+                ssh.conn = None;
+                assert_eq!(
+                    ssh.read("packs/a.bin", Some((0, 4))).await.unwrap(),
+                    payload()[..4]
+                );
+            });
+        }
+
+        #[test]
+        fn unknown_changed_and_unauthorised_hosts_are_refused() {
+            let f = fixture(true);
+            let spec = parse_uri(&uri(&f)).unwrap();
+            let unknown = run(Ssh::connect(&spec, f.home.path())).err().unwrap();
+            assert!(unknown.contains("not in known_hosts"), "{unknown}");
+            trust_host(&f, &test_key("nie-test-impostor"));
+            let changed = run(Ssh::connect(&spec, f.home.path())).err().unwrap();
+            assert!(changed.contains("changed"), "{changed}");
+            let denied = fixture(false);
+            trust_host(&denied, &denied.host_key);
+            let spec = parse_uri(&uri(&denied)).unwrap();
+            let refused = run(Ssh::connect(&spec, denied.home.path())).err().unwrap();
+            assert!(refused.contains("authentication"), "{refused}");
+        }
     }
 }
