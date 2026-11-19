@@ -6,6 +6,7 @@
 //! are named by [`UNSOURCED`]. Tables are decoded with the `nie-formats` and `nie-data` readers.
 
 mod error;
+pub mod html;
 mod index;
 mod model;
 mod text;
@@ -16,4 +17,4 @@ pub use model::{
     AffiliatedCharacter, Character, Coded, Emblem, Form, Id, LangText, Language, LearnedSkill,
     Localized, NoSource, Provenance, Skill, Team, TeamRef, UNSOURCED,
 };
-pub use wiki::Wiki;
+pub use wiki::{Page, Query, Source, Wiki};

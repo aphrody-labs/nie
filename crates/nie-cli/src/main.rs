@@ -60,6 +60,8 @@ mod search_cmd;
 #[cfg(feature = "host")]
 mod seed_ui;
 mod serve_cmd;
+mod serve_routes;
+mod serve_wiki;
 mod steam_turbo;
 #[cfg(feature = "host")]
 mod strings_cmd;
@@ -69,6 +71,7 @@ pub mod vfs_bundle;
 mod video_cmd;
 #[cfg(feature = "host")]
 mod vn_cmd;
+mod wiki_cmd;
 
 #[cfg(feature = "host")]
 use std::io::Write;
@@ -109,6 +112,8 @@ enum Cmd {
     /// Serveur HTTP cloud-first (VFS distant, formats, requêtes game-data, sondes /health & /ready).
     #[command(name = "serve")]
     Serve(serve_cmd::ServeArgs),
+    /// Les personnages, techniques et équipes du jeu, calculés depuis le VFS (`nie-wiki-vfs`).
+    Wiki(wiki_cmd::WikiArgs),
     /// Liste les plugins de ce build (exe, save, launcher, steam) et les commandes qu'ils portent.
     Plugins {
         /// Sortie JSON plutôt que texte.
@@ -2385,6 +2390,7 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
     match cli.cmd {
         Cmd::Serve(args) => serve_cmd::run(args),
         Cmd::Plugins { json } => plugins::run(json),
+        Cmd::Wiki(args) => wiki_cmd::run(args),
         #[cfg(feature = "host")]
         Cmd::Mcp => {
             let runtime = tokio::runtime::Builder::new_multi_thread()

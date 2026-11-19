@@ -6,12 +6,12 @@
 
 use std::collections::BTreeMap;
 
-use nie_wiki_vfs::Wiki;
+use nie_wiki_vfs::{Query, Wiki};
 
 fn main() {
     let mut args = std::env::args().skip(1);
     let (character, skill, team) = (args.next(), args.next(), args.next());
-    let mut wiki = Wiki::open(None).expect("mount the game");
+    let wiki = Wiki::open(None).expect("mount the game");
     println!(
         "languages: {}",
         wiki.languages()
@@ -20,14 +20,17 @@ fn main() {
             .collect::<Vec<_>>()
             .join(", ")
     );
-    if let Ok(langs) = std::env::var("NIE_WIKI_LANGS") {
-        let folders: Vec<&str> = langs.split(',').collect();
-        wiki.select_languages(&folders).expect("languages");
-    }
+    let languages: Vec<String> = std::env::var("NIE_WIKI_LANGS")
+        .map(|langs| langs.split(',').map(str::to_owned).collect())
+        .unwrap_or_default();
+    let query = Query {
+        languages,
+        ..Query::default()
+    };
 
-    let characters = wiki.characters().expect("characters");
-    let skills = wiki.skills().expect("skills");
-    let teams = wiki.teams().expect("teams");
+    let characters = wiki.characters(&query).expect("characters").items;
+    let skills = wiki.skills(&query).expect("skills").items;
+    let teams = wiki.teams(&query).expect("teams").items;
     println!(
         "characters {} skills {} teams {}",
         characters.len(),

@@ -149,6 +149,12 @@ define_cli_tools!(
         "List the plugins compiled into this build and the commands each one owns."
     ),
     (
+        CliWiki,
+        "cli_wiki",
+        "wiki",
+        "Read the game's characters, skills and teams computed from the VFS, with labels in every shipped language and the VFS path, table and index behind each value."
+    ),
+    (
         CliInfo,
         "cli_info",
         "info",
@@ -1035,7 +1041,7 @@ mod tests {
         use clap::CommandFactory as _;
 
         let tools = NieMcpServer::all_tools().list_all();
-        assert_eq!(tools.len(), 62);
+        assert_eq!(tools.len(), 63);
         let commands = crate::Cli::command()
             .get_subcommands()
             .map(clap::Command::get_name)
@@ -1043,7 +1049,7 @@ mod tests {
             .filter(|name| !matches!(*name, "mcp" | "serve"))
             .map(str::to_owned)
             .collect::<Vec<_>>();
-        assert_eq!(commands.len(), 45);
+        assert_eq!(commands.len(), 46);
         for command in commands {
             let tool_name = format!("cli_{}", command.replace('-', "_"));
             assert!(

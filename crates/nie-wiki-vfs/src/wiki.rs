@@ -5,6 +5,7 @@ use nie_data::cfgbin::{Node, Var, list_values, walk_named};
 use nie_data::chara_base::{CharaBase, parse_base_node};
 use nie_data::chara_param::CharaParam;
 use nie_formats::vfs::Vfs;
+use serde::Serialize;
 use serde_json::Value;
 
 use crate::error::{Error, Result};
@@ -162,15 +163,50 @@ fn fields_of(row: &Value) -> BTreeMap<String, Value> {
         .unwrap_or_default()
 }
 
+/// Emblem files and affiliations of every team, computed once.
+struct TeamIndex {
+    files: HashMap<u32, Vec<String>>,
+    affiliated: HashMap<u32, Vec<AffiliatedCharacter>>,
+}
+
+/// What a list route asks for: the languages of the labels, a text filter, a window.
+#[derive(Debug, Clone, Default)]
+pub struct Query {
+    /// Language folders or BCP 47 tags; empty means every language.
+    pub languages: Vec<String>,
+    /// Case-insensitive substring searched in names (every selected language) and codes.
+    pub text: Option<String>,
+    pub offset: usize,
+    /// `None` returns every match.
+    pub limit: Option<usize>,
+}
+
+/// A window of matches: `total` counts all of them.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Page<T> {
+    pub total: usize,
+    pub offset: usize,
+    pub items: Vec<T>,
+}
+
+/// A table that backs a page family.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Source {
+    pub family: &'static str,
+    pub vfs_path: String,
+    pub table: &'static str,
+    pub entries: usize,
+}
+
 /// The wiki over one mounted installation.
 pub struct Wiki {
-    vfs: Vfs,
+    vfs: Arc<Vfs>,
     languages: Vec<Language>,
-    active: Vec<String>,
     text_tables: Mutex<HashMap<(String, String), Arc<TextTable>>>,
     chara: Lazy<CharaData>,
     skills: Lazy<RdbnRows>,
     teams: Lazy<RdbnRows>,
+    team_index: Lazy<TeamIndex>,
 }
 
 impl Wiki {
@@ -184,21 +220,21 @@ impl Wiki {
         Self::new(vfs)
     }
 
-    /// Wraps an already mounted VFS.
+    /// Wraps an already mounted VFS, owned or shared.
     ///
     /// # Errors
     /// The VFS ships no text language.
-    pub fn new(vfs: Vfs) -> Result<Self> {
+    pub fn new(vfs: impl Into<Arc<Vfs>>) -> Result<Self> {
+        let vfs = vfs.into();
         let languages = index::languages(&vfs)?;
-        let active = languages.iter().map(|l| l.folder.clone()).collect();
         Ok(Self {
             vfs,
             languages,
-            active,
             text_tables: Mutex::new(HashMap::new()),
             chara: Lazy::new(),
             skills: Lazy::new(),
             teams: Lazy::new(),
+            team_index: Lazy::new(),
         })
     }
 
@@ -208,24 +244,70 @@ impl Wiki {
         &self.languages
     }
 
-    /// Restricts the labels of later records to `folders`.
+    /// The language folders named by `spec` (folders or BCP 47 tags, any case, `-` or `_`);
+    /// every language when `spec` is empty.
     ///
     /// # Errors
-    /// A folder is not one of [`Wiki::languages`].
-    pub fn select_languages(&mut self, folders: &[&str]) -> Result<()> {
-        for folder in folders {
-            if !self.languages.iter().any(|l| l.folder == *folder) {
-                return Err(Error::UnknownLanguage((*folder).to_owned()));
+    /// An entry names no shipped language.
+    pub fn resolve_languages<S: AsRef<str>>(&self, spec: &[S]) -> Result<Vec<String>> {
+        if spec.is_empty() {
+            return Ok(self.languages.iter().map(|l| l.folder.clone()).collect());
+        }
+        let mut folders: Vec<String> = Vec::new();
+        for entry in spec {
+            let wanted = entry.as_ref().trim().replace('-', "_").to_lowercase();
+            let found = self
+                .languages
+                .iter()
+                .find(|l| l.folder.to_lowercase() == wanted)
+                .ok_or_else(|| Error::UnknownLanguage(entry.as_ref().to_owned()))?;
+            if !folders.contains(&found.folder) {
+                folders.push(found.folder.clone());
             }
         }
-        self.active = folders.iter().map(|f| (*f).to_owned()).collect();
-        Ok(())
+        Ok(folders)
     }
 
     /// The families the VFS gives no source for.
     #[must_use]
     pub fn unsourced(&self) -> &'static [crate::NoSource] {
         &UNSOURCED
+    }
+
+    /// The tables behind the page families, with their entry counts.
+    ///
+    /// # Errors
+    /// A table cannot be found or decoded.
+    pub fn sources(&self) -> Result<Vec<Source>> {
+        let chara = self.chara_data()?;
+        let skills = self.skill_rows()?;
+        let teams = self.team_rows()?;
+        Ok(vec![
+            Source {
+                family: "characters",
+                vfs_path: chara.param_path.clone(),
+                table: PARAM_NODE,
+                entries: chara.params.len(),
+            },
+            Source {
+                family: "characters",
+                vfs_path: chara.base_path.clone(),
+                table: BASE_NODE,
+                entries: chara.bases.len(),
+            },
+            Source {
+                family: "skills",
+                vfs_path: skills.path.clone(),
+                table: SKILL_LIST,
+                entries: skills.rows.len(),
+            },
+            Source {
+                family: "teams",
+                vfs_path: teams.path.clone(),
+                table: TEAM_LIST,
+                entries: teams.rows.len(),
+            },
+        ])
     }
 
     fn table(&self, language: &str, stem: &str) -> Result<Option<Arc<TextTable>>> {
@@ -245,9 +327,9 @@ impl Wiki {
         Ok(Some(table))
     }
 
-    fn texts<'a>(&'a self, stem: &'a str) -> Result<TextSet<'a>> {
+    fn texts<'a>(&'a self, stem: &'a str, langs: &'a [String]) -> Result<TextSet<'a>> {
         let mut tables = Vec::new();
-        for language in &self.active {
+        for language in langs {
             if let Some(table) = self.table(language, stem)? {
                 tables.push((language.as_str(), table));
             }
@@ -279,26 +361,77 @@ impl Wiki {
             .get(|| load_rdbn(&self.vfs, BELONG_TEAM, TEAM_LIST))
     }
 
-    /// Every `chara_param` entry joined to its `chara_base` entry, in table order. Entries whose
-    /// `chara_base` entry is missing are skipped.
+    fn team_index(&self) -> Result<Arc<TeamIndex>> {
+        self.team_index.get(|| {
+            let rows = self.team_rows()?;
+            let wanted: HashSet<u32> = rows
+                .rows
+                .iter()
+                .flat_map(|row| emblem_ids(row).into_iter().map(|(_, id)| id))
+                .collect();
+            let files = index::files_by_name_hash(&self.vfs, &wanted);
+
+            let data = self.chara_data()?;
+            let mut affiliated: HashMap<u32, Vec<AffiliatedCharacter>> = HashMap::new();
+            for row in data.bases.values() {
+                if let Some(team) = row.base.belong_team_id {
+                    affiliated
+                        .entry(team.0)
+                        .or_default()
+                        .push(AffiliatedCharacter {
+                            chara_base_id: Id(row.base.chara_id.0),
+                            internal_code: row.base.internal_code.clone(),
+                            source: Provenance {
+                                vfs_path: data.base_path.clone(),
+                                table: BASE_NODE.to_owned(),
+                                index: row.index,
+                            },
+                        });
+                }
+            }
+            for members in affiliated.values_mut() {
+                members.sort_by_key(|m| m.source.index);
+            }
+            Ok(TeamIndex { files, affiliated })
+        })
+    }
+
+    /// `chara_param` entries joined to their `chara_base` entry, in table order, filtered and
+    /// windowed by `query`. Entries whose `chara_base` entry is missing are skipped.
     ///
     /// # Errors
-    /// A table cannot be found or decoded.
-    pub fn characters(&self) -> Result<Vec<Character>> {
+    /// A table cannot be found or decoded, or a language is unknown.
+    pub fn characters(&self, query: &Query) -> Result<Page<Character>> {
+        let langs = self.resolve_languages(&query.languages)?;
         let data = self.chara_data()?;
-        let ctx = CharaContext::new(self)?;
-        Ok(data
+        let ctx = CharaContext::new(self, &langs)?;
+        let needle = query.text.as_deref().map(str::to_lowercase);
+        let hits: Vec<&(CharaParam, usize)> = data
             .params
             .iter()
-            .filter_map(|(param, index)| ctx.build(&data, param, *index))
-            .collect())
+            .filter(|(param, _)| {
+                data.bases.get(&param.chara_base_id.0).is_some_and(|row| {
+                    needle
+                        .as_deref()
+                        .is_none_or(|needle| ctx.matches(param, row, needle))
+                })
+            })
+            .collect();
+        Ok(window(&hits, query, |(param, index)| {
+            ctx.build(&data, param, *index)
+        }))
     }
 
     /// The character whose `chara_param` id (`0xXXXXXXXX`) or `chara_base` internal code is `key`.
     ///
     /// # Errors
-    /// A table cannot be found or decoded.
-    pub fn character(&self, key: &str) -> Result<Option<Character>> {
+    /// A table cannot be found or decoded, or a language is unknown.
+    pub fn character<S: AsRef<str>>(
+        &self,
+        key: &str,
+        languages: &[S],
+    ) -> Result<Option<Character>> {
+        let langs = self.resolve_languages(languages)?;
         let data = self.chara_data()?;
         let id = nie_data::hash::HashId::parse(key).map(|h| h.0);
         let found = data.params.iter().find(|(param, _)| {
@@ -311,29 +444,40 @@ impl Wiki {
         let Some((param, index)) = found else {
             return Ok(None);
         };
-        Ok(CharaContext::new(self)?.build(&data, param, *index))
+        Ok(CharaContext::new(self, &langs)?.build(&data, param, *index))
     }
 
-    /// Every `skill_config` entry in table order.
+    /// `skill_config` entries in table order, filtered and windowed by `query`.
     ///
     /// # Errors
-    /// A table cannot be found or decoded.
-    pub fn skills(&self) -> Result<Vec<Skill>> {
+    /// A table cannot be found or decoded, or a language is unknown.
+    pub fn skills(&self, query: &Query) -> Result<Page<Skill>> {
+        let langs = self.resolve_languages(&query.languages)?;
         let rows = self.skill_rows()?;
-        let ctx = SkillContext::new(self)?;
-        Ok(rows
+        let ctx = SkillContext::new(self, &langs)?;
+        let needle = query.text.as_deref().map(str::to_lowercase);
+        let hits: Vec<(usize, &Value)> = rows
             .rows
             .iter()
             .enumerate()
-            .filter_map(|(index, row)| ctx.build(&rows.path, row, index))
-            .collect())
+            .filter(|(_, row)| {
+                skill_key(row).is_some()
+                    && needle
+                        .as_deref()
+                        .is_none_or(|needle| ctx.matches(row, needle))
+            })
+            .collect();
+        Ok(window(&hits, query, |(index, row)| {
+            ctx.build(&rows.path, row, *index)
+        }))
     }
 
     /// The skill whose `skillID` (`0xXXXXXXXX`) or `skillIDStr` is `key`.
     ///
     /// # Errors
-    /// A table cannot be found or decoded.
-    pub fn skill(&self, key: &str) -> Result<Option<Skill>> {
+    /// A table cannot be found or decoded, or a language is unknown.
+    pub fn skill<S: AsRef<str>>(&self, key: &str, languages: &[S]) -> Result<Option<Skill>> {
+        let langs = self.resolve_languages(languages)?;
         let rows = self.skill_rows()?;
         let id = nie_data::hash::HashId::parse(key).map(|h| h.0);
         let found = rows.rows.iter().enumerate().find(|(_, row)| {
@@ -343,99 +487,118 @@ impl Wiki {
         let Some((index, row)) = found else {
             return Ok(None);
         };
-        Ok(SkillContext::new(self)?.build(&rows.path, row, index))
+        Ok(SkillContext::new(self, &langs)?.build(&rows.path, row, index))
     }
 
-    /// Every `belong_team_config` entry in table order, with emblems resolved by file-name hash.
+    /// `belong_team_config` entries in table order, filtered and windowed by `query`, with
+    /// emblems resolved by file-name hash.
     ///
     /// # Errors
-    /// A table cannot be found or decoded.
-    pub fn teams(&self) -> Result<Vec<Team>> {
-        self.build_teams(None)
-    }
-
-    /// The team whose `belongTeamId` (`0xXXXXXXXX`) is `key`.
-    ///
-    /// # Errors
-    /// A table cannot be found or decoded.
-    pub fn team(&self, key: &str) -> Result<Option<Team>> {
-        let Some(id) = nie_data::hash::HashId::parse(key).map(|h| h.0) else {
-            return Ok(None);
-        };
-        Ok(self.build_teams(Some(id))?.into_iter().next())
-    }
-
-    fn build_teams(&self, only: Option<u32>) -> Result<Vec<Team>> {
+    /// A table cannot be found or decoded, or a language is unknown.
+    pub fn teams(&self, query: &Query) -> Result<Page<Team>> {
+        let langs = self.resolve_languages(&query.languages)?;
         let rows = self.team_rows()?;
-        let selected: Vec<(usize, &Value)> = rows
+        let names = self.texts("team_text", &langs)?;
+        let needle = query.text.as_deref().map(str::to_lowercase);
+        let hits: Vec<(usize, &Value)> = rows
             .rows
             .iter()
             .enumerate()
-            .filter(|(_, row)| only.is_none_or(|id| field_id(row, "belongTeamId") == Some(id)))
-            .collect();
-
-        let wanted: HashSet<u32> = selected
-            .iter()
-            .flat_map(|(_, row)| emblem_ids(row).into_iter().map(|(_, id)| id))
-            .collect();
-        let files = index::files_by_name_hash(&self.vfs, &wanted);
-
-        let data = self.chara_data()?;
-        let mut affiliated: HashMap<u32, Vec<AffiliatedCharacter>> = HashMap::new();
-        for row in data.bases.values() {
-            if let Some(team) = row.base.belong_team_id {
-                affiliated
-                    .entry(team.0)
-                    .or_default()
-                    .push(AffiliatedCharacter {
-                        chara_base_id: Id(row.base.chara_id.0),
-                        internal_code: row.base.internal_code.clone(),
-                        source: Provenance {
-                            vfs_path: data.base_path.clone(),
-                            table: BASE_NODE.to_owned(),
-                            index: row.index,
-                        },
-                    });
-            }
-        }
-        for members in affiliated.values_mut() {
-            members.sort_by_key(|m| m.source.index);
-        }
-
-        let names = self.texts("team_text")?;
-        Ok(selected
-            .into_iter()
-            .filter_map(|(index, row)| {
-                let belong_team_id = field_id(row, "belongTeamId")?;
-                Some(Team {
-                    belong_team_id: Id(belong_team_id),
-                    name: field_id(row, "teamNameTextId")
-                        .and_then(|id| names.localize(Section::Any, id)),
-                    emblems: emblem_ids(row)
-                        .into_iter()
-                        .map(|(field, id)| {
-                            let files = files.get(&id).cloned().unwrap_or_default();
-                            (
-                                field,
-                                Emblem {
-                                    emblem_id: Id(id),
-                                    files,
-                                },
-                            )
-                        })
-                        .collect(),
-                    affiliated_characters: affiliated.remove(&belong_team_id).unwrap_or_default(),
-                    fields: fields_of(row),
-                    roster: UNSOURCED[0],
-                    source: Provenance {
-                        vfs_path: rows.path.clone(),
-                        table: TEAM_LIST.to_owned(),
-                        index,
-                    },
-                })
+            .filter(|(_, row)| {
+                field_id(row, "belongTeamId").is_some()
+                    && needle.as_deref().is_none_or(|needle| {
+                        field_id(row, "teamNameTextId")
+                            .is_some_and(|id| names.matches(Section::Any, id, needle))
+                    })
             })
-            .collect())
+            .collect();
+        let index = self.team_index()?;
+        Ok(window(&hits, query, |(position, row)| {
+            build_team(&rows.path, row, *position, &names, &index)
+        }))
     }
+
+    /// The team whose `belongTeamId` is `key` (`0xXXXXXXXX`).
+    ///
+    /// # Errors
+    /// A table cannot be found or decoded, or a language is unknown.
+    pub fn team<S: AsRef<str>>(&self, key: &str, languages: &[S]) -> Result<Option<Team>> {
+        let langs = self.resolve_languages(languages)?;
+        let Some(id) = nie_data::hash::HashId::parse(key).map(|h| h.0) else {
+            return Ok(None);
+        };
+        let rows = self.team_rows()?;
+        let Some((position, row)) = rows
+            .rows
+            .iter()
+            .enumerate()
+            .find(|(_, row)| field_id(row, "belongTeamId") == Some(id))
+        else {
+            return Ok(None);
+        };
+        let names = self.texts("team_text", &langs)?;
+        let index = self.team_index()?;
+        Ok(build_team(&rows.path, row, position, &names, &index))
+    }
+}
+
+/// The matches in `[offset, offset + limit)`, each built by `build` (builds that yield `None`
+/// are dropped from the window but still count in `total`).
+fn window<H, T>(hits: &[H], query: &Query, build: impl Fn(&H) -> Option<T>) -> Page<T> {
+    let items = hits
+        .iter()
+        .skip(query.offset)
+        .take(query.limit.unwrap_or(usize::MAX))
+        .filter_map(build)
+        .collect();
+    Page {
+        total: hits.len(),
+        offset: query.offset,
+        items,
+    }
+}
+
+fn skill_key(row: &Value) -> Option<(u32, &str)> {
+    Some((field_id(row, "skillID")?, row.get("skillIDStr")?.as_str()?))
+}
+
+fn build_team(
+    path: &str,
+    row: &Value,
+    position: usize,
+    names: &TextSet<'_>,
+    index: &TeamIndex,
+) -> Option<Team> {
+    let belong_team_id = field_id(row, "belongTeamId")?;
+    Some(Team {
+        belong_team_id: Id(belong_team_id),
+        name: field_id(row, "teamNameTextId").and_then(|id| names.localize(Section::Any, id)),
+        emblems: emblem_ids(row)
+            .into_iter()
+            .map(|(field, id)| {
+                let files = index.files.get(&id).cloned().unwrap_or_default();
+                (
+                    field,
+                    Emblem {
+                        emblem_id: Id(id),
+                        files,
+                    },
+                )
+            })
+            .collect(),
+        affiliated_characters: index
+            .affiliated
+            .get(&belong_team_id)
+            .cloned()
+            .unwrap_or_default(),
+        fields: fields_of(row),
+        roster: UNSOURCED[0],
+        source: Provenance {
+            vfs_path: path.to_owned(),
+            table: TEAM_LIST.to_owned(),
+            index: position,
+        },
+    })
 }
 
 /// The non-zero `teamEmblemId_*` fields of a team entry, by field name.
@@ -459,7 +622,7 @@ struct CharaContext<'a> {
 }
 
 impl<'a> CharaContext<'a> {
-    fn new(wiki: &'a Wiki) -> Result<Self> {
+    fn new(wiki: &'a Wiki, langs: &'a [String]) -> Result<Self> {
         let teams = wiki
             .team_rows()?
             .rows
@@ -473,13 +636,23 @@ impl<'a> CharaContext<'a> {
             .collect();
         Ok(Self {
             wiki,
-            names: wiki.texts("chara_text")?,
-            descriptions: wiki.texts("chara_description_text")?,
-            system: wiki.texts("system_text")?,
-            skill_names: SkillContext::new(wiki)?,
+            names: wiki.texts("chara_text", langs)?,
+            descriptions: wiki.texts("chara_description_text", langs)?,
+            system: wiki.texts("system_text", langs)?,
+            skill_names: SkillContext::new(wiki, langs)?,
             teams,
-            team_names: wiki.texts("team_text")?,
+            team_names: wiki.texts("team_text", langs)?,
         })
+    }
+
+    fn matches(&self, param: &CharaParam, row: &BaseRow, needle: &str) -> bool {
+        let base = &row.base;
+        base.internal_code.to_lowercase().contains(needle)
+            || format!("0x{:08x}", param.chara_param_id.0).contains(needle)
+            || self.names.matches(Section::Noun, base.name_hash.0, needle)
+            || base
+                .last_name_hash
+                .is_some_and(|h| self.names.matches(Section::Noun, h.0, needle))
     }
 
     fn build(&self, data: &CharaData, param: &CharaParam, index: usize) -> Option<Character> {
@@ -549,7 +722,7 @@ struct SkillContext<'a> {
 }
 
 impl<'a> SkillContext<'a> {
-    fn new(wiki: &'a Wiki) -> Result<Self> {
+    fn new(wiki: &'a Wiki, langs: &'a [String]) -> Result<Self> {
         let name_ids = wiki
             .skill_rows()?
             .rows
@@ -558,9 +731,9 @@ impl<'a> SkillContext<'a> {
             .collect();
         Ok(Self {
             wiki,
-            names: wiki.texts("skill_text")?,
-            descriptions: wiki.texts("skill_text")?,
-            system: wiki.texts("system_text")?,
+            names: wiki.texts("skill_text", langs)?,
+            descriptions: wiki.texts("skill_text", langs)?,
+            system: wiki.texts("system_text", langs)?,
             name_ids,
         })
     }
@@ -570,13 +743,18 @@ impl<'a> SkillContext<'a> {
             .localize(Section::Noun, *self.name_ids.get(&skill_id)?)
     }
 
+    fn matches(&self, row: &Value, needle: &str) -> bool {
+        skill_key(row).is_some_and(|(_, code)| code.to_lowercase().contains(needle))
+            || field_id(row, "skillNameId")
+                .is_some_and(|id| self.names.matches(Section::Noun, id, needle))
+    }
+
     fn build(&self, path: &str, row: &Value, index: usize) -> Option<Skill> {
-        let skill_id = field_id(row, "skillID")?;
-        let skill_id_str = row.get("skillIDStr")?.as_str()?.to_owned();
+        let (skill_id, skill_id_str) = skill_key(row)?;
         let code = |key: &str| nie_data::cfgbin::field_i64(row, key);
         Some(Skill {
             skill_id: Id(skill_id),
-            skill_id_str,
+            skill_id_str: skill_id_str.to_owned(),
             name: field_id(row, "skillNameId")
                 .and_then(|id| self.names.localize(Section::Noun, id)),
             description: field_id(row, "skillDescId")

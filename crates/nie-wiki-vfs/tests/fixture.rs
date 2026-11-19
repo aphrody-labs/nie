@@ -5,7 +5,7 @@ use std::path::Path;
 
 use nie_formats::cfgbin::{CfgEntry, RdbnList, RdbnRow, RdbnValue, Value, encode_rdbn, encode_t2b};
 use nie_formats::vfs::Vfs;
-use nie_wiki_vfs::{Id, Wiki};
+use nie_wiki_vfs::{Id, Query, Wiki};
 use tempfile::TempDir;
 
 const CHARA_ID: u32 = 0xA000_0001;
@@ -286,7 +286,7 @@ fn languages_come_from_the_text_folders_that_hold_character_names() {
 fn character_joins_param_base_and_labels_per_language() {
     let dir = TempDir::new().unwrap();
     let wiki = Wiki::new(installation(&dir)).unwrap();
-    let characters = wiki.characters().unwrap();
+    let characters = wiki.characters(&Query::default()).unwrap().items;
     // The second param names a missing base entry and is skipped.
     assert_eq!(characters.len(), 1);
     let c = &characters[0];
@@ -366,7 +366,10 @@ fn a_base_without_a_gender_variable_has_no_gender() {
     );
     let wiki = Wiki::new(vfs).unwrap();
     // The highest version wins.
-    let c = wiki.character("c00000002").unwrap().unwrap();
+    let c = wiki
+        .character("c00000002", &[] as &[&str])
+        .unwrap()
+        .unwrap();
     assert_eq!(c.chara_param_id, Id(PARAM_ID + 5));
     assert!(c.gender.is_none());
     assert!(c.team.is_none());
@@ -375,9 +378,8 @@ fn a_base_without_a_gender_variable_has_no_gender() {
 #[test]
 fn skill_keeps_every_stored_field() {
     let dir = TempDir::new().unwrap();
-    let mut wiki = Wiki::new(installation(&dir)).unwrap();
-    wiki.select_languages(&["fr"]).unwrap();
-    let skill = wiki.skill("whs00001").unwrap().unwrap();
+    let wiki = Wiki::new(installation(&dir)).unwrap();
+    let skill = wiki.skill("whs00001", &["fr"]).unwrap().unwrap();
     assert_eq!(skill.skill_id, Id(SKILL_ID));
     assert_eq!(skill.name.as_ref().unwrap().text("fr"), Some("Tir fr"));
     assert!(!skill.name.as_ref().unwrap().texts.contains_key("de"));
@@ -403,15 +405,15 @@ fn skill_keeps_every_stored_field() {
         (skill.source.table.as_str(), skill.source.index),
         ("m_skillInfoList", 0)
     );
-    assert!(wiki.skill("0xC0000001").unwrap().is_some());
-    assert!(wiki.skill("missing").unwrap().is_none());
+    assert!(wiki.skill("0xC0000001", &["fr"]).unwrap().is_some());
+    assert!(wiki.skill("missing", &["fr"]).unwrap().is_none());
 }
 
 #[test]
 fn team_resolves_emblems_by_hashing_file_names() {
     let dir = TempDir::new().unwrap();
     let wiki = Wiki::new(installation(&dir)).unwrap();
-    let team = wiki.team("0xD0000001").unwrap().unwrap();
+    let team = wiki.team("0xD0000001", &[] as &[&str]).unwrap().unwrap();
     assert_eq!(team.name.as_ref().unwrap().text("fr"), Some("Raimon"));
 
     let ie = &team.emblems["teamEmblemId_IE"];
@@ -429,14 +431,151 @@ fn team_resolves_emblems_by_hashing_file_names() {
     assert_eq!(team.affiliated_characters.len(), 1);
     assert_eq!(team.affiliated_characters[0].internal_code, "c00000001");
     assert_eq!(team.roster.family, "team roster");
-    assert_eq!(wiki.teams().unwrap().len(), 1);
-    assert!(wiki.team("0xDEADBEEF").unwrap().is_none());
+    assert_eq!(wiki.teams(&Query::default()).unwrap().total, 1);
+    assert!(wiki.team("0xDEADBEEF", &[] as &[&str]).unwrap().is_none());
 }
 
 #[test]
-fn unknown_language_is_refused() {
+fn languages_resolve_from_folders_and_bcp47_tags() {
     let dir = TempDir::new().unwrap();
-    let mut wiki = Wiki::new(installation(&dir)).unwrap();
-    assert!(wiki.select_languages(&["xx"]).is_err());
+    let wiki = Wiki::new(installation(&dir)).unwrap();
+    assert_eq!(
+        wiki.resolve_languages(&["FR", "fr", "de"]).unwrap(),
+        ["fr", "de"]
+    );
+    assert_eq!(
+        wiki.resolve_languages(&[] as &[&str]).unwrap(),
+        ["de", "fr"]
+    );
+    assert!(wiki.resolve_languages(&["xx"]).is_err());
+    assert!(wiki.character("c00000001", &["zh-Hans"]).is_err());
     assert_eq!(wiki.unsourced().len(), 3);
+}
+
+#[test]
+fn lists_are_filtered_by_name_in_the_selected_languages_and_windowed() {
+    let dir = TempDir::new().unwrap();
+    let wiki = Wiki::new(installation(&dir)).unwrap();
+    let query = |text: &str, languages: &[&str]| Query {
+        languages: languages.iter().map(|l| (*l).to_owned()).collect(),
+        text: Some(text.to_owned()),
+        ..Query::default()
+    };
+
+    // The French team name is "Raimon", the German one "Raimon DE".
+    assert_eq!(wiki.teams(&query("raimon", &["fr"])).unwrap().total, 1);
+    assert_eq!(wiki.teams(&query(" de", &["fr"])).unwrap().total, 0);
+    assert_eq!(wiki.teams(&query(" de", &["de"])).unwrap().total, 1);
+
+    // Skills match on the name and on the code.
+    assert_eq!(wiki.skills(&query("tir fr", &["fr"])).unwrap().total, 1);
+    assert_eq!(wiki.skills(&query("tir fr", &["de"])).unwrap().total, 0);
+    assert_eq!(wiki.skills(&query("WHS0000", &["de"])).unwrap().total, 1);
+
+    // Characters match on either name, the code and the id.
+    assert_eq!(wiki.characters(&query("kino", &["de"])).unwrap().total, 1);
+    assert_eq!(
+        wiki.characters(&query("c0000000", &["de"])).unwrap().total,
+        1
+    );
+    assert_eq!(
+        wiki.characters(&query("0xb0000001", &["de"]))
+            .unwrap()
+            .total,
+        1
+    );
+    assert_eq!(wiki.characters(&query("nobody", &[])).unwrap().total, 0);
+
+    // `total` counts every match, the window only bounds the items.
+    let none = Query {
+        limit: Some(0),
+        ..Query::default()
+    };
+    let page = wiki.characters(&none).unwrap();
+    assert_eq!((page.total, page.items.len()), (1, 0));
+    let past = Query {
+        offset: 5,
+        ..Query::default()
+    };
+    assert!(wiki.skills(&past).unwrap().items.is_empty());
+}
+
+#[test]
+fn sources_name_every_backing_table() {
+    let dir = TempDir::new().unwrap();
+    let wiki = Wiki::new(installation(&dir)).unwrap();
+    let sources = wiki.sources().unwrap();
+    let tables: Vec<_> = sources
+        .iter()
+        .map(|s| (s.family, s.table, s.entries))
+        .collect();
+    assert_eq!(
+        tables,
+        [
+            ("characters", "CHARA_PARAM_INFO", 2),
+            ("characters", "CHARA_BASE_INFO", 2),
+            ("skills", "m_skillInfoList", 1),
+            ("teams", "m_belongTeamInfoList", 1),
+        ]
+    );
+}
+
+#[test]
+fn pages_show_provenance_emblems_and_explicit_empty_states() {
+    use nie_wiki_vfs::html::{self, Ctx, ListParams};
+
+    let dir = TempDir::new().unwrap();
+    let wiki = Wiki::new(installation(&dir)).unwrap();
+    let languages = wiki.languages();
+    let fr = languages.iter().find(|l| l.folder == "fr").unwrap();
+    let ctx = |rest| Ctx {
+        languages,
+        lang: fr,
+        rest,
+    };
+
+    let team = wiki.team("0xD0000001", &[] as &[&str]).unwrap().unwrap();
+    let page = html::team(&ctx("teams/0xD0000001"), &team);
+    assert!(page.contains("<html lang=\"fr\">"));
+    assert!(page.contains("<h1>Raimon</h1>"));
+    assert!(page.contains("src=\"/tex/dx11/menu/200_icon/01_icon_emblem/em010001.png\""));
+    assert!(page.contains("no VFS file name hashes to this id"));
+    assert!(page.contains("team roster</strong>: no source in the VFS"));
+    assert!(page.contains("belong_team_config_0.00.00.cfg.bin"));
+    assert!(page.contains("m_belongTeamInfoList"));
+    // The switcher keeps the page across languages.
+    assert!(page.contains("href=\"/wiki/de/teams/0xD0000001\""));
+
+    let character = wiki
+        .character("c00000001", &[] as &[&str])
+        .unwrap()
+        .unwrap();
+    let page = html::character(&ctx("characters/c00000001"), &character);
+    assert!(page.contains("<h1>Aki Kino</h1>"));
+    assert!(page.contains("stored code, no label in the VFS"));
+    assert!(page.contains("chara_param_1.00.00.00.cfg.bin"));
+    assert!(page.contains("Raimon"));
+
+    let list = wiki.characters(&Query::default()).unwrap();
+    let params = ListParams {
+        text: Some("<b>".to_owned()),
+        offset: 0,
+        limit: 10,
+    };
+    let page = html::characters(&ctx("characters"), &list, &params);
+    assert!(page.contains("value=\"&lt;b&gt;\""));
+    assert!(!page.contains("<b>"));
+    assert!(page.contains("1 match(es)"));
+
+    let skill = wiki.skill("whs00001", &["fr"]).unwrap().unwrap();
+    let page = html::skill(&ctx("skills/whs00001"), &skill);
+    assert!(page.contains("invocation rates</strong>: no source in the VFS"));
+    assert!(page.contains("Tir fr"));
+
+    let page = html::index(languages, &wiki.sources().unwrap(), wiki.unsourced());
+    assert!(page.contains("capsule lot contents</strong>: no source in the VFS"));
+    assert!(
+        page.contains("href=\"/wiki/zh-Hans/characters\"")
+            || page.contains("href=\"/wiki/de/characters\"")
+    );
 }

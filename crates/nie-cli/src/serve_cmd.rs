@@ -1,14 +1,19 @@
-//! Self-hosted cloud-first HTTP server for `nie` (`GET /health`, `/ready`, `/v1/vfs/*`, `/v1/formats/*`, `/v1/game/query`).
+//! Self-hosted cloud-first HTTP server for `nie` (`GET /health`, `/ready`, `/openapi.json`, `/v1/vfs/*`, `/v1/formats/*`,
+//! `/v1/game/query`, the wiki under `/v1/wiki/*` and `/wiki/*`). The routes are listed once, in `serve_routes`.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use anyhow::Context;
 use clap::Args;
 use nie_explore::raw_access::{self, Token};
+use nie_wiki_vfs::Wiki;
 use serde_json::{Value, json};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+
+use crate::serve_routes::{self, Route};
+use crate::serve_wiki;
 
 const MAX_HEADER_BYTES: usize = 16 * 1024;
 const MAX_BODY_BYTES: usize = 32 * 1024 * 1024;
@@ -34,13 +39,15 @@ pub struct ServeArgs {
 }
 
 #[derive(Clone)]
-struct ServerState {
+pub(crate) struct ServerState {
     vfs: Option<Arc<nie_formats::vfs::Vfs>>,
     source_label: Option<String>,
     vfs_error: Option<String>,
     stateless: bool,
     /// Bearer token opening `/v1/vfs/read` in its untouched (raw) mode; closed without one.
     raw_token: Option<Token>,
+    /// The wiki over the mounted VFS, built on first use and shared by every request.
+    wiki: OnceLock<Result<Arc<Wiki>, String>>,
 }
 
 impl ServerState {
@@ -114,7 +121,20 @@ async fn serve(args: ServeArgs) -> anyhow::Result<()> {
         vfs_error,
         stateless: args.stateless,
         raw_token,
+        wiki: OnceLock::new(),
     });
+
+    // Decode the wiki tables in the background so the first page does not pay for them.
+    if let Some(vfs) = state.vfs.clone() {
+        let state = state.clone();
+        tokio::task::spawn_blocking(move || {
+            if let Ok(wiki) = serve_wiki::shared(&state.wiki, &vfs)
+                && let Err(error) = wiki.sources()
+            {
+                tracing::warn!("nie serve: wiki index: {error}");
+            }
+        });
+    }
 
     let bind_addr = format!("{}:{}", args.host, args.port);
     let listener = TcpListener::bind(&bind_addr)
@@ -137,16 +157,16 @@ async fn serve(args: ServeArgs) -> anyhow::Result<()> {
     }
 }
 
-struct HttpResponse {
-    status: u16,
+pub(crate) struct HttpResponse {
+    pub(crate) status: u16,
     reason: &'static str,
-    content_type: &'static str,
+    pub(crate) content_type: &'static str,
     cache_control: &'static str,
-    body: Vec<u8>,
+    pub(crate) body: Vec<u8>,
 }
 
 impl HttpResponse {
-    fn json(status: u16, reason: &'static str, value: &Value) -> Self {
+    pub(crate) fn json(status: u16, reason: &'static str, value: &Value) -> Self {
         Self {
             status,
             reason,
@@ -156,7 +176,7 @@ impl HttpResponse {
         }
     }
 
-    fn bytes(
+    pub(crate) fn bytes(
         status: u16,
         reason: &'static str,
         content_type: &'static str,
@@ -284,8 +304,10 @@ async fn route_request(
 ) -> HttpResponse {
     let (raw_path, raw_query) = target.split_once('?').unwrap_or((target, ""));
     let query = parse_query(raw_query);
+    let matched = serve_routes::match_route(method, raw_path);
+    let route = matched.as_ref().map(|(route, _)| *route);
 
-    if (method == "GET" || method == "HEAD") && (raw_path == "/health" || raw_path == "/") {
+    if route == Some(Route::Health) {
         let profile = if cfg!(feature = "host") {
             "host"
         } else {
@@ -313,7 +335,11 @@ async fn route_request(
         );
     }
 
-    if (method == "GET" || method == "HEAD") && raw_path == "/ready" {
+    if route == Some(Route::OpenApi) {
+        return HttpResponse::json(200, "OK", &serve_routes::openapi());
+    }
+
+    if route == Some(Route::Ready) {
         if state.is_ready() {
             return HttpResponse::json(
                 200,
@@ -336,7 +362,7 @@ async fn route_request(
         );
     }
 
-    if method == "GET" && raw_path == "/v1/vfs/remotes" {
+    if route == Some(Route::VfsRemotes) {
         return tokio::task::spawn_blocking(
             || match nie_formats::vfs_remote::rclone_list_remotes() {
                 Ok(raw) => {
@@ -360,7 +386,7 @@ async fn route_request(
         });
     }
 
-    if method == "POST" && raw_path == "/v1/formats/detect" {
+    if route == Some(Route::FormatsDetect) {
         let fmt = nie_formats::detect(&body);
         return HttpResponse::json(
             200,
@@ -372,7 +398,7 @@ async fn route_request(
         );
     }
 
-    if method == "POST" && raw_path == "/v1/formats/decode" {
+    if route == Some(Route::FormatsDecode) {
         let name = query
             .get("name")
             .cloned()
@@ -418,7 +444,7 @@ async fn route_request(
         );
     };
 
-    if method == "GET" && raw_path == "/v1/vfs/info" {
+    if route == Some(Route::VfsInfo) {
         let (io_calls, payload_bytes) = vfs.remote_stats().unwrap_or_default();
         return HttpResponse::json(
             200,
@@ -435,7 +461,7 @@ async fn route_request(
         );
     }
 
-    if method == "GET" && raw_path == "/v1/vfs/find" {
+    if route == Some(Route::VfsFind) {
         let q = query.get("q").map(String::as_str).unwrap_or("");
         let ext = query
             .get("ext")
@@ -482,7 +508,7 @@ async fn route_request(
         });
     }
 
-    if method == "GET" && raw_path == "/v1/vfs/stat" {
+    if route == Some(Route::VfsStat) {
         let Some(raw_vfs_path) = query.get("path") else {
             return HttpResponse::json(
                 400,
@@ -515,7 +541,7 @@ async fn route_request(
         });
     }
 
-    if method == "GET" && raw_path == "/v1/vfs/read" {
+    if route == Some(Route::VfsRead) {
         // `decode=json|png` is derived data and stays public; any other mode returns the game's
         // own bytes and needs the configured bearer token. Refusals answer 404 so the origin
         // does not advertise a private space.
@@ -607,7 +633,7 @@ async fn route_request(
         });
     }
 
-    if method == "GET" && raw_path == "/v1/game/query" {
+    if route == Some(Route::GameQuery) {
         let domain = query
             .get("domain")
             .cloned()
@@ -628,6 +654,40 @@ async fn route_request(
                 Ok(res) => HttpResponse::json(200, "OK", &res),
                 Err(err) => HttpResponse::json(400, "Bad Request", &json!({ "error": err })),
             }
+        })
+        .await
+        .unwrap_or_else(|_| {
+            HttpResponse::json(
+                500,
+                "Internal Server Error",
+                &json!({ "error": "task failed" }),
+            )
+        });
+    }
+
+    if let Some((
+        route @ (Route::WikiLanguages
+        | Route::WikiUnsourced
+        | Route::WikiList(_)
+        | Route::WikiRecord(_)
+        | Route::PageIndex
+        | Route::PageList(_)
+        | Route::PageRecord(_)),
+        params,
+    )) = matched
+    {
+        let wiki = match serve_wiki::shared(&state.wiki, &vfs) {
+            Ok(wiki) => wiki,
+            Err(error) => {
+                return HttpResponse::json(503, "Service Unavailable", &json!({ "error": error }));
+            }
+        };
+        let params: Vec<String> = params.iter().map(|p| percent_decode(p)).collect();
+        return tokio::task::spawn_blocking(move || match route {
+            Route::PageIndex | Route::PageList(_) | Route::PageRecord(_) => {
+                serve_wiki::page_route(route, &params, &query, &wiki)
+            }
+            _ => serve_wiki::json_route(route, &params, &query, &wiki),
         })
         .await
         .unwrap_or_else(|_| {
@@ -714,6 +774,7 @@ mod tests {
             vfs_error: Some("no source in unit test".to_owned()),
             stateless,
             raw_token: raw_token.and_then(Token::new),
+            wiki: OnceLock::new(),
         })
     }
 
@@ -730,6 +791,7 @@ mod tests {
             vfs_error: None,
             stateless: false,
             raw_token: raw_token.and_then(Token::new),
+            wiki: OnceLock::new(),
         })
     }
 
@@ -832,5 +894,38 @@ mod tests {
         )
         .await;
         assert_eq!(resp.status, 404);
+    }
+}
+
+/// Helpers for the route tests of sibling modules.
+#[cfg(test)]
+pub(crate) mod tests_support {
+    use super::*;
+
+    pub(crate) fn state_with_vfs(vfs: nie_formats::vfs::Vfs) -> Arc<ServerState> {
+        Arc::new(ServerState {
+            vfs: Some(Arc::new(vfs)),
+            source_label: Some("synthetic".to_owned()),
+            vfs_error: None,
+            stateless: false,
+            raw_token: None,
+            wiki: OnceLock::new(),
+        })
+    }
+
+    pub(crate) async fn route(state: &Arc<ServerState>, target: &str) -> HttpResponse {
+        route_request("GET", target, &HashMap::new(), Vec::new(), state.clone()).await
+    }
+
+    pub(crate) async fn route_stateless(target: &str) -> HttpResponse {
+        let state = Arc::new(ServerState {
+            vfs: None,
+            source_label: None,
+            vfs_error: Some("no source in unit test".to_owned()),
+            stateless: true,
+            raw_token: None,
+            wiki: OnceLock::new(),
+        });
+        route(&state, target).await
     }
 }

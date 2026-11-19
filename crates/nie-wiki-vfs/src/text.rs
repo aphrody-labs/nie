@@ -93,6 +93,16 @@ impl TextTable {
         }
     }
 
+    /// Whether a row of `id` holds `needle` (lowercase) in its stored or decoded text.
+    fn matches(&self, section: Section, id: u32, needle: &str) -> bool {
+        self.rows(section, id).is_some_and(|(_, rows)| {
+            rows.iter().any(|entry| {
+                entry.raw.to_lowercase().contains(needle)
+                    || sanitize_text(&entry.raw).to_lowercase().contains(needle)
+            })
+        })
+    }
+
     fn lang_text(&self, section: Section, id: u32) -> Option<LangText> {
         let (kind, rows) = self.rows(section, id)?;
         let forms = rows
@@ -124,6 +134,13 @@ pub(crate) struct TextSet<'a> {
 impl<'a> TextSet<'a> {
     pub(crate) fn new(stem: &'a str, tables: Vec<(&'a str, std::sync::Arc<TextTable>)>) -> Self {
         Self { stem, tables }
+    }
+
+    /// Whether any language holds `needle` (lowercase) in a row of `id`.
+    pub(crate) fn matches(&self, section: Section, id: u32, needle: &str) -> bool {
+        self.tables
+            .iter()
+            .any(|(_, table)| table.matches(section, id, needle))
     }
 
     /// `None` when no language has the key.

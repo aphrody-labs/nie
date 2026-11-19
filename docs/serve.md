@@ -5,7 +5,7 @@ the operator owns, in place, through the VFS (`nie-formats`).
 
 | image / binary | what it is for |
 |---|---|
-| `ghcr.io/aphrody-labs/nie` / `nie serve` | JSON API: VFS listing and lookup, format detection and decoding, game-data queries |
+| `ghcr.io/aphrody-labs/nie` / `nie serve` | JSON API: VFS listing and lookup, format detection and decoding, game-data queries, the wiki (JSON and HTML), `/openapi.json` |
 | `ghcr.io/aphrody-labs/nie-model-serve` / `nie-model-serve` | asset origin for a CDN: decoded textures (PNG), audio (WAV), video (MP4), cfg as JSON, models (GLB), raw bytes behind a token |
 
 Release archives (`nie-v<version>-x86_64-unknown-linux-gnu.tar.gz`,
@@ -88,6 +88,17 @@ All responses carry `Access-Control-Allow-Origin: *` and `X-Content-Type-Options
 | `GET /v1/vfs/stat?path=` | 200 `{path, size, cpk}`; 400 invalid path, 404 unknown |
 | `GET /v1/vfs/read?path=&decode=` | `decode=json`: decoded structure (`application/json`, `max-age=300`); `decode=png`: texture as `image/png`; otherwise the raw bytes as `application/octet-stream`, which needs `Authorization: Bearer <NIE_RAW_VFS_TOKEN>` and is a 404 for everyone while no token is configured; 422 when not decodable |
 | `GET /v1/game/query?domain=&q=&limit=` | 200 game-data rows of `nie_explore::domain_data::query_vfs` (default domain `characters`), 400 on an unknown domain |
+| `GET /openapi.json` | the OpenAPI 3.1 description of every route in this table, generated from the same route list the router dispatches on (`crates/nie-cli/src/serve_routes.rs`; a test compares the two) |
+| `GET /v1/wiki/languages` | 200 `{count, items:[{folder, tag}]}`: the folders of `data/common/text` that hold the character names, with their BCP 47 tags |
+| `GET /v1/wiki/unsourced` | 200 `{count, items:[{family, reason}]}`: the families the VFS gives no source for |
+| `GET /v1/wiki/{characters,skills,teams}?lang=&q=&limit=&offset=` | 200 `{total, offset, limit, items}`; `lang` takes folders or BCP 47 tags (`de en es fr it ja pt zh-Hans zh-Hant`, comma separated, default every shipped language), `q` matches names in the selected languages and codes, `limit` 1 to 500 (default 50); 400 on an unknown language |
+| `GET /v1/wiki/{characters,skills,teams}/{key}?lang=` | 200 one record, 404 when no entry matches; key is the `chara_param` id (`0xXXXXXXXX`) or internal code, the `skillID` or code, the `belongTeamId` |
+| `GET /wiki` | HTML home: languages, the tables behind each family and their entry counts, the families without a source |
+| `GET /wiki/{lang}/{characters,skills,teams}?q=&limit=&offset=` | HTML list in the language `{lang}` (a BCP 47 tag), plain semantic HTML without script |
+| `GET /wiki/{lang}/{characters,skills,teams}/{key}` | HTML page: values as stored, labels in every language, the VFS path, table and index behind each part, explicit empty states; team emblems are `<img src="/tex/<path>.png">` on the same host (`nie-model-serve`) |
+
+The wiki routes decode their tables once per process, on first use (and in the background at start
+once a VFS is mounted); without a VFS they answer 503. Their rules are in [wiki.md](wiki.md).
 
 VFS paths are relative, `/`-separated, without `..`, empty segments, backslashes or a leading `/`
 (for example `data/common/text/fr.cfg.bin`).

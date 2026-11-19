@@ -24,6 +24,32 @@ here. Every page is computed from the installation's VFS at request time.
    `zh-Hans`, `zh-Hant`). No machine translation is presented as the game's text.
 6. Every page names the VFS path and table that back it.
 
+## Where it runs
+
+The crate `crates/nie-wiki-vfs` computes every record (`Wiki`) and renders the HTML pages. Surfaces:
+
+- CLI: `nie wiki characters|character <key>|skills|skill <key>|teams|team <id>|languages|unsourced`
+  with `--lang de,fr`, `--json`, `-q`, `--limit`, `--offset` (MCP tool `cli_wiki`).
+- `nie serve`: JSON under `/v1/wiki/...`, HTML under `/wiki`, described by `/openapi.json`
+  (see [serve.md](serve.md)).
+
+How the values are read:
+
+- Character: `chara_param` (element, positions, growth pattern, learned skills) joined to
+  `chara_base` (code, name, family name, description, gender, series id, team id). Gender is the
+  stored code (1 = male, 2 = female; the table also holds 0, 4 and 5 for props, an NPC and
+  monsters). Positions are the stored `chara_param` codes; the VFS has no label for them.
+- Names are `NOUN_INFO` rows of `chara_text`, keyed by (hash, form): form 0 is the full name, 11 and
+  12 its two parts. Descriptions are `TEXT_INFO` rows. Every form of every language is served.
+- Element labels are the `system_text` rows keyed by `crc32("element_type_<name>")`, the way the
+  game hashes its enumeration keys.
+- Skill: all fields of a `skill_config` entry as stored, with the name (`skillNameId`) and
+  description (`skillDescId`) from `skill_text`.
+- Team: a `belong_team_config` entry, the name from `team_text`, each `teamEmblemId_*` resolved by
+  hashing the CPK file names (`em010001.g4tx` hashes to `0xD5ABE1F0`); an id no file name hashes
+  to stays unresolved.
+- The languages are the folders of `data/common/text` that hold `chara_text.cfg.bin`.
+
 ## Sources
 
 The page families and their tables are listed in the VFS column of rosegriffon's
