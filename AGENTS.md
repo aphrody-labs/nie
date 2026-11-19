@@ -11,7 +11,7 @@ for the layout.
 ## Commands
 
 ```sh
-cargo test --locked -p nie-assets -p nie-formats --lib --tests    # CI test job
+cargo test --locked -p nie-assets -p nie-formats -p nie-plugin --lib --tests    # CI test job (nie-plugin: layering gate)
 cargo clippy --locked --workspace --all-targets -- -D warnings    # CI lint job
 cargo check --locked -p nie-bevy --features bevy --all-targets
 cargo shear                                                       # unused dependencies

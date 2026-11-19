@@ -34,7 +34,7 @@ jobs:
       - name: Synthetic CPK through Bevy's AssetServer, VFS and remote transports
         # Builds a CPK archive in a temp directory and loads bytes and a texture through
         # `game://`. No game file is involved.
-        run: cargo test --locked -p nie-assets -p nie-formats --lib --tests
+        run: cargo test --locked -p nie-assets -p nie-formats -p nie-plugin --lib --tests
 
   launcher:
     name: nie-mcp-launch (${{ matrix.os }})

@@ -1,11 +1,10 @@
 //! The plugin contract of nie.
 //!
-//! The core of nie reads two artifacts of the user's installation: the game binary `nie.exe` and
-//! its data VFS. Everything else (the nie.exe reverse-engineering stack, saves, the Ultimate Team
-//! launcher and its mods, Steam and Proton) is a plugin on top of that core. A plugin is a crate
-//! that implements [`Plugin`] and declares which top-level CLI commands (each of them is also an
-//! MCP tool, `cli_<command>`) it owns. The [`Registry`] refuses two plugins with the same id and
-//! two plugins that claim the same command, so ownership stays unambiguous.
+//! nie is a framework: a core (plugin host, VFS, C ABI, serving, deployment) and applications on
+//! top of it. A feature that is not part of an application's core is a plugin: a crate that
+//! implements [`Plugin`] and declares which top-level CLI commands (each of them is also an MCP
+//! tool, `cli_<command>`) it owns. The [`Registry`] refuses two plugins with the same id and two
+//! plugins that claim the same command, so ownership stays unambiguous.
 
 #![forbid(unsafe_code)]
 

@@ -4756,6 +4756,10 @@ dependencies = [
 [[package]]
 name = "nie-plugin"
 version = "2.0.0"
+dependencies = [
+ "serde_json",
+ "toml",
+]
 
 [[package]]
 name = "nie-queue"

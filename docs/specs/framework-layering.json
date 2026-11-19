@@ -1,0 +1,311 @@
+{
+  "schema": 1,
+  "identifiers": [
+    "cpk",
+    "cfg.bin",
+    "nie.exe",
+    "level-5",
+    "level5",
+    "ievr",
+    "inazuma",
+    "victory road",
+    "criware",
+    "noun_info"
+  ],
+  "scanExtensions": [
+    "rs",
+    "toml",
+    "md",
+    "wgsl"
+  ],
+  "framework": [
+    {
+      "package": "nie-plugin",
+      "path": "crates/nie-plugin",
+      "role": "plugin contract and registry: what a feature crate declares, command ownership"
+    },
+    {
+      "package": "nie-abi",
+      "path": "crates/nie-abi",
+      "role": "contract-driven generator of the C ABI layer, the Bun binding and the OpenAPI document (the contract.json it reads is app data)"
+    },
+    {
+      "package": "nie-gpu",
+      "path": "crates/nie-gpu",
+      "role": "shared wgpu instance, adapter, device and surface boundary"
+    },
+    {
+      "package": "nie-sql",
+      "path": "crates/nie-sql",
+      "role": "bounded read-only SQLite and PostgreSQL boundary"
+    },
+    {
+      "package": "nie-health",
+      "path": "crates/nie-health",
+      "role": "container healthcheck over std sockets"
+    },
+    {
+      "package": "nie-specs",
+      "path": "crates/nie-specs",
+      "role": "official-spec sync and host spec records"
+    }
+  ],
+  "app": [
+    {
+      "package": "nie-assets",
+      "path": "crates/nie-assets",
+      "app": "ievr",
+      "note": "Bevy asset source over the game VFS"
+    },
+    {
+      "package": "nie-cfgsql",
+      "path": "crates/nie-cfgsql",
+      "app": "ievr",
+      "note": "cfg.bin to SQL"
+    },
+    {
+      "package": "nie-cli",
+      "path": "crates/nie-cli",
+      "app": "ievr",
+      "note": "the nie and nie-mcp binaries; carries every IEVR command"
+    },
+    {
+      "package": "nie-data",
+      "path": "crates/nie-data",
+      "app": "ievr",
+      "note": "typed readers of the game tables"
+    },
+    {
+      "package": "nie-deploy",
+      "path": "crates/nie-deploy",
+      "app": "ievr",
+      "note": "deployment; launcher.rs holds the game's Steam app id"
+    },
+    {
+      "package": "nie-edge",
+      "path": "crates/nie-edge",
+      "app": "ievr",
+      "note": "edge proxy; depends on nie-model-serve and routes the game's export paths"
+    },
+    {
+      "package": "nie-explore",
+      "path": "crates/nie-explore",
+      "app": "ievr",
+      "note": "format-aware summaries of game files"
+    },
+    {
+      "package": "nie-ffi",
+      "path": "crates/nie-ffi",
+      "app": "ievr",
+      "note": "C ABI of the IEVR contract"
+    },
+    {
+      "package": "nie-formats",
+      "path": "crates/nie-formats",
+      "app": "ievr",
+      "note": "Level-5 and CRIWARE parsers plus the VFS"
+    },
+    {
+      "package": "nie-link",
+      "path": "crates/nie-link",
+      "app": "ievr",
+      "note": "paged link of the game installation"
+    },
+    {
+      "package": "nie-lua",
+      "path": "crates/nie-lua",
+      "app": "ievr",
+      "note": "the game's Lua 5.2 bytecode"
+    },
+    {
+      "package": "nie-model-serve",
+      "path": "crates/nie-model-serve",
+      "app": "ievr",
+      "note": "asset origin for the game"
+    },
+    {
+      "package": "nie-ocgen",
+      "path": "crates/nie-ocgen",
+      "app": "ievr",
+      "note": "game OC generator"
+    },
+    {
+      "package": "nie-render3d",
+      "path": "crates/nie-render3d",
+      "app": "ievr",
+      "note": "GLB renderer of game models; dev-depends on nie-formats"
+    },
+    {
+      "package": "nie-shell",
+      "path": "crates/nie-shell",
+      "app": "ievr",
+      "note": "app contract of IEVR for the aphrody shell"
+    },
+    {
+      "package": "nie-wasm",
+      "path": "crates/nie-wasm",
+      "app": "ievr",
+      "note": "browser bindings for the game formats"
+    },
+    {
+      "package": "nie-wiki-vfs",
+      "path": "crates/nie-wiki-vfs",
+      "app": "ievr",
+      "note": "wiki computed from the game VFS"
+    },
+    {
+      "package": "nie-bevy",
+      "path": "plugins/bevy/nie-bevy",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-camera",
+      "path": "plugins/exe/nie-camera",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-computer-use",
+      "path": "plugins/exe/nie-computer-use",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-forge",
+      "path": "plugins/exe/nie-forge",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-index",
+      "path": "plugins/exe/nie-index",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-pe",
+      "path": "plugins/exe/nie-pe",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-queue",
+      "path": "plugins/exe/nie-queue",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-re",
+      "path": "plugins/exe/nie-re",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-re-core",
+      "path": "plugins/exe/nie-re-core",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-recomp",
+      "path": "plugins/exe/nie-recomp",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-seed",
+      "path": "plugins/exe/nie-seed",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-trace",
+      "path": "plugins/exe/nie-trace",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-win32",
+      "path": "plugins/exe/nie-win32",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-launcher",
+      "path": "plugins/launcher/nie-launcher",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-viola",
+      "path": "plugins/launcher/nie-viola",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-save",
+      "path": "plugins/save/nie-save",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    },
+    {
+      "package": "nie-steam",
+      "path": "plugins/steam/nie-steam",
+      "app": "ievr",
+      "note": "plugin of the IEVR app"
+    }
+  ],
+  "plans": [
+    {
+      "package": "nie-formats",
+      "action": "split",
+      "plan": "Extract the generic part into a new framework crate nie-vfs: ByteSource, vfs.rs, vfs_remote (local, SSH, rclone, HTTP), vfs_manifest, preloaded_vfs, game_source (renamed source). The CPK container stays in nie-formats until a second archive consumer exists. Not mechanical: vfs.rs resolves names through cpk_list.cfg.bin."
+    },
+    {
+      "package": "nie-assets",
+      "action": "split",
+      "plan": "Keep the Bevy AssetSource over a ByteSource in a framework crate; the game:// scheme and CPK resolution stay app code. Depends on the nie-vfs split."
+    },
+    {
+      "package": "nie-cli",
+      "action": "split",
+      "plan": "Host (clap, plugin registry, MCP bridge, serve skeleton) becomes a framework crate; the IEVR commands move behind plugins. Today main.rs links the game crates directly."
+    },
+    {
+      "package": "nie-ffi",
+      "action": "split",
+      "plan": "The C ABI layer is generated from crates/nie-abi/contract.json; moving that contract to apps/ievr/ makes nie-ffi a pure generator output. Owned by isolation-devcli (crlib)."
+    },
+    {
+      "package": "nie-edge",
+      "action": "promote",
+      "plan": "One test literal names a game path and the crate depends on nie-model-serve. Replace the dependency with a route table loaded from nie.toml, then promote."
+    },
+    {
+      "package": "nie-deploy",
+      "action": "split",
+      "plan": "Move launcher.rs (Steam app id, Proton) to plugins/launcher; install, units and host stay framework."
+    },
+    {
+      "package": "nie-link",
+      "action": "split",
+      "plan": "steam.rs and the manifest scan of the installation are app code; the paged content-addressed transport is generic once they are separated."
+    },
+    {
+      "package": "nie-render3d",
+      "action": "promote",
+      "plan": "Renders any GLB. Remove the dev-dependency on nie-formats and the game wording in README and comments, then promote."
+    },
+    {
+      "package": "nie-shell",
+      "action": "promote",
+      "plan": "Generates the shell contract from a typed source; read the source from the app nie.toml instead of IEVR constants, then promote."
+    },
+    {
+      "package": "nie-lua",
+      "action": "keep",
+      "plan": "Executes the game's Lua 5.2 bytecode and the nie.exe host ABI; stays app code."
+    }
+  ]
+}
