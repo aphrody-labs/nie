@@ -43,6 +43,13 @@ Built binaries on the build host: `/srv/xbuild/nie/target/release/{nie,nie-mcp,n
   script, never edited by hand. EOS/EAC rule: LiberNT implements only documented NT/Win32
   behaviour; nothing spoofs Windows to EAC or patches, stubs or skips an EAC check; online modes
   stay off until Epic and Level-5 answer.
+- `vendor/asterinas` is the aphrody-labs/asterinas fork (MPL-2.0 Rust framekernel with the Linux ABI,
+  `branch = main` synced from upstream, gap fixes on `nie/*` branches that are also sent upstream as
+  PRs). It supplies the book's `.scml` compat tables read by `nie deps audit --syscalls`, and the
+  kernel built on the build host. `os/` is the standalone OSDK workspace (own `[workspace]`, lock and
+  `rust-toolchain.toml` copied from the fork's, a nightly kept out of the stable main workspace):
+  `nie-os` (kernel) and `nie-ostd-vfs` (ostd component) take `ostd` from crates.io, never from the
+  git branch; built, ktested and booted only on `fr1` (KVM) or in CI, never on the PC.
 - Never ship, copy or commit a game asset. Game data is read in place through `nie-assets`
   (`game://`) from a local path, SSH, or an rclone remote. Tests build synthetic fixtures in a temp
   directory.

@@ -19,3 +19,9 @@
 	branch = nie
 	update = none
 	shallow = true
+[submodule "vendor/asterinas"]
+	path = vendor/asterinas
+	url = ../asterinas.git
+	branch = main
+	update = none
+	shallow = true
