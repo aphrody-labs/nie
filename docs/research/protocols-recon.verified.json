@@ -1,0 +1,104 @@
+{
+  "schema_version": "2026-11-19.verified",
+  "verified_at": "2026-11-19T07:48:50+01:00",
+  "verification_mode": "live_api_github_crates_io_npm",
+  "protocols": {
+    "acp": {
+      "standard": "Agent Client Protocol (JSON-RPC 2.0 over stdio/HTTP)",
+      "github": {
+        "repo": "agentclientprotocol/agent-client-protocol",
+        "stars": 4676,
+        "release": "schema-v1.33.0",
+        "rel_date": "2026-11-18",
+        "pushed": "2026-11-18"
+      },
+      "crates_io": [
+        { "name": "agent-client-protocol", "ver": "5.4.0", "downloads": 6457576, "updated": "2026-11-18" }
+      ],
+      "npm": [
+        { "name": "@agentclientprotocol/sdk", "ver": "2.8.0" }
+      ]
+    },
+    "a2a": {
+      "standard": "Agent2Agent Protocol (JSON-RPC 2.0 / AgentCard / SSE / gRPC)",
+      "github": {
+        "repo": "a2aproject/A2A",
+        "stars": 26590,
+        "release": "v1.0.1",
+        "rel_date": "2026-05-28",
+        "pushed": "2026-11-18"
+      },
+      "crates_io": [],
+      "npm": [
+        { "name": "@a2a-js/sdk", "ver": "1.3.0" }
+      ]
+    },
+    "mcp": {
+      "standard": "Model Context Protocol (JSON-RPC 2.0 over stdio / Streamable HTTP)",
+      "github": [
+        { "repo": "modelcontextprotocol/modelcontextprotocol", "stars": 9719, "release": "2026-07-28", "pushed": "2026-11-19" },
+        { "repo": "modelcontextprotocol/rust-sdk", "stars": 4125, "release": "rmcp-v3.11.0", "rel_date": "2026-11-17" },
+        { "repo": "modelcontextprotocol/typescript-sdk", "stars": 13785, "release": "v2.4.0", "rel_date": "2026-10-23", "pushed": "2026-11-19" }
+      ],
+      "crates_io": [
+        { "name": "rmcp", "ver": "3.11.0", "downloads": 51915578, "updated": "2026-11-17" }
+      ],
+      "npm": [
+        { "name": "@modelcontextprotocol/sdk", "ver": "1.32.2" }
+      ]
+    },
+    "http": {
+      "standard": "IETF RFC 9110 (Semantics), RFC 9111 (Caching), RFC 9112 (HTTP/1.1), RFC 9113 (HTTP/2), RFC 9114 (HTTP/3)",
+      "crates_io": [
+        { "name": "http", "ver": "1.5.0", "downloads": 1280624592, "updated": "2026-07-29" },
+        { "name": "h2", "ver": "0.4.20", "downloads": 994778577, "updated": "2026-10-06" },
+        { "name": "h3", "ver": "0.0.8", "downloads": 5936431, "updated": "2025-05-06" }
+      ],
+      "npm": [
+        { "name": "undici", "ver": "8.12.4" }
+      ]
+    },
+    "openai": {
+      "standard": "OpenAI Responses API & Chat Completions (OpenAPI schema)",
+      "github": {
+        "repo": "openai/openai-openapi",
+        "stars": 2586,
+        "release": "2.0.0",
+        "pushed": "2026-11-19"
+      },
+      "crates_io": [
+        { "name": "async-openai", "ver": "0.43.0", "downloads": 11048545, "updated": "2026-11-01" }
+      ],
+      "npm": [
+        { "name": "openai", "ver": "7.60.0" }
+      ]
+    },
+    "openapi": {
+      "standard": "OpenAPI Specification 3.2.1 (JSON Schema 2020-12)",
+      "github": {
+        "repo": "OAI/OpenAPI-Specification",
+        "stars": 31327,
+        "release": "3.2.1",
+        "rel_date": "2026-09-10",
+        "pushed": "2026-11-12"
+      },
+      "crates_io": [
+        { "name": "utoipa", "ver": "6.0.0", "downloads": 65367665, "updated": "2026-09-22" },
+        { "name": "openapiv3", "ver": "2.2.0", "downloads": 16168437, "updated": "2025-06-02" },
+        { "name": "schemars", "ver": "1.2.3", "downloads": 669368122, "updated": "2026-10-12" }
+      ],
+      "npm": [
+        { "name": "openapi-types", "ver": "12.1.3" },
+        { "name": "openapi-typescript", "ver": "7.13.0" }
+      ]
+    },
+    "w3c": {
+      "standard": "W3C Decentralized Identifiers (DID) / JSON-LD / Web Standards",
+      "github": {
+        "repo": "w3c/did",
+        "stars": 480,
+        "pushed": "2026-11-15"
+      }
+    }
+  }
+}

@@ -13,3 +13,9 @@
 	url = ../qemu-wasm
 	update = none
 	shallow = true
+[submodule "vendor/libernt"]
+	path = vendor/libernt
+	url = ../LiberNT
+	branch = nie
+	update = none
+	shallow = true

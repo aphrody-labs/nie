@@ -1,0 +1,83 @@
+{
+  "schema_version": "2026-11-19.verified",
+  "repo": "aphrody-labs/nie",
+  "nie_graph_live": {
+    "nodes": 23,
+    "edges": 37,
+    "cycles_scc_count": 1,
+    "cycles_scc": [
+      [
+        "nie-lua",
+        "nie-formats"
+      ]
+    ],
+    "isolated_crates": [
+      "nie-link",
+      "nie-shell",
+      "nie-specs",
+      "nie-sql"
+    ],
+    "top_10_stable_hubs": [
+      {
+        "crate": "nie-formats",
+        "ca": 11,
+        "ce": 1,
+        "instability": 0.083
+      },
+      {
+        "crate": "nie-data",
+        "ca": 8,
+        "ce": 0,
+        "instability": 0
+      },
+      {
+        "crate": "nie-explore",
+        "ca": 5,
+        "ce": 3,
+        "instability": 0.375
+      },
+      {
+        "crate": "nie-lua",
+        "ca": 3,
+        "ce": 2,
+        "instability": 0.4
+      },
+      {
+        "crate": "nie-abi",
+        "ca": 1,
+        "ce": 0,
+        "instability": 0
+      },
+      {
+        "crate": "nie-cfgsql",
+        "ca": 1,
+        "ce": 1,
+        "instability": 0.5
+      },
+      {
+        "crate": "nie-edge",
+        "ca": 1,
+        "ce": 1,
+        "instability": 0.5
+      },
+      {
+        "crate": "nie-gpu",
+        "ca": 1,
+        "ce": 0,
+        "instability": 0
+      },
+      {
+        "crate": "nie-health",
+        "ca": 1,
+        "ce": 0,
+        "instability": 0
+      },
+      {
+        "crate": "nie-model-serve",
+        "ca": 1,
+        "ce": 3,
+        "instability": 0.75
+      }
+    ]
+  }
+}

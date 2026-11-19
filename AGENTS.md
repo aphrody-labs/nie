@@ -37,6 +37,12 @@ Built binaries on the build host: `/srv/xbuild/nie/target/release/{nie,nie-mcp,n
   `update = none`, `shallow = true`) only for an engine no crates.io crate covers, such as
   `third_party/qemu-wasm` (the browser QEMU with the TCG to Wasm backend); nie crates never depend on
   its sources, and `[patch]` stays forbidden.
+- `vendor/libernt` is the aphrody-labs/LiberNT fork (GPL-3.0 NT kernel and Win32, built only on
+  the build host, never on the PC): `master` tracks LiberNT/LiberNT, `nie` is the reduced tree the
+  submodule pins (`branch = nie`), regenerated from master and `docs/specs/libernt-closure.json` by
+  script, never edited by hand. EOS/EAC rule: LiberNT implements only documented NT/Win32
+  behaviour; nothing spoofs Windows to EAC or patches, stubs or skips an EAC check; online modes
+  stay off until Epic and Level-5 answer.
 - Never ship, copy or commit a game asset. Game data is read in place through `nie-assets`
   (`game://`) from a local path, SSH, or an rclone remote. Tests build synthetic fixtures in a temp
   directory.

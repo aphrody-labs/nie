@@ -1,0 +1,299 @@
+{
+  "schema_version": "2026-11-19.verified",
+  "verification_policy": "zero_unverified_claims; proprietary_omissions_explicitly_classified",
+  "gemini_4_lineage": {
+    "argon": {
+      "published": "2026-10-13",
+      "dependency": "new_frontier_model_from_scratch",
+      "architecture": "large_scale_sparse_moe_transformer_native_multimodal",
+      "context_window_tokens": 1048576,
+      "knowledge_cutoff": "2026-03",
+      "pricing_usd_per_1m": {
+        "through_2026_11_30": { "input": 2.00, "output": 10.00, "implicit_cache": 0.10 },
+        "from_2026_12_01": { "input": 4.00, "output": 20.00, "implicit_cache": 0.20 }
+      },
+      "parameter_count_status": "not_disclosed_in_official_model_card",
+      "source": "https://deepmind.google/models/model-cards/gemini-4-argon/"
+    },
+    "carbon": {
+      "published": "2026-11-10",
+      "dependency": "based_on_gemini_4_argon",
+      "architecture_ref": "gemini_4_argon_model_card",
+      "context_window_tokens": 1048576,
+      "pricing_usd_per_1m": {
+        "through_2026_11_30": { "input": 2.00, "output": 10.00, "implicit_cache": 0.10 },
+        "from_2026_12_01": { "input": 4.00, "output": 20.00, "implicit_cache": 0.20 }
+      },
+      "source": "https://deepmind.google/models/model-cards/gemini-4-carbon/"
+    },
+    "neon": {
+      "published": "2026-11-18",
+      "dependency": "adapted_from_gemini_4_carbon",
+      "architecture_ref": "gemini_4_carbon_model_card -> gemini_4_argon_model_card",
+      "adaptation_method_status": "not_disclosed_in_official_model_card",
+      "context_window_tokens": 1048576,
+      "default_sync_output_tokens": 65536,
+      "background_long_decode_tokens": 1048576,
+      "knowledge_cutoff": "2026-03",
+      "pricing_usd_per_1m": {
+        "standard": { "input": 3.00, "output": 15.00, "implicit_cache": 0.15 },
+        "flex_batch": { "input": 1.50, "output": 7.50, "implicit_cache": 0.075 },
+        "priority": { "input": 5.40, "output": 27.00, "implicit_cache": 0.27 }
+      },
+      "cyber_verified": {
+        "cwe_bench_v2_pct": 70.7,
+        "cwe_bench_v2_uplift_vs_carbon_pp": 3.4,
+        "exploitgym": "frontier_performance_at_50pct_carbon_tokens",
+        "gray_swan_ipi_asr_pct": 0.0,
+        "program": "Fairwind Program (Gemini 4 Neon for cyber)"
+      },
+      "source": "https://deepmind.google/models/model-cards/gemini-4-neon/"
+    }
+  },
+  "antigravity_stack": {
+    "internal_runtime": {
+      "sdk_harness_binary": "localharness",
+      "sdk_binary_lookup_order": [
+        "env:ANTIGRAVITY_HARNESS_PATH",
+        "./bin/localharness",
+        "PATH:localharness"
+      ],
+      "ide_electron_abi": "v140 (Node v22.21.1)",
+      "ide_local_ipc": {
+        "host": "127.0.0.1",
+        "protocol": "ConnectRPC",
+        "auth": "ephemeral_per_session_csrf_token",
+        "local_state_db": "state.vscdb (SQLite; native better-sqlite3 incompatible with Electron ABI v140)"
+      },
+      "session_transcripts": {
+        "cli": "~/.gemini/antigravity-cli/brain/<session_id>/.system_generated/logs/transcript_full.jsonl",
+        "app_ide": "~/.gemini/antigravity/brain/<session_id>/.system_generated/logs/transcript_full.jsonl"
+      },
+      "gcp_observability_env": {
+        "project": "GOOGLE_CLOUD_PROJECT",
+        "cloud_logging": "AGY_LOG_EXPORTER=gcp",
+        "cloud_trace": "AGY_OTEL_EXPORTER=gcp"
+      }
+    },
+    "cli": {
+      "repo": "https://github.com/google-antigravity/antigravity-cli",
+      "binary": "agy",
+      "install": {
+        "unix": "curl -fsSL https://antigravity.google/cli/install.sh | bash",
+        "windows_ps": "irm https://antigravity.google/cli/install.ps1 | iex",
+        "windows_cmd": "curl -fsSL https://antigravity.google/cli/install.cmd -o install.cmd && install.cmd && del install.cmd"
+      },
+      "auth": {
+        "keyring_oauth": "browser_or_ssh_auto_detect_remote_url",
+        "logout": "/logout",
+        "headless_requirement": "cached_credentials_required_or_exits_nonzero",
+        "gemini_api_key_mode": "~/.gemini/antigravity-cli/settings.json -> {\"modelProvider\":\"gemini\"} + GEMINI_API_KEY",
+        "adc_mode": "AGY_ADC_AUTH=true or ~/.gemini/config/config.json userSettings.enableAdc=true"
+      },
+      "default_mode_v1_5_7_plus": "auto (fallback default; override in settings.json via \"agentMode\": \"\")",
+      "headless_contract": {
+        "single_shot": "agy -p \"<prompt>\" --output-format text|json|stream-json [--json-schema '<schema>']",
+        "bidirectional_ndjson": "agy --input-format stream-json --output-format stream-json",
+        "stdin_message_shape": { "event": "user", "message": { "content": "<prompt_text>" } },
+        "stdout_event_sequence": ["init", "step_update*", "result"],
+        "hard_constraints": [
+          "--input-format stream-json requires --output-format stream-json",
+          "Do not combine -p with --input-format stream-json (CLI prompt flag is dropped)",
+          "Wait for terminal result event before writing next stdin prompt",
+          "Unknown --model exits 1 with JSON error envelope"
+        ]
+      },
+      "acp_server": {
+        "command": "agy acp [flags]",
+        "login": "agy acp --login",
+        "transport": "JSON-RPC over stdin/stdout",
+        "supported_editors": ["Zed", "JetBrains IDEs", "Android Studio", "Xcode", "VS Code", "custom ACP clients"]
+      },
+      "untrusted_repo_guard_v1_5_7": "Entries in .agents/plugins.json and .agents/skills.json escaping workspace/repo root via absolute paths, ../, or symlinks are skipped",
+      "worktree_isolation_v1_5_7": "Subagent/swarm git worktrees copy staged, unstaged, and untracked changes; non-git workspaces get isolated workspace copy"
+    },
+    "sdk": {
+      "official": {
+        "language": "Python",
+        "package": "google-antigravity",
+        "license": "Apache-2.0",
+        "repo": "https://github.com/google-antigravity/antigravity-sdk-python",
+        "install_requirement": "pip install google-antigravity (compiled localharness binary only exists in PyPI platform wheels)",
+        "default_model": "gemini-3.8-flash ($0.75/$3.75 per 1M through 2026-12-31; $1.50/$7.50 from 2027-01-01)",
+        "config_classes": {
+          "LocalAgentConfig": ["api_key", "vertex", "project", "location", "system_instructions", "tools", "policies", "hooks", "mcp_servers", "subagents", "workspaces", "capabilities", "response_schema"],
+          "LiteRTAgentConfig": {
+            "deps": "pip install google-antigravity litert-lm",
+            "options": ["model_path (absolute, no ~)", "backend (gpu|npu|cpu)", "enable_speculative_decoding", "cache_dir", "compaction_config"],
+            "reference_checkpoint": "litert-community/gemma-4-26B-A4B-it-litert-lm (gemma-4-26B-A4B-it-gpu.litertlm, ~16.8 GB, >=24 GB VRAM/unified RAM recommended)",
+            "constraint": "Do not point LocalOpenAIAgentConfig at litert-lm serve; use LiteRTAgentConfig"
+          },
+          "LocalOpenAIAgentConfig": {
+            "targets": ["Ollama", "LM Studio", "vLLM"],
+            "options": ["model", ".lightweight() optimization preset"]
+          }
+        },
+        "streaming_properties": ["async for token in response", "response.thoughts", "response.tool_calls"],
+        "structured_output": "response_schema accepting pydantic.BaseModel",
+        "subagent_orchestration": {
+          "modes": ["dynamic_self_clone ('self')", "custom_static_subagent", "hierarchical_nested"],
+          "controls": ["max_subagent_depth", "allowed_subagents", "tool allowlist isolation"]
+        },
+        "hook_decorators": ["@hooks.pre_tool_call_decide", "@hooks.post_tool_call"],
+        "policy_primitives": ["google.antigravity.hooks.policy.allow", "deny", "ask_user"],
+        "enterprise_vertex_modes": [
+          "Express Mode: LocalAgentConfig(vertex=True, api_key='...')",
+          "Standard Mode: LocalAgentConfig(vertex=True, project='...', location='us-central1') via ADC"
+        ]
+      },
+      "official_roadmap": {
+        "source": "https://github.com/google-antigravity/antigravity-sdk-python/issues/125",
+        "priority_order": ["Go SDK", "TypeScript SDK"],
+        "ga_status_2026_11_19": "neither_officially_released"
+      },
+      "community_ports": [
+        {
+          "language": "Go",
+          "repo": "https://github.com/JulienBreux/antigravity-sdk-go",
+          "harness": "Downloads localharness binary from PyPI wheels via ./scripts/download_harness.sh"
+        },
+        {
+          "language": "Go",
+          "repo": "https://github.com/qtopie/antigravity-sdk-go",
+          "license": "Apache-2.0",
+          "harness": "Uses localharness binary from Python SDK"
+        },
+        {
+          "language": "TypeScript (IDE Extensions Only)",
+          "repo": "https://github.com/Kanezal/antigravity-sdk",
+          "package": "antigravity-sdk",
+          "scope": "VS Code/Antigravity IDE extension host only; ConnectRPC LSBridge + read-only sql.js state.vscdb; blocks OAuth token extraction per Google TOS"
+        }
+      ]
+    },
+    "managed_cloud_api": {
+      "sdk": "google-genai (http_options={'api_version': 'v1beta'})",
+      "versions": ["antigravity-preview-05-2026", "antigravity-preview-09-2026"],
+      "current_agent_id": "antigravity-preview-09-2026",
+      "runtime": "Google-hosted isolated Linux sandbox with prompt caching, native code search, line-range file editing",
+      "modalities": { "input": ["text", "image"], "output": ["text"] },
+      "token_limits": {
+        "input_context_window": 1048576,
+        "auto_compaction_threshold": 135000,
+        "output_token_limit": 65536
+      },
+      "endpoints": ["client.interactions.create(agent=..., input=...)", "client.agents.create(id=..., base_agent=...)"],
+      "source": "https://aistudio.google.com/docs/models/antigravity-preview-09-2026"
+    },
+    "extensibility_schemas": {
+      "rules": {
+        "workspace_paths": ["AGENTS.md", "GEMINI.md", ".agents/rules/*.md (flat scan up to repo root)"],
+        "global_paths": ["~/.gemini/AGENTS.md", "~/.gemini/GEMINI.md", "~/.gemini/config/AGENTS.md", "~/.gemini/config/GEMINI.md", "~/.gemini/config/rules/*.md"],
+        "plugin_path": "~/.gemini/config/plugins/<name>/rules/",
+        "frontmatter_required_in_rules_dir": true,
+        "frontmatter_forbidden_in_agents_md": true,
+        "valid_triggers": ["always_on", "model_decision", "glob", "manual"],
+        "frontmatter_keys": {
+          "trigger": "required string",
+          "description": "required for model_decision; fallback if always_on exceeds budget",
+          "globs_or_glob": "required comma-separated string for glob trigger"
+        },
+        "cli_limitation": "manual (@mention) rules are not supported in Antigravity CLI"
+      },
+      "mcp": {
+        "workspace_path": ".agents/mcp_config.json",
+        "global_path": "~/.gemini/config/mcp_config.json",
+        "transports": {
+          "stdio": "command (+ args, env)",
+          "streamable_http": "serverUrl (+ headers, OAuth 2.0)"
+        },
+        "timeout_seconds": {
+          "positive_int": "replaces default limits in seconds",
+          "negative_int": "-1 disables timeout limits",
+          "zero_or_unset": "keeps defaults"
+        },
+        "lazy_loading": "Reads /mcp/<server>/<tool>.json on demand and invokes via built-in call_mcp_tool(ServerName, ToolName, Arguments); falls back to eager if schema write to disk fails",
+        "permission_patterns": ["mcp(server/tool)", "mcp(server/*)", "mcp(*)"]
+      },
+      "hooks": {
+        "paths": [".agents/hooks.json", "~/.gemini/config/hooks.json", "<plugin_root>/hooks.json"],
+        "events_with_matcher_and_nested_hooks_array": ["PreToolUse", "PostToolUse"],
+        "events_with_direct_handler_array_no_matcher": ["SessionStart", "PreInvocation", "PostInvocation", "Stop"],
+        "parser_failure_mode": "Any extra 'hooks' wrapper on Stop/PreInvocation/PostInvocation crashes Language Server JSON parsing and silently drops the entire hooks.json",
+        "ide_dispatch_bug": "IDE v1.107.0 / v2.1.1 (Windows) silently skipped PostToolUse/Stop; upgrade to >= v2.5.5 or validate on CLI"
+      },
+      "plugins": {
+        "workspace_path": ".agents/plugins/<name>/",
+        "global_path": "~/.gemini/config/plugins/<name>/",
+        "manifest": "plugin.json (UTF-8 BOM fixed in CLI Nov 2026; extension namespace: extensions['com.google.antigravity'])",
+        "bundles": ["skills", "mcp_servers", "custom_agents_subagents", "rules", "lifecycle_hooks", "sidecars"],
+        "official_marketplace": "@antigravity-plugins-official",
+        "cli_commands": [
+          "agy plugin validate ./",
+          "agy plugin install <name>@antigravity-plugins-official",
+          "agy plugin install <github_url_or_local_dir>",
+          "agy agents",
+          "agy --agent <name>"
+        ]
+      },
+      "sidecars": {
+        "supported_surfaces": ["Antigravity App only (not CLI, not standalone IDE)"],
+        "config_path": "~/.gemini/config/sidecars/<name>/sidecar.json",
+        "enable_path": "~/.gemini/config/config.json -> sidecars.<name>.enabled",
+        "runtime_data_path": "~/.gemini/antigravity/sidecar_data/<name>/logs",
+        "schema_keys": {
+          "process_mode": ["command", "args", "restart_policy (e.g. on-failure)", "description", "display_name"],
+          "schedule_mode": ["builtin: 'schedule'", "args: ['<cron_expr>', ...] + agentapi new-conversation|send-message", "description"]
+        },
+        "tos_constraint": "Consumer plan forbids relaying/wrapping Antigravity via sidecars or agy -p inside third-party coding agents"
+      },
+      "dynamic_workflows": {
+        "slash_command": "/run-workflow",
+        "mechanism": "Reads built-in run-workflow skill, generates Python orchestration script, requests user approval (auto-approved in Turbo), executes background phases",
+        "agent_parameters": {
+          "model": ["inherit", "flash_lite", "flash", "pro"],
+          "type_name": ["self", "research", "<custom_subagent>"],
+          "workspace": ["inherit", "branch (isolated git worktree)", "share (new working copy sharing repo storage)"]
+        },
+        "cli_inspection": "/tasks or Ctrl+T -> Enter on Workflow script/Logs/Output or agent row; Ctrl+O expands live phase tree"
+      }
+    }
+  },
+  "verified_sources": [
+    "https://deepmind.google/models/model-cards/gemini-4-argon/",
+    "https://deepmind.google/models/model-cards/gemini-4-carbon/",
+    "https://deepmind.google/models/model-cards/gemini-4-neon/",
+    "https://blog.google/innovation-and-ai/models-and-research/gemini-models/introducing-gemini-4-neon/",
+    "https://aistudio.google.com/docs/models/antigravity-preview-09-2026",
+    "https://aistudio.google.com/docs/whats-new-gemini-3.8",
+    "https://aistudio.google.com/docs/pricing",
+    "https://docs.cloud.google.com/gemini-enterprise-agent-platform/build/managed-agents/create-manage",
+    "https://antigravity.google/product/antigravity-sdk",
+    "https://antigravity.google/docs/cli/headless/",
+    "https://antigravity.google/docs/cli/acp/",
+    "https://antigravity.google/docs/rules/",
+    "https://antigravity.google/docs/mcp/",
+    "https://antigravity.google/docs/plugins/",
+    "https://antigravity.google/docs/dynamic-workflows/",
+    "https://antigravity.google/docs/sdk/overview/",
+    "https://antigravity.google/docs/sdk/local-models/",
+    "https://antigravity.google/blog/plugin-marketplace-in-antigravity/",
+    "https://github.com/google-antigravity/antigravity-cli",
+    "https://github.com/google-antigravity/antigravity-cli/blob/main/CHANGELOG.md",
+    "https://github.com/google-antigravity/antigravity-cli/releases",
+    "https://github.com/google-antigravity/antigravity-sdk-python",
+    "https://github.com/google-antigravity/antigravity-sdk-python/issues/125",
+    "https://github.com/google-antigravity/antigravity-sdk-python/blob/main/examples/getting_started/structured_output.py",
+    "https://github.com/google-antigravity/antigravity-sdk-python/blob/main/examples/getting_started/subagents.py",
+    "https://github.com/JulienBreux/antigravity-sdk-go",
+    "https://pkg.go.dev/github.com/qtopie/antigravity-sdk-go",
+    "https://github.com/Kanezal/antigravity-sdk",
+    "https://medium.com/google-cloud/where-does-antigravity-look-for-sidecars-20e7002b9246",
+    "https://medium.com/google-cloud/hooking-into-the-antigravity-harness-with-google-cloud-observability-18de38bd6667",
+    "https://codelabs.developers.google.com/codelabs/cloud-run/code-mender-skills-hooks?hl=en",
+    "https://discuss.ai.google.dev/t/hooks-in-antigravity/120458",
+    "https://discuss.ai.google.dev/t/stop-and-posttooluse-hooks-in-agents-hooks-json-never-fire-antigravity-ide-1-107-0-windows/178288",
+    "https://discuss.ai.google.dev/t/do-antigravity-ide-2-0-actually-execute-plugin-hooks-pretooluse-posttooluse-or-is-that-cli-only-right-now/176814/3",
+    "https://discuss.ai.google.dev/t/supported-automation-into-an-existing-antigravity-conversation-on-a-consumer-plan/188220"
+  ]
+}
