@@ -427,10 +427,10 @@ mod tests {
 
     #[test]
     fn target_directory_is_read_from_cargo_metadata_json() {
-        let json = r#"{"packages":[],"workspace_root":"C:\\src\\nie","target_directory":"C:\\src\\nie\\target","version":1}"#;
+        let json = r#"{"packages":[],"workspace_root":"C:\\Temp\\nie-ws","target_directory":"C:\\Temp\\nie-ws\\target","version":1}"#;
         assert_eq!(
             json_string_field(json, "target_directory").as_deref(),
-            Some("C:\\src\\nie\\target")
+            Some("C:\\Temp\\nie-ws\\target")
         );
         let unicode = r#"{"target_directory":"/t/\u00e9\"q\""}"#;
         assert_eq!(

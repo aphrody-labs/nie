@@ -11,10 +11,10 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use crate::http_explorer::HttpBackend;
 
 const FONTS: [&[u8]; 4] = [
-    include_bytes!("../../../vendor/zed/assets/fonts/ibm-plex-sans/IBMPlexSans-Regular.ttf"),
-    include_bytes!("../../../vendor/zed/assets/fonts/ibm-plex-sans/IBMPlexSans-SemiBold.ttf"),
-    include_bytes!("../../../vendor/zed/assets/fonts/lilex/Lilex-Regular.ttf"),
-    include_bytes!("../../../vendor/zed/assets/fonts/lilex/Lilex-Bold.ttf"),
+    include_bytes!("../../../../aphrody/assets/fonts/ibm-plex-sans/IBMPlexSans-Regular.ttf"),
+    include_bytes!("../../../../aphrody/assets/fonts/ibm-plex-sans/IBMPlexSans-SemiBold.ttf"),
+    include_bytes!("../../../../aphrody/assets/fonts/lilex/Lilex-Regular.ttf"),
+    include_bytes!("../../../../aphrody/assets/fonts/lilex/Lilex-Bold.ttf"),
 ];
 
 fn preferences() -> Preferences {

@@ -1,4 +1,4 @@
-//! nie browser: the kitesurf engine crates of `vendor/kitesurf` behind a Rust host.
+//! nie browser: the kitesurf engine crates of `aphrody-labs/kitesurf` behind a Rust host.
 //!
 //! `nie-browser deps` compares every vendored engine crate with its newest crates.io release and
 //! writes the report committed as `docs/specs/kitesurf-deps.md`.
@@ -26,8 +26,8 @@ pub enum Command {
 
 #[derive(clap::Args, Debug)]
 pub struct DepsArgs {
-    /// The kitesurf checkout (the submodule).
-    #[arg(long, default_value = "vendor/kitesurf")]
+    /// The kitesurf checkout (a sibling of this repository).
+    #[arg(long, default_value = "../kitesurf")]
     pub root: PathBuf,
     /// Write the Markdown report here instead of stdout.
     #[arg(long)]

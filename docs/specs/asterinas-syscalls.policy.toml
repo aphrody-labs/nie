@@ -1,5 +1,5 @@
 # Workloads traced by `nie deps audit --syscalls`. Each one runs under `strace -yy -f` and every
-# call is matched against the SCML tables of vendor/asterinas
+# call is matched against the SCML tables of the asterinas checkout (fw-nt/third_party/asterinas)
 # (book/src/kernel/linux-compatibility/syscall-flag-coverage).
 # Placeholders: {nie} the running binary, {game} the game source, {port} a free local port.
 

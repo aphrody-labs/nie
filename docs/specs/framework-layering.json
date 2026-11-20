@@ -67,7 +67,7 @@
     {
       "package": "nie-browser",
       "path": "crates/nie-browser",
-      "role": "the kitesurf engine crates (vendor/kitesurf) behind a Rust host; `deps` reports each vendored crate against crates.io"
+      "role": "the kitesurf engine crates (aphrody-labs/kitesurf) behind a Rust host; `deps` reports each vendored crate against crates.io"
     },
     {
       "package": "nie-tls",

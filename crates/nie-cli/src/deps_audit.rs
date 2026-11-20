@@ -61,7 +61,7 @@ pub struct AuditArgs {
     /// (Linux only; reads `--game-source`).
     #[arg(long)]
     syscalls: bool,
-    /// Asterinas checkout whose book holds the SCML tables (default: `vendor/asterinas`).
+    /// Asterinas checkout whose book holds the SCML tables (default: `../fw-nt/third_party/asterinas`).
     #[arg(long, value_name = "DIR", requires = "syscalls")]
     asterinas: Option<PathBuf>,
 }
@@ -355,7 +355,7 @@ fn audit_syscalls(args: &AuditArgs, root: &Path) -> Result<()> {
     let asterinas = args
         .asterinas
         .clone()
-        .unwrap_or_else(|| root.join("vendor/asterinas"));
+        .unwrap_or_else(|| root.join("../fw-nt/third_party/asterinas"));
     let policy_path = args
         .policy
         .clone()

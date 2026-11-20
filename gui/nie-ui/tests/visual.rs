@@ -23,10 +23,10 @@ use nie_ui::terminal::TermCell;
 use nie_ui::theme::Syntax;
 
 const FONTS: [&[u8]; 4] = [
-    include_bytes!("../../../vendor/zed/assets/fonts/ibm-plex-sans/IBMPlexSans-Regular.ttf"),
-    include_bytes!("../../../vendor/zed/assets/fonts/ibm-plex-sans/IBMPlexSans-SemiBold.ttf"),
-    include_bytes!("../../../vendor/zed/assets/fonts/lilex/Lilex-Regular.ttf"),
-    include_bytes!("../../../vendor/zed/assets/fonts/lilex/Lilex-Bold.ttf"),
+    include_bytes!("../../../../aphrody/assets/fonts/ibm-plex-sans/IBMPlexSans-Regular.ttf"),
+    include_bytes!("../../../../aphrody/assets/fonts/ibm-plex-sans/IBMPlexSans-SemiBold.ttf"),
+    include_bytes!("../../../../aphrody/assets/fonts/lilex/Lilex-Regular.ttf"),
+    include_bytes!("../../../../aphrody/assets/fonts/lilex/Lilex-Bold.ttf"),
 ];
 
 /// A synthetic palette: dark navy, off-white and the usual hues. It stands for `FONT_COLOR`.

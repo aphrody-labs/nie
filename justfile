@@ -132,8 +132,9 @@ web-shot *args:
 _toolchain:
     rustup show active-toolchain || rustup toolchain install
 
-_zed:
-    git submodule update --init --checkout --depth 1 vendor/zed
+# The sibling checkout of the Zed fork that gui/ path-depends on (one checkout per fork).
+_gpui:
+    test -d ../aphrody/crates/gpui || git clone --depth 1 https://github.com/aphrody-labs/aphrody ../aphrody
 
 # wasm-bindgen CLI at the version a Cargo.lock pins.
 _wasm-bindgen lock="Cargo.lock":
@@ -197,17 +198,17 @@ ci-browser out="dist/shots": _toolchain (_wasm-bindgen "Cargo.lock")
     NIE_RAW_VFS_TOKEN="$(head -c 24 /dev/urandom | base64 | tr -d '/+=' | head -c 40)" NIE_GAME_SOURCE="$PWD/dist/fixture/install" NIE_PORT=8790 cargo xtask web shot http://127.0.0.1:8790/ {{ out }}/app.png --spawn "target/release/nie serve" --ready http://127.0.0.1:8790/ready
 
 # gui.yml linux: GPUI snapshots and the AccessKit audit.
-ci-gui-linux: _toolchain _zed
+ci-gui-linux: _toolchain _gpui
     sudo apt-get update && sudo apt-get install -y libwayland-dev libxkbcommon-x11-dev libxcb1-dev libfontconfig-dev libfreetype-dev mesa-vulkan-drivers
     cargo clippy --locked --manifest-path gui/Cargo.toml --workspace --all-targets -- -D warnings
     cargo test --locked --manifest-path gui/Cargo.toml -p nie-ui --features test-support
 
 # gui.yml windows: GPUI check on windows-msvc.
-ci-gui-windows: _toolchain _zed
+ci-gui-windows: _toolchain _gpui
     cargo check --locked --manifest-path gui/Cargo.toml -p nie-ui --all-targets
 
 # gui.yml wasm: the browser build of the GPUI apps.
-ci-gui-wasm: _toolchain _zed
+ci-gui-wasm: _toolchain _gpui
     cargo check --locked --manifest-path gui/Cargo.toml -p nie-ui -p nie-apps --lib --target wasm32-unknown-unknown
 
 # release.yml version: the workspace version and the toolchain, written to $GITHUB_OUTPUT.

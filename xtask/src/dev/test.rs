@@ -212,7 +212,7 @@ mod tests {
             Some("nie-formats")
         );
         assert_eq!(
-            crate_of("C:\\src\\nie\\plugins\\exe\\nie-pe\\src\\lib.rs").as_deref(),
+            crate_of("C:\\Temp\\nie-ws\\plugins\\exe\\nie-pe\\src\\lib.rs").as_deref(),
             Some("nie-pe")
         );
         assert_eq!(

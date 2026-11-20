@@ -1,14 +1,14 @@
 name: GUI
 
-# The GPUI workspace (gui/) builds against the vendor/zed submodule, which public CI skips by
-# default (`update = none`): the recipes check it out explicitly.
+# The GPUI workspace (gui/) builds against the sibling checkout of aphrody-labs/aphrody (the Zed
+# fork), which the recipes clone next to the repository (`just _gpui`).
 
 on:
   push:
     branches: [main]
-    paths: ["gui/**", "vendor/zed", "xtask/src/zed_branch.rs", "justfile", ".github/workflows/gui.yml"]
+    paths: ["gui/**", "justfile", ".github/workflows/gui.yml"]
   pull_request:
-    paths: ["gui/**", "vendor/zed", "xtask/src/zed_branch.rs", "justfile", ".github/workflows/gui.yml"]
+    paths: ["gui/**", "justfile", ".github/workflows/gui.yml"]
   workflow_dispatch:
 
 permissions:

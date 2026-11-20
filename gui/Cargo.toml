@@ -1,9 +1,10 @@
 # The GPUI workspace of nie: the toolkit (nie-ui), its apps and the desktop shell.
 #
-# A workspace of its own on purpose. GPUI comes from the pinned submodule `vendor/zed` (branch `nie`
-# of the aphrody-labs/zed fork, `update = none`), which is only checked out where these crates are
-# built (the build host, CI). The core workspace at the repository root therefore never resolves a
-# path that may be missing, and a checkout without the submodule keeps building the core.
+# A workspace of its own on purpose. GPUI comes from the sibling checkout of the Zed fork
+# aphrody-labs/aphrody (C:\src\aphrody, one checkout per fork), which is only present where these
+# crates are built (the build host, CI: `just _gpui` clones it). The core workspace at the repository
+# root therefore never resolves a path that may be missing, and a checkout without the fork keeps
+# building the core.
 [workspace]
 resolver = "3"
 members = ["nie-ui", "nie-apps", "nie-shell"]
@@ -30,12 +31,12 @@ correctness = { level = "warn", priority = -1 }
 perf = { level = "warn", priority = -1 }
 
 [workspace.dependencies]
-# GPUI: path dependencies on the vendor/zed submodule, the only source dependency of nie. No [patch].
-gpui = { path = "../vendor/zed/crates/gpui", default-features = false }
-gpui_platform = { path = "../vendor/zed/crates/gpui_platform", default-features = false }
-gpui_wgpu = { path = "../vendor/zed/crates/gpui_wgpu", default-features = false }
-gpui_web = { path = "../vendor/zed/crates/gpui_web", default-features = false }
-http_client = { path = "../vendor/zed/crates/http_client" }
+# GPUI: path dependencies on the sibling aphrody fork, the only source dependency of nie. No [patch].
+gpui = { path = "../../aphrody/crates/gpui", default-features = false }
+gpui_platform = { path = "../../aphrody/crates/gpui_platform", default-features = false }
+gpui_wgpu = { path = "../../aphrody/crates/gpui_wgpu", default-features = false }
+gpui_web = { path = "../../aphrody/crates/gpui_web", default-features = false }
+http_client = { path = "../../aphrody/crates/http_client" }
 
 nie-data = { path = "../crates/nie-data", version = "2.0.0", default-features = false }
 nie-formats = { path = "../crates/nie-formats", version = "2.0.0", default-features = false }

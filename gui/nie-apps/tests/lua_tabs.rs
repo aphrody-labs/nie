@@ -12,8 +12,8 @@ use nie_apps::lua_tabs::{LuaTabs, main_menu_script, tabs_from_bytecode, tabs_fro
 use nie_ui::prelude::*;
 
 const FONTS: [&[u8]; 2] = [
-    include_bytes!("../../../vendor/zed/assets/fonts/ibm-plex-sans/IBMPlexSans-Regular.ttf"),
-    include_bytes!("../../../vendor/zed/assets/fonts/ibm-plex-sans/IBMPlexSans-SemiBold.ttf"),
+    include_bytes!("../../../../aphrody/assets/fonts/ibm-plex-sans/IBMPlexSans-Regular.ttf"),
+    include_bytes!("../../../../aphrody/assets/fonts/ibm-plex-sans/IBMPlexSans-SemiBold.ttf"),
 ];
 
 /// The structure of `main_menu`: the tab table is chosen by Lua, the object and text hashes come

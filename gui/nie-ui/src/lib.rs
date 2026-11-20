@@ -6,7 +6,7 @@
 //! - Components: [`tree`], [`table`], [`tabs`], [`picker`] (nucleo), [`surface`] (image and frame
 //!   sources such as video and the 3D viewer).
 //!
-//! GPUI is the path dependency on `vendor/zed` (see `gui/Cargo.toml`).
+//! GPUI is the path dependency on the sibling `aphrody` checkout (see `gui/Cargo.toml`).
 
 pub mod a11y;
 pub mod explorer;

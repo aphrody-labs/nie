@@ -7,7 +7,7 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 publish = false
-description = "nie browser: the kitesurf engine crates (vendor/kitesurf) behind a Rust host; `deps` reports each vendored crate against crates.io"
+description = "nie browser: the kitesurf engine crates (aphrody-labs/kitesurf) behind a Rust host; `deps` reports each vendored crate against crates.io"
 
 [lints]
 workspace = true
