@@ -34,7 +34,6 @@ just bindgen [--check]      # bindings/ (C, C++, Rust, Python, C#, Go, Bun, Zig)
 just repro                  # two builds of HEAD in two directories, BLAKE3 of every artifact, docs/specs/repro-manifest.json
 just ci-bindings            # smoke test of every binding against the cdylib
 just ci-gui-linux           # GPUI toolkit snapshots and AccessKit audit (needs the sibling ../aphrody checkout and a Vulkan device)
-just zed-branch <zed clone> 1.100.0   # regenerate the `nie` branch of the zed fork
 just app-pack [out]         # the browser app bundle that nie-app embeds
 just web-pack|web-serve|web-shot      # GPUI browser bundle, its server, headless Chrome proof
 just kernel-watch|kernel-cycle|kernel-promote   # kernel.org mainline pipeline; kernel-build, kernel-boot-test
@@ -96,8 +95,7 @@ Built binaries on the build host: `<build dir>/target/release/{nie,nie-mcp,nie-m
   the one source dependency of nie, because crates.io has no GPUI with a wgpu renderer or a web
   backend; the rule is dropped once zed publishes `gpui_wgpu` and `gpui_web` (forks-sync checks
   crates.io). The root workspace never resolves that path, so a checkout without the fork keeps
-  building the core; `just _gpui` clones the sibling (CI, build host). `just zed-branch` still
-  regenerates a reduced `nie` branch of the older aphrody-labs/zed fork; nothing consumes it any more.
+  building the core; `just _gpui` clones the sibling (CI, build host).
 - LiberNT (aphrody-labs/LiberNT, GPL-3.0 NT kernel and Win32, built only on the build host, never on
   the PC) is a submodule of `fw-nt` (`C:\src\fw-nt/third_party/LiberNT`), not of nie; `docs/specs/libernt-closure.json`
   is produced by `just libernt-closure` against that checkout. EOS/EAC rule: LiberNT implements only

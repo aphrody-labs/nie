@@ -56,10 +56,6 @@ repro *args:
 app-pack out="dist/app" *args:
     cargo xtask app-pack --out {{ out }} {{ args }}
 
-# Regenerate the `nie` branch of the zed fork from a clone and a toolchain channel.
-zed-branch repo toolchain *args:
-    cargo xtask zed-branch --repo {{ repo }} --toolchain {{ toolchain }} {{ args }}
-
 # PE import closure of the launch chain over a LiberNT build tree.
 libernt-closure *args:
     cargo xtask libernt-closure {{ args }}

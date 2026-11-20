@@ -14,7 +14,6 @@ mod repro;
 mod skill;
 mod util;
 mod web;
-mod zed_branch;
 
 use clap::{Parser, Subcommand};
 
@@ -29,8 +28,6 @@ struct Cli {
 enum Cmd {
     /// Write MAP.tsv, or fail when it is stale (`--check`).
     Map(map::Args),
-    /// Regenerate the `nie` branch of the aphrody-labs/zed fork.
-    ZedBranch(zed_branch::Args),
     /// Build the browser app bundle that `nie-app` embeds.
     AppPack(app_pack::Args),
     /// PE import closure of the launch chain over a LiberNT build tree.
@@ -65,7 +62,6 @@ fn main() -> anyhow::Result<()> {
     nie_tls::install();
     match Cli::parse().cmd {
         Cmd::Map(a) => map::run(a),
-        Cmd::ZedBranch(a) => zed_branch::run(a),
         Cmd::AppPack(a) => app_pack::run(a),
         Cmd::LiberntClosure(a) => libernt::run(a),
         Cmd::BindingsSmoke(a) => bindings::run(a),

@@ -1,6 +1,6 @@
 # ADR: GPUI is the system toolkit of the nie OS
 
-Status: accepted, 2026-11-19. Amends `docs/adr-ui-stack.md`: Bevy keeps game rendering and assets;
+Status: accepted, 2026-11-19; source moved from the aphrody-labs/zed `nie` branch to the sibling aphrody checkout on 2026-11-20. Amends `docs/adr-ui-stack.md`: Bevy keeps game rendering and assets;
 everything else nie draws (explorer, viewers, wiki, terminal, desktop shell) is GPUI.
 
 ## Context
@@ -15,12 +15,11 @@ everything else nie draws (explorer, viewers, wiki, terminal, desktop shell) is 
 
 ## Decision
 
-1. `vendor/zed` is a submodule of the aphrody-labs/zed fork, branch `nie`. `cargo xtask zed-branch`
-   regenerates it from upstream main: only the Apache-2.0 GPUI closure computed by `cargo metadata`
-   on linux, windows-msvc and wasm32; every dependency from crates.io; no `[patch]`; wgpu 30.0.2.
-2. nie crates take path dependencies on `vendor/zed/crates/gpui*` (the one fork with source
-   dependencies, see AGENTS.md). They live in `gui/`, a workspace of its own, so a checkout without
-   the submodule still builds the core.
+1. GPUI comes from the sibling `aphrody` checkout (aphrody-labs/aphrody, the Zed fork and the OS of the stack): one
+   checkout per fork across the workspace, so nie keeps no Zed submodule or branch of its own.
+2. nie crates take path dependencies on `../../aphrody/crates/gpui*` (the one source dependency of nie, see
+   AGENTS.md). They live in `gui/`, a workspace of its own, so a checkout without the sibling still builds
+   the core; `just _gpui` clones it on CI and the build host.
 3. `gui/nie-ui` is the toolkit: a theme derived from the game's `FONT_COLOR` palette, tree, table,
    tabs, nucleo picker, image and frame surfaces, a terminal surface (rio-vt as the VT parser), the
    explorer view, and the AccessKit audit. `gui/nie-apps` holds the apps.
@@ -30,9 +29,5 @@ everything else nie draws (explorer, viewers, wiki, terminal, desktop shell) is 
 
 ## Consequences
 
-- wgpu 30.0.2 lacks two fixes that the pinned revision has: gfx-rs/wgpu#10230 (Vulkan surface drop
-  panic) and #10348 (WebGL timeouts on resize). The branch lists them in `nie-closure.json`; they
-  return with the next wgpu release.
-- Three source edits adapt `gpui_wgpu` to the released wgpu (`DeviceDescriptor::default_queue`,
-  `TextureFormat::has_srgb_suffix`); the generator fails when upstream moves the text.
+- GPUI follows aphrody's wgpu and dependency choices; nie adapts when aphrody moves.
 - The rule is dropped when zed publishes `gpui_wgpu` and `gpui_web` on crates.io.
