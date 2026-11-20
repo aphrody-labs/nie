@@ -6668,7 +6668,6 @@ name = "nie-re"
 version = "2.0.0"
 dependencies = [
  "aes 0.9.4",
- "anyhow",
  "blake3",
  "crc32fast",
  "flate2",
@@ -6680,7 +6679,6 @@ dependencies = [
  "md-5",
  "memchr",
  "process-wrap",
- "regex",
  "rustc-hash 2.1.3",
  "serde",
  "serde_json",
@@ -6690,7 +6688,6 @@ dependencies = [
  "thiserror 2.0.21",
  "walkdir",
  "wasm-bindgen",
- "zerocopy",
 ]
 
 [[package]]
