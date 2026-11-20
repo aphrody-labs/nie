@@ -6,7 +6,7 @@
 
 use std::{fs, path::Path};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, anyhow, bail};
 
 mod diff;
 
@@ -31,10 +31,8 @@ fn shot(args: &[String]) -> Result<()> {
         .ok()
         .and_then(|p| url_of(&p))
         .unwrap_or_default();
-    let png = kitesurf_core::ks_render_html_to_image(&html, &base, width, height, "png", 90);
-    if png.is_empty() {
-        bail!("the engine returned no image");
-    }
+    let png = kitesurf_core::render_html_to_image(&html, &base, width, height, "png", 90)
+        .map_err(|e| anyhow!("render {html_path}: {e}"))?;
     fs::write(out, &png).with_context(|| format!("write {out}"))?;
     println!("{{\"out\":\"{out}\",\"width\":{width},\"height\":{height},\"bytes\":{}}}", png.len());
     Ok(())

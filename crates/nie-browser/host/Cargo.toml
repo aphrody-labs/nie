@@ -10,7 +10,7 @@ description = "Native host of the kitesurf engine (aphrody-labs/kitesurf, branch
 
 [dependencies]
 anyhow = "1"
-kitesurf-core = { git = "https://github.com/aphrody-labs/kitesurf", branch = "nie", default-features = false, features = ["blitz", "native-host"] }
+kitesurf-core = { git = "https://github.com/aphrody-labs/kitesurf", branch = "nie", default-features = false, features = ["blitz"] }
 png = "0.18"
 
 [dev-dependencies]
