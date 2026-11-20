@@ -132,6 +132,8 @@ jobs:
   publish:
     name: Publish nie
     needs: [version, linux, windows]
+    # A tag publishes only when every target built; a manual run publishes the targets that did build.
+    if: ${{ !cancelled() && needs.version.result == 'success' && ((needs.linux.result == 'success' && needs.windows.result == 'success') || (!startsWith(github.ref, 'refs/tags/') && (needs.linux.result == 'success' || needs.windows.result == 'success'))) }}
     permissions:
       contents: write
       id-token: write
