@@ -6201,7 +6201,7 @@ dependencies = [
  "sha2 0.11.1",
  "tempfile",
  "thiserror 2.0.21",
- "toml",
+ "toml 1.2.1+spec-1.1.0",
  "tracing",
 ]
 
@@ -6242,7 +6242,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "toml",
+ "toml 1.2.1+spec-1.1.0",
  "ureq",
 ]
 
@@ -6335,7 +6335,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-tungstenite 0.30.0",
- "toml",
+ "toml 1.2.1+spec-1.1.0",
  "tracing",
  "tracing-subscriber",
  "zip 9.6.1",
@@ -6382,7 +6382,24 @@ dependencies = [
  "serde",
  "serde_json",
  "wana_kana",
- "winnow",
+ "winnow 1.0.5",
+]
+
+[[package]]
+name = "nie-dbxv2-re"
+version = "2.0.0"
+dependencies = [
+ "aes 0.9.4",
+ "hex",
+ "md-5",
+ "memmap2",
+ "serde",
+ "serde-wasm-bindgen",
+ "serde_json",
+ "sha2 0.11.1",
+ "tempfile",
+ "thiserror 2.0.21",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -6404,7 +6421,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "toml",
+ "toml 1.2.1+spec-1.1.0",
 ]
 
 [[package]]
@@ -6425,7 +6442,7 @@ dependencies = [
  "pingora-proxy",
  "serde",
  "serde_json",
- "toml",
+ "toml 1.2.1+spec-1.1.0",
  "tracing-subscriber",
 ]
 
@@ -6454,7 +6471,7 @@ dependencies = [
  "serde_json",
  "specta",
  "tempfile",
- "toml",
+ "toml 1.2.1+spec-1.1.0",
  "tree-sitter-highlight",
  "tree-sitter-lua",
 ]
@@ -6580,7 +6597,7 @@ dependencies = [
  "steamroom",
  "tempfile",
  "thiserror 2.0.21",
- "toml",
+ "toml 1.2.1+spec-1.1.0",
  "ureq",
  "windows 0.62.2",
 ]
@@ -6652,7 +6669,7 @@ name = "nie-plugin"
 version = "2.0.0"
 dependencies = [
  "serde_json",
- "toml",
+ "toml 1.2.1+spec-1.1.0",
 ]
 
 [[package]]
@@ -6751,6 +6768,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "nie-rgdeploy"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "serde",
+ "toml 0.9.12+spec-1.1.0",
+ "zstd 0.13.5",
+]
+
+[[package]]
 name = "nie-save"
 version = "2.0.0"
 dependencies = [
@@ -6769,7 +6797,7 @@ dependencies = [
  "clap",
  "serde",
  "tempfile",
- "toml",
+ "toml 1.2.1+spec-1.1.0",
 ]
 
 [[package]]
@@ -6793,7 +6821,7 @@ version = "2.0.0"
 dependencies = [
  "serde",
  "serde_json",
- "toml",
+ "toml 1.2.1+spec-1.1.0",
 ]
 
 [[package]]
@@ -6802,6 +6830,10 @@ version = "2.0.0"
 dependencies = [
  "nie-plugin",
 ]
+
+[[package]]
+name = "nie-sniff"
+version = "0.1.0"
 
 [[package]]
 name = "nie-specs"
@@ -6815,7 +6847,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.1",
- "toml",
+ "toml 1.2.1+spec-1.1.0",
  "ureq",
 ]
 
@@ -6901,7 +6933,7 @@ dependencies = [
  "serde_json",
  "sha2 0.11.1",
  "tempfile",
- "toml",
+ "toml 1.2.1+spec-1.1.0",
 ]
 
 [[package]]
@@ -10703,6 +10735,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-wasm-bindgen"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8302e169f0eddcc139c70f139d19d6467353af16f9fce27e8c30158036a1e16b"
+dependencies = [
+ "js-sys",
+ "serde",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "serde_bytes"
 version = "0.11.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11489,7 +11532,7 @@ dependencies = [
  "tokio",
  "tokio-tungstenite 0.29.0",
  "tracing",
- "winnow",
+ "winnow 1.0.5",
  "zip 8.6.0",
  "zstd 0.13.5",
 ]
@@ -12414,6 +12457,21 @@ dependencies = [
 
 [[package]]
 name = "toml"
+version = "0.9.12+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf92845e79fc2e2def6a5d828f0801e29a2f8acc037becc5ab08595c7d5e9863"
+dependencies = [
+ "indexmap 2.14.2",
+ "serde_core",
+ "serde_spanned",
+ "toml_datetime 0.7.5+spec-1.1.0",
+ "toml_parser",
+ "toml_writer",
+ "winnow 0.7.15",
+]
+
+[[package]]
+name = "toml"
 version = "1.2.1+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d5755c51863cdac711f1956baf8eb9588e060755f7d3c4c979e70ea1e1f32cd7"
@@ -12421,10 +12479,19 @@ dependencies = [
  "indexmap 2.14.2",
  "serde_core",
  "serde_spanned",
- "toml_datetime",
+ "toml_datetime 1.1.3+spec-1.1.0",
  "toml_parser",
  "toml_writer",
- "winnow",
+ "winnow 1.0.5",
+]
+
+[[package]]
+name = "toml_datetime"
+version = "0.7.5+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92e1cfed4a3038bc5a127e35a2d360f145e1f4b971b551a2ba5fd7aedf7e1347"
+dependencies = [
+ "serde_core",
 ]
 
 [[package]]
@@ -12443,10 +12510,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd43688c4858d7264ae1cf9a9f874a67c3feb74a883b1cd7bebd6a4ea8307218"
 dependencies = [
  "indexmap 2.14.2",
- "toml_datetime",
+ "toml_datetime 1.1.3+spec-1.1.0",
  "toml_parser",
  "toml_writer",
- "winnow",
+ "winnow 1.0.5",
 ]
 
 [[package]]
@@ -12455,7 +12522,7 @@ version = "1.1.5+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baa693a8032d7e1cada7d0041e96126df243179ff061456783ac7f12bda4744c"
 dependencies = [
- "winnow",
+ "winnow 1.0.5",
 ]
 
 [[package]]
@@ -14190,6 +14257,12 @@ dependencies = [
  "x11rb",
  "xkbcommon-dl",
 ]
+
+[[package]]
+name = "winnow"
+version = "0.7.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df79d97927682d2fd8adb29682d1140b343be4ac0f08fd68b7765d9c059d3945"
 
 [[package]]
 name = "winnow"

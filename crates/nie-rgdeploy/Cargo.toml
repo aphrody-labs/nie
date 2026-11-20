@@ -15,3 +15,6 @@ clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 toml = "0.9"
 zstd = { version = "0.13", features = ["zstdmt"] }
+
+[lints]
+workspace = true

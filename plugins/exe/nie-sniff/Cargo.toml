@@ -8,3 +8,6 @@ description = "First-party nie Rust binary format sniffer crate (Fat-LTO/AOT)"
 [lib]
 name = "nie_sniff"
 path = "src/lib.rs"
+
+[lints]
+workspace = true
