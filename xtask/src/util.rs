@@ -49,13 +49,6 @@ pub fn run(cmd: &mut Command) -> Result<()> {
     Ok(())
 }
 
-/// `git -C <repo>`.
-pub fn git(repo: &Path) -> Command {
-    let mut cmd = Command::new("git");
-    cmd.arg("-C").arg(repo);
-    cmd
-}
-
 /// Lowercase hexadecimal.
 pub fn hex(bytes: &[u8]) -> String {
     bytes
