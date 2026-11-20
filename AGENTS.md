@@ -1,8 +1,8 @@
 # nie: agent contract
 
-nie is a game engine in Rust and the framework around it: plugin host, VFS and byte sources, format decoders,
-renderer, Lua runtime, C ABI with generated bindings for every language, serving, deployment, the dev CLI and
-the UI toolkit. It is not a wiki: the wiki is one consumer. IEVR (Inazuma Eleven: Victory Road) is the first
+nie is a complete **game engine and static/dynamic recompiler** in Rust and the framework around it: plugin host, VFS and byte sources, format decoders,
+wgpu/Bevy renderer, Lua runtime, Steam/Epic launcher, binary analysis and static recompilation (`plugins/exe/nie-{pe,sniff,re,re-core,recomp,win32,trace,forge}`), C ABI with generated bindings for every language, serving, deployment, the dev CLI and
+the UI toolkit (OS, kernel, POSIX, AI, and ML live in `fw`). It is not a wiki: the wiki is one consumer. IEVR (Inazuma Eleven: Victory Road) is the first
 game on it; `docs/specs/framework-layering.json` classifies every crate as framework or app and is the source
 of truth for that split (`docs/specs/framework-layering.md` lists what is still mixed).
 

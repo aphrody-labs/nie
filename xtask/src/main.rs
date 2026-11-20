@@ -7,10 +7,8 @@ mod app_pack;
 mod bindings;
 mod claude_stop;
 mod dev;
-mod kernel;
 mod libernt;
 mod map;
-mod os;
 mod release;
 mod repro;
 mod skill;
@@ -35,10 +33,6 @@ enum Cmd {
     ZedBranch(zed_branch::Args),
     /// Build the browser app bundle that `nie-app` embeds.
     AppPack(app_pack::Args),
-    /// Kernel.org mainline pipeline: watch, build, boot-test, cycle, promote.
-    Kernel(kernel::Args),
-    /// Asterinas OS image: initramfs, QEMU arguments, boot.
-    Os(os::Args),
     /// PE import closure of the launch chain over a LiberNT build tree.
     LiberntClosure(libernt::Args),
     /// Smoke test of every generated binding against the cdylib.
@@ -73,8 +67,6 @@ fn main() -> anyhow::Result<()> {
         Cmd::Map(a) => map::run(a),
         Cmd::ZedBranch(a) => zed_branch::run(a),
         Cmd::AppPack(a) => app_pack::run(a),
-        Cmd::Kernel(a) => kernel::run(a),
-        Cmd::Os(a) => os::run(a),
         Cmd::LiberntClosure(a) => libernt::run(a),
         Cmd::BindingsSmoke(a) => bindings::run(a),
         Cmd::Web(a) => web::run(a),

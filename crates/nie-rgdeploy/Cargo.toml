@@ -1,0 +1,17 @@
+[package]
+name = "nie-rgdeploy"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "Rose Griffon deploy: one static binary, zstd stream over ssh, atomic release symlink, health-gated systemd restart, automatic rollback"
+
+[[bin]]
+name = "rgd"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+toml = "0.9"
+zstd = { version = "0.13", features = ["zstdmt"] }

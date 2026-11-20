@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = ["crates/*", "plugins/*/*", "apps/*", "xtask"]
+exclude = ["apps/rg-mcp"]
 
 [workspace.package]
 version = "2.0.0"
@@ -109,6 +110,7 @@ rusqlite = { version = "0.43" }
 taplo = { version = "0.14.0", default-features = false }
 wasm-bindgen = { version = "0.2.130", default-features = false }
 js-sys = { version = "0.3.107", default-features = false }
+serde-wasm-bindgen = "0.6.5"
 wasm-bindgen-futures = { version = "0.4.80", default-features = false }
 web-sys = { version = "0.3.107", default-features = false }
 crabtables = { version = "0.1.0", features = ["lang"] }

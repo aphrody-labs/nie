@@ -9,18 +9,6 @@
 	branch = nie
 	update = none
 	shallow = true
-[submodule "vendor/asterinas"]
-	path = vendor/asterinas
-	url = ../asterinas
-	branch = main
-	update = none
-	shallow = true
-[submodule "vendor/kitesurf"]
-	path = vendor/kitesurf
-	url = ../kitesurf
-	branch = nie
-	update = none
-	shallow = true
 [submodule "vendor/zed"]
 	path = vendor/zed
 	url = ../zed

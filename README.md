@@ -1,9 +1,9 @@
 # nie
 
-nie is a game engine written in Rust, with a framework and tools around it. The runtime side: a virtual
+nie is a complete **game engine and static/dynamic recompiler** written in Rust, with a framework and RE/gaming toolchain around it (OS, kernel, POSIX, AI, and ML layers live in `fw`). The runtime side: a virtual
 filesystem over local, SSH, rclone and HTTP byte sources, decoders for the Level-5 and CRIWARE formats, a
 wgpu renderer for models, textures and sprite sheets, a Bevy asset source (`game://`), the game's Lua 5.2
-bytecode run natively, audio and video playback, and a plugin host. The tool side: a CLI, a JSON API, a
+bytecode run natively, audio and video playback, Steam/Epic launcher integration, and a plugin host. The recompiler & RE side (`plugins/exe/`): PE/binary parsing (`nie-pe`, `nie-sniff`), static recompilation (`nie-recomp`, `nie-re`, `nie-re-core`, `nie-forge`), Win32/runtime shims (`nie-win32`, `nie-trace`), and RE skills (`binary-analysis`, `reverse-engineer-anything`, `static-recompile`). The tool side: a CLI, a JSON API, a
 terminal explorer, a GPUI desktop and browser UI, a C ABI with generated bindings (C, C++, Rust, Python, C#,
 Go, Bun, Zig), deployment, and builds for Linux (gnu, musl), Windows, macOS, aarch64 and the browser. The
 first game on it is Inazuma Eleven: Victory Road: nie reads the installation the player owns and never ships,
