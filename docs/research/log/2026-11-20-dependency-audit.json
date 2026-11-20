@@ -1,0 +1,511 @@
+{
+  "fingerprint": {
+    "generated_utc": "2026-11-20T18:59:54Z",
+    "nie_version": "2.0.0",
+    "git_commit": "9d1cdbd4271836e161ca7becb4fd3f281f7affb6",
+    "toolchain": "1.100.0",
+    "cargo_lock_sha256": "00df11c51b88455d9e0d2b4e5b72f1ee531b86adb7f0f95e3dc8c59781635588",
+    "host": "vps-203bea89",
+    "os": "linux",
+    "arch": "x86_64",
+    "kernel_release": "7.3.0-10-generic",
+    "cpu_model": "Intel Core Processor (Haswell, no TSX)",
+    "memory_kib": 48162484,
+    "cpus": 12
+  },
+  "code": {
+    "files_scanned": 985,
+    "sites": [
+      {
+        "file": "crates/nie-abi/tests/crlib.rs",
+        "line": 15,
+        "program": "dynamic",
+        "function": "workspace_packages",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-cli/src/exe_lint.rs",
+        "line": 505,
+        "program": "git",
+        "function": "repo_root",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-cli/tests/mcp_re_real.rs",
+        "line": 125,
+        "program": "dynamic",
+        "function": "the_server_answers_real_questions_about_the_binary",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-cli/tests/mcp_stdio_smoke.rs",
+        "line": 33,
+        "program": "dynamic",
+        "function": "initialize_list_and_call_stay_on_clean_stdio",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-deploy/src/nftables.rs",
+        "line": 143,
+        "program": "nft",
+        "function": "nft_listing",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-deploy/src/supervise.rs",
+        "line": 204,
+        "program": "dynamic",
+        "function": "launch",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-deploy/src/supervise.rs",
+        "line": 601,
+        "program": "dynamic(exe)",
+        "function": "spawn_detached",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-edge/src/reload.rs",
+        "line": 34,
+        "program": "dynamic(exe)",
+        "function": "run",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-explore/src/cinema/browser_video.rs",
+        "line": 124,
+        "program": "dynamic(executable)",
+        "function": "transcode_mpeg2",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-explore/src/cinema/browser_video.rs",
+        "line": 406,
+        "program": "dynamic(current_exe())",
+        "function": "stalled_process",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-formats/src/vfs_remote.rs",
+        "line": 81,
+        "program": "dynamic(bin_name)",
+        "function": "find_nie_rclone_bin",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-formats/src/vfs_remote.rs",
+        "line": 97,
+        "program": "dynamic(bin)",
+        "function": "run_nie_rclone",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-link/src/startup.rs",
+        "line": 70,
+        "program": "dynamic(exe)",
+        "function": "install",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-lua/tests/aot_object.rs",
+        "line": 66,
+        "program": "cc",
+        "function": "shared_objects_match_the_jit",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-render3d/src/video.rs",
+        "line": 236,
+        "program": "ffmpeg",
+        "function": "ouvrir",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-render3d/src/video.rs",
+        "line": 380,
+        "program": "ffmpeg",
+        "function": "une_trame_de_mauvaise_taille_est_refusee",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-rgdeploy/src/main.rs",
+        "line": 125,
+        "program": "bash",
+        "function": "ssh_cmd",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-rgdeploy/src/main.rs",
+        "line": 129,
+        "program": "ssh",
+        "function": "ssh_cmd",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-rgdeploy/src/main.rs",
+        "line": 197,
+        "program": "git",
+        "function": "short_rev",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-rgdeploy/src/main.rs",
+        "line": 205,
+        "program": "git",
+        "function": "upload",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-rgdeploy/src/main.rs",
+        "line": 325,
+        "program": "dynamic(unwrap_or_else())",
+        "function": "switch_script_is_valid_bash",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-rgdeploy/src/main.rs",
+        "line": 334,
+        "program": "dynamic(unwrap_or_else())",
+        "function": "switch_script_is_valid_bash",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-specs/src/hosts.rs",
+        "line": 86,
+        "program": "sh",
+        "function": "collect",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-specs/src/hosts.rs",
+        "line": 271,
+        "program": "powershell",
+        "function": "collect_windows",
+        "test": false,
+        "kept": "Windows host inventory in nie-specs, run only when the target host is Windows"
+      },
+      {
+        "file": "crates/nie-sshd/src/server.rs",
+        "line": 235,
+        "program": "dynamic(shell)",
+        "function": "run_command",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "crates/nie-syscalls/src/report.rs",
+        "line": 103,
+        "program": "strace",
+        "function": "detect",
+        "test": false,
+        "kept": "measurement tool of the Asterinas syscall audit; it records what a workload calls"
+      },
+      {
+        "file": "crates/nie-syscalls/src/tests.rs",
+        "line": 60,
+        "program": "strace",
+        "function": "a_traced_command_is_matched_end_to_end",
+        "test": true,
+        "kept": "measurement tool of the Asterinas syscall audit; it records what a workload calls"
+      },
+      {
+        "file": "crates/nie-syscalls/src/workload.rs",
+        "line": 97,
+        "program": "strace",
+        "function": "trace",
+        "test": false,
+        "kept": "measurement tool of the Asterinas syscall audit; it records what a workload calls"
+      },
+      {
+        "file": "plugins/exe/nie-dbxv2-re/tests/inventory_cli.rs",
+        "line": 12,
+        "program": "dynamic",
+        "function": "inventory_cli_prints_json_and_writes_requested_report",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "plugins/exe/nie-dbxv2-re/tests/inventory_cli.rs",
+        "line": 26,
+        "program": "dynamic",
+        "function": "inventory_cli_prints_json_and_writes_requested_report",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "plugins/exe/nie-dbxv2-re/tests/inventory_cli.rs",
+        "line": 50,
+        "program": "dynamic",
+        "function": "text_cli_extracts_msg_strings_without_overwriting_existing_files",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "plugins/exe/nie-dbxv2-re/tests/inventory_cli.rs",
+        "line": 58,
+        "program": "dynamic",
+        "function": "text_cli_extracts_msg_strings_without_overwriting_existing_files",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "plugins/exe/nie-dbxv2-re/tests/inventory_cli.rs",
+        "line": 71,
+        "program": "dynamic",
+        "function": "text_cli_extracts_msg_strings_without_overwriting_existing_files",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "plugins/exe/nie-dbxv2-re/tests/inventory_cli.rs",
+        "line": 99,
+        "program": "dynamic",
+        "function": "text_cli_converts_a_tree_to_a_new_destination_and_rejects_existing_destination",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "plugins/exe/nie-dbxv2-re/tests/inventory_cli.rs",
+        "line": 115,
+        "program": "dynamic",
+        "function": "text_cli_converts_a_tree_to_a_new_destination_and_rejects_existing_destination",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "plugins/exe/nie-dbxv2-re/tests/inventory_cli.rs",
+        "line": 148,
+        "program": "dynamic",
+        "function": "emb_cli_extracts_entries_to_a_new_directory_without_overwriting",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "plugins/exe/nie-dbxv2-re/tests/inventory_cli.rs",
+        "line": 161,
+        "program": "dynamic",
+        "function": "emb_cli_extracts_entries_to_a_new_directory_without_overwriting",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "plugins/exe/nie-dbxv2-re/tests/inventory_cli.rs",
+        "line": 180,
+        "program": "dynamic",
+        "function": "cpk_cli_extracts_to_a_new_directory_and_rejects_traversal",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "plugins/exe/nie-dbxv2-re/tests/inventory_cli.rs",
+        "line": 193,
+        "program": "dynamic",
+        "function": "cpk_cli_extracts_to_a_new_directory_and_rejects_traversal",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "plugins/exe/nie-dbxv2-re/tests/inventory_cli.rs",
+        "line": 205,
+        "program": "dynamic",
+        "function": "cpk_cli_extracts_to_a_new_directory_and_rejects_traversal",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "plugins/exe/nie-forge/src/cc.rs",
+        "line": 122,
+        "program": "dynamic(vswhere)",
+        "function": "find_cl",
+        "test": false,
+        "kept": "locates the MSVC installation for the forge"
+      },
+      {
+        "file": "plugins/exe/nie-forge/src/cc.rs",
+        "line": 178,
+        "program": "dynamic(cl)",
+        "function": "cl_version",
+        "test": false,
+        "kept": "MSVC compiler driven by the forge to rebuild nie.exe byte for byte; no Rust equivalent exists"
+      },
+      {
+        "file": "plugins/exe/nie-forge/src/cc.rs",
+        "line": 205,
+        "program": "dynamic(cl)",
+        "function": "compile",
+        "test": false,
+        "kept": "MSVC compiler driven by the forge to rebuild nie.exe byte for byte; no Rust equivalent exists"
+      },
+      {
+        "file": "plugins/exe/nie-re/src/pipeline/util.rs",
+        "line": 91,
+        "program": "dynamic(program)",
+        "function": "run_cmd_configured",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "plugins/exe/nie-re/src/pipeline/util.rs",
+        "line": 346,
+        "program": "dynamic(current_exe())",
+        "function": "parent_fixture",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "plugins/steam/nie-steam/src/depot/token_backend.rs",
+        "line": 414,
+        "program": "dynamic(bin)",
+        "function": "set_secret",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "tools/nie-mcp-launch/src/main.rs",
+        "line": 205,
+        "program": "dynamic(cargo)",
+        "function": "cargo_target_dir",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "tools/nie-mcp-launch/src/main.rs",
+        "line": 240,
+        "program": "dynamic(program)",
+        "function": "main",
+        "test": false,
+        "kept": null
+      },
+      {
+        "file": "tools/nie-mcp-launch/tests/stdio.rs",
+        "line": 62,
+        "program": "dynamic(LAUNCHER)",
+        "function": "launcher",
+        "test": true,
+        "kept": null
+      },
+      {
+        "file": "tools/nie-mcp-launch/tests/stdio.rs",
+        "line": 209,
+        "program": "kill",
+        "function": "sigterm_reaches_the_server",
+        "test": true,
+        "kept": null
+      }
+    ]
+  },
+  "lock": {
+    "packages": 1336,
+    "registry": 1264,
+    "git": 16,
+    "path": 56,
+    "tracked": [
+      {
+        "name": "steamroom",
+        "versions": [
+          "0.3.0"
+        ]
+      },
+      {
+        "name": "steamroom-client",
+        "versions": [
+          "0.3.0"
+        ]
+      },
+      {
+        "name": "russh",
+        "versions": [
+          "0.65.2"
+        ]
+      },
+      {
+        "name": "russh-sftp",
+        "versions": [
+          "3.0.1"
+        ]
+      },
+      {
+        "name": "opendal",
+        "versions": [
+          "0.59.5"
+        ]
+      },
+      {
+        "name": "pingora",
+        "versions": []
+      },
+      {
+        "name": "blake3",
+        "versions": [
+          "1.8.7"
+        ]
+      },
+      {
+        "name": "bevy",
+        "versions": []
+      },
+      {
+        "name": "wgpu-types",
+        "versions": [
+          "30.0.2"
+        ]
+      },
+      {
+        "name": "rusqlite",
+        "versions": [
+          "0.43.0"
+        ]
+      },
+      {
+        "name": "wasm-bindgen",
+        "versions": [
+          "0.2.130"
+        ]
+      },
+      {
+        "name": "syn",
+        "versions": [
+          "1.0.109",
+          "2.0.119",
+          "3.0.10"
+        ]
+      },
+      {
+        "name": "goblin",
+        "versions": [
+          "0.10.7"
+        ]
+      },
+      {
+        "name": "iced-x86",
+        "versions": [
+          "1.22.0"
+        ]
+      }
+    ]
+  }
+}

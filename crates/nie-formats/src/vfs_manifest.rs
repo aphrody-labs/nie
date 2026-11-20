@@ -31,28 +31,7 @@ use std::fmt::Write as _;
 
 pub const MANIFEST_VERSION: u64 = 1;
 
-/// `/`-separated path without leading, trailing-empty or duplicate separators.
-#[must_use]
-pub fn canonical_path(path: &str) -> String {
-    let mut out = String::with_capacity(path.len());
-    for part in path.split(['/', '\\']).filter(|p| !p.is_empty()) {
-        if !out.is_empty() {
-            out.push('/');
-        }
-        out.push_str(part);
-    }
-    out
-}
-
-/// Join a TOC directory and file name the one canonical way (the CPK reader, the
-/// `cpk_list.cfg.bin` index and the manifest must agree, or lookups miss).
-#[must_use]
-pub fn join_canonical(directory: &str, filename: &str) -> String {
-    if directory.is_empty() {
-        return canonical_path(filename);
-    }
-    canonical_path(&format!("{directory}/{filename}"))
-}
+pub use crate::cpk_list::{canonical_path, join_canonical};
 
 /// One row of the manifest.
 #[derive(Debug, Clone, PartialEq, Eq)]

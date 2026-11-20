@@ -36,8 +36,6 @@ just ci-bindings            # smoke test of every binding against the cdylib
 just ci-gui-linux           # GPUI toolkit snapshots and AccessKit audit (needs the sibling ../aphrody checkout and a Vulkan device)
 just app-pack [out]         # the browser app bundle that nie-app embeds
 just web-pack|web-serve|web-shot      # GPUI browser bundle, its server, headless Chrome proof
-just kernel-watch|kernel-cycle|kernel-promote   # kernel.org mainline pipeline; kernel-build, kernel-boot-test
-just os-initramfs|os-qemu|os-boot|os-build|os-test
 just deploy --host prd --bin-dir <dir>   # nie-deploy up: ship binaries + deploy/supervise.toml over nie-ssh, start the supervisor (no systemd unit, no container), wait for health
 just fr1 <recipe>           # run a recipe on the build host in tmux, logged
 cargo test -p nie-plugin --test layering   # framework crates name no game identifier and depend on no app crate
@@ -104,11 +102,7 @@ Built binaries on the build host: `<build dir>/target/release/{nie,nie-mcp,nie-m
 - Asterinas (aphrody-labs/asterinas, MPL-2.0 Rust framekernel with the Linux ABI, `branch = main`
   synced from upstream, gap fixes on `nie/*` branches that are also sent upstream as PRs) is the
   submodule `fw-nt/third_party/asterinas`. It supplies the book's `.scml` compat tables read by
-  `nie deps audit --syscalls` (default `../fw-nt/third_party/asterinas`), and the kernel built on the
-  build host. `os/` is the standalone OSDK workspace (own `[workspace]`, lock and
-  `rust-toolchain.toml` copied from the fork's, a nightly kept out of the stable main workspace):
-  `nie-os` (kernel) and `nie-ostd-vfs` (ostd component) take `ostd` from crates.io, never from the
-  git branch; built, ktested and booted only on `fr1` (KVM) or in CI, never on the PC.
+  `nie deps audit --syscalls` (default `../fw-nt/third_party/asterinas`). The kernel and the OSDK workspace live in `fw`.
 - kitesurf (aphrody-labs/kitesurf, Apache-2.0 browser engine on Blitz, Stylo, Taffy, Parley and boa;
   `branch = nie`, `main` mirrors cloudflare/kitesurf) is a pinned git dependency of
   `crates/nie-browser/host` (its own workspace and nightly toolchain), never of the main workspace.

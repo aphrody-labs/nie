@@ -93,6 +93,11 @@
       "package": "nie-syscalls",
       "path": "crates/nie-syscalls",
       "role": "strace workloads matched against the Asterinas compat tables"
+    },
+    {
+      "package": "nie-sniff",
+      "path": "plugins/exe/nie-sniff",
+      "role": "file format identification from the first bytes: media type, extension and family"
     }
   ],
   "app": [
@@ -323,6 +328,18 @@
       "path": "plugins/tui/nie-tui",
       "app": "ievr",
       "note": "terminal file manager and previewers for the game VFS"
+    },
+    {
+      "package": "nie-dbxv2-re",
+      "path": "plugins/exe/nie-dbxv2-re",
+      "app": "dbxv2",
+      "note": "Dragon Ball Xenoverse 2 formats, CPK archives and live memory inspection"
+    },
+    {
+      "package": "nie-rgdeploy",
+      "path": "crates/nie-rgdeploy",
+      "app": "rosegriffon",
+      "note": "Rose Griffon deploy binary (rgd)"
     }
   ],
   "plans": [

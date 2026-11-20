@@ -226,10 +226,14 @@ fn tail(text: &str, lines: usize) -> String {
 }
 
 /// Runs the commands in order; the output of the last one is returned, a failure carries its tail.
-fn run_commands(commands: Vec<Command>, search: &str) -> std::result::Result<String, String> {
+fn run_commands(
+    commands: Vec<Command>,
+    search: &str,
+    env: &[(&str, &Path)],
+) -> std::result::Result<String, String> {
     let mut last = String::new();
     for mut command in commands {
-        command.env("LD_LIBRARY_PATH", search);
+        command.env("LD_LIBRARY_PATH", search).envs(env.iter().copied());
         let out = command.output().map_err(|e| format!("{command:?}: {e}"))?;
         let text = format!(
             "{}{}",
@@ -254,6 +258,9 @@ pub fn run(args: Args) -> Result<()> {
         .with_context(|| format!("--lib {}", args.lib.display()))?;
     let libdir = lib.parent().context("library directory")?.to_path_buf();
     let bindings = args.bindings.unwrap_or_else(|| root.join("bindings"));
+    let bindings = bindings
+        .canonicalize()
+        .with_context(|| format!("--bindings {}", bindings.display()))?;
     let tmp = std::env::temp_dir().join(format!("nie-bindings-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&tmp);
     std::fs::create_dir_all(&tmp)?;
@@ -270,6 +277,12 @@ pub fn run(args: Args) -> Result<()> {
         None => libdir.display().to_string(),
     };
 
+    // The smoke programs read the library, the generated bindings and the fixture from these variables.
+    let env = [
+        ("NIE_LIB", lib.as_path()),
+        ("NIE_BINDINGS", bindings.as_path()),
+        ("NIE_FIXTURE", fixture.as_path()),
+    ];
     let built = steps(&here, &bindings, &libdir, &tmp, &fixture, &args.zig);
     let (mut ran, mut skipped, mut failed) = (Vec::new(), Vec::new(), Vec::new());
     for step in built? {
@@ -277,7 +290,7 @@ pub fn run(args: Args) -> Result<()> {
             skipped.push(format!("{}({} missing)", step.name, step.tool));
             continue;
         }
-        match run_commands(step.commands, &search) {
+        match run_commands(step.commands, &search, &env) {
             Ok(line) => {
                 println!("{line}");
                 ran.push(step.name);
@@ -321,7 +334,7 @@ mod tests {
         let mut c = Command::new("rustc");
         c.arg("--no-such-flag");
         if have("rustc") {
-            assert!(run_commands(vec![c], "").is_err());
+            assert!(run_commands(vec![c], "", &[]).is_err());
         }
     }
 }

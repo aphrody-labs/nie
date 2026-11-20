@@ -69,7 +69,7 @@ jobs:
       - run: just ci-workspace
 
   os:
-    name: os (no_std core, OSDK ISO)
+    name: os (no_std core)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:

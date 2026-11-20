@@ -68,47 +68,6 @@ fr1 recipe *args:
 deploy *args:
     cargo run --release --locked -p nie-deploy -- up {{ args }}
 
-# Kernel.org mainline watcher: the decision as JSON (exit 0 build, 10 up to date, 11 wait).
-kernel-watch *args:
-    cargo xtask kernel watch {{ args }}
-
-# One build step (source, config, package, repro) of a mainline tag.
-kernel-build step tag *args:
-    cargo xtask kernel build {{ step }} {{ tag }} {{ args }}
-
-# Boot test of a kernel build under QEMU/KVM.
-kernel-boot-test *args:
-    cargo xtask kernel boot-test {{ args }}
-
-# One pipeline run: watch, signed tag, two builds, same image hash, boot test, record.
-kernel-cycle *args:
-    cargo xtask kernel cycle {{ args }}
-
-# Promote the running kernel to the GRUB default once the host is healthy.
-kernel-promote *args:
-    cargo xtask kernel promote {{ args }}
-
-# Reproducible initramfs: static busybox, the static musl nie, os/initramfs/init.
-os-initramfs *args:
-    cargo xtask os initramfs {{ args }}
-
-# QEMU arguments for cargo osdk, from the host and NIE_OS_*.
-os-qemu:
-    cargo xtask os qemu
-
-# Boot the Linux-ABI Asterinas kernel with nie in the initramfs and a game directory over virtiofs.
-os-boot *args:
-    cargo xtask os boot {{ args }}
-
-# nie-os and nie-ostd-vfs with the nightly pinned in os/rust-toolchain.toml.
-os-build:
-    cd os/nie-os && cargo osdk build
-    cd os/nie-ostd-vfs && cargo osdk build
-
-# Kernel unit tests under QEMU (fr1 only).
-os-test:
-    cd os/nie-os && cargo osdk test
-
 # Content-hashed browser bundle of the GPUI apps.
 web-pack *args:
     cargo xtask web pack {{ args }}
@@ -158,14 +117,10 @@ ci-workspace: _toolchain
     cargo test --locked -p nie-xtask
     cargo xtask map --check
 
-# ci.yml os: the no_std core on bare metal and the OSDK ISO.
+# ci.yml os: the no_std core on bare metal.
 ci-os: _toolchain
     rustup target add x86_64-unknown-none
-    cargo check --locked -p nie-formats --no-default-features --target x86_64-unknown-none
-    sudo apt-get update && sudo apt-get install -y --no-install-recommends grub-pc-bin grub-efi-amd64-bin xorriso mtools
-    cd os && (rustup show active-toolchain || rustup toolchain install)
-    cargo install cargo-osdk --version 0.19.0 --locked
-    just os-build
+    cargo rustc --locked --profile check -p nie-formats --lib --crate-type rlib --no-default-features --target x86_64-unknown-none
 
 # ci.yml deny: aws-lc-sys, aws-lc-rs, ring, openssl-sys and libssh2-sys stay out of the graph.
 ci-deny:

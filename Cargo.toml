@@ -170,7 +170,26 @@ target-lexicon = "=0.13.5"
 # steamroom 0.3.0 forces reqwest's default rustls provider (aws-lc). The fork branch nie/no-provider is
 # v0.3.0 plus upstream 4dd310cb (selectable provider) with the provider left to the host (nie-tls).
 # Drop this patch when steamroom publishes a release that carries that commit.
+# pingora-rustls 0.9.1 pins ring. The fork branch nie/no-ring is tag 0.9.1 with rustls-graviola as the
+# provider and sha2 for the certificate hash; every pingora crate comes from it so the types stay one set.
+# Drop these patches when pingora-rustls releases without ring.
 [patch.crates-io]
+steamroom = { git = "https://github.com/aphrody-labs/steamroom", branch = "nie/no-provider" }
+steamroom-client = { git = "https://github.com/aphrody-labs/steamroom", branch = "nie/no-provider" }
+pingora-cache = { git = "https://github.com/aphrody-labs/pingora", branch = "nie/no-ring" }
+pingora-core = { git = "https://github.com/aphrody-labs/pingora", branch = "nie/no-ring" }
+pingora-error = { git = "https://github.com/aphrody-labs/pingora", branch = "nie/no-ring" }
+pingora-header-serde = { git = "https://github.com/aphrody-labs/pingora", branch = "nie/no-ring" }
+pingora-http = { git = "https://github.com/aphrody-labs/pingora", branch = "nie/no-ring" }
+pingora-ketama = { git = "https://github.com/aphrody-labs/pingora", branch = "nie/no-ring" }
+pingora-limits = { git = "https://github.com/aphrody-labs/pingora", branch = "nie/no-ring" }
+pingora-load-balancing = { git = "https://github.com/aphrody-labs/pingora", branch = "nie/no-ring" }
+pingora-lru = { git = "https://github.com/aphrody-labs/pingora", branch = "nie/no-ring" }
+pingora-pool = { git = "https://github.com/aphrody-labs/pingora", branch = "nie/no-ring" }
+pingora-proxy = { git = "https://github.com/aphrody-labs/pingora", branch = "nie/no-ring" }
+pingora-runtime = { git = "https://github.com/aphrody-labs/pingora", branch = "nie/no-ring" }
+pingora-rustls = { git = "https://github.com/aphrody-labs/pingora", branch = "nie/no-ring" }
+pingora-timeout = { git = "https://github.com/aphrody-labs/pingora", branch = "nie/no-ring" }
 
 [profile.dev]
 split-debuginfo = "unpacked"

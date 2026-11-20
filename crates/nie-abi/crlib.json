@@ -158,6 +158,12 @@
       "reason": "desktop automation and live process probing of the host; no portable C contract"
     },
     {
+      "package": "nie-dbxv2-re",
+      "path": "plugins/exe/nie-dbxv2-re",
+      "status": "excluded",
+      "reason": "Dragon Ball Xenoverse 2 engine with a hand-written C ABI of its own (nie_dbxv2_re_*), outside the nie contract"
+    },
+    {
       "package": "nie-forge",
       "path": "plugins/exe/nie-forge",
       "id": "forge",
@@ -204,6 +210,12 @@
       "path": "plugins/exe/nie-seed",
       "status": "excluded",
       "reason": "knowledge-base ingestion tool for the index database"
+    },
+    {
+      "package": "nie-sniff",
+      "path": "plugins/exe/nie-sniff",
+      "status": "excluded",
+      "reason": "file-signature sniffer consumed by Rust code only; no C contract"
     },
     {
       "package": "nie-trace",
@@ -276,6 +288,12 @@
       "path": "crates/nie-scaffold",
       "status": "excluded",
       "reason": "binary or tool, no library surface"
+    },
+    {
+      "package": "nie-rgdeploy",
+      "path": "crates/nie-rgdeploy",
+      "status": "excluded",
+      "reason": "deploy binary (rgd); no library surface"
     },
     {
       "package": "nie-ssh",

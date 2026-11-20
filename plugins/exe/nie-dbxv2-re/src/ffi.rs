@@ -19,7 +19,7 @@ use crate::live::process::WineProcessMemory;
 use crate::unified::Dbxv2UnifiedState;
 
 /// Current ABI version for `nie-dbxv2-re` FFI.
-pub const nie_dbxv2_re_ABI_VERSION: u32 = 1;
+pub const NIE_DBXV2_RE_ABI_VERSION: u32 = 1;
 
 fn to_c_string<T: serde::Serialize>(val: &T) -> *mut c_char {
     match serde_json::to_string(val) {
@@ -42,7 +42,7 @@ fn err_to_c_string(msg: &str) -> *mut c_char {
 /// Returns the C ABI version of the nie-dbxv2-re library.
 #[unsafe(no_mangle)]
 pub extern "C" fn nie_dbxv2_re_abi_version() -> u32 {
-    nie_dbxv2_re_ABI_VERSION
+    NIE_DBXV2_RE_ABI_VERSION
 }
 
 /// Returns the crate version string. Caller must not free this static pointer.

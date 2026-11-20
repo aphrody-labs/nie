@@ -29,4 +29,11 @@ pub use detect::{HEAD, identify};
 pub use kind::{Family, Kind};
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    reason = "tests assert on fixed fixtures; the panics are the failures"
+)]
 mod tests;
