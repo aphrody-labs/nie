@@ -12,9 +12,11 @@ The UI-only `sprite_sheet` adapter and its dependency were excluded. No emulator
 - `textures-encode`: encode BCn texture payloads; may require a native toolchain through `image_dds`.
 - `images`: encode RGBA images into supported exchange formats.
 - `audio-decode`: decode Criware audio using `cridecoder`.
+- `remote-vfs` (default): SSH/SFTP, rclone and HTTP byte sources over `nie-ssh`, `nie-tls` and `opendal`.
+- `crlib`: the C-ABI library build.
 - `lua` (default): parse and disassemble Lua 5.2 bytecode through the separate, static `nie-lua` crate. It never executes chunks.
 - `real-fixtures`: opt in to tests using locally supplied game fixtures.
 
 Game dumps and real binary fixtures are intentionally not copied into this crate. Tests that depend on those ignored local files need the operator's own legally obtained game data.
 
-The upstream remote HTTP/SFTP VFS transport is not enabled in this workspace because it depends on a separate SSH transport crate. Local CPK and filesystem VFS code is present. Lua VM execution, menu host runtime, WebAssembly bindings, WGPU rendering, and emulator integrations are outside this RE parser crate.
+Lua VM execution, menu host runtime, WebAssembly bindings, WGPU rendering, and emulator integrations are outside this RE parser crate.

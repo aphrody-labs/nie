@@ -2,7 +2,7 @@
 
 `nie fm` browses the VFS of the installed game in a terminal: a yazi-style three-column manager
 (parent, current, preview) over `nie-assets`, so `NIE_GAME_SOURCE`, `ssh://`, `rclone://` and local
-paths work unchanged. It is read-only: nie never writes a game file.
+paths work unchanged. It never writes into the installed game files; it has no editing mode yet (edits go to an overlay or an output path, `AGENTS.md`).
 
 ```sh
 NIE_GAME_SOURCE="ssh://<game-host>/<game_dir>" nie fm
@@ -83,7 +83,7 @@ turns it off.
 ## Designs taken, and from where
 
 Nothing from yazi, helix, spacedrive or kitty is copied. Each design is cited in
-`docs/specs/terminal-sources.md`; the third-party crates come from crates.io and are declared once in
+`docs/specs/terminal-sources.policy.toml`; the third-party crates come from crates.io and are declared once in
 `[workspace.dependencies]`.
 
 ## Limits

@@ -8,15 +8,15 @@ request time.
 1. Every field is a value from a VFS table (`data/common/gamedata/**.cfg.bin`) or text file
    (`data/common/text/<lang>/*.cfg.bin`), served as the game value plus its decoded label. A field
    with no source is absent. No derived copies: the legacy `inagle_*` SQLite mirror had gender
-   codes inverted (the game uses 1 = male, 2 = female), position "Inconnu" on 6101 of 10079 rows
-   while the real code sat in the raw record, and categories in mixed casing.
+   codes inverted (the game uses 1 = male, 2 = female), position "Inconnu" while
+   the real code sat in the raw record, and categories in mixed casing.
 2. References resolve the way the game does. A team's `emblemId` is the CRC32 of the emblem file
    name (`crc32("em010001") = 0xD5ABE1F0`); resolve it by hashing the real CPK file names, never
    through a hand-made table.
 3. Where no source exists, the page shows an explicit empty state. No source is known today for
    capsule lot contents (their `vars[1]` matches no table or text), match lineups and invocation
    rates. Team affiliation does exist: `chara_base` variable 16 (belongTeamId) points to a
-   `belong_team_config` entry (6100 of 6161 characters, 199 of 208 teams).
+   `belong_team_config` entry (not every character or team has one).
 4. No hardcoded counts or versions: counts come from the decoded tables, the game version from the
    installation.
 5. Text in the nine languages the VFS ships (`de en es fr it ja pt zh_hans zh_hant`, BCP 47
@@ -104,9 +104,9 @@ Measured on the installation by `nie wiki`:
 - Position (`chara_param` variable 3), gender (`chara_base` variable 11: 1 male, 2 female; 0, 4
   and 5 are props, an NPC and monsters) and skill category have no label in any of the gamedata
   files: they are served as stored codes.
-- 206 of 208 team emblems resolve; `0x86D317FE` and `0x339AD19E` match no CPK file name.
+- Two team emblem ids, `0x86D317FE` and `0x339AD19E`, match no CPK file name.
 - `data/common/gamedata/team/team_config_*.cfg.bin` (`TEAM_MEMBER_SKILL_CONFIG_INFO_LIST_BEG`,
-  9073 rows of 13 integers) is listed in the catalog as present and not decoded.
+  rows of 13 integers) is listed in the catalog as present and not decoded.
 
 ## Hosting
 

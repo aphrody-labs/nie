@@ -16,12 +16,11 @@ wasm-bindgen target/wasm32-unknown-unknown/release/nie_wasm.wasm \
 
 The package lands in `crates/nie-wasm/pkg/` (`nie_wasm.js`, `nie_wasm_bg.wasm`,
 `nie_wasm.d.ts`). The wasm-bindgen CLI version must match the workspace pin exactly. The package
-never enters git.
+is not committed.
 
 ## Features
 
 | Feature   | Adds                                                              |
 | --------- | ----------------------------------------------------------------- |
-| `webgpu`  | `WebGpuViewer`: the `nie-render3d` WebGPU pass on a canvas        |
+| `webgpu`  | `ModelViewer`: the `nie-render3d` WebGPU pass on a canvas         |
 | `webgl`   | WebGL2 fallback for browsers without WebGPU (adds about 2 MiB)    |
-| `bevy`    | Bevy asset and plugin integration of `nie-bevy`                   |

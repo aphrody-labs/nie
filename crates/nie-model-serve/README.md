@@ -2,10 +2,9 @@
 
 The IEVR model asset service.
 
-- Default build exposes the offline `nie-model-core` catalog and menu API, without enabling host facilities.
-- `--features host` builds the local HTTP service, live VFS/CPK-backed GLB assembly and texture/audio routes, bounded local asset reads, and SQLite/PostgreSQL mirror integration.
-- The service dependencies are native and feature-gated; the separate `nie-model-core` crate retains portable catalog and compositor APIs.
+- Default build: the offline catalog (`src/catalog.rs`) and the route table (`src/routes.rs`), without host facilities.
+- `--features host`: the local HTTP service with GLB assembly from the live VFS and texture, audio and video routes.
 
-This port excludes only GPU presentation from the server side: it uses the shared CPU compositor. No WASM host or emulator integration is included. `presentation.json` carries the upstream presentation metadata required by the server. `LICENSE.upstream` preserves the source license.
+Server-side rendering uses the shared CPU compositor; there is no GPU presentation. `LICENSE.upstream` preserves the source license.
 
 Build the service with `cargo build -p nie-model-serve --features host`; run `nie-model-serve --help` for its host CLI options.

@@ -101,8 +101,7 @@ numérique des versions au même endroit.
 décodé dans le même appel que son exécution ; le CLI la publie sous
 `liveDecodedInstructions`.
 
-Le driver `nie-game --runtime` utilise maintenant cette session persistante
-plutôt qu’une VM et des index d’include reconstruits à la main. La vérification
+La vérification
 Kizuna réelle termine avec `on_init=true`, `on_open=true`, 102 commandes
 connues et 0 inconnue.
 L’export `runtimeSummary.loadedIncludes` conserve aussi les modules chargés et
@@ -127,14 +126,7 @@ non prouvé.
 
 ## Vérifications
 
-```text
-cargo test -p nie-lua --lib
-97 passed, 0 failed, 1 ignored
-
-cargo clippy -p nie-lua --lib --tests -- -D warnings
-cargo clippy -p nie-game --bins --tests -- -D warnings
-success, 0 warning sur les deux cibles
-```
+Commandes : `cargo test -p nie-lua --lib` et `cargo clippy -p nie-lua --lib --tests -- -D warnings`.
 
 Les audits ont été lancés avec `NIE_GAME_DIR`/`--game-dir` vers l’installation
 locale du jeu, sans chemin machine écrit dans le code ou dans ce rapport.
@@ -147,8 +139,7 @@ incohérents, au lieu de tenter un décodage ambigu.
 `LOADKX` est également résolu avec l’`EXTRAARG` suivant, comme dans le
 bytecode Lua 5.2, au lieu d’être présenté à tort comme `K0`.
 Les lectures bornées du décodeur vérifient désormais les additions de curseur
-et les conversions `size_t` avant tout accès mémoire ; le corpus réel confirme
-toujours **1 143/1 143 scripts** et **985 971 instructions** décodés.
+et les conversions `size_t` avant tout accès mémoire.
 Le chargement live appelle maintenant ce même décodeur avant `mlua` pour le
 chunk principal de `execute`, `LuaSession::exec/attach`, le pilotage de menu,
 **et chaque `INCLUDE` binaire**. Un test de régression vérifie
@@ -244,8 +235,7 @@ qui le déconseille lorsque l’espace disque est contraint.
 
 ## Clôture de session - 2026-09-06
 
-Le lot de reproduction Lua/Kizuna est versionné et poussé sur `main` jusqu’à
-`cbe5fde` (`feat: validate live Lua bytecode before execution`). Il couvre le
+Le lot de reproduction Lua/Kizuna est versionné et poussé sur `main`. Il couvre le
 décodeur Lua 5.2, l’index VFS à versions numériques, les includes persistants,
 le pilotage live du menu, les hôtes Kizuna, les métriques d’audit et leur
 provenance.

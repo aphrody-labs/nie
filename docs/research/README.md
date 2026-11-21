@@ -11,7 +11,7 @@ installation of the game. This file is the rule every document, experiment and c
    script under version control). A command that only exists in a chat or a scratch directory does
    not count.
 3. **Environment fingerprint**, recorded with the result:
-   - git commit of this repository (and of every submodule involved);
+   - git commit of this repository (and of each sibling checkout involved);
    - Rust toolchain (`rust-toolchain.toml`) and `Cargo.lock` hash;
    - game: Steam app 2799860, `buildid` from `steamapps/appmanifest_2799860.acf`, size and hash of
      `nie.exe` and of `data/cpk_list.cfg.bin`;
@@ -36,7 +36,7 @@ installation of the game. This file is the rule every document, experiment and c
 ## Rules
 
 - No game asset in the repository; tests use synthetic fixtures.
-- Versions are pinned (`Cargo.lock`, toolchain file, submodule SHAs, image digests) and read from
+- Versions are pinned (`Cargo.lock`, toolchain file, pinned git revisions) and read from
   their official source when chosen.
 - A change to a production host is described here, with its verification output and its rollback,
   in the same commit series as the change.

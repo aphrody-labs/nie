@@ -6,7 +6,7 @@ The `serde` feature enables typed serialization, and `std` enables the export bi
 
 ```powershell
 cargo check -p nie-data --features serde,std --lib --bins
-cargo run -p nie-data --features serde,std --bin nie-export-skills -- <game-data-dir> <output.json>
+cargo run -p nie-data --features serde,std --bin nie-export-skills -- --data <game-data-dir> --out <output.json>
 ```
 
 The export tools require files from a user-owned game installation. No game asset files are redistributed here.

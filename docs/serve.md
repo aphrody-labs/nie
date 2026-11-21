@@ -179,9 +179,8 @@ Three steps on any Linux host:
    Set `NIE_RAW_VFS_TOKEN` (32 bytes or more) to let a browser read the packs through
    `/v1/vfs/stream`; without it that route answers 404 and the app can only use a folder the user
    picks on their own machine.
-3. **Unit.** A systemd service with `RequiresMountsFor=` on the game directory, a dedicated user and
-   state under `/var/lib/nie`; `deploy/systemd/nie-serve.service` is the reference. The service
-   needs read access to the game and nothing else.
+3. **Run.** `nie-deploy up --host <host> --bin-dir <dir>` installs `deploy/supervise.toml` and starts
+   `nie-deploy supervise` (see Production host). The service user needs read access to the game and nothing else.
 
 ### The app
 
@@ -220,5 +219,4 @@ The browser proof is agent-browser (DOM probe and screenshot) against a running 
 runs the same page in headless Chrome through `cargo xtask web shot` (a minimal CDP client in Rust) and
 fails unless the page loads, `navigator.gpu` exists and the console has no error. It takes a synthetic
 installation written by `cargo run -p nie-wiki-vfs --features testing --example synth_install -- <dir> 50`;
-no game byte is involved. The run on the build host and its screenshots are recorded in
-`docs/research/log/2026-11-19-wasm-app.md`.
+no game byte is involved.

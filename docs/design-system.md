@@ -13,7 +13,7 @@ any agent using the Figma MCP on this repository.
 | glyph metrics | `data/common/font/font/font_def/font.cfg.bin` | `nie_formats::cfgbin::parse_t2b` + `nie_formats::font::parse_metrics` | `GET /ui/font-metrics.json` |
 | font atlases | `data/dx11/font/font_def/font.g4tx`, `font_ja*`, `font_zh_hans*`, `font_zh_hant*`, per-language `data/dx11/font/<lang>/` | `nie_formats::g4tx` | `GET /tex/dx11/font/...png` |
 | button glyphs (gaiji) per platform | `data/dx11/font/gaiji_{game,key,xinput,multi,nx,ps4,ps5,xbox,SteamDeck}.g4tx`, `gaiji_hlp_*` | `nie_formats::g4tx` | `GET /tex/dx11/font/gaiji_*.png` |
-| canvas | 1920 x 1080 (menu layouts) | `nie_formats::menu_layout` | `GET /menu-render/<screen>.png` |
+| canvas | 1920 x 1080 (menu layouts) | `nie_formats::menu_layout` | `GET /menu-tree/<screen>` (layout) |
 
 Rules:
 - A token name is the game's own identifier (the `FONT_COLOR` entry, the font file stem). Never
@@ -53,10 +53,10 @@ Code:
 ## 3. Frameworks
 
 - Decoding and export: Rust (`nie-formats`, `nie-data`, `nie-explore`), no UI framework.
-- Rendering: Bevy (game world, `nie-bevy`), see `docs/adr-ui-stack.md`.
+- Rendering: Bevy for the game world (`nie-bevy`, `docs/adr-ui-stack.md`); every other UI is GPUI (`docs/adr-gpui.md`).
 - Serving: `nie serve` and `nie-model-serve` (`docs/serve.md`), run by `nie-deploy supervise`.
-- The generic UI tree crate (`nie-ui-tree`) and its consumers are deleted; no crate here renders a
-  UI that is not the game's.
+- The tools' own UI (explorer, viewers, terminal) is the GPUI toolkit `gui/nie-ui`; it is not part of the
+  game's design system.
 
 ## 4. Assets
 
@@ -72,7 +72,7 @@ Code:
 
 - Source: `data/dx11/menu/200_icon/` atlases and per-screen atlases under `220_img/`.
 - Index: `nie icons index` (`nie_explore::menu_icons::build_icon_index`) writes name -> atlas +
-  rectangle; `GET /icons/index.json` serves the written file.
+  rectangle to a file; `GET /icons/index.json` serves the index computed from the VFS.
 - Naming: the game's sprite name inside the atlas (e.g. `load_ball01`), never a new name.
 
 ## 6. Styling and localisation
@@ -90,14 +90,7 @@ Code:
 Every exported item carries its provenance: VFS path, record (cfg.bin entry or sprite name) and
 the decoder used.
 
-## Gaps (unverified or not yet from the VFS)
+## Coverage
 
-- `crates/nie-formats/src/menu_scenes/*.json` are hand-placed layouts carried over from an earlier
-  TypeScript app (`OpeningVisual.tsx`); they must be replaced by layouts decoded from
-  `data/common/menu/**` cfg.bin.
-- `/icons/index.json` reads a prebuilt file (`NIE_ICONS_INDEX`, default `var/icons-index.json`),
-  `/menu-render` a layout directory (`--layout-dir`) and `/menu-tree` a directory of
-  `*_menu_setting.cfg.bin.json` dumps (`--menu-cfg-dir`); all three must be computed from the VFS
-  at request time.
 - `nie vfs ls data/common/font` reports fonts as "not exploited" and `data/common/menu` as
   "partial": coverage comes from `nie vfs formats`, not from this file.

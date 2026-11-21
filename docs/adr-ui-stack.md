@@ -1,6 +1,6 @@
-# ADR: Bevy is the only UI stack
+# ADR: Bevy owns game rendering and assets
 
-Status: accepted, 2026-11-19. Supersedes the four-stack state described below.
+Status: accepted, 2026-11-19; amended by `docs/adr-gpui.md` (every other UI is GPUI). Supersedes the four-stack state described below.
 
 ## Context
 
@@ -29,7 +29,7 @@ the only stack still on an alpha release.
 
 ## Consequences
 
-- One UI stack with one renderer path (wgpu): Bevy for rendering on desktop and web.
+- One renderer path (wgpu): Bevy renders the game on desktop and web; the tool UI is GPUI (`docs/adr-gpui.md`).
 - The Dioxus removal also drops `dioxus-desktop`, which today pulls the full `image` codec set
   (AVIF, EXR and others) into the lockfile.
 - The old web app crate is deleted; a web front end is an HTTP consumer.

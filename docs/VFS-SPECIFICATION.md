@@ -1,26 +1,25 @@
-# Victory Road Virtual File System (VFS) Specification
+# Victory Road Virtual File System
 
-> Comprehensive, authoritative technical specification for the Inazuma Eleven: Victory Road Virtual File System.
-> Grounded in the pure TypeScript `nie-bridge` contracts and reverse engineering of `nie.exe`.
-
----
-
-## 1. Architectural Overview
-
-The Victory Road VFS combines two distinct mounting tiers:
-
-1. **Mounted CRI CPK Archives** (`data/packs/*.cpk`):
-   - High-density packages indexed at game boot via `cpk_list.cfg.bin`.
-   - Protected with CRI position-dependent XOR cipher and Viola key (`0x1717E18E`).
-   - Compressed with reverse-bitstream CRILAYLA LZSS.
-   - Cached in memory using an LRU cache budget (default 16 GiB on desktop).
-2. **Loose File Dump Overlay**:
-   - For fast modding, testing, and tool ingestion, the VFS inspects loose files on disk.
-   - When a requested file path exists in the loose directory tree, it overrides the CPK archive entry.
+Format and packing notes for the IEVR VFS, derived from `nie.exe` and the parsers in `crates/nie-formats`.
+`nie vfs ls`, `nie vfs stats` and `nie vfs formats` are authoritative for what a given installation holds.
 
 ---
 
-## 2. Authoritative Binary Formats Catalog (28 Formats)
+## 1. Overview
+
+The VFS has two tiers:
+
+1. **CRI CPK archives** (`data/packs/*.cpk`):
+   - Indexed at game boot by `data/cpk_list.cfg.bin`.
+   - XOR-encrypted per position with a key derived from the CRC32 of the archive file name (section 4.2).
+   - Compressed with CRILAYLA (reverse-bitstream LZSS).
+   - Cached in memory by an LRU bounded by `NIE_CPK_CACHE_BUDGET_GIB` (default 2 GiB).
+2. **Loose file overlay**:
+   - A file present in the loose directory tree overrides the CPK entry of the same path.
+
+---
+
+## 2. Binary formats
 
 | Magic (Hex)  | ASCII   | Extension   | Category      | Endianness | Encrypted | Compressed | Description                                                                                    |
 | ------------ | ------- | ----------- | ------------- | ---------- | --------- | ---------- | ---------------------------------------------------------------------------------------------- |
@@ -55,37 +54,20 @@ The Victory Road VFS combines two distinct mounting tiers:
 
 ---
 
-## 3. CPK Package Mapping & Priority Rules
+## 3. Packs and manifest
 
-| Archive Name       | Wildcard Mask      | Key Derivation   | Priority | CRILAYLA | Role / Contents                                                                                       |
-| ------------------ | ------------------ | ---------------- | -------- | -------- | ----------------------------------------------------------------------------------------------------- |
-| `common.cpk`       | `*common*.cpk`     | `filename-crc32` | 100      | Yes      | Core game database, character tables (chara_base), item configs, skill definitions, and growth curves |
-| `menu.cpk`         | `*menu*.cpk`       | `filename-crc32` | 90       | Yes      | UI layouts, T2B menu settings, 200_icon sprites, portrait textures, and font atlases                  |
-| `model.cpk`        | `*model*.cpk`      | `filename-crc32` | 80       | Yes      | 3D player models (G4MD), team kits, stadium geometries, and animation tracks (AGI)                    |
-| `dx11.cpk`         | `*dx11*.cpk`       | `filename-crc32` | 70       | Yes      | DirectX 11 compiled shaders, material descriptors, and GPU texture streams                            |
-| `sound_asset.cpk`  | `*sound*.cpk`      | `filename-crc32` | 60       | No       | HCA voice lines, character dialogue, match commentary, and crowd atmosphere                           |
-| `movie.cpk`        | `*movie*.cpk`      | `filename-crc32` | 50       | No       | Full-motion cutscenes, anime openings, and special moves (Hissatsu) USM video sequences               |
-| `event.cpk`        | `*event*.cpk`      | `filename-crc32` | 40       | Yes      | Story mode cutscenes, MEVBIN choreography scripts, and chapter dialogue triggers                      |
-| `cpk_list.cfg.bin` | `cpk_list.cfg.bin` | `viola-fixed`    | 1000     | No       | Master VFS manifest mapping internal paths to CPK pack files. Encrypted with Viola key 0x1717E18E     |
+`data/cpk_list.cfg.bin` maps internal paths to pack files. It is a cfg.bin encrypted with the fixed Viola key
+`0x1717E18E` (`VIOLA_FIXED_KEY`, `crates/nie-formats/src/cpk.rs`). The packs under `data/packs/` are named by hash
+(for example `1d08dda99e8549431c6c7b459ed8deab.cpk`) and use the per-file-name key, not the Viola key: the Viola
+key applied to a real pack gives noise.
+
+Top-level logical directories are `data/common/*` and `data/dx11/*`; `nie vfs ls data` lists them.
 
 ---
 
-## 4. Top-Level Directory Topology
+## 4. Decompression & Cryptography Reference
 
-| Logical Directory | Dominant Format | Est. Files | Subsystem Role                                                                                                       | Sample Entries                                                                           |
-| ----------------- | --------------- | ---------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `data/common/`    | `.cfg.bin`      | ~1420      | Authoritative relational database configs (RDBN format) powering all game rules, player statistics, and drop tables. | `data/common/chara/chara_base.cfg.bin`, `data/common/item/item_config.cfg.bin`           |
-| `data/menu/`      | `.g4tx`         | ~3866      | User interface assets, HUD compositions, sprite sheets, font glyphs, and localized texture cards.                    | `data/menu/200_icon/icon_chara_c01000010.g4tx`, `data/menu/font/font_menu.g4tx`          |
-| `data/model/`     | `.g4md`         | ~12400     | 3D skinned meshes, bone palettes, skeleton hierarchies, material definitions, and animation bindings.                | `data/model/chara/c01000010/c01000010.g4md`, `data/model/chara/c01000010/c01000010.g4sk` |
-| `data/event/`     | `.mevbin`       | ~5173      | Cinematic cutscenes, camera choreography, dialogue synchronizers, and story progression state trees.                 | `data/event/ch01/ev_01_001.mevbin`, `data/event/ch01/ev_01_001.cfg.bin`                  |
-| `data/audio/`     | `.acb`          | ~850       | Criware CRI Atom Craft audio cue sheets, HCA stream banks, music loops, and synchronized voice tracks.               | `data/audio/bgm/bgm_match_01.acb`, `data/audio/voice/v_c01000010.acb`                    |
-| `data/saves/`     | `.live`         | ~10        | Player career saves, team rosters, gacha inventory, and trophy progress encrypted with CRC32 filename cipher.        | `data/saves/002AB8F4-SYSTEMLIVE`, `data/saves/002AB8F4-USERDATALIVE`                     |
-
----
-
-## 5. Decompression & Cryptography Reference
-
-### 5.1 CRILAYLA LZSS Decompression
+### 4.1 CRILAYLA LZSS Decompression
 
 - **Header**: 16 bytes starting with ASCII `CRILAYLA`.
 - **Offset +8**: 32-bit unsigned LE integer specifying uncompressed payload size.
@@ -93,11 +75,9 @@ The Victory Road VFS combines two distinct mounting tiers:
 - **Direction**: Bitstream is processed **backwards** starting from the final byte of the compressed stream towards offset `+16`.
 - **History Buffer**: 256 bytes (`0x100`) circular dictionary.
 
-### 5.2 CRI Position-Aware XOR Cipher
+### 4.2 CRI Position-Aware XOR Cipher
 
-- Plaintext blocks are transformed in 4-byte quadwords:
-  ```c
-  uint32_t quad_mask = key ^ ((offset * 0x41C64E6D + 0x3039) & 0xFFFFFFFF);
-  plaintext[i] = ciphertext[i] ^ ((uint8_t*)&quad_mask)[i % 4];
-  ```
-- Key is generated via reflected CRC32 (`0xEDB88320`) of the archive filename string.
+- `decrypt_block` (`crates/nie-formats/src/cpk.rs`) XORs the buffer one 4-byte word at a time. For the word at
+  file offset `o`, `update_crc_state(o, key)` gives a CRC state and `compute_xor_byte(state, position)` the mask
+  byte of each of the 4 positions. The cipher is its own inverse and works on any absolute file offset.
+- For a pack the key is `key_from_filename(<base file name>)`: standard CRC32 (init and xorout `0xFFFFFFFF`) of the UTF-8 name.

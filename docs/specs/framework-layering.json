@@ -129,7 +129,7 @@
       "package": "nie-deploy",
       "path": "crates/nie-deploy",
       "app": "ievr",
-      "note": "deployment; launcher.rs holds the game's Steam app id"
+      "note": "deployment; embeds deploy/supervise.toml, the production host configuration with the game directory"
     },
     {
       "package": "nie-edge",
@@ -367,11 +367,6 @@
       "package": "nie-edge",
       "action": "promote",
       "plan": "One test literal names a game path and the crate depends on nie-model-serve. Replace the dependency with a route table loaded from nie.toml, then promote."
-    },
-    {
-      "package": "nie-deploy",
-      "action": "split",
-      "plan": "Move launcher.rs (Steam app id, Proton) to plugins/launcher; install, units and host stay framework."
     },
     {
       "package": "nie-link",
