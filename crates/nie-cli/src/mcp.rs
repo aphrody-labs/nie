@@ -98,7 +98,7 @@ define_cli_tools!(
         CliComputerUse,
         "cli_computer_use",
         "computer-use",
-        "Run `nie computer-use` in process. Pass the exact CLI argument tail in `args`; supports read-and-write operations in YOLO mode."
+        "Probe the nie.exe or Ghidra surface without modifying it; pass the CLI argument tail in `args`."
     ),
     (
         CliMod,
@@ -614,7 +614,7 @@ async fn fetch_model_asset_from(request: AssetRequest, base: &str) -> Compatibil
 impl NieMcpServer {
     #[tool(
         name = "vfs_list",
-        description = "List immediate directories and files under a VFS prefix. Compatibility name retained from the Bun server."
+        description = "List immediate directories and files under a VFS prefix."
     )]
     async fn compatibility_vfs_list(
         &self,
@@ -632,7 +632,7 @@ impl NieMcpServer {
 
     #[tool(
         name = "vfs_search",
-        description = "Search VFS paths by case-insensitive substring or glob. Compatibility name retained from the Bun server."
+        description = "Search VFS paths by case-insensitive substring or glob."
     )]
     async fn compatibility_vfs_search(
         &self,
@@ -797,7 +797,7 @@ impl NieMcpServer {
 
     #[tool(
         name = "explorer_status",
-        description = "Report whether the native loopback bridge is listening and whether an Inacord explorer client is connected."
+        description = "Report whether the bridge is listening and an explorer client is connected."
     )]
     async fn compatibility_explorer_status(&self) -> CompatibilityResult {
         Ok(json_text(self.bridge.status().await))
@@ -857,7 +857,11 @@ impl NieMcpServer {
             "editor", "explorer", "search", "data", "cpk", "save", "mods", "re", "lua", "settings",
         ];
         if !TABS.contains(&request.tab.as_str()) {
-            return Err(error_text("unknown explorer tab"));
+            return Err(error_text(format!(
+                "unknown explorer tab `{}`; expected one of {}",
+                request.tab,
+                TABS.join(", ")
+            )));
         }
         self.bridge
             .send(json!({ "cmd": "tab", "tab": request.tab }))
@@ -879,7 +883,9 @@ impl NieMcpServer {
             return Err(error_text("invalid toast message"));
         }
         if !["info", "success", "error"].contains(&kind) {
-            return Err(error_text("unknown toast kind"));
+            return Err(error_text(format!(
+                "unknown toast kind `{kind}`; expected info, success or error"
+            )));
         }
         self.bridge
             .send(json!({ "cmd": "toast", "message": request.message, "kind": kind }))
@@ -909,14 +915,14 @@ impl ServerHandler for NieMcpServer {
             .build();
         info.server_info = implementation;
         info.instructions = Some(
-            "Native Rust MCP binding for the complete nie CLI. Each cli_* tool executes the corresponding top-level command in process and accepts the exact argument tail in `args`. Responses contain success, stdout, stderr, and error fields. Call tools/list for the authoritative surface."
+            "MCP server for nie: one cli_* tool per non-interactive top-level command, each taking the CLI argument tail in `args`. Responses carry success, stdout, stderr, error."
                 .to_owned(),
         );
         info
     }
 }
 
-/// Serve the complete native tool catalogue over stdio.
+/// Serve the tools over stdio.
 pub async fn serve_stdio() -> anyhow::Result<()> {
     let server = NieMcpServer::default();
     server.bridge.start().await;

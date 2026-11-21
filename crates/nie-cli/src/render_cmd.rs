@@ -1,7 +1,7 @@
-//! Captures de contrôle visuel pour les GLB assemblés par NIE.
+//! Visual check captures for GLB files assembled by NIE.
 //!
-//! Cette façade reste dans `nie` : un agent ou un humain peut ainsi demander une vue stable
-//! ou une rotation complète sans connaître le binaire de rendu interne ni assembler ffmpeg.
+//! This facade lets an agent or a human request a stable view or a full rotation without
+//! knowing the internal render binary or assembling ffmpeg.
 
 use std::fs;
 use std::fs::File;
@@ -12,14 +12,14 @@ use image::codecs::gif::{GifEncoder, Repeat};
 use image::{Delay, Frame, ImageBuffer, Rgba};
 use nie_render3d::{glb, render};
 
-/// Côté maximal d'une capture : prévient un rendu accidentel de plusieurs centaines de Mio.
+/// Maximum side of a capture: prevents an accidental oversized render.
 const MAX_SIDE: u32 = 4096;
-/// Surface maximale d'une image, y compris lorsqu'une dimension reste inférieure à [`MAX_SIDE`].
+/// Maximum image area, even when each dimension stays below [`MAX_SIDE`].
 const MAX_PIXELS: u64 = 16 * 1024 * 1024;
-/// Garde-fou d'un GIF : la sortie est destinée à inspecter un tour, non à encoder une vidéo.
+/// GIF guard: the output is meant to inspect a turn, not to encode a video.
 const MAX_GIF_FRAMES: u32 = 240;
 
-/// Paramètres communs à une capture fixe et à un turntable.
+/// Parameters shared by a still capture and a turntable.
 pub(crate) struct RenderConfig {
     pub(crate) width: u32,
     pub(crate) height: u32,
@@ -28,21 +28,21 @@ pub(crate) struct RenderConfig {
 fn verifier_dimensions(width: u32, height: u32) -> Result<()> {
     ensure!(
         width > 0 && height > 0,
-        "la sortie doit avoir une largeur et une hauteur positives"
+        "output must have a positive width and height"
     );
     ensure!(
         width <= MAX_SIDE
             && height <= MAX_SIDE
             && u64::from(width) * u64::from(height) <= MAX_PIXELS,
-        "dimensions {width}×{height} hors limite (maximum {MAX_SIDE}×{MAX_SIDE} et {MAX_PIXELS} pixels)"
+        "dimensions {width}x{height} out of range (maximum {MAX_SIDE}x{MAX_SIDE} and {MAX_PIXELS} pixels)"
     );
     Ok(())
 }
 
 fn charger(glb_path: &Path) -> Result<glb::Model> {
     let bytes =
-        fs::read(glb_path).with_context(|| format!("lecture GLB {}", glb_path.display()))?;
-    glb::parse(&bytes).with_context(|| format!("GLB invalide {}", glb_path.display()))
+        fs::read(glb_path).with_context(|| format!("reading GLB {}", glb_path.display()))?;
+    glb::parse(&bytes).with_context(|| format!("invalid GLB {}", glb_path.display()))
 }
 
 /// CPU-only capture renderer. GPU and WebGPU backends stay outside this workspace.
@@ -52,22 +52,22 @@ fn encoder_png(rgba: &[u8], width: u32, height: u32) -> Result<Vec<u8>> {
         let mut encoder = png::Encoder::new(std::io::Cursor::new(&mut out), width, height);
         encoder.set_color(png::ColorType::Rgba);
         encoder.set_depth(png::BitDepth::Eight);
-        let mut writer = encoder.write_header().context("en-tête PNG")?;
-        writer.write_image_data(rgba).context("pixels PNG")?;
+        let mut writer = encoder.write_header().context("PNG header")?;
+        writer.write_image_data(rgba).context("PNG pixels")?;
     }
     Ok(out)
 }
 
-/// Rend un GLB sous une vue reproductible en PNG sans perte.
+/// Renders a GLB from a reproducible view to a lossless PNG.
 pub(crate) fn glb_png(glb_path: &Path, out: &Path, config: RenderConfig, angle: f32) -> Result<()> {
     verifier_dimensions(config.width, config.height)?;
-    ensure!(angle.is_finite(), "l'angle doit être un nombre fini");
+    ensure!(angle.is_finite(), "angle must be a finite number");
     let model = charger(glb_path)?;
     let rgba = render::render(&model, angle, config.width, config.height);
     let png = encoder_png(&rgba, config.width, config.height)?;
-    fs::write(out, png).with_context(|| format!("écriture PNG {}", out.display()))?;
+    fs::write(out, png).with_context(|| format!("writing PNG {}", out.display()))?;
     println!(
-        "png={} source={} dimensions={}×{} angle={angle:.6} rendu={}",
+        "png={} source={} dimensions={}x{} angle={angle:.6} renderer={}",
         out.display(),
         glb_path.display(),
         config.width,
@@ -77,7 +77,7 @@ pub(crate) fn glb_png(glb_path: &Path, out: &Path, config: RenderConfig, angle: 
     Ok(())
 }
 
-/// Rend un tour complet en GIF animé, avec chaque angle espacé uniformément.
+/// Renders a full turn as an animated GIF, with evenly spaced angles.
 pub(crate) fn glb_gif(
     glb_path: &Path,
     out: &Path,
@@ -86,33 +86,33 @@ pub(crate) fn glb_gif(
     fps: u32,
 ) -> Result<()> {
     verifier_dimensions(config.width, config.height)?;
-    ensure!(frames >= 2, "un GIF turntable exige au moins 2 images");
+    ensure!(frames >= 2, "a turntable GIF needs at least 2 frames");
     ensure!(
         frames <= MAX_GIF_FRAMES,
-        "un GIF est limité à {MAX_GIF_FRAMES} images"
+        "a GIF is limited to {MAX_GIF_FRAMES} frames"
     );
     ensure!(
         fps > 0 && fps <= 120,
-        "la cadence GIF doit être comprise entre 1 et 120 i/s"
+        "GIF frame rate must be between 1 and 120 fps"
     );
 
     let model = charger(glb_path)?;
 
-    let file = File::create(out).with_context(|| format!("écriture GIF {}", out.display()))?;
+    let file = File::create(out).with_context(|| format!("writing GIF {}", out.display()))?;
     let mut encoder = GifEncoder::new(file);
-    encoder.set_repeat(Repeat::Infinite).context("boucle GIF")?;
+    encoder.set_repeat(Repeat::Infinite).context("GIF loop")?;
     let delay = Delay::from_numer_denom_ms(1000, fps);
     for index in 0..frames {
         let angle = std::f32::consts::TAU * index as f32 / frames as f32;
         let rgba = render::render(&model, angle, config.width, config.height);
         let buffer = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(config.width, config.height, rgba)
-            .context("taille de frame GIF incohérente")?;
+            .context("inconsistent GIF frame size")?;
         encoder
             .encode_frame(Frame::from_parts(buffer, 0, 0, delay))
             .context("frame GIF")?;
     }
     println!(
-        "gif={} source={} dimensions={}×{} frames={frames} fps={fps} rendu={}",
+        "gif={} source={} dimensions={}x{} frames={frames} fps={fps} renderer={}",
         out.display(),
         glb_path.display(),
         config.width,
@@ -138,7 +138,7 @@ mod tests {
         let mut out = Vec::new();
         {
             let mut encoder = GifEncoder::new(&mut out);
-            encoder.set_repeat(Repeat::Infinite).expect("boucle GIF");
+            encoder.set_repeat(Repeat::Infinite).expect("GIF loop");
             let buffer = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(2, 2, vec![255; 16])
                 .expect("frame RGBA");
             encoder

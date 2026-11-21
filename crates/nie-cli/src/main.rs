@@ -1,6 +1,6 @@
 #![cfg(any(feature = "cloud", feature = "host"))]
 
-//! `nie` — pilote la boucle RE autonome (seed → propagate → coverage) et la frontière redis.
+//! nie: command line of the engine, the VFS tools, the wiki, mods, saves, serving and the nie.exe reverse-engineering and recompilation toolchain.
 #![forbid(unsafe_code)]
 #![allow(clippy::pedantic)]
 
@@ -98,7 +98,7 @@ use sha2::{Digest, Sha256};
 #[cfg(feature = "host")]
 const NIE_IMAGE_BASE: i64 = 0x1_4000_0000;
 
-/// Parse une adresse décimale ou hexadécimale (`0x...`).
+/// Parse a decimal or hexadecimal (`0x...`) address.
 fn parse_addr(s: &str) -> Result<i64, String> {
     match s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
         Some(hex) => u64::from_str_radix(hex, 16)
@@ -112,7 +112,7 @@ fn parse_addr(s: &str) -> Result<i64, String> {
 #[command(
     name = "nie",
     version,
-    about = "Boucle RE + réimplémentation Rust d'Inazuma Eleven: Victory Road"
+    about = "nie: engine, VFS, mod and reverse-engineering toolchain for Inazuma Eleven: Victory Road"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -121,10 +121,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Cmd {
-    /// Serveur HTTP cloud-first (VFS distant, formats, requêtes game-data, sondes /health & /ready).
+    /// HTTP server: remote VFS, formats, game-data queries, /health and /ready probes.
     #[command(name = "serve")]
     Serve(serve_cmd::ServeArgs),
-    /// Les personnages, techniques et équipes du jeu, calculés depuis le VFS (`nie-wiki-vfs`).
+    /// Characters, techniques and teams of the game, computed from the VFS (`nie-wiki-vfs`).
     Wiki(wiki_cmd::WikiArgs),
     /// Scaffold a nie application (`--template cli|serve|lib|ui|wasm`): `apps/<name>` or `--path`.
     New(nie_scaffold::Args),
@@ -138,9 +138,9 @@ enum Cmd {
     /// GPU terminal window (rio): hosts `nie fm` with native kitty graphics, or any command after `--`; `--screenshot <png>` renders one frame offscreen.
     #[cfg(feature = "term")]
     Term(term_cmd::TermArgs),
-    /// Liste les plugins de ce build (exe, save, launcher, steam) et les commandes qu'ils portent.
+    /// List the plugins compiled into this build and the commands each owns.
     Plugins {
-        /// Sortie JSON plutôt que texte.
+        /// Print JSON instead of text.
         #[arg(long)]
         json: bool,
     },
@@ -157,398 +157,370 @@ enum Cmd {
         #[arg(long, default_value = "http://127.0.0.1:8080/mcp")]
         ghidra_url: String,
     },
-    /// Le cycle de modding complet : créer un mod, l'éditer, le valider, l'installer.
-    ///
-    /// `viola` porte les opérations de bas niveau sur les archives ; `mod` porte le cycle de
-    /// travail par-dessus — et surtout l'**édition**, que la CLI ne savait pas faire : les
-    /// encodeurs `cfgbin`/`g4tx` existaient sans aucun appelant ici.
+    /// Mod workflow: init, add, get/set, status, validate, install, uninstall.
     #[cfg(feature = "host")]
     Mod {
         #[command(subcommand)]
         op: mod_cmd::ModOp,
     },
-    /// Opérations du lanceur IEVR Ultimate Team (chiffrement équipe, conteneurs .utmod, parking de save).
+    /// IEVR Ultimate Team launcher operations: team encryption, .utmod containers, save parking.
     #[cfg(feature = "host")]
     Launcher {
         #[command(subcommand)]
         op: LauncherOp,
     },
-    /// Opérations de modding LEVEL-5 — le périmètre de l'outil Viola, en Rust natif.
-    ///
-    /// Porte les opérations de dump/pack/merge qui appartenaient aux anciens toolkits.
+    /// LEVEL-5 archive operations (dump, pack, merge), implemented natively in Rust.
     #[cfg(feature = "host")]
     Viola {
         #[command(subcommand)]
         op: ViolaOp,
     },
-    /// Dit le format d'un fichier ou d'une arborescence, sans rien écrire.
+    /// Print the format of a file or directory tree without writing anything.
     Format {
-        /// Fichier ou répertoire à inspecter.
+        /// File or directory to inspect.
         src: PathBuf,
     },
-    /// Décode un fichier ou une arborescence vers JSON (données) / PNG (textures).
-    ///
-    /// Même table de dispatch que la FFI (`nie_formats::decode`) : ce que le décodage sait
-    /// faire ici, `packages/nie` et l'explorateur le savent aussi.
+    /// Decode a file or directory tree to JSON (data) or PNG (textures), with the same dispatch table as the FFI.
     Decode {
-        /// Fichier ou répertoire source.
+        /// Source file or directory.
         src: PathBuf,
-        /// Sortie : fichier, ou répertoire si `src` en est un (défaut : à côté de la source).
+        /// Output file, or directory when `src` is one (default: next to the source).
         #[arg(short, long)]
         out: Option<PathBuf>,
-        /// N'affiche rien en cas de succès.
+        /// Print nothing on success.
         #[arg(short, long)]
         quiet: bool,
     },
-    /// Régénère, à côté de chaque `*.cfg.bin` d'une arborescence, le `*.cfg.bin.json` en forme
-    /// **étiquetée** (`{entries}`/`{lists}`) — celle que lisent les parseurs typés de `nie-data`
-    /// (golden tests, `export_*`), PAS celle de `nie decode` (structure brute, générique).
-    /// Idempotent : saute un `.json` déjà plus récent que son `.cfg.bin` sauf `--force`.
+    /// Regenerate the labeled `*.cfg.bin.json` (`{entries}`/`{lists}`) next to every `*.cfg.bin` of a tree.
+    /// This is the shape read by the typed `nie-data` parsers, not the raw structure of `nie decode`; skips up-to-date files unless `--force`.
     #[cfg(feature = "host")]
     RefreshTypedJson {
-        /// Répertoire à parcourir (récursif).
+        /// Directory to walk (recursive).
         dir: PathBuf,
-        /// Régénère même les `.json` déjà plus récents que leur `.cfg.bin`.
+        /// Regenerate even `.json` files newer than their `.cfg.bin`.
         #[arg(long)]
         force: bool,
-        /// N'affiche rien en cas de succès.
+        /// Print nothing on success.
         #[arg(short, long)]
         quiet: bool,
     },
-    /// Récupère le jeu depuis Steam — y compris EAC, EOS et Steamworks.
+    /// Fetch the game from Steam, including EAC, EOS and Steamworks.
     ///
-    /// La forge produit `nie.exe` ; elle ne produit aucun des composants tiers signés qui le
-    /// lancent. C'est Steam qui les fournit, donc `nie steam` est la seule voie vers une
-    /// installation réellement démarrable (cf. `nie info`, section « chaine de lancement »).
+    /// The signed third-party components that launch nie.exe come from Steam; this is the only route to a startable install (see `nie info`).
     Steam {
         #[command(subcommand)]
         op: SteamOp,
     },
-    /// Dit ce qu'est cette installation du jeu : binaire, VFS, couverture.
+    /// Describe this game install: binary, VFS, coverage.
     ///
-    /// Superset de `info` de l'outil de référence : ajoute le sha256 du binaire et le volume du VFS, que le C#
-    /// ne sait pas voir.
+    /// Adds the binary sha256 and the VFS volume to what the reference tool reports.
     Info {
-        /// Racine du jeu (défaut : résolution automatique).
+        /// Game root; default: NIE_GAME_SOURCE, NIE_GAME_DIR or NIE_GAME_PATH, then the saved source, then the current directory or the executable's ancestors.
         #[arg(long)]
         game_dir: Option<PathBuf>,
-        /// Sortie JSON plutôt que `clé  valeur`.
+        /// Print JSON instead of `key  value`.
         #[arg(long)]
         json: bool,
     },
-    /// Inventorie les tags de langue réellement présents et leurs ressources VFS localisées.
+    /// List the language tags present and their localized VFS resources.
     ///
-    /// Les langues proviennent uniquement de `common/text/<locale>` ; les textures, polices et
-    /// fichiers Criware sont ensuite comptés quand ils portent ce même segment de chemin.
+    /// Languages come from `common/text/<locale>` only; textures, fonts and Criware files are counted when their path carries the same segment.
     Locales {
-        /// Racine du jeu (défaut : résolution automatique).
+        /// Game root; default: NIE_GAME_SOURCE, NIE_GAME_DIR or NIE_GAME_PATH, then the saved source, then the current directory or the executable's ancestors.
         #[arg(long)]
         game_dir: Option<PathBuf>,
-        /// Nombre de chemins VFS conservés par catégorie et par langue (0 = aucun échantillon).
+        /// VFS paths kept per category and language (0 = no sample).
         #[arg(long, default_value_t = 3)]
         samples: usize,
-        /// Sortie JSON plutôt qu'un résumé lisible.
+        /// Print JSON instead of a readable summary.
         #[arg(long)]
         json: bool,
-        /// Exporte un lexique multilingue unifié depuis le VFS (ex: packages/inagle/data/ievr-i18n.json).
+        /// Export a unified multilingual lexicon from the VFS to this file.
         #[arg(long)]
         export: Option<PathBuf>,
-        /// Langues à exporter séparées par des virgules (ou `all` pour toutes les langues IEVR).
+        /// Comma-separated languages to export (`all` for every IEVR language).
         #[arg(long, value_delimiter = ',')]
         langs: Vec<String>,
-        /// Dossier de sortie pour les fichiers `<lang>.json` (hashes `0x...` + clés UI seedées).
+        /// Output directory for the `<lang>.json` files (`0x...` hashes plus seeded UI keys).
         #[arg(long)]
         locales_out: Option<PathBuf>,
-        /// Dossier existant contenant `<lang>.json` à préserver/fusionner (ex: public/locales).
+        /// Existing directory holding `<lang>.json` files to preserve and merge.
         #[arg(long)]
         seed_locales: Option<PathBuf>,
-        /// Catégories TEXT_FILES à exporter séparées par des virgules (défaut : toutes les catégories utiles).
+        /// Comma-separated TEXT_FILES categories to export (default: every useful category).
         #[arg(long, value_delimiter = ',')]
         categories: Vec<String>,
     },
-    /// Convertit un asset du jeu vers un format d'échange.
+    /// Convert a game asset to an interchange format.
     ///
-    /// `decode` rend la représentation canonique d'un fichier (JSON, ou PNG pour une texture) ;
-    /// `convert` choisit le format de sortie. La source peut être un fichier du disque **ou** un
-    /// chemin VFS — le VFS est interrogé quand le chemin n'existe pas sur le disque.
+    /// `decode` emits the canonical form; `convert` picks the output format. The source is a disk file or a VFS path (the VFS is queried when the disk path does not exist).
     Convert {
-        /// Fichier du disque, ou chemin VFS (`data/dx11/.../x.g4tx`).
+        /// Disk file or VFS path (`data/dx11/.../x.g4tx`).
         src: String,
-        /// Format de sortie : png, webp, gif, jpg, bmp, tga, tiff, qoi — ou, pour un atlas
-        /// d'icônes, css (feuille + image), svg (autonome) ou json (manifeste des régions).
+        /// Output format: png, webp, gif, jpg, bmp, tga, tiff, qoi; for an icon atlas also css (sheet + image), svg (standalone) or json (region manifest).
         #[arg(long, default_value = "png")]
         to: String,
-        /// Fichier de sortie (défaut : la source avec l'extension du format).
+        /// Output file (default: the source with the format extension).
         #[arg(short, long)]
         out: Option<PathBuf>,
-        /// Racine du jeu (défaut : résolution automatique).
+        /// Game root; default: NIE_GAME_SOURCE, NIE_GAME_DIR or NIE_GAME_PATH, then the saved source, then the current directory or the executable's ancestors.
         #[arg(long)]
         game_dir: Option<PathBuf>,
-        /// Compare l'octet produit à une référence (fichier local ou URL `https://`).
+        /// Compare the produced bytes with a reference (local file or `https://` URL).
         #[arg(long)]
         reference: Option<String>,
-        /// Pour `--to css` : pose l'atlas en masque teinté par `currentColor`, au lieu d'une
-        /// image de fond. Les icônes suivent alors la couleur du thème.
+        /// For `--to css`: apply the atlas as a mask tinted by `currentColor` instead of a background image, so icons follow the theme color.
         #[arg(long)]
         masque: bool,
-        /// Écrit **toutes** les textures du `.g4tx`, pas seulement celle qui porte le nom du
-        /// fichier : un atlas en contient souvent plusieurs, et la sélection par nom laissait
-        /// les autres inaccessibles. `-o` désigne alors un répertoire.
+        /// Write every texture of the `.g4tx`, not only the one named like the file; `-o` then names a directory.
         #[arg(long)]
         toutes: bool,
     },
-    /// Rend un GLB en captures PNG ou turntable GIF pour la QA visuelle reproductible.
+    /// Render a GLB to PNG captures or a turntable GIF for reproducible visual QA.
     #[cfg(feature = "host")]
     Render {
         #[command(subcommand)]
         op: RenderOp,
     },
-    /// Analyse statique d'une source Lua (fichier ou arborescence), sans l'exécuter.
+    /// Static analysis of a Lua source (file or tree), without running it.
     ///
-    /// Cible les scripts décompilés (`data/lua_scripts/decompiled/`) : fonctions déclarées,
-    /// appels, chaînes, et erreurs de syntaxe laissées par le décompilateur. Le bytecode
-    /// `.lua.bin` ne se traite pas ici — il s'exécute (`nie_lua`), il ne se lit pas.
+    /// Targets decompiled scripts (`data/lua_scripts/decompiled/`): declared functions, calls, strings and decompiler syntax errors. `.lua.bin` bytecode is run through `nie_lua`, not read here.
     #[cfg(feature = "host")]
     Lua {
-        /// Fichier `.lua` ou répertoire à parcourir récursivement.
+        /// `.lua` file or directory to walk recursively.
         src: PathBuf,
-        /// Détaille les fonctions déclarées.
+        /// List the declared functions.
         #[arg(long)]
         functions: bool,
-        /// Détaille les cibles d'appel, agrégées par fréquence décroissante.
+        /// List call targets, aggregated by descending frequency.
         #[arg(long)]
         calls: bool,
-        /// Détaille les chaînes littérales retenues.
+        /// List the retained string literals.
         #[arg(long)]
         strings: bool,
-        /// Détaille les chaînes passées à `CRC32`, avec leur hash.
+        /// List the strings passed to `CRC32`, with their hash.
         #[arg(long)]
         crc32: bool,
-        /// Lignes de détail maximales par rubrique et par fichier (0 = illimité).
+        /// Maximum detail lines per section and file (0 = unlimited).
         #[arg(long, default_value_t = 20)]
         limit: usize,
     },
-    /// Exécute un `.lua.bin` brut dans la VM Lua 5.2, avec `INCLUDE` résolu depuis le VFS.
+    /// Run a raw `.lua.bin` in the Lua 5.2 VM, resolving `INCLUDE` from the VFS.
     #[cfg(feature = "host")]
     #[command(name = "lua-run")]
     LuaRun {
-        /// Chemin disque ou chemin logique VFS (ex. `data/common/script/lua/menu/main_menu...`).
+        /// Disk path or logical VFS path (e.g. `data/common/script/lua/menu/main_menu...`).
         script: String,
-        /// Racine du jeu (défaut : résolution automatique).
+        /// Game root; default: NIE_GAME_SOURCE, NIE_GAME_DIR or NIE_GAME_PATH, then the saved source, then the current directory or the executable's ancestors.
         #[arg(long)]
         game_dir: Option<PathBuf>,
-        /// Limite d'instructions (0 = illimitée ; à réserver aux scripts terminants).
+        /// Instruction limit (0 = unlimited; use only for terminating scripts).
         #[arg(long, default_value_t = 20_000_000)]
         instruction_limit: u32,
-        /// Installe aussi les stubs de commandes de menu du moteur.
+        /// Also install the engine menu command stubs.
         #[arg(long)]
         menu_host: bool,
-        /// Ajoute le désassemblage Lua 5.2 du chunk au JSON de sortie.
+        /// Add the Lua 5.2 disassembly of the chunk to the JSON output.
         #[arg(long)]
         disassemble: bool,
     },
-    /// Exécute en lot les chunks Lua bruts du VFS et mesure les trous de l'hôte moteur.
+    /// Run every raw Lua chunk of the VFS in batch and measure the engine host gaps.
     #[cfg(feature = "host")]
     #[command(name = "lua-audit")]
     LuaAudit {
-        /// Sous-racine du jeu (défaut : résolution automatique).
+        /// Game root; default: NIE_GAME_SOURCE, NIE_GAME_DIR or NIE_GAME_PATH, then the saved source, then the current directory or the executable's ancestors.
         #[arg(long)]
         game_dir: Option<PathBuf>,
-        /// Ne retenir que les chemins commençant par ce préfixe VFS.
+        /// Keep only paths starting with this VFS prefix.
         #[arg(long)]
         prefix: Option<String>,
-        /// Limite par script (0 = illimitée).
+        /// Per-script instruction limit (0 = unlimited).
         #[arg(long, default_value_t = 200_000)]
         instruction_limit: u32,
-        /// Installe aussi le host de commandes de menu.
+        /// Also install the menu command host.
         #[arg(long)]
         menu_host: bool,
     },
-    /// Importe le savoir fusionné (index Ghidra nie-index.json) dans la base de connaissance.
+    /// Import the merged knowledge (Ghidra index nie-index.json) into the knowledge base.
     #[cfg(feature = "host")]
     Seed {
-        /// Base sqlite cible.
+        /// Target sqlite database.
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
-        /// Fichier research/nie-index.json.
+        /// Path of research/nie-index.json.
         #[arg(long)]
         json: PathBuf,
-        /// Binaire nie.exe (pour calculer sha256/taille). Optionnel.
+        /// nie.exe binary (to compute sha256 and size); optional.
         #[arg(long)]
         exe: Option<PathBuf>,
     },
-    /// Ingère dans `hash_name` les noms de l'UI lus depuis le VFS (écrans, calques, groupes,
-    /// commandes, objets et composants de menu ; textures avec `--textures`).
+    /// Ingest into `hash_name` the UI names read from the VFS (screens, layers, groups, commands, objects, menu components; textures with `--textures`).
     ///
-    /// Rend inversables les CRC-32 croisés dans les `cfg.bin`, les `objbin` et le binaire.
+    /// Makes the CRC-32 values met in `cfg.bin`, `objbin` and the binary reversible.
     #[cfg(feature = "host")]
     SeedUi {
-        /// Base sqlite cible.
+        /// Target sqlite database.
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
-        /// Racine du jeu (défaut : résolution à l'exécution, cf. `resolve_game_dir`).
+        /// Game root; default: NIE_GAME_SOURCE, NIE_GAME_DIR or NIE_GAME_PATH, then the saved source, then the current directory or the executable's ancestors.
         #[arg(long)]
         game_dir: Option<PathBuf>,
-        /// Scanne aussi les `.g4tx` du menu (noms de textures et de régions) — coûteux.
+        /// Also scan the menu `.g4tx` files (texture and region names); slow.
         #[arg(long)]
         textures: bool,
     },
-    /// Extrait les chaînes du binaire dans `str` et ancre les fonctions qui les référencent
-    /// (`func_str_ref`, `xref` kind=`str`).
+    /// Extract the binary strings into `str` and anchor the functions referencing them (`func_str_ref`, `xref` kind=`str`).
     ///
-    /// Les chaînes sont lues dans les sections de données (ASCII et UTF-16LE), les bornes de
-    /// fonction viennent de `.pdata`, et une référence n'est retenue que si sa cible coïncide
-    /// **exactement** avec le début d'une chaîne.
+    /// Strings are read from the data sections (ASCII and UTF-16LE), function bounds come from `.pdata`, and a reference is kept only when its target equals the start of a string exactly.
     #[cfg(feature = "host")]
     Strings {
-        /// Binaire à lire. Doit être celui qui est indexé (résolution par sha256).
+        /// Binary to read; must be the indexed one (resolved by sha256).
         #[arg(long)]
         exe: PathBuf,
-        /// Base sqlite cible.
+        /// Target sqlite database.
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
-        /// Longueur minimale retenue, en caractères.
+        /// Minimum length kept, in characters.
         #[arg(long, default_value_t = 4)]
         min_len: usize,
-        /// Section à balayer, cumulable (défaut : `.rdata`, `.data`, `.rodata`).
+        /// Section to scan, repeatable (default: `.rdata`, `.data`, `.rodata`).
         #[arg(long = "section")]
         sections: Vec<String>,
-        /// Force l'identifiant de binaire au lieu de le résoudre par sha256.
+        /// Force the binary id instead of resolving it by sha256.
         #[arg(long)]
         binary_id: Option<i64>,
-        /// N'écrit que `str` : pas de désassemblage, pas d'ancrage.
+        /// Write only `str`: no disassembly, no anchoring.
         #[arg(long)]
         no_xrefs: bool,
-        /// Calcule tout et n'écrit rien.
+        /// Compute everything and write nothing.
         #[arg(long)]
         dry_run: bool,
-        /// Affiche les `n` premières chaînes trouvées (vérification à l'œil).
+        /// Print the first `n` strings found, for a visual check.
         #[arg(long, default_value_t = 0)]
         sample: usize,
     },
-    /// Cherche des fichiers par chemin sur le disque (moteur `ignore`, celui de ripgrep/fd).
+    /// Find files by path on disk (`ignore` engine, the one of ripgrep and fd).
     ///
-    /// Complète `nie vfs find`, qui ne voit que l'intérieur des CPK.
+    /// Complements `nie vfs find`, which only sees inside the CPKs.
     #[cfg(feature = "host")]
     Find {
-        /// Sous-chaîne cherchée dans le chemin (vide = tout lister).
+        /// Substring searched in the path (empty = list everything).
         #[arg(default_value = "")]
         pattern: String,
-        /// Racine du parcours.
+        /// Walk root.
         #[arg(long, short = 'C', default_value = ".")]
         dir: PathBuf,
-        /// Motif glob, cumulable (`--glob '**/*.rs'`).
+        /// Repeatable glob pattern (`--glob '**/*.rs'`).
         #[arg(long, short = 'g')]
         glob: Vec<String>,
-        /// Extension, cumulable (`--ext rs --ext toml`).
+        /// Repeatable extension (`--ext rs --ext toml`).
         #[arg(long, short = 'e')]
         ext: Vec<String>,
-        /// `f` = fichiers seuls, `d` = répertoires seuls.
+        /// `f` = files only, `d` = directories only.
         #[arg(long, short = 't')]
         r#type: Option<String>,
-        /// Inclure les fichiers cachés.
+        /// Include hidden files.
         #[arg(long, short = 'H')]
         hidden: bool,
-        /// Ignorer les règles `.gitignore`.
+        /// Ignore `.gitignore` rules.
         #[arg(long, short = 'I')]
         no_ignore: bool,
-        /// Profondeur maximale.
+        /// Maximum depth.
         #[arg(long)]
         depth: Option<usize>,
-        /// Nombre maximal de résultats (0 = illimité).
+        /// Maximum number of results (0 = unlimited).
         #[arg(long, short = 'n', default_value_t = 0)]
         limit: usize,
-        /// Recherche sensible à la casse.
+        /// Case-sensitive search.
         #[arg(long, short = 's')]
         case_sensitive: bool,
-        /// N'afficher que le nombre de résultats.
+        /// Print only the result count.
         #[arg(long, short = 'c')]
         count: bool,
     },
-    /// Cherche une expression régulière dans le contenu des fichiers (moteur de ripgrep).
+    /// Search a regular expression in file contents (ripgrep engine).
     #[cfg(feature = "host")]
     Grep {
-        /// Expression régulière.
+        /// Regular expression.
         pattern: String,
-        /// Racine du parcours.
+        /// Walk root.
         #[arg(long, short = 'C', default_value = ".")]
         dir: PathBuf,
-        /// Motif glob restreignant les fichiers visités, cumulable.
+        /// Glob pattern restricting visited files, repeatable.
         #[arg(long, short = 'g')]
         glob: Vec<String>,
-        /// Extension restreignant les fichiers visités, cumulable.
+        /// Extension restricting visited files, repeatable.
         #[arg(long, short = 'e')]
         ext: Vec<String>,
-        /// Insensible à la casse.
+        /// Case-insensitive.
         #[arg(long, short = 'i')]
         ignore_case: bool,
-        /// Inclure les fichiers cachés.
+        /// Include hidden files.
         #[arg(long, short = 'H')]
         hidden: bool,
-        /// Ignorer les règles `.gitignore`.
+        /// Ignore `.gitignore` rules.
         #[arg(long, short = 'I')]
         no_ignore: bool,
-        /// Nombre maximal de lignes affichées (0 = illimité).
+        /// Maximum number of lines printed (0 = unlimited).
         #[arg(long, short = 'n', default_value_t = 0)]
         limit: usize,
-        /// N'afficher que les chemins des fichiers qui contiennent une correspondance.
+        /// Print only the paths of files containing a match.
         #[arg(long, short = 'l')]
         files_with_matches: bool,
     },
-    /// Édition d'image (info, redimensionnement, recadrage, conversion, superposition).
+    /// Image editing (info, resize, crop, convert, overlay).
     #[cfg(feature = "host")]
     Img {
         #[command(subcommand)]
         op: ImgOp,
     },
-    /// Catalogue des modes de jeu : écrans, calques, objets, assets et scripts par mode.
+    /// Catalogue of game modes: screens, layers, objects, assets and scripts per mode.
     #[cfg(feature = "host")]
     Mode {
         #[command(subcommand)]
         op: ModeOp,
     },
-    /// Icônes du jeu : index (nom → atlas + rectangle) et décodage en PNG.
+    /// Game icons: index (name to atlas + rectangle) and PNG decoding.
     #[cfg(feature = "host")]
     Icons {
         #[command(subcommand)]
         op: icons_cmd::IconsCmd,
-        /// Racine du jeu (défaut : résolution à l'exécution).
+        /// Game root; default: NIE_GAME_SOURCE, NIE_GAME_DIR or NIE_GAME_PATH, then the saved source, then the current directory or the executable's ancestors.
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Éditeur d'avatar (`chara_edit`) : catalogue, parts, recettes de presets, export résolu.
+    /// Avatar editor (`chara_edit`): catalogue, parts, preset recipes, resolved export.
     #[cfg(feature = "host")]
     Avatar {
         #[command(subcommand)]
         op: avatar_cmd::AvatarCmd,
-        /// Racine du jeu (défaut : résolution à l'exécution).
+        /// Game root; default: NIE_GAME_SOURCE, NIE_GAME_DIR or NIE_GAME_PATH, then the saved source, then the current directory or the executable's ancestors.
         #[arg(long)]
         game_dir: Option<PathBuf>,
-        /// Base de connaissance, pour résoudre les noms d'icônes.
+        /// Knowledge base, to resolve icon names.
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
     },
-    /// Génération 3D d'un personnage original : morphologie, chara_edit, couleurs mesurées.
+    /// Generate an original 3D character: morphology, chara_edit, measured colors.
     #[cfg(feature = "host")]
     #[command(name = "oc", visible_alias = "ocgen")]
     Ocgen {
         #[command(subcommand)]
         op: ocgen_cmd::OcgenCmd,
     },
-    /// Index unique de toutes les surfaces RE : fichiers, crates, docs, base de
-    /// connaissance, forge, binaires, outils, métriques et route vers les 100 %.
+    /// Single index of every RE surface: files, crates, docs, knowledge base, forge, binaries, tools, metrics.
     #[cfg(feature = "host")]
     Atlas {
         #[command(subcommand)]
         op: atlas_cmd::AtlasCmd,
     },
-    /// Affiche la couverture (fonctions classifiées) du binaire indexé.
+    /// Print the coverage (classified functions) of the indexed binary.
     #[cfg(feature = "host")]
     Coverage {
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
     },
-    /// Opérations sur la frontière BFS redis.
+    /// BFS frontier operations on Redis.
     #[cfg(feature = "host")]
     Queue {
         #[command(subcommand)]
@@ -558,7 +530,7 @@ enum Cmd {
         #[arg(long, default_value = "nie")]
         tag: String,
     },
-    /// Propage les labels sur le call-graph (auto-ML, ancrage strings + label-spreading).
+    /// Propagate labels over the call graph (auto-ML, string anchoring, label spreading).
     #[cfg(feature = "host")]
     Propagate {
         #[arg(long, default_value = "var/nie.sqlite")]
@@ -566,143 +538,128 @@ enum Cmd {
         #[arg(long, default_value_t = 16)]
         rounds: usize,
     },
-    /// Extrait les classes RTTI MSVC depuis nie.exe et les ingère dans la base.
+    /// Extract the MSVC RTTI classes from nie.exe and ingest them into the database.
     #[cfg(feature = "host")]
     Rtti {
-        /// Base sqlite cible.
+        /// Target sqlite database.
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
-        /// Chemin vers nie.exe.
+        /// Path to nie.exe.
         #[arg(long)]
         exe: PathBuf,
     },
-    /// Triage PE/ELF via nie-re-core : sections + imports/exports ingérés dans la base.
+    /// PE/ELF triage via nie-re-core: sections plus imports/exports ingested into the database.
     #[cfg(feature = "host")]
     Index {
-        /// Base sqlite cible.
+        /// Target sqlite database.
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
-        /// Binaire à indexer.
+        /// Binary to index.
         #[arg(long)]
         exe: PathBuf,
     },
-    /// Récupère les arêtes d'appel manquantes par désassemblage iced-x86 de `.text`.
+    /// Recover the missing call edges by iced-x86 disassembly of `.text`.
     #[cfg(feature = "host")]
     Disasm {
-        /// Base sqlite cible.
+        /// Target sqlite database.
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
-        /// Binaire à désassembler (nie.exe).
+        /// Binary to disassemble (nie.exe).
         #[arg(long)]
         exe: PathBuf,
     },
-    /// Découvre les fonctions AUTORITAIRES via `.pdata` et mesure le désalignement Ghidra.
+    /// Discover the authoritative functions from `.pdata` and measure the Ghidra misalignment.
     #[cfg(feature = "host")]
     Pdata {
-        /// Base sqlite cible.
+        /// Target sqlite database.
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
-        /// Binaire PE x64 (nie.exe).
+        /// PE x64 binary (nie.exe).
         #[arg(long)]
         exe: PathBuf,
     },
-    /// Refonde la carte sur `.pdata` (vrais débuts), ré-ancre Ghidra, disasm + propage. Couverture HONNÊTE.
+    /// Rebuild the map on `.pdata` (true starts), re-anchor Ghidra, disassemble and propagate.
     #[cfg(feature = "host")]
     Rebuild {
-        /// Base sqlite cible.
+        /// Target sqlite database.
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
-        /// Binaire PE x64.
+        /// PE x64 binary.
         #[arg(long)]
         exe: PathBuf,
         #[arg(long, default_value_t = 16)]
         rounds: usize,
     },
-    /// Récupère les fonctions feuilles de `.text` invisibles à `.pdata`.
+    /// Recover the `.text` leaf functions invisible to `.pdata`.
     #[cfg(feature = "host")]
     Recover {
-        /// Base sqlite cible.
+        /// Target sqlite database.
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
-        /// Binaire PE x64.
+        /// PE x64 binary.
         #[arg(long)]
         exe: PathBuf,
-        /// Mesure sans écrire dans la base.
+        /// Measure without writing to the database.
         #[arg(long)]
         dry_run: bool,
-        /// CSV produit par `scripts/tools/ghidra_export_functions.py` : ingère les
-        /// noms trouvés par Ghidra (FID, imports démanglés) avant les autres
-        /// passes.
+        /// CSV exported from Ghidra (function names, FID matches, demangled imports), ingested before the other passes.
         #[arg(long)]
         ghidra_csv: Option<PathBuf>,
     },
-    /// Opérations sur les saves IEVR (Lives format) : decrypt/read/edit.
+    /// IEVR save operations (Lives format): decrypt, read, edit.
     Save {
         #[command(subcommand)]
         op: SaveOp,
     },
-    /// Construit le manifeste CRC32->chemin pour tous les fichiers .g4md/.g4mg des CPK.
-    /// Utilisé pour résoudre les ModelIdCrc des inagle_uniforms vers les chemins réels.
+    /// Build the CRC32-to-path manifest for all .g4md/.g4mg files of the CPKs, used to resolve the ModelIdCrc of inagle_uniforms to real paths.
     #[cfg(feature = "host")]
     UniformMap {
-        /// Répertoire racine du jeu (contenant `data/cpk_list.cfg.bin`). Résolu
-        /// automatiquement s'il est absent (cf. `NIE_GAME_DIR`).
+        /// Game root; default: NIE_GAME_SOURCE, NIE_GAME_DIR or NIE_GAME_PATH, then the saved source, then the current directory or the executable's ancestors.
         #[arg(long)]
         game_dir: Option<PathBuf>,
-        /// Chemin du manifeste NDJSON de sortie (crc32->path).
+        /// Output NDJSON manifest path (crc32 to path).
         #[arg(long, default_value = "var/model-crc-manifest.ndjson")]
         out: PathBuf,
     },
-    /// Scanne les fichiers .g4tx dans les CPK du jeu et produit un manifeste NDJSON d'en-têtes.
+    /// Scan the .g4tx files of the game CPKs and write an NDJSON manifest of their headers.
     #[cfg(feature = "host")]
     Textures {
-        /// Répertoire racine du jeu (contenant `data/cpk_list.cfg.bin`). Résolu
-        /// automatiquement s'il est absent (cf. `NIE_GAME_DIR`).
+        /// Game root; default: NIE_GAME_SOURCE, NIE_GAME_DIR or NIE_GAME_PATH, then the saved source, then the current directory or the executable's ancestors.
         #[arg(long)]
         game_dir: Option<PathBuf>,
-        /// Borne dure : nombre maximum de .g4tx à traiter (défaut 500).
+        /// Hard limit: maximum number of .g4tx files to process (default 500).
         #[arg(long, default_value_t = 500)]
         limit: usize,
-        /// Chemin du manifeste NDJSON de sortie.
+        /// Output NDJSON manifest path.
         #[arg(long, default_value = "var/g4tx-manifest.ndjson")]
         manifest: PathBuf,
-        /// Pousse aussi dans Redis db3 (iev:tex:*).
+        /// Also push to Redis db3 (iev:tex:*).
         #[arg(long)]
         redis: bool,
-        /// URL Redis (db3).
+        /// Redis URL (db3).
         #[arg(long, default_value = "redis://127.0.0.1/3")]
         redis_url: String,
     },
-    /// Pré-décode les sprites menu IEVR (g4tx→DDS→RGBA→PNG) dans le dump disque.
-    ///
-    /// Lit l'index Redis db3 (iev:file:index) pour localiser les g4tx dans les CPK,
-    /// décode chacun via nie-formats + image_dds (BC1/BC3/BC7), et écrit le PNG
-    /// à <game_dir>/data/dx11/menu/.../<nom>.png (idempotent : skip si non-vide).
-    ///
-    /// Scans and pre-decodes every indexed menu texture from the game VFS.
+    /// Pre-decode the menu sprites (g4tx to DDS to RGBA to PNG) into the on-disk dump: reads the Redis db3 index (iev:file:index) to locate the g4tx in the CPKs, decodes each with nie-formats and image_dds (BC1/BC3/BC7), and writes `<game_dir>/data/dx11/menu/.../<name>.png` (idempotent, skips non-empty outputs).
     #[cfg(feature = "host")]
     MenuPredecode {
-        /// Répertoire racine du jeu (contenant `data/packs/`). Résolu automatiquement s'il
-        /// est absent (cf. `NIE_GAME_DIR`).
+        /// Game root; default: NIE_GAME_SOURCE, NIE_GAME_DIR or NIE_GAME_PATH, then the saved source, then the current directory or the executable's ancestors.
         #[arg(long)]
         game_dir: Option<PathBuf>,
-        /// URL Redis db3 (iev:file:index).
+        /// Redis db3 URL (iev:file:index).
         #[arg(long, default_value = "redis://127.0.0.1/3")]
         redis_url: String,
     },
-    /// RE en direct : lit/scanne/dumpe la mémoire live d'un nie.exe.
+    /// Live RE: read, scan and dump the memory of a running nie.exe.
     ///
-    /// Le jeu doit tourner ; s'attache à un process existant, ne le lance jamais, ne le stoppe pas.
-    /// Le backend est choisi par la plateforme : process_vm_readv sous Linux/Wine, ou
-    /// OpenProcess/ReadProcessMemory sous Windows natif.
+    /// The game must be running; attaches to an existing process, never launches or stops it.
+    /// The backend depends on the platform: process_vm_readv on Linux/Wine, OpenProcess/ReadProcessMemory on native Windows.
     #[cfg(feature = "host")]
     Mem {
         #[command(subcommand)]
         op: MemOp,
     },
-    /// Explorateur du VFS (CPK) : liste/cherche/prévisualise/extrait les ~254 800 fichiers du
-    /// jeu, avec décodage structuré par format (G4MT/G4SK/G4MD/G4TX/…) et recherche de
-    /// personnage/technique par nom, ID ou code interne.
+    /// Explorer of the VFS (CPK): list, search, preview and extract files, with structured per-format decoding (G4MT/G4SK/G4MD/G4TX/...) and character/technique search by name, ID or internal code.
     Vfs {
         #[command(subcommand)]
         op: VfsOp,
@@ -714,30 +671,29 @@ enum Cmd {
         op: ExeOp,
     },
 
-    /// Alimente le visual novel `nie-vn-engine` avec les assets réels du jeu (voix, textures,
-    /// musique) : produit un catalogue local, jamais versionné.
+    /// Feed the `nie-vn-engine` visual novel with the real game assets (voices, textures, music); produces a local catalogue, never versioned.
     #[cfg(feature = "host")]
     Vn {
         #[command(subcommand)]
         op: vn_cmd::VnCmd,
-        /// Racine du jeu (défaut : résolution automatique).
+        /// Game root; default: NIE_GAME_SOURCE, NIE_GAME_DIR or NIE_GAME_PATH, then the saved source, then the current directory or the executable's ancestors.
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
 
-    /// Cinématiques USM/Sofdec2 : inventaire, métadonnées, remux MP4 sans réencodage, catalogue.
+    /// USM/Sofdec2 cutscenes: inventory, metadata, MP4 remux without re-encoding, catalogue.
     #[cfg(feature = "host")]
     Video {
         #[command(subcommand)]
         op: video_cmd::VideoCmd,
-        /// Racine du jeu (défaut : résolution automatique).
+        /// Game root; default: NIE_GAME_SOURCE, NIE_GAME_DIR or NIE_GAME_PATH, then the saved source, then the current directory or the executable's ancestors.
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
 
-    /// Le vrai `nie.exe`, déjà lancé par Steam : décrire son process (PID, base du module, ptrace).
+    /// The real nie.exe already launched by Steam: describe its process (PID, module base, ptrace).
     ///
-    /// `nie` ne lance pas le jeu : Steam le démarre, `nie live attach` le décrit et `nie mem` le lit.
+    /// `nie` does not launch the game: Steam starts it, `nie live attach` describes it and `nie mem` reads it.
     #[cfg(feature = "host")]
     Live {
         #[command(subcommand)]
@@ -745,45 +701,44 @@ enum Cmd {
     },
 }
 
-/// Sous-commandes de `nie mode` (catalogue des modes de jeu).
+/// Subcommands of `nie mode` (game mode catalogue).
 #[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum ModeOp {
-    /// (Re)construit le catalogue dans la base : un mode, ses écrans et ses assets.
+    /// (Re)build the catalogue in the database: one mode, its screens and its assets.
     Index {
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Vérifie le rattachement de chaque écran `*_menu_setting` aux modes curatés.
+    /// Check that every `*_menu_setting` screen is attached to the curated modes.
     Coverage {
-        /// Racine du jeu (défaut : résolution automatique).
+        /// Game root; default: NIE_GAME_SOURCE, NIE_GAME_DIR or NIE_GAME_PATH, then the saved source, then the current directory or the executable's ancestors.
         #[arg(long)]
         game_dir: Option<PathBuf>,
-        /// Fichier de sortie ; `-` ou absent = stdout.
+        /// Output file; `-` or absent = stdout.
         #[arg(long, short = 'o')]
         out: Option<PathBuf>,
-        /// Échoue si un écran est recouvert par plusieurs modes ou si des stems sont dupliqués.
+        /// Fail if a screen is covered by several modes or if stems are duplicated.
         #[arg(long)]
         strict: bool,
     },
-    /// Exporte le catalogue en JSON (destiné à wiki).
+    /// Export the catalogue as JSON (for the wiki).
     Export {
         #[arg(long, default_value = "var/nie.sqlite")]
         db: PathBuf,
-        /// Fichier de sortie ; `-` ou absent = stdout.
+        /// Output file; `-` or absent = stdout.
         #[arg(long, short = 'o')]
         out: Option<PathBuf>,
     },
-    /// Exporte le **contenu** des fichiers d'un mode : calques par écran, objets de menu
-    /// parsés, régions de chaque texture, et messages localisés du mode.
+    /// Export the **content** of a mode's files: layers per screen, parsed menu objects, regions of each texture and localized messages.
     ///
-    /// `export` rend l'inventaire (quels fichiers) ; celui-ci rend ce qu'ils contiennent.
+    /// `export` gives the inventory (which files); this gives what they contain.
     Contenu {
-        /// Identifiant du mode, au nom du VFS (`victory_road`, `chronicle_mode`, …).
+        /// Mode id, as named in the VFS (`victory_road`, `chronicle_mode`, ...).
         slug: String,
-        /// Fichier de sortie ; `-` ou absent = stdout.
+        /// Output file; `-` or absent = stdout.
         #[arg(long, short = 'o')]
         out: Option<PathBuf>,
         #[arg(long)]
@@ -795,57 +750,56 @@ enum ModeOp {
     },
 }
 
-/// Sous-commandes de `nie render` (contrôle visuel de GLB assemblés).
+/// Subcommands of `nie render` (visual checks of assembled GLBs).
 #[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum RenderOp {
-    /// Rend une vue fixe d'un GLB en PNG (qualité sans perte).
+    /// Render a fixed view of a GLB to PNG (lossless).
     GlbPng {
-        /// Modèle GLB local à contrôler.
+        /// Local GLB model to check.
         glb: PathBuf,
-        /// PNG de sortie.
+        /// Output PNG.
         #[arg(long, short = 'o')]
         out: PathBuf,
-        /// Largeur de sortie en pixels.
+        /// Output width in pixels.
         #[arg(long, default_value_t = 1024)]
         width: u32,
-        /// Hauteur de sortie en pixels.
+        /// Output height in pixels.
         #[arg(long, default_value_t = 1024)]
         height: u32,
-        /// Angle azimutal en radians (0 = face de référence du renderer).
+        /// Azimuth angle in radians (0 = the renderer's reference face).
         #[arg(long, default_value_t = 0.6)]
         angle: f32,
     },
-    /// Rend une rotation complète d'un GLB en GIF pour inspecter silhouette, UV et textures.
+    /// Render a full rotation of a GLB to a GIF to inspect silhouette, UVs and textures.
     GlbGif {
-        /// Modèle GLB local à contrôler.
+        /// Local GLB model to check.
         glb: PathBuf,
-        /// GIF de sortie.
+        /// Output GIF.
         #[arg(long, short = 'o')]
         out: PathBuf,
-        /// Largeur de chaque image en pixels.
+        /// Width of each frame in pixels.
         #[arg(long, default_value_t = 720)]
         width: u32,
-        /// Hauteur de chaque image en pixels.
+        /// Height of each frame in pixels.
         #[arg(long, default_value_t = 720)]
         height: u32,
-        /// Images de la rotation complète. Huit vues espacées suffisent à révéler les défauts
-        /// de raccord ; davantage sert aux inspections fines.
+        /// Frames of the full rotation; eight evenly spaced views are enough to reveal seam defects, more is for fine inspection.
         #[arg(long, default_value_t = 24)]
         frames: u32,
-        /// Images par seconde du GIF.
+        /// GIF frames per second.
         #[arg(long, default_value_t = 12)]
         fps: u32,
     },
 }
 
-/// Sous-commandes de `nie img` (édition d'image via la bibliothèque `image`).
+/// Subcommands of `nie img` (image editing through the `image` library).
 #[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum ImgOp {
-    /// Dimensions, format et espace colorimétrique, sans rien réécrire.
+    /// Dimensions, format and color space, without rewriting anything.
     Info { src: PathBuf },
-    /// Redimensionne. Une seule dimension donnée => l'autre suit le ratio.
+    /// Resize. With a single dimension, the other follows the ratio.
     Resize {
         src: PathBuf,
         #[arg(long, short = 'o')]
@@ -857,38 +811,37 @@ enum ImgOp {
         /// nearest | triangle | catmullrom | gaussian | lanczos3
         #[arg(long, default_value = "lanczos3")]
         filter: String,
-        /// Force les dimensions exactes (déforme au lieu d'inscrire dans la boîte).
+        /// Force the exact dimensions (distorts instead of fitting in the box).
         #[arg(long)]
         exact: bool,
     },
-    /// Recolore une image : décalage TSV et/ou rampe de luminance, alpha préservé.
+    /// Recolor an image: TSV shift and/or luminance ramp, alpha preserved.
     ///
-    /// Même filtre que `nie mod recolor` (`nie_formats::recolor`) — de quoi régler les
-    /// paramètres sur un PNG avant de les appliquer à un `.g4tx` du jeu.
+    /// Same filter as `nie mod recolor` (`nie_formats::recolor`), to tune the parameters on a PNG before applying them to a game `.g4tx`.
     Recolor {
         src: PathBuf,
         #[arg(long, short = 'o')]
         out: PathBuf,
-        /// Décalage de teinte en degrés (cyclique).
+        /// Hue shift in degrees (cyclic).
         #[arg(long, default_value_t = 0.0, allow_negative_numbers = true)]
         teinte: f32,
-        /// Facteur de saturation (`1` = inchangé, `0` = gris).
+        /// Saturation factor (`1` = unchanged, `0` = gray).
         #[arg(long, default_value_t = 1.0)]
         saturation: f32,
-        /// Facteur de luminosité (`1` = inchangé).
+        /// Brightness factor (`1` = unchanged).
         #[arg(long, default_value_t = 1.0)]
         valeur: f32,
-        /// Rampe de luminance `#RRGGBB[@position]`, séparée par des virgules.
+        /// Luminance ramp `#RRGGBB[@position]`, comma-separated.
         #[arg(long)]
         rampe: Option<String>,
-        /// Force du mélange de la rampe, de `0` (original) à `1` (rampe pure).
+        /// Ramp blend strength, from `0` (original) to `1` (pure ramp).
         #[arg(long, default_value_t = 1.0)]
         force: f32,
-        /// Alpha en dessous duquel un pixel est laissé intact.
+        /// Alpha below which a pixel is left untouched.
         #[arg(long, default_value_t = 1)]
         alpha_min: u8,
     },
-    /// Recadre une région.
+    /// Crop a region.
     Crop {
         src: PathBuf,
         #[arg(long, short = 'o')]
@@ -902,13 +855,13 @@ enum ImgOp {
         #[arg(long, short = 'H')]
         h: u32,
     },
-    /// Réencode vers le format déduit de l'extension de sortie.
+    /// Re-encode to the format deduced from the output extension.
     Convert {
         src: PathBuf,
         #[arg(long, short = 'o')]
         out: PathBuf,
     },
-    /// Superpose une image sur une autre (alpha respecté) — recompose un visuel en calques.
+    /// Overlay one image on another (alpha respected) to recompose a layered visual.
     Composite {
         base: PathBuf,
         overlay: PathBuf,
@@ -919,179 +872,192 @@ enum ImgOp {
         #[arg(long, default_value_t = 0)]
         y: i64,
     },
-    /// Assemble des images en planche (sprite sheet) + son manifeste de rectangles.
+    /// Assemble images into a sprite sheet plus its rectangle manifest.
     ///
-    /// Aucune image n'est redimensionnée : les cellules prennent la taille de la plus grande
-    /// et les plus petites sont centrées. Le manifeste porte le rectangle de l'IMAGE, pas
-    /// celui de la cellule — c'est ce qu'un consommateur veut découper.
+    /// No image is resized: cells take the size of the largest and smaller ones are centered. The manifest carries the rectangle of the image, not of the cell, which is what a consumer wants to cut out.
     Planche {
-        /// Images sources, dans l'ordre où elles seront posées.
+        /// Source images, in the order they are laid out.
         srcs: Vec<PathBuf>,
         #[arg(long, short = 'o')]
         out: PathBuf,
-        /// Écrit le manifeste JSON à ce chemin. Sans lui, la planche n'est qu'une image.
+        /// Write the JSON manifest to this path. Without it, the sheet is only an image.
         #[arg(long)]
         manifeste: Option<PathBuf>,
-        /// Nombre de colonnes. `0` = tout sur une seule ligne.
+        /// Number of columns. `0` = everything on one row.
         #[arg(long, default_value_t = 0)]
         colonnes: u32,
         #[arg(long, default_value_t = 16)]
         marge: u32,
         #[arg(long, default_value_t = 16)]
         gouttiere: u32,
-        /// Couleur de fond, `RRGGBB` ou `RRGGBBAA` (défaut : transparent).
+        /// Background color, `RRGGBB` or `RRGGBBAA` (default: transparent).
         #[arg(long, default_value = "00000000")]
         fond: String,
     },
-    /// Compare un rendu à une capture de référence : identité, ΔE2000, SSIM par région, carte.
+    /// Compare a render with a reference capture: identity, ΔE2000, per-region SSIM, map.
     Diff {
-        /// Image produite par le dépôt.
+        /// Image produced by the repository.
         rendu: PathBuf,
-        /// Capture du vrai jeu.
+        /// Capture of the real game.
         reference: PathBuf,
-        /// Régions : `[{"nom":…, "rect":[x,y,w,h], "kind":"dynamique"|"nommee"}]`.
+        /// Regions: `[{"nom":…, "rect":[x,y,w,h], "kind":"dynamique"|"nommee"}]`.
         #[arg(long)]
         roi: Option<PathBuf>,
-        /// Répertoire de sortie (rapport, carte, écart). Sans lui, seul le résumé est imprimé.
+        /// Output directory (report, map, difference). Without it, only the summary is printed.
         #[arg(long, short = 'o')]
         out: Option<PathBuf>,
-        /// Ramène la référence à la moitié de ses dimensions, en lumière linéaire.
+        /// Scale the reference down to half its dimensions, in linear light.
         #[arg(long)]
         downscale_ref: bool,
-        /// Amplification de l'image d'écart.
+        /// Amplification of the difference image.
         #[arg(long, default_value_t = 4)]
         amplification: u8,
     },
 }
 
-/// Sous-commandes de `nie mem` (RE runtime via nie-trace).
+/// Subcommands of `nie mem` (runtime RE through nie-trace).
 #[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum MemOp {
-    /// Liste les plages mémoire (filtrées par --module sauf --all).
+    /// List the memory ranges (filtered by --module unless --all).
     Maps {
+        /// Process id (0 = detect nie.exe).
         #[arg(long, short = 'p', default_value_t = 0)]
         pid: i32,
+        /// Module whose ranges are used (default nie.exe).
         #[arg(long, short = 'm', default_value = "nie.exe")]
         module: String,
+        /// Every readable range instead of one module.
         #[arg(long)]
         all: bool,
     },
-    /// Affiche l'adresse de chargement (base) d'un module.
+    /// Print the load address (base) of a module.
     Base {
+        /// Process id (0 = detect nie.exe).
         #[arg(long, short = 'p', default_value_t = 0)]
         pid: i32,
+        /// Module whose ranges are used (default nie.exe).
         #[arg(long, short = 'm', default_value = "nie.exe")]
         module: String,
     },
-    /// Lit des octets à une adresse (hex dump, ou -o fichier brut).
+    /// Read bytes at an address (hex dump, or raw file with -o).
     Read {
-        /// Adresse `0x…` ou module-relative `nie.exe+0xF600CA`.
+        /// Address `0x…` or module-relative `nie.exe+0xF600CA`.
         addr: String,
         #[arg(long, short = 'n', default_value_t = 256)]
         len: usize,
+        /// Process id (0 = detect nie.exe).
         #[arg(long, short = 'p', default_value_t = 0)]
         pid: i32,
-        /// Écrit les octets bruts ici (sinon hex dump stdout).
+        /// Write the raw bytes here (otherwise hex dump on stdout).
         #[arg(long, short = 'o')]
         output: Option<PathBuf>,
     },
-    /// Écrit des octets ou une valeur en mémoire vive (mode YOLO read & write).
+    /// Write bytes or a value to live memory (YOLO read & write mode).
     Write {
-        /// Adresse `0x…` ou module-relative `nie.exe+0xF600CA`.
+        /// Address `0x…` or module-relative `nie.exe+0xF600CA`.
         addr: String,
-        /// Données : hex (`90 90 90`, `0x9090`), chaîne (`str:texte`), ou entier.
+        /// Data: hex (`90 90 90`, `0x9090`), string (`str:text`), or integer.
         data: String,
+        /// Process id (0 = detect nie.exe).
         #[arg(long, short = 'p', default_value_t = 0)]
         pid: i32,
     },
-    /// Dumpe les plages lisibles (module ou --all) vers un dossier.
+    /// Dump the readable ranges (module or --all) to a directory.
     Dump {
+        /// Process id (0 = detect nie.exe).
         #[arg(long, short = 'p', default_value_t = 0)]
         pid: i32,
+        /// Module whose ranges are used (default nie.exe).
         #[arg(long, short = 'm', default_value = "nie.exe")]
         module: String,
+        /// Every readable range instead of one module.
         #[arg(long)]
         all: bool,
         #[arg(long, short = 'o', default_value = "./memdump")]
         output: PathBuf,
     },
-    /// Cherche un motif : hex `48 8B 0D`, texte `str:Closing`, ou UTF-16LE `wstr:Title`.
+    /// Search a pattern: hex `48 8B 0D`, text `str:Closing`, or UTF-16LE `wstr:Title`.
     Scan {
-        /// Motif hex (`DE AD BE EF`), `str:…` (UTF-8) ou `wstr:…` (UTF-16LE, chaînes Windows).
+        /// Hex pattern (`DE AD BE EF`), `str:…` (UTF-8) or `wstr:…` (UTF-16LE, Windows strings).
         pattern: String,
+        /// Process id (0 = detect nie.exe).
         #[arg(long, short = 'p', default_value_t = 0)]
         pid: i32,
+        /// Module whose ranges are used (default nie.exe).
         #[arg(long, short = 'm', default_value = "nie.exe")]
         module: String,
+        /// Every readable range instead of one module.
         #[arg(long)]
         all: bool,
         #[arg(long, short = 'l', default_value_t = 20)]
         limit: usize,
     },
-    /// Relève un champ de table Lua dans le jeu vivant (`listRowNum`, `pageNum`…).
+    /// Read a Lua table field from the live game (`listRowNum`, `pageNum`...).
     ///
-    /// Le chunk Lua déclare la clé sans jamais l'affecter : seule la mémoire du process porte
-    /// la valeur, posée par le moteur quand l'écran s'instancie.
+    /// The Lua chunk declares the key without ever assigning it: only the process memory carries the value, set by the engine when the screen is instantiated.
     LuaField {
-        /// Nom du champ, tel qu'il apparaît dans le script (ex. `listRowNum`).
+        /// Field name, as it appears in the script (e.g. `listRowNum`).
         name: String,
+        /// Process id (0 = detect nie.exe).
         #[arg(long, short = 'p', default_value_t = 0)]
         pid: i32,
-        /// Nombre maximum d'objets `TString` internés à considérer.
+        /// Maximum number of interned `TString` objects to consider.
         #[arg(long, default_value_t = 8)]
         strings: usize,
-        /// Nombre maximum d'entrées de table à relever par `TString`.
+        /// Maximum number of table entries to read per `TString`.
         #[arg(long, default_value_t = 24)]
         nodes: usize,
-        /// Affiche aussi les `Node` voisins, jusqu'à ce rayon (0 = champ seul).
+        /// Also print the neighboring `Node`s, up to this radius (0 = field only).
         #[arg(long, short = 'r', default_value_t = 8)]
         radius: i64,
-        /// N'affiche que les entrées dont la valeur est un scalaire (écarte le bruit).
+        /// Print only the entries whose value is a scalar (drops noise).
         #[arg(long)]
         numeric: bool,
     },
-    /// Relève la table `colorPresetID → couleur` des palettes de l'éditeur d'avatar.
+    /// Read the `colorPresetID → color` table of the avatar editor palettes.
     ///
-    /// Ces valeurs n'existent ni dans le catalogue, ni dans le binaire : seul le jeu vivant les
-    /// porte. Les identifiants attendus viennent du catalogue résolu (`nie avatar export`).
+    /// These values exist neither in the catalogue nor in the binary: only the live game carries them. The expected ids come from the resolved catalogue (`nie avatar export`).
     Palettes {
-        /// Fichier JSON du catalogue résolu, d'où sont lus les identifiants attendus.
+        /// Resolved catalogue JSON file, from which the expected ids are read.
         #[arg(long, default_value = "var/avatar-resolved.json")]
         catalogue: PathBuf,
+        /// Process id (0 = detect nie.exe).
         #[arg(long, short = 'p', default_value_t = 0)]
         pid: i32,
-        /// Début de la plage à balayer.
+        /// Start of the range to scan.
         #[arg(long, default_value = "0x10400000")]
         addr: String,
-        /// Longueur de la plage à balayer.
+        /// Length of the range to scan.
         #[arg(long, short = 'n', default_value_t = 262_144)]
         len: usize,
-        /// Écrit le résultat en JSON ici plutôt que sur la sortie standard.
+        /// Write the result as JSON here instead of standard output.
         #[arg(long, short = 'o')]
         output: Option<PathBuf>,
-        /// Fusionne les couleurs relevées dans le catalogue, sous la clé `couleursRgb`.
+        /// Merge the read colors into the catalogue, under the `couleursRgb` key.
         #[arg(long)]
         fusionner: bool,
     },
-    /// Affiche le catalogue de signatures AOB et offsets dérivés du dump mémoire (nie-trace::catalog).
+    /// Show the catalogue of AOB signatures and offsets derived from the memory dump (nie-trace::catalog).
     Catalog {
-        /// Filtrer par catégorie (player, match, shop, spirit, passive).
+        /// Filter by category (player, match, shop, spirit, passive).
         #[arg(long)]
         category: Option<String>,
-        /// Format JSON plutôt que tableau texte.
+        /// JSON format instead of a text table.
         #[arg(long)]
         json: bool,
     },
-    /// Applique une recette de live modding (.txt) sur le process vivant (nie-trace::recette).
+    /// Apply a live modding recipe (.txt) to the running process (nie-trace::recette).
     Recette {
-        /// Fichier de recette (.txt).
+        /// Recipe file (.txt).
         file: PathBuf,
+        /// Process id (0 = detect nie.exe).
         #[arg(long, short = 'p', default_value_t = 0)]
         pid: i32,
+        /// Module whose ranges are used (default nie.exe).
         #[arg(long, short = 'm', default_value = "nie.exe")]
         module: String,
-        /// Applique réellement les écritures en mémoire (sinon test à blanc sécurisé).
+        /// Really apply the memory writes (otherwise a safe dry run).
         #[arg(long)]
         force: bool,
     },
@@ -1105,11 +1071,9 @@ enum ExeOp {
     Lint(exe_lint::ExeOptions),
 }
 
-/// Sous-commandes de `nie vfs` (explorateur CPK / VFS).
+/// Subcommands of `nie vfs` (CPK / VFS explorer).
 ///
-/// `--game-dir` est optionnel partout : par défaut, résolu via
-/// [`nie_formats::vfs::resolve_game_dir`] (`NIE_GAME_DIR`, sinon le répertoire courant s'il
-/// contient déjà `data/cpk_list.cfg.bin` — cas du dépôt fusionné avec l'install du jeu).
+/// `--game-dir` is optional everywhere and resolved through [`nie_formats::vfs::resolve_game_dir`].
 #[derive(Subcommand)]
 enum VfsOp {
     /// Locate/register a local or remote source without mounting the VFS.
@@ -1146,97 +1110,90 @@ enum VfsOp {
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Vue « dossier » : sous-dossiers et fichiers directement sous `prefix` (racine si omis).
+    /// Folder view: subfolders and files directly under `prefix` (root if omitted).
     Ls {
         prefix: Option<String>,
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Cherche par sous-chaîne dans les chemins internes (remplace l'exemple `vfs_grep`).
+    /// Search by substring in internal paths.
     Find {
-        /// Sous-chaîne cherchée (insensible à la casse).
+        /// Substring searched (case-insensitive).
         query: String,
-        /// Filtre par extension (ex. `g4tx`, sans le point).
+        /// Filter by extension (e.g. `g4tx`, without the dot).
         #[arg(long)]
         ext: Option<String>,
         #[arg(long, short = 'n', default_value_t = 100)]
         limit: usize,
-        /// Sortie JSON (tableau compact sur une ligne) — pour consommation programmatique
-        /// (ex. `nie_bridge.py` de l'addon Blender `plugins/nie-blender`, recherche de fichiers sans
-        /// dépendre d'un index contrairement à `chara`/`waza`).
+        /// JSON output (compact one-line array) for programmatic consumption.
         #[arg(long, short = 'j')]
         json: bool,
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Infos sur une entrée précise : taille, CPK conteneur, format détecté (magic).
+    /// Info on one entry: size, container CPK, detected format (magic).
     Stat {
         path: String,
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Aperçu du contenu : décodage structuré selon le format détecté (fallback hexdump).
+    /// Preview of the content: structured decoding by detected format (hexdump fallback).
     Cat {
         path: String,
-        /// Force le hexdump même si un décodeur structuré reconnaît le format.
+        /// Force the hexdump even if a structured decoder recognizes the format.
         #[arg(long)]
         hex: bool,
-        /// Nombre d'octets affichés en hexdump (défaut 256).
+        /// Number of bytes shown in the hexdump (default 256).
         #[arg(long, default_value_t = 256)]
         len: usize,
-        /// Décode la meilleure texture du fichier (.g4tx) et écrit un PNG ici.
+        /// Decode the best texture of the file (.g4tx) and write a PNG here.
         #[arg(long)]
         png_out: Option<PathBuf>,
-        /// Décode l'audio brut (ADX) et écrit un WAV ici.
+        /// Decode the raw audio (ADX) and write a WAV here.
         #[arg(long)]
         wav_out: Option<PathBuf>,
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Extrait un fichier — ou tous les fichiers sous un préfixe — vers le disque.
+    /// Extract a file, or every file under a prefix, to disk.
     Extract {
-        /// Chemin exact, ou préfixe de dossier VFS.
+        /// Exact path, or VFS folder prefix.
         path: String,
         #[arg(long, short = 'o')]
         out: PathBuf,
-        /// Filtre par extension, comme `vfs find` (ex. `cfg.bin`, `lua`, sans le point).
+        /// Filter by extension, as in `vfs find` (e.g. `cfg.bin`, `lua`, without the dot).
         ///
-        /// Sans lui, extraire un préfixe sort TOUT ce qu'il contient : `data/common`
-        /// pèse 4,66 Gio pour 71 101 cfg.bin seulement (206 Mio). Le filtre évite
-        /// de sortir 20 Gio d'assets pour récupérer les tables de jeu.
+        /// Without it, extracting a prefix writes everything it contains; the filter avoids dumping every asset just to get the game tables.
         #[arg(long)]
         ext: Option<String>,
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Histogramme des extensions du VFS complet (remplace l'exemple `vfs_hist`).
+    /// Histogram of the extensions of the whole VFS.
     Stats {
         #[arg(long, default_value_t = 50)]
         top: usize,
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Couverture des formats : quelle part du VFS le dépôt sait réellement lire.
+    /// Format coverage: the share of the VFS the workspace can actually read.
     ///
-    /// Lit les octets de CHAQUE fichier et les passe aux parseurs — c'est la seule façon
-    /// honnête de répondre : l'extension ment (tout `.cfg.bin` n'est pas du même format,
-    /// `.g4nv` porte le magic `NAVM`), et un magic reconnu ne dit pas que le parse aboutit.
+    /// Reads the bytes of every file and passes them to the parsers; the extension is not trusted (not every `.cfg.bin` has the same format, `.g4nv` carries the magic `NAVM`) and a recognized magic does not prove the parse succeeds.
     ///
-    /// Deux niveaux, parce qu'ils ne coûtent pas la même chose :
-    /// - par défaut, le **magic** seul (`nie_formats::detect`) sur l'en-tête ;
-    /// - `--parse`, le **décodage complet** (`nie_formats::decode`), qui seul départage les
-    ///   conteneurs T2B (`objbin`/`cfg.bin`/`mevbin` partagent le même en-tête).
+    /// Two levels:
+    /// - by default, the **magic** only (`nie_formats::detect`) on the header;
+    /// - `--parse`, the **full decoding** (`nie_formats::decode`), which alone tells apart the T2B containers (`objbin`/`cfg.bin`/`mevbin` share the same header).
     Formats {
-        /// Tente le décodage complet, pas seulement la reconnaissance du magic.
+        /// Try the full decoding, not only the magic recognition.
         #[arg(long)]
         parse: bool,
-        /// N'examine que les fichiers sous ce préfixe (ex. `data/common/gamedata`).
+        /// Examine only the files under this prefix (e.g. `data/common/gamedata`).
         #[arg(long)]
         prefix: Option<String>,
-        /// S'arrête après N fichiers — pour un sondage rapide plutôt que la mesure complète.
+        /// Stop after N files, for a quick sample rather than the full measurement.
         #[arg(long)]
         limit: Option<usize>,
-        /// Sortie JSON (une ligne) pour consommation programmatique.
+        /// JSON output (one line) for programmatic consumption.
         #[arg(long, short = 'j')]
         json: bool,
         #[arg(long)]
@@ -1245,24 +1202,21 @@ enum VfsOp {
     /// Every format parser against the VFS, read in place: parse coverage per format.
     #[cfg(feature = "host")]
     Lint(vfs_lint::VfsOptions),
-    /// Search native VFS characters by localized name, hash or internal code.
-    /// puis liste ses fichiers dans le VFS (modèles, textures, animations…).
+    /// Search characters by localized name, hash or internal code, then list their VFS files (models, textures, animations).
     Chara {
-        /// Nom/ID/code interne — laisser vide avec `--element`/`--position` pour lister la
-        /// catégorie entière (substitué en `""`, qui matche `LIKE '%%'` côté SQL).
+        /// Name, ID or internal code; leave empty with `--element`/`--position` to list the whole category (substituted by `""`, which matches `LIKE '%%'` in SQL).
         #[arg(default_value = "")]
         query: String,
-        /// N'affiche que les résultats, sans lister les fichiers VFS associés.
+        /// Print only the results, without listing the associated VFS files.
         #[arg(long)]
         no_paths: bool,
-        /// Filtre par élément (ex. `Feu`, `Vent`, `Forêt`, `Montagne`, `Néant`), insensible à la casse.
+        /// Filter by element (e.g. `Feu`, `Vent`, `Forêt`, `Montagne`, `Néant`), case-insensitive.
         #[arg(long)]
         element: Option<String>,
-        /// Filtre par poste (ex. `GK`, `DF`, `MF`, `FW`), insensible à la casse.
+        /// Filter by position (e.g. `GK`, `DF`, `MF`, `FW`), case-insensitive.
         #[arg(long)]
         position: Option<String>,
-        /// Sortie JSON (tableau compact sur une ligne) — pour consommation programmatique
-        /// (ex. `nie_bridge.py` de l'addon Blender `plugins/nie-blender`).
+        /// JSON output (compact one-line array) for programmatic consumption.
         #[arg(long, short = 'j')]
         json: bool,
         #[arg(long, short = 'n', default_value_t = 50)]
@@ -1272,17 +1226,15 @@ enum VfsOp {
     },
     /// Search native VFS skills by localized name, hash or internal code.
     Waza {
-        /// Nom/ID/code interne — laisser vide avec `--category`/`--element` pour lister la
-        /// catégorie entière.
+        /// Name, ID or internal code; leave empty with `--category`/`--element` to list the whole category.
         #[arg(default_value = "")]
         query: String,
         #[arg(long)]
         no_paths: bool,
-        /// Filtre par catégorie, sous-chaîne insensible à la casse (ex. `Tir` matche `Tir/Shoot`,
-        /// libellés réels bilingues : `Dribble`, `Défense/Block`, `Arrêt/Keep`).
+        /// Filter by category, case-insensitive substring (e.g. `Tir` matches `Tir/Shoot`, real bilingual labels: `Dribble`, `Défense/Block`, `Arrêt/Keep`).
         #[arg(long)]
         category: Option<String>,
-        /// Filtre par élément, insensible à la casse.
+        /// Filter by element, case-insensitive.
         #[arg(long)]
         element: Option<String>,
         #[arg(long, short = 'j')]
@@ -1292,110 +1244,104 @@ enum VfsOp {
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Liste les remotes rclone configurés (R2, S3, Google Drive, SSH, etc.).
+    /// List the configured rclone remotes (R2, S3, Google Drive, SSH, etc.).
     Remotes {
-        /// Sortie JSON brute issue de `rclone`.
+        /// Raw JSON output from `rclone`.
         #[arg(long, short = 'j')]
         json: bool,
     },
-    /// Convertit/exporte un dossier `data` (ou `data/packs`) vers R2 / S3 / Google Drive / rclone.
+    /// Convert and export a `data` folder (or `data/packs`) to R2, S3, Google Drive or rclone.
     Cloud {
-        /// Dossier `data` ou installation du jeu (auto-détecté si omis).
+        /// `data` folder or game install (auto-detected if omitted).
         #[arg(long)]
         source: Option<PathBuf>,
-        /// Destination (`r2://bucket/prefix`, `s3://...`, `gdrive://...`, `rclone://remote/path`, `ievr-vfs:`).
+        /// Destination (`r2://bucket/prefix`, `s3://...`, `gdrive://...`, `rclone://remote/path`).
         #[arg(long)]
         dest: String,
-        /// Mode d'export : `packs`, `decrypted-packs` (recommandé pour `ievr-vfs:` compressé), `seekable-zstd`, ou `loose`.
+        /// Export mode: `packs`, `decrypted-packs` (recommended for compressed rclone destinations), `seekable-zstd` or `loose`.
         #[arg(long, default_value = "decrypted-packs")]
         mode: String,
-        /// Transferts parallèles simultanés.
+        /// Concurrent parallel transfers.
         #[arg(long, default_value_t = 32)]
         transfers: usize,
-        /// Checkers distants parallèles simultanés.
+        /// Concurrent parallel remote checkers.
         #[arg(long, default_value_t = 64)]
         checkers: usize,
-        /// Niveau Zstd (mode `seekable-zstd`, 1-22).
+        /// Zstd level (`seekable-zstd` mode, 1-22).
         #[arg(long, default_value_t = 4)]
         zstd_level: i32,
-        /// Limite optionnelle du nombre de packs par cycle (0 = tous).
+        /// Optional limit on packs per cycle (0 = all).
         #[arg(long, default_value_t = 0)]
         max_packs: usize,
-        /// Surveillance continue (intervalle en secondes) avec synchronisation incrémentale.
+        /// Continuous watch (interval in seconds) with incremental sync.
         #[arg(long)]
         watch_secs: Option<u64>,
-        /// Planifie et calcule le manifeste sans copier les octets.
+        /// Plan and compute the manifest without copying bytes.
         #[arg(long)]
         dry_run: bool,
-        /// Sortie JSON brute issue de `rclone`.
+        /// Raw JSON output from `rclone`.
         #[arg(long, short = 'j')]
         json: bool,
     },
 }
 
-/// Les quatre opérations de modding LEVEL-5, servies par `nie_viola` **en process**.
-///
-/// Les opérations sont natives et ne dépendent d'aucun toolkit externe.
+/// The Viola operations (dump, verify, pack, merge, crypto), served in process by nie_viola.
 #[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum ViolaOp {
-    /// Extrait le VFS complet vers un dossier — packs ordonnés par volume, mappés en mémoire,
-    /// reprise d'un dump interrompu.
+    /// Extract the whole VFS to a folder: packs ordered by volume, memory-mapped, resumable after an interrupted dump.
     Dump {
         /// Dossier de sortie.
         #[arg(long, short = 'o')]
         out: PathBuf,
-        /// Filtre sur le chemin VFS. Listes séparées par des virgules, `**` traverse les `/`,
-        /// préfixe `!` pour exclure (`data/dx11/**,!**/movie/**`).
+        /// VFS path filter. Comma-separated lists, `**` crosses `/`, `!` prefix excludes (`data/dx11/**,!**/movie/**`).
         #[arg(long)]
         filtre: Option<String>,
         /// Named preset (`wiki`, `assets`, `full`) — exclusive with `--filtre`.
         #[arg(long)]
         preset: Option<String>,
-        /// Repart de zéro au lieu de reprendre le manifeste laissé par un dump précédent.
+        /// Start from scratch instead of resuming the manifest left by a previous dump.
         #[arg(long)]
         sans_reprise: bool,
-        /// Réécrit les fichiers même quand la taille de destination coïncide déjà.
+        /// Rewrite files even when the destination size already matches.
         #[arg(long)]
         tout_reecrire: bool,
-        /// Nombre de threads rayon (défaut : autant que de cœurs).
+        /// Number of rayon threads (default: one per core).
         #[arg(long)]
         threads: Option<usize>,
-        /// Ignore les packs absents de `cpk_list.cfg.bin` (films, sound_asset, mises à jour).
-        /// Par défaut ils sont inclus — les exclure retire plusieurs milliers de fichiers réels.
+        /// Skip packs absent from `cpk_list.cfg.bin` (movies, sound_asset, updates); included by default.
         #[arg(long)]
         sans_extra: bool,
-        /// N'écrit pas le journal des échecs `.nie-dump-echecs.json`.
+        /// Do not write the failure log `.nie-dump-echecs.json`.
         #[arg(long)]
         sans_journal: bool,
-        /// Dépose l'index de contenu `.nie-dump-index.tsv` (chemin, taille, pack), trié.
+        /// Write the sorted content index `.nie-dump-index.tsv` (path, size, pack).
         #[arg(long)]
         index: bool,
-        /// N'exige pas que la taille extraite corresponde au sommaire du pack.
+        /// Do not require the extracted size to match the pack summary.
         #[arg(long)]
         sans_verification: bool,
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Confronte un dossier dumpé à l'index du VFS : ce qui manque, ce qui est tronqué, ce qui
-    /// est en trop. Le rapport du dump dit ce qu'il a fait ; ceci dit ce qui est là.
+    /// Compare a dumped folder with the VFS index: what is missing, truncated or extra.
     Verify {
-        /// Dossier dumpé à vérifier.
+        /// Dumped folder to verify.
         #[arg(long, short = 'd')]
         dir: PathBuf,
-        /// Filtre sur le chemin VFS, même syntaxe que `dump`.
+        /// VFS path filter, same syntax as `dump`.
         #[arg(long)]
         filtre: Option<String>,
-        /// Compare le contenu d'un fichier sur N avec le VFS (0 = aucune comparaison, 1 = tout).
+        /// Compare the content of one file in N with the VFS (0 = no comparison, 1 = all).
         #[arg(long, default_value_t = 500)]
         echantillon: usize,
-        /// Liste aussi les fichiers présents dans le dossier mais absents de l'index.
+        /// Also list files present in the folder but absent from the index.
         #[arg(long)]
         intrus: bool,
-        /// Nombre d'anomalies affichées (le rapport JSON les garde toutes).
+        /// Number of anomalies printed (the JSON report keeps them all).
         #[arg(long, default_value_t = 20)]
         limite: usize,
-        /// N'écrit pas le rapport `.nie-dump-verif.json`.
+        /// Do not write the report `.nie-dump-verif.json`.
         #[arg(long)]
         sans_rapport: bool,
         #[arg(long)]
@@ -1403,82 +1349,80 @@ enum ViolaOp {
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Bascule les fichiers d'un mod hors des paquets : le jeu les charge alors depuis le disque.
+    /// Switch the files of a mod out of the archives: the game then loads them from disk.
     Pack {
-        /// Dossier du mod (arborescence relative au VFS).
+        /// Mod folder (tree relative to the VFS).
         #[arg(long)]
         mod_dir: PathBuf,
-        /// Dossier de sortie — reçoit les fichiers et le `cpk_list.cfg.bin` réécrit.
+        /// Output folder; receives the files and the rewritten `cpk_list.cfg.bin`.
         #[arg(long, short = 'o')]
         out: PathBuf,
-        /// `cpk_list.cfg.bin` **vanilla**. Défaut : celui du jeu résolu.
+        /// Vanilla `cpk_list.cfg.bin` (default: the resolved game's).
         #[arg(long)]
         cpk_list: Option<PathBuf>,
-        /// Cible Switch (`romfs/data/…`) au lieu de PC (`data/…`).
+        /// Target Switch (`romfs/data/...`) instead of PC (`data/...`).
         #[arg(long)]
         switch: bool,
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Fusionne plusieurs mods, en **priorité décroissante** — le premier dossier l'emporte.
+    /// Merge several mods in decreasing priority: the first folder wins.
     ///
-    /// Par défaut la fusion est **au champ** sur les `.cfg.bin` : deux mods qui éditent des
-    /// champs différents d'un même fichier survivent tous les deux. C'est ce que les toolkits
-    /// amont ne savent pas faire, faute de comprendre les formats.
+    /// By default the merge is per field on `.cfg.bin`: two mods editing different fields of the same file both survive.
     Merge {
-        /// Dossiers de mods, du plus prioritaire au moins prioritaire.
+        /// Mod folders, from highest to lowest priority.
         #[arg(required = true, num_args = 1..)]
         sources: Vec<PathBuf>,
         /// Dossier de sortie.
         #[arg(long, short = 'o')]
         out: PathBuf,
-        /// Fusion au fichier (comportement amont) : plus de fusion au champ.
+        /// File-level merge (upstream behavior): no per-field merge.
         #[arg(long)]
         fichier: bool,
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// (Dé)chiffre un fichier Criware. L'opération est **involutive** : un seul sens suffit.
+    /// (De)crypt a Criware file; the operation is an involution, so one direction is enough.
     Crypto {
         /// Fichier source.
         src: PathBuf,
         /// Fichier destination.
         #[arg(long, short = 'o')]
         out: PathBuf,
-        /// Clé en hexadécimal (`1717E18E`). Défaut : la clé fixe Viola.
+        /// Key in hexadecimal (`1717E18E`). Default: the fixed Viola key.
         #[arg(long, conflicts_with = "du_nom")]
         cle: Option<String>,
-        /// Dérive la clé du nom de fichier (CRC32), comme pour les paquets CPK.
+        /// Derive the key from the file name (CRC32), as for CPK packs.
         #[arg(long)]
         du_nom: bool,
     },
 }
 
-/// Opérations du lanceur IEVR Ultimate Team (chiffrement équipe, conteneurs .utmod, parking de save).
+/// IEVR Ultimate Team launcher operations: team encryption, .utmod containers, save parking.
 #[cfg(feature = "host")]
 #[derive(Subcommand)]
 pub enum LauncherOp {
-    /// Cryptographie des équipes IEVR Ultimate Team (AES-256-GCM + PBKDF2).
+    /// IEVR Ultimate Team team cryptography (AES-256-GCM + PBKDF2).
     Team {
         #[command(subcommand)]
         cmd: LauncherTeamOp,
     },
-    /// Inspection des conteneurs de mod .utmod / UTMOD2.
+    /// Inspect .utmod / UTMOD2 mod containers.
     Package {
         #[command(subcommand)]
         cmd: LauncherPackageOp,
     },
-    /// Opérations sur les sauvegardes IEVR PC (parking, restauration, injection).
+    /// IEVR PC save operations (parking, restore, injection).
     Save {
         #[command(subcommand)]
         cmd: LauncherSaveOp,
     },
-    /// Consultation des 142 cartes d'esprit et 1 299 techniques spéciales (ievrsaveeditor).
+    /// Browse the spirit cards and special techniques (ievrsaveeditor).
     Spirit {
         #[command(subcommand)]
         cmd: LauncherSpiritOp,
     },
-    /// Base de données, packs, formations et simulateur IEVR Ultimate Team.
+    /// IEVR Ultimate Team database, packs, formations and simulator.
     Ut {
         #[command(subcommand)]
         cmd: LauncherUtOp,
@@ -1488,57 +1432,57 @@ pub enum LauncherOp {
 #[cfg(feature = "host")]
 #[derive(Subcommand)]
 pub enum LauncherUtOp {
-    /// Liste les packs de cartes IEVR Ultimate Team avec leurs prix et taux de drop.
+    /// List the IEVR Ultimate Team card packs with their prices and drop rates.
     Packs {
-        /// Format JSON.
+        /// JSON output.
         #[arg(long)]
         json: bool,
     },
-    /// Simule l'ouverture d'un pack de cartes selon les probabilités officielles.
+    /// Simulate opening a card pack with the official probabilities.
     Open {
-        /// Identifiant du pack (ex: sobre-bronce, sobre-oro, sobre-icono).
+        /// Pack identifier (e.g. sobre-bronce, sobre-oro, sobre-icono).
         pack: String,
-        /// Graine aléatoire déterministe (optionnel).
+        /// Deterministic random seed (optional).
         #[arg(long)]
         seed: Option<u64>,
-        /// Format JSON.
+        /// JSON output.
         #[arg(long)]
         json: bool,
     },
-    /// Recherche ou liste les joueurs du catalogue Ultimate Team (497 joueurs).
+    /// Search or list the players of the Ultimate Team catalogue.
     Players {
-        /// Terme de recherche optionnel (nom, apodo, ID).
+        /// Optional search term (name, nickname, ID).
         #[arg(long, short = 'q')]
         query: Option<String>,
-        /// Filtre par élément (Aire, Fuego, Bosque, Montaña).
+        /// Filter by element (Aire, Fuego, Bosque, Montaña).
         #[arg(long, short = 'e')]
         element: Option<String>,
-        /// Filtre par rareté (Común, Raro, Legendario, Ícono, Basara).
+        /// Filter by rarity (Común, Raro, Legendario, Ícono, Basara).
         #[arg(long, short = 'r')]
         rarity: Option<String>,
-        /// Nombre maximal de résultats (défaut : 20).
+        /// Maximum number of results (default: 20).
         #[arg(long, default_value_t = 20)]
         limit: usize,
-        /// Format JSON.
+        /// JSON output.
         #[arg(long)]
         json: bool,
     },
-    /// Affiche les coordonnées 2D des slots de terrain pour une formation.
+    /// Print the 2D coordinates of the field slots for a formation.
     Formation {
-        /// Nom de la formation (ex: 4-3-3, 4-4-2, 3-5-2 Libertad, 3-4-3).
+        /// Formation name (e.g. 4-3-3, 4-4-2, 3-5-2 Libertad, 3-4-3).
         name: String,
-        /// Format JSON.
+        /// JSON output.
         #[arg(long)]
         json: bool,
     },
-    /// Évalue la valeur marchande / vente rapide d'une composition d'équipe.
+    /// Estimate the market or quick-sell value of a team composition.
     Value {
-        /// Chemin vers le fichier JSON d'équipe (clair ou chiffré).
+        /// Path to the team JSON file (plain or encrypted).
         file: std::path::PathBuf,
-        /// Phrase de passe de déchiffrement si le fichier est chiffré.
+        /// Decryption passphrase if the file is encrypted.
         #[arg(long, default_value = nie_launcher::DEFAULT_PASSPHRASE)]
         passphrase: String,
-        /// Format JSON.
+        /// JSON output.
         #[arg(long)]
         json: bool,
     },
@@ -1547,24 +1491,24 @@ pub enum LauncherUtOp {
 #[cfg(feature = "host")]
 #[derive(Subcommand)]
 pub enum LauncherSpiritOp {
-    /// Liste ou recherche dans les 142 cartes d'esprits héros et fabled.
+    /// List or search the hero and fabled spirit cards.
     Cards {
-        /// Terme de recherche optionnel (nom, variante, hex ID).
+        /// Optional search term (name, variant, hex ID).
         #[arg(long, short = 'q')]
         query: Option<String>,
-        /// Format JSON plutôt que tableau texte.
+        /// JSON output instead of a text table.
         #[arg(long)]
         json: bool,
     },
-    /// Liste ou recherche dans les 1 299 techniques spéciales du jeu.
+    /// List or search the special techniques of the game.
     Moves {
-        /// Terme de recherche optionnel (nom ou hex ID).
+        /// Optional search term (name or hex ID).
         #[arg(long, short = 'q')]
         query: Option<String>,
-        /// Filtre par catégorie (Shot, Catch, Dribble, Block).
+        /// Filter by category (Shot, Catch, Dribble, Block).
         #[arg(long, short = 'c')]
         category: Option<String>,
-        /// Format JSON plutôt que liste texte.
+        /// JSON output instead of a text list.
         #[arg(long)]
         json: bool,
     },
@@ -1573,25 +1517,25 @@ pub enum LauncherSpiritOp {
 #[cfg(feature = "host")]
 #[derive(Subcommand)]
 pub enum LauncherTeamOp {
-    /// Déchiffre un fichier JSON d'équipe exporté depuis la plateforme web.
+    /// Decrypt a team JSON file exported from the web platform.
     Decrypt {
-        /// Chemin vers le fichier JSON chiffré.
+        /// Path to the encrypted JSON file.
         file: std::path::PathBuf,
-        /// Phrase de passe personnalisée (sinon clé canonique par défaut).
+        /// Custom passphrase (otherwise the default canonical key).
         #[arg(long, default_value = nie_launcher::DEFAULT_PASSPHRASE)]
         passphrase: String,
-        /// Fichier de sortie JSON déchiffré (sinon stdout).
+        /// Decrypted JSON output file (otherwise stdout).
         #[arg(long, short = 'o')]
         out: Option<std::path::PathBuf>,
     },
-    /// Chiffre un fichier JSON d'équipe pour la plateforme web.
+    /// Encrypt a team JSON file for the web platform.
     Encrypt {
-        /// Chemin vers le fichier JSON en clair.
+        /// Path to the plain JSON file.
         file: std::path::PathBuf,
-        /// Phrase de passe personnalisée (sinon clé canonique par défaut).
+        /// Custom passphrase (otherwise the default canonical key).
         #[arg(long, default_value = nie_launcher::DEFAULT_PASSPHRASE)]
         passphrase: String,
-        /// Fichier de sortie JSON chiffré (sinon stdout).
+        /// Encrypted JSON output file (otherwise stdout).
         #[arg(long, short = 'o')]
         out: Option<std::path::PathBuf>,
     },
@@ -1600,9 +1544,9 @@ pub enum LauncherTeamOp {
 #[cfg(feature = "host")]
 #[derive(Subcommand)]
 pub enum LauncherPackageOp {
-    /// Inspecte les métadonnées et l'en-tête d'un conteneur .utmod / UTMOD2.
+    /// Inspect the metadata and header of a .utmod / UTMOD2 container.
     Info {
-        /// Chemin vers le fichier .utmod.
+        /// Path to the .utmod file.
         file: std::path::PathBuf,
     },
 }
@@ -1610,21 +1554,21 @@ pub enum LauncherPackageOp {
 #[cfg(feature = "host")]
 #[derive(Subcommand)]
 pub enum LauncherSaveOp {
-    /// Stationne la sauvegarde Steam de manière atomique vers .bk et installe la sauvegarde mod.
+    /// Atomically park the Steam save to .bk and install the mod save.
     Park {
         #[arg(long)]
         live_save: std::path::PathBuf,
         #[arg(long)]
         mod_save: std::path::PathBuf,
     },
-    /// Restaure la sauvegarde Steam originale depuis son fichier .bk.
+    /// Restore the original Steam save from its .bk file.
     Restore {
         #[arg(long)]
         live_save: std::path::PathBuf,
         #[arg(long)]
         mod_save: std::path::PathBuf,
     },
-    /// Injecte une équipe déchiffrée dans l'équipe 2 de la sauvegarde.
+    /// Inject a decrypted team into team 2 of the save.
     InjectTeam {
         #[arg(long)]
         save: std::path::PathBuf,
@@ -1637,55 +1581,55 @@ pub enum LauncherSaveOp {
 
 #[derive(Subcommand)]
 enum SaveOp {
-    /// Déchiffre et affiche un résumé terse d'un fichier de sauvegarde Lives.
+    /// Decrypt and print a terse summary of a Lives save file.
     Read {
-        /// Chemin vers le fichier de sauvegarde (ex. `002AB8F4-SYSTEMLIVE`).
+        /// Path to the save file (e.g. `002AB8F4-SYSTEMLIVE`).
         #[arg(long)]
         file: std::path::PathBuf,
-        /// Affiche aussi les N premiers octets du corps de chaque blob.
+        /// Also print the first N bytes of each blob body.
         #[arg(long, default_value_t = 0)]
         hexdump: usize,
     },
-    /// Déchiffre un fichier de sauvegarde et écrit le plaintext.
+    /// Decrypt a save file and write the plaintext.
     Decrypt {
-        /// Chemin vers le fichier de sauvegarde chiffré.
+        /// Path to the encrypted save file.
         #[arg(long)]
         file: std::path::PathBuf,
-        /// Chemin de sortie pour le plaintext.
+        /// Output path for the plaintext.
         #[arg(long)]
         out: std::path::PathBuf,
     },
-    /// Chiffre un fichier plaintext (issu de `decrypt`) et produit le fichier sauvegarde.
+    /// Encrypt a plaintext file (from `decrypt`) and produce the save file.
     Encrypt {
-        /// Chemin vers le plaintext.
+        /// Path to the plaintext.
         #[arg(long)]
         file: std::path::PathBuf,
-        /// Nom de slot (ex. `002AB8F4-SYSTEMLIVE`) pour dériver la clé.
+        /// Slot name (e.g. `002AB8F4-SYSTEMLIVE`) used to derive the key.
         #[arg(long)]
         slot: String,
-        /// Chemin de sortie pour le fichier chiffré.
+        /// Output path for the encrypted file.
         #[arg(long)]
         out: std::path::PathBuf,
     },
-    /// Édite un byte dans le corps d'un blob et rechiffre.
+    /// Edit one byte in a blob body and re-encrypt.
     Edit {
-        /// Chemin vers le fichier de sauvegarde.
+        /// Path to the save file.
         #[arg(long)]
         file: std::path::PathBuf,
-        /// Nom interne du blob (ex. `SYSTEM_data.bin`).
+        /// Internal blob name (e.g. `SYSTEM_data.bin`).
         #[arg(long)]
         blob: String,
-        /// Offset dans le corps du blob (décimal ou `0x…`).
+        /// Offset in the blob body (decimal or `0x...`).
         #[arg(long, value_parser = parse_addr)]
         offset: i64,
-        /// Nouvelle valeur du byte (décimal ou `0x…`).
+        /// New byte value (decimal or `0x...`).
         #[arg(long, value_parser = parse_addr)]
         value: i64,
-        /// Fichier de sortie (défaut : écrase l'entrée).
+        /// Output file (default: overwrite the input).
         #[arg(long)]
         out: Option<std::path::PathBuf>,
     },
-    /// Stationne la sauvegarde Steam de manière atomique vers .bk et installe la sauvegarde mod (nie-launcher).
+    /// Atomically park the Steam save to .bk and install the mod save (nie-launcher).
     #[cfg(feature = "host")]
     Park {
         #[arg(long)]
@@ -1693,7 +1637,7 @@ enum SaveOp {
         #[arg(long)]
         mod_save: std::path::PathBuf,
     },
-    /// Restaure la sauvegarde Steam originale depuis son fichier .bk (nie-launcher).
+    /// Restore the original Steam save from its .bk file (nie-launcher).
     #[cfg(feature = "host")]
     Restore {
         #[arg(long)]
@@ -1701,7 +1645,7 @@ enum SaveOp {
         #[arg(long)]
         mod_save: std::path::PathBuf,
     },
-    /// Injecte une équipe déchiffrée dans l'équipe 2 d'une sauvegarde IEVR PC (nie-launcher).
+    /// Inject a decrypted team into team 2 of an IEVR PC save (nie-launcher).
     #[cfg(feature = "host")]
     InjectTeam {
         #[arg(long)]
@@ -1716,43 +1660,42 @@ enum SaveOp {
 #[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum QueueOp {
-    /// Empile une adresse (décimale ou hex `0x...`).
+    /// Push an address (decimal or hex `0x...`).
     Push {
         #[arg(value_parser = parse_addr)]
         addr: i64,
     },
-    /// Dépile la prochaine adresse.
+    /// Pop the next address.
     Pop,
-    /// Taille de la frontière.
+    /// Frontier size.
     Len,
-    /// Vide la frontière.
+    /// Clear the frontier.
     Reset,
 }
 
-/// Opérations Steam — mêmes noms et mêmes variables d'environnement que le binaire `nie-steam-depot`,
-/// dont c'est la façade en process.
+/// Steam operations: depot inspection and download through nie-steam.
 #[derive(Subcommand, Debug)]
 enum SteamOp {
-    /// Inspecte les dépôts (tailles, fichiers) sans rien télécharger.
+    /// Inspect the depots (sizes, files) without downloading anything.
     List {
-        /// App ID Steam (défaut : IEVR).
+        /// Steam App ID (default: IEVR).
         app_id: Option<u32>,
         #[command(flatten)]
         commun: SteamCommun,
     },
-    /// Télécharge une app Steam vers le répertoire cible.
+    /// Download a Steam app to the target directory.
     Download {
-        /// App ID Steam (défaut : IEVR).
+        /// Steam App ID (default: IEVR).
         app_id: Option<u32>,
-        /// Répertoire de destination.
+        /// Destination directory.
         #[arg(short = 'o', long, default_value = ".")]
         out: PathBuf,
         #[command(flatten)]
         commun: SteamCommun,
     },
-    /// Télécharge IEVR — raccourci de `download 2799860`.
+    /// Download IEVR; shortcut for `download 2799860`.
     Sync {
-        /// Répertoire de destination.
+        /// Destination directory.
         #[arg(short = 'o', long, default_value = ".")]
         out: PathBuf,
         #[command(flatten)]
@@ -1784,64 +1727,63 @@ struct SteamIndexArgs {
     env_file: Option<PathBuf>,
 }
 
-/// Options partagées par les trois opérations Steam.
+/// Options shared by the three Steam operations.
 ///
-/// Les noms de variables d'environnement sont ceux de `nie-steam-depot` et de `scripts/tools/data/sync-gamedata.ts`
-/// : les changer casserait les appelants existants.
+/// The environment variable names are fixed: renaming them breaks existing callers.
 #[derive(clap::Args, Debug, Clone)]
 struct SteamCommun {
-    /// Compte Steam (vide = login anonyme).
+    /// Steam account (empty = anonymous login).
     #[arg(short = 'u', long, env = "NIE_STEAM_USER")]
     username: Option<String>,
-    /// Mot de passe (ignoré si un refresh token est en cache).
+    /// Password (ignored if a refresh token is cached).
     #[arg(short = 'p', long, env = "NIE_STEAM_PASSWORD")]
     password: Option<String>,
-    /// Branche Steam.
+    /// Steam branch.
     #[arg(short = 'b', long, default_value = "public")]
     branch: String,
-    /// OS ciblé pour le filtrage des dépôts.
+    /// Target OS for depot filtering.
     #[arg(long, default_value = "windows")]
     os: String,
-    /// Architecture ciblée.
+    /// Target architecture.
     #[arg(long)]
     arch: Option<String>,
-    /// Langue ciblée.
+    /// Target language.
     #[arg(long, default_value = "english")]
     language: String,
-    /// Ne pas filtrer par OS/arch/langue.
+    /// Do not filter by OS, arch or language.
     #[arg(long)]
     all_platforms: bool,
-    /// Dépôts explicites (répétable).
+    /// Explicit depots (repeatable).
     #[arg(long = "depot", value_name = "ID")]
     depot_ids: Vec<u32>,
-    /// Chunks concurrents.
+    /// Concurrent chunks.
     #[arg(long, env = "NIE_STEAM_MAX_DOWNLOADS", default_value_t = 64)]
     max_downloads: usize,
-    /// Depots téléchargés en parallèle.
+    /// Depots downloaded in parallel.
     #[arg(long, env = "NIE_STEAM_MAX_DEPOT_PARALLEL", default_value_t = 6)]
     max_depot_parallel: usize,
-    /// Taille du pool de connexions HTTP/2 par hôte CDN.
+    /// HTTP/2 connection pool size per CDN host.
     #[arg(long, env = "NIE_STEAM_CDN_POOL_SIZE", default_value_t = 128)]
     cdn_pool_size: usize,
-    /// Désactive le pipeline multi-fichiers/HTTP2 turbo et revient au client séquentiel `steam-depot`.
+    /// Disable the multi-file HTTP2 turbo pipeline and fall back to the sequential `steam-depot` client.
     #[arg(long)]
     no_turbo: bool,
-    /// Remote rclone de destination (ex. `ievr-vfs:`) pour compresser/uploader les packs en continu.
+    /// Destination rclone remote (e.g. `remote:`) to compress and upload packs continuously.
     #[arg(long, env = "NIE_VFS_CLOUD_REMOTE")]
     sync_remote: Option<String>,
-    /// Mode d'export cloud continu (`decrypted-packs`, `seekable-zstd`, `packs`, `loose`).
+    /// Continuous cloud export mode (`decrypted-packs`, `seekable-zstd`, `packs`, `loose`).
     #[arg(long, default_value = "decrypted-packs")]
     sync_mode: String,
-    /// Transferts rclone parallèles simultanés lors du `--sync-remote`.
+    /// Concurrent parallel rclone transfers during `--sync-remote`.
     #[arg(long, default_value_t = 32)]
     sync_transfers: usize,
-    /// Checkers rclone parallèles simultanés lors du `--sync-remote`.
+    /// Concurrent parallel rclone checkers during `--sync-remote`.
     #[arg(long, default_value_t = 64)]
     sync_checkers: usize,
-    /// Retélécharge tout au lieu de sauter les fichiers déjà à jour.
+    /// Re-download everything instead of skipping up-to-date files.
     #[arg(long)]
     no_verify: bool,
-    /// Chemin du magasin de jetons.
+    /// Token store path.
     #[arg(long, env = "NIE_STEAM_TOKEN_STORE")]
     token_store: Option<PathBuf>,
 }
@@ -1916,10 +1858,9 @@ fn upsert_env_key(path: &std::path::Path, key: &str, value: &str) -> anyhow::Res
         .with_context(|| format!("write {}", path.display()))
 }
 
-/// Exécute une opération Steam.
+/// Run a Steam operation.
 ///
-/// L'API de `nie_steam::depot` est asynchrone alors que la CLI ne l'est pas : on monte un runtime le
-/// temps de l'appel plutôt que de teinter tout `main` en `async` pour trois sous-commandes.
+/// `nie_steam::depot` is async while the CLI is not: a runtime is built for the call instead of making all of `main` async for three subcommands.
 fn steam_cmd(op: SteamOp) -> anyhow::Result<()> {
     use nie_steam::depot::options::SteamDownloadOptions;
     use nie_steam::{IEVR_STEAM_APP_ID, depot::downloader::SteamDepotDownloader};
@@ -1958,13 +1899,13 @@ fn steam_cmd(op: SteamOp) -> anyhow::Result<()> {
                 .clone()
                 .unwrap_or_else(nie_steam::depot::token_store::default_path),
         ),
-        // Même sélection `NIE_STEAM_TOKEN_STORE` que `nie-steam-depot` (file par défaut).
+        // `NIE_STEAM_TOKEN_STORE` selects the token store (default: file).
         token_backend: Some(nie_steam::depot::token_backend::from_env(
             c.token_store.clone(),
         )?),
         guard_provider: None,
-        // Garde anti-blocage : un depot muet est interrompu au lieu de dormir
-        // indéfiniment (cf. nie_steam::depot::options::SteamDownloadOptions::stall_timeout).
+        // Stall guard: a silent depot is interrupted instead of sleeping
+        // forever (see nie_steam::depot::options::SteamDownloadOptions::stall_timeout).
         stall_timeout: Some(std::time::Duration::from_secs(300)),
         transfer: nie_steam::depot::options::TransferOptions {
             max_depot_parallel: c.max_depot_parallel,
@@ -1990,7 +1931,7 @@ fn steam_cmd(op: SteamOp) -> anyhow::Result<()> {
                 println!(
                     "depot={} name={} manifest={} files={} size={mb:.1}MB",
                     info.depot_id,
-                    info.name.as_deref().unwrap_or("(sans nom)"),
+                    info.name.as_deref().unwrap_or("(no name)"),
                     info.manifest_id,
                     info.file_count
                 );
@@ -2032,27 +1973,25 @@ fn steam_cmd(op: SteamOp) -> anyhow::Result<()> {
             );
             Ok(())
         } else {
-            anyhow::bail!("{}", r.error.as_deref().unwrap_or("erreur inconnue"))
+            anyhow::bail!("{}", r.error.as_deref().unwrap_or("unknown error"))
         }
     })
 }
 
-/// Sous-commandes de `nie live` — le `nie.exe` déjà vivant.
+/// Subcommands of `nie live`: the already-running `nie.exe`.
 #[cfg(feature = "host")]
 #[derive(Subcommand)]
 enum LiveOp {
-    /// Décrit le `nie.exe` déjà vivant : PID, base du module, permission ptrace.
+    /// Describe the running `nie.exe`: PID, module base, ptrace permission.
     Attach {
         #[arg(long, short = 'j')]
         json: bool,
     },
 }
 
-/// Exécute une opération `nie live`.
+/// Run a `nie live` operation.
 ///
-/// `nie` ne lance pas le jeu : ni Proton, ni Wine, ni bureau virtuel. Il lit un `nie.exe` que le
-/// lancement officiel (Steam, puis EAC) a déjà démarré. La lecture passe par `ptrace` : sous Linux
-/// seulement ; sur un hôte Windows, `nie mem` lit le process natif.
+/// `nie` does not launch the game (no Proton, Wine or virtual desktop): it reads a `nie.exe` already started by the official launch (Steam, then EAC). Reading goes through `ptrace`, Linux only; on a Windows host, `nie mem` reads the native process.
 #[cfg(all(feature = "host", target_os = "linux"))]
 fn live_cmd(op: LiveOp) -> anyhow::Result<()> {
     match op {
@@ -2060,7 +1999,7 @@ fn live_cmd(op: LiveOp) -> anyhow::Result<()> {
             let pid =
                 nie_trace::find_pid_by_name(nie_trace::GAME_COMM).ok_or_else(|| {
                     anyhow::anyhow!(
-                        "aucun process « {} » — lance le jeu par Steam",
+                        "no `{}` process; launch the game through Steam",
                         nie_trace::GAME_COMM
                     )
                 })?;
@@ -2080,12 +2019,12 @@ fn live_cmd(op: LiveOp) -> anyhow::Result<()> {
                 println!("pid           {pid}");
                 match base {
                     Some(b) => println!("module_base   {b:#x}"),
-                    None => println!("module_base   (introuvable)"),
+                    None => println!("module_base   (not found)"),
                 }
                 println!("ptrace_scope  {}", nie_trace::read_ptrace_scope());
                 println!(
-                    "lecture       {}",
-                    if permis { "permise" } else { "REFUSÉE" }
+                    "read          {}",
+                    if permis { "allowed" } else { "DENIED" }
                 );
             }
             Ok(())
@@ -2096,16 +2035,14 @@ fn live_cmd(op: LiveOp) -> anyhow::Result<()> {
 #[cfg(all(feature = "host", not(target_os = "linux")))]
 fn live_cmd(_op: LiveOp) -> anyhow::Result<()> {
     anyhow::bail!(
-        "`nie live` lit un process par ptrace, ce qui n'existe que sous Linux. Sur un hôte Windows, \
-         lis le jeu avec `nie mem`."
+        "`nie live` reads a process through ptrace, which exists only on Linux. On a Windows host, \
+         read the game with `nie mem`."
     )
 }
 
-/// Racine du jeu : celle passée en argument, sinon celle que le contexte désigne.
+/// Game root: the one passed as argument, otherwise the one the context designates.
 ///
-/// Aucun chemin de poste n'est codé en dur — `resolve_game_dir` regarde `NIE_GAME_DIR`, puis le
-/// répertoire courant et ses ancêtres portant `data/cpk_list.cfg.bin`, puis le répertoire de
-/// l'exécutable. Sur une installation Steam, la racine du jeu est le répertoire courant.
+/// Resolved by `resolve_game_dir`: the environment variables, then the current directory and its ancestors holding `data/cpk_list.cfg.bin`, then the executable directory.
 fn racine_jeu(arg: Option<PathBuf>) -> PathBuf {
     arg.unwrap_or_else(nie_formats::vfs::resolve_game_dir)
 }
@@ -2121,12 +2058,9 @@ fn game_binary_dir(root: &std::path::Path) -> PathBuf {
     }
 }
 
-/// Pile du thread qui exécute la CLI.
+/// Stack of the thread that runs the CLI.
 ///
-/// Le profil debug n'inline rien : les frames de clap (46 sous-commandes) et du montage du VFS
-/// (255 308 entrées) dépassent le 1 Mio par défaut de Windows, et **toute** commande débordait,
-/// y compris `backends`. En release le problème n'existe pas — ce qui rendait la panne d'autant
-/// plus déroutante, puisque `target/debug/nie.exe` est le binaire qu'on explore au quotidien.
+/// The debug profile inlines nothing: the clap frames and the VFS mount exceed the default 1 MiB Windows stack, so every command overflowed. Release is not affected.
 const PILE_CLI: usize = 64 * 1024 * 1024;
 
 /// Run the `nie` command-line entry point.
@@ -2135,7 +2069,7 @@ pub fn main_entry() -> anyhow::Result<()> {
         .stack_size(PILE_CLI)
         .spawn(run)?
         .join()
-        .map_err(|_| anyhow::anyhow!("la commande a paniqué"))?
+        .map_err(|_| anyhow::anyhow!("the command panicked"))?
 }
 
 /// Run the CLI with an explicit argument vector.
@@ -2157,13 +2091,13 @@ where
             dispatch(cli)
         })?
         .join()
-        .map_err(|_| anyhow::anyhow!("la commande a paniqué"))?
+        .map_err(|_| anyhow::anyhow!("the command panicked"))?
 }
 
 fn run() -> anyhow::Result<()> {
     nie_tls::install();
     nie_tls::install();
-    // CLI interne (consommé par l'agent) : sortie minimale. `RUST_LOG=info` réactive les traces.
+    // Internal CLI (consumed by the agent): minimal output. `RUST_LOG=info` re-enables traces.
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
@@ -2440,9 +2374,9 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
             ModeOp::Index { db, game_dir } => {
                 let vfs = open_vfs(game_dir)?;
                 let database = nie_index::Db::open(&db)
-                    .with_context(|| format!("ouverture {}", db.display()))?;
+                    .with_context(|| format!("opening {}", db.display()))?;
                 let (m, s, a, t) = mode_index::index(&database, &vfs)?;
-                println!("mode index : {m} modes, {s} écrans, {a} assets, {t} textes");
+                println!("mode index: {m} modes, {s} screens, {a} assets, {t} texts");
                 Ok(())
             }
             ModeOp::Coverage {
@@ -2455,27 +2389,27 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
                 let settings = json
                     .get("settings")
                     .and_then(serde_json::Value::as_object)
-                    .context("sortie coverage sans settings")?;
+                    .context("coverage output without settings")?;
                 let unique = settings
                     .get("unique")
                     .and_then(serde_json::Value::as_u64)
-                    .context("coverage.settings.unique absent")?;
+                    .context("coverage.settings.unique missing")?;
                 let classified = settings
                     .get("classified")
                     .and_then(serde_json::Value::as_u64)
-                    .context("coverage.settings.classified absent")?;
+                    .context("coverage.settings.classified missing")?;
                 let unclassified = settings
                     .get("unclassified")
                     .and_then(serde_json::Value::as_u64)
-                    .context("coverage.settings.unclassified absent")?;
+                    .context("coverage.settings.unclassified missing")?;
                 let overlapping = settings
                     .get("overlapping")
                     .and_then(serde_json::Value::as_u64)
-                    .context("coverage.settings.overlapping absent")?;
+                    .context("coverage.settings.overlapping missing")?;
                 let duplicates = settings
                     .get("duplicateStems")
                     .and_then(serde_json::Value::as_u64)
-                    .context("coverage.settings.duplicateStems absent")?;
+                    .context("coverage.settings.duplicateStems missing")?;
                 let txt = serde_json::to_string_pretty(&json)?;
                 match out {
                     Some(path) if path.as_os_str() != "-" => {
@@ -2485,9 +2419,9 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
                             std::fs::create_dir_all(parent)?;
                         }
                         std::fs::write(&path, txt.as_bytes())
-                            .with_context(|| format!("écriture {}", path.display()))?;
+                            .with_context(|| format!("writing {}", path.display()))?;
                         println!(
-                            "mode coverage -> {} ({} écrans, {} classés, {} non classés)",
+                            "mode coverage -> {} ({} screens, {} classified, {} unclassified)",
                             path.display(),
                             unique,
                             classified,
@@ -2498,14 +2432,14 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
                 }
                 if strict && (overlapping != 0 || duplicates != 0) {
                     anyhow::bail!(
-                        "coverage incohérente : {overlapping} recouvrements, {duplicates} stems dupliqués"
+                        "inconsistent coverage: {overlapping} overlaps, {duplicates} duplicated stems"
                     );
                 }
                 Ok(())
             }
             ModeOp::Export { db, out } => {
                 let database = nie_index::Db::open(&db)
-                    .with_context(|| format!("ouverture {}", db.display()))?;
+                    .with_context(|| format!("opening {}", db.display()))?;
                 let json = mode_index::export_json(&database)?;
                 let txt = serde_json::to_string_pretty(&json)?;
                 match out {
@@ -2516,8 +2450,8 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
                             std::fs::create_dir_all(parent)?;
                         }
                         std::fs::write(&p, txt.as_bytes())
-                            .with_context(|| format!("écriture {}", p.display()))?;
-                        println!("mode export -> {} ({} octets)", p.display(), txt.len());
+                            .with_context(|| format!("writing {}", p.display()))?;
+                        println!("mode export -> {} ({} bytes)", p.display(), txt.len());
                     }
                     _ => println!("{txt}"),
                 }
@@ -2535,10 +2469,10 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
                     .find(|d| d.slug == slug)
                     .ok_or_else(|| {
                         let connus: Vec<&str> = mode_index::MODES.iter().map(|d| d.slug).collect();
-                        anyhow::anyhow!("mode « {slug} » inconnu — modes : {}", connus.join(", "))
+                        anyhow::anyhow!("unknown mode `{slug}`; modes: {}", connus.join(", "))
                     })?;
-                // Le binaire vit à la racine du jeu, pas sous `data/` : sans `--exe`, on le
-                // cherche là où `resolve_game_dir` a trouvé le VFS.
+                // The binary lives at the game root, not under `data/`: without `--exe`, look
+                // where `resolve_game_dir` found the VFS.
                 let exe = exe.or_else(|| {
                     let racine = game_dir
                         .clone()
@@ -2556,9 +2490,9 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
                             std::fs::create_dir_all(parent)?;
                         }
                         std::fs::write(&p, txt.as_bytes())
-                            .with_context(|| format!("écriture {}", p.display()))?;
+                            .with_context(|| format!("writing {}", p.display()))?;
                         println!(
-                            "mode contenu {slug} -> {} ({} octets)",
+                            "mode content {slug} -> {} ({} bytes)",
                             p.display(),
                             txt.len()
                         );
@@ -2590,7 +2524,7 @@ fn dispatch(cli: Cli) -> anyhow::Result<()> {
                     ramp: match rampe {
                         Some(spec) => {
                             let mut r = nie_formats::recolor::Ramp::parse(&spec)
-                                .map_err(|e| anyhow::anyhow!("--rampe : {e}"))?;
+                                .map_err(|e| anyhow::anyhow!("--rampe: {e}"))?;
                             r.strength = force;
                             Some(r)
                         }
@@ -2789,7 +2723,7 @@ pub fn execute_captured(command: String, args: Vec<String>) -> CapturedCommand {
     }
 }
 
-// ─── nie mem — RE en direct via nie-trace (Linux/Wine et Windows natif) ────────────
+// --- nie mem: live RE through nie-trace (Linux/Wine and native Windows) ---
 
 #[cfg(feature = "host")]
 mod host_only_cmds {
@@ -2845,7 +2779,7 @@ mod host_only_cmds {
         }
     }
 
-    /// Relève les palettes de l'éditeur d'avatar dans le jeu vivant et les rend en JSON.
+    /// Read the avatar editor palettes from the live game and print them as JSON.
     fn mem_palettes(
         catalogue: &std::path::Path,
         pid: i32,
@@ -2855,7 +2789,7 @@ mod host_only_cmds {
         fusionner: bool,
     ) -> anyhow::Result<()> {
         let brut = std::fs::read_to_string(catalogue)
-            .with_context(|| format!("lecture du catalogue {}", catalogue.display()))?;
+            .with_context(|| format!("reading the catalogue {}", catalogue.display()))?;
         let doc: serde_json::Value = serde_json::from_str(&brut)?;
         let mut attendus: Vec<u32> = Vec::new();
         if let Some(cats) = doc.get("categories").and_then(|c| c.as_array()) {
@@ -2876,11 +2810,11 @@ mod host_only_cmds {
         attendus.dedup();
         anyhow::ensure!(
             !attendus.is_empty(),
-            "aucun identifiant de palette dans le catalogue"
+            "no palette id in the catalogue"
         );
 
         let debut = u64::from_str_radix(addr.trim_start_matches("0x"), 16)
-            .with_context(|| format!("adresse invalide : {addr}"))?;
+            .with_context(|| format!("invalid address: {addr}"))?;
         let table = crate::mem_lua::palettes(pid, &attendus, debut, len)?;
 
         let json: serde_json::Map<String, serde_json::Value> = table
@@ -2895,8 +2829,8 @@ mod host_only_cmds {
                 )
             })
             .collect();
-        // Fusionner dans le catalogue met les couleurs à portée de tout consommateur qui le charge
-        // déjà — le client n'a rien à récupérer de plus.
+        // Merging into the catalogue puts the colors within reach of any consumer that already loads it;
+        // the client has nothing more to fetch.
         if fusionner {
             let mut catalogue_doc: serde_json::Value = serde_json::from_str(&brut)?;
             if let Some(obj) = catalogue_doc.as_object_mut() {
@@ -2906,9 +2840,9 @@ mod host_only_cmds {
                 );
             }
             std::fs::write(catalogue, serde_json::to_string(&catalogue_doc)?)
-                .with_context(|| format!("écriture de {}", catalogue.display()))?;
+                .with_context(|| format!("writing {}", catalogue.display()))?;
             println!(
-                "  {} / {} palette(s) fusionnée(s) dans {}",
+                "  {} / {} palette(s) merged into {}",
                 table.len(),
                 attendus.len(),
                 catalogue.display()
@@ -2921,7 +2855,7 @@ mod host_only_cmds {
             Some(p) => {
                 std::fs::write(p, serde_json::to_string_pretty(&doc)?)?;
                 println!(
-                    "  {} / {} palette(s) → {}",
+                    "  {} / {} palette(s) -> {}",
                     table.len(),
                     attendus.len(),
                     p.display()
@@ -2932,45 +2866,43 @@ mod host_only_cmds {
         Ok(())
     }
 
-    /// Résout/valide le pid (auto-détecte nie.exe si 0) et vérifie l'accès au processus.
+    /// Resolve and validate the pid (auto-detects nie.exe if 0) and check process access.
     ///
-    /// `nie-trace` choisit le backend natif à la compilation : `process_vm_readv` sous Linux/Wine,
-    /// `OpenProcess`/`ReadProcessMemory`/`VirtualQueryEx` sous Windows. Le jeu reste toujours un
-    /// processus existant : cette commande ne le lance ni ne le stoppe.
+    /// `nie-trace` picks the native backend at compile time: `process_vm_readv` on Linux/Wine, `OpenProcess`/`ReadProcessMemory`/`VirtualQueryEx` on Windows. The game stays an existing process: this command neither launches nor stops it.
     fn mem_preflight(pid: i32) -> anyhow::Result<i32> {
         let pid = if pid <= 0 {
             let p = nie_trace::find_pid_by_name("nie.exe")
-                .context("nie.exe introuvable — lance le jeu, ou précise --pid")?;
-            eprintln!("# nie.exe → pid {p}");
+                .context("nie.exe not found: start the game or pass --pid")?;
+            eprintln!("# nie.exe -> pid {p}");
             p
         } else {
             pid
         };
-        // Vérification d'existence du process : `/proc/<pid>` n'existe que sous Linux. Ailleurs, on
-        // laisse `nie-trace` trancher — son backend Windows (`OpenProcess`/`VirtualQueryEx`) rend une
-        // erreur parlante si le pid est mort ou inaccessible.
+        // Process existence check: `/proc/<pid>` exists only on Linux. Elsewhere, leave it to
+        // `nie-trace`: its Windows backend (`OpenProcess`/`VirtualQueryEx`) returns a
+        // clear error if the pid is dead or inaccessible.
         #[cfg(target_os = "linux")]
         if !std::path::Path::new(&format!("/proc/{pid}")).exists() {
-            anyhow::bail!("pid {pid} inexistant.");
+            anyhow::bail!("pid {pid} does not exist.");
         }
         #[cfg(windows)]
         if nie_trace::enumerate_regions(pid).is_empty() {
             anyhow::bail!(
-                "pid {pid} inaccessible : process inexistant, ou droits insuffisants \
-             (le backend Windows utilise OpenProcess/VirtualQueryEx ; le lecteur doit avoir \
-             des droits au moins égaux à ceux du jeu)."
+                "pid {pid} is inaccessible: no such process, or insufficient rights \
+             (the Windows backend uses OpenProcess/VirtualQueryEx; the reader needs \
+             rights at least equal to the game's)."
             );
         }
         #[cfg(not(any(target_os = "linux", windows)))]
         anyhow::bail!(
-            "lecture mémoire non prise en charge sur cette plateforme ; utilisez Linux/Wine ou Windows"
+            "memory reading is not supported on this platform; use Linux/Wine or Windows"
         );
         #[cfg(target_os = "linux")]
         if !nie_trace::likely_permitted(pid) {
             let scope = nie_trace::read_ptrace_scope();
             eprintln!(
-                "# Attention: ptrace_scope={scope} et le lecteur n'est pas ancêtre de {pid}. \
-             Lecture probablement refusée (EPERM). Remède: \
+                "# warning: ptrace_scope={scope} and the reader is not an ancestor of {pid}. \
+             Read probably denied (EPERM). Fix: \
              `echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope`."
             );
         }
@@ -2995,9 +2927,9 @@ mod host_only_cmds {
         let suffix = if all {
             String::new()
         } else {
-            format!(" (module « {module} »)")
+            format!(" (module `{module}`)")
         };
-        println!("\n  {} plage(s), {total} octets{suffix}", maps.len());
+        println!("\n  {} range(s), {total} bytes{suffix}", maps.len());
         Ok(())
     }
 
@@ -3005,7 +2937,7 @@ mod host_only_cmds {
         let pid = mem_preflight(pid)?;
         match nie_trace::find_module_base(pid, module) {
             Some(base) => println!("  {module} @ 0x{base:x} (pid {pid})"),
-            None => anyhow::bail!("Module « {module} » introuvable dans les plages du pid {pid}"),
+            None => anyhow::bail!("module `{module}` not found in the ranges of pid {pid}"),
         }
         Ok(())
     }
@@ -3019,14 +2951,14 @@ mod host_only_cmds {
         let pid = mem_preflight(pid)?;
         let address = mem_resolve_addr(addr, pid)?;
         let mut buf = vec![0u8; len];
-        let got = nie_trace::read(pid, address, &mut buf).context("lecture mémoire live")?;
+        let got = nie_trace::read(pid, address, &mut buf).context("reading live memory")?;
         if got == 0 {
-            anyhow::bail!("0 octet lu (plage non mappée ?)");
+            anyhow::bail!("0 bytes read (unmapped range?)");
         }
         match output {
             Some(p) => {
                 std::fs::write(p, &buf[..got])?;
-                println!("  {got} octets @ 0x{address:x} → {}", p.display());
+                println!("  {got} bytes @ 0x{address:x} -> {}", p.display());
             }
             None => crate::print_hexdump(&buf[..got], address),
         }
@@ -3037,9 +2969,9 @@ mod host_only_cmds {
         let pid = mem_preflight(pid)?;
         let address = mem_resolve_addr(addr, pid)?;
         let bytes = mem_parse_write_data(data)?;
-        nie_trace::write_exact(pid, address, &bytes).context("écriture mémoire live")?;
+        nie_trace::write_exact(pid, address, &bytes).context("writing live memory")?;
         println!(
-            "  {} octet(s) écrit(s) @ 0x{address:x} (pid {pid})",
+            "  {} byte(s) written @ 0x{address:x} (pid {pid})",
             bytes.len()
         );
         Ok(())
@@ -3081,7 +3013,7 @@ mod host_only_cmds {
             return Ok(num.to_le_bytes().to_vec());
         }
         anyhow::bail!(
-            "format de données invalide : utiliser des octets hex ('90 90', '0x9090'), 'str:...', 'wstr:...' ou un entier"
+            "invalid data format: use hex bytes ('90 90', '0x9090'), 'str:...', 'wstr:...' or an integer"
         );
     }
 
@@ -3090,7 +3022,7 @@ mod host_only_cmds {
         let maps = nie_trace::module_regions(pid, module, all);
         let stats = nie_trace::dump_regions(pid, &maps, output)?;
         println!(
-            "  {} plage(s) dumpée(s), {} octets → {}",
+            "  {} range(s) dumped, {} bytes -> {}",
             stats.regions,
             stats.bytes,
             output
@@ -3121,11 +3053,11 @@ mod host_only_cmds {
             println!("  0x{:012x}{rva}  [{}]", h.addr, h.perms);
         }
         let capped = if hits.len() >= limit {
-            format!(" (limité à {limit})")
+            format!(" (limited to {limit})")
         } else {
             String::new()
         };
-        println!("\n  {} hit(s) pour {label}{capped}", hits.len());
+        println!("\n  {} hit(s) for {label}{capped}", hits.len());
         Ok(())
     }
 
@@ -3205,9 +3137,9 @@ mod host_only_cmds {
     ) -> anyhow::Result<()> {
         let pid = mem_preflight(pid)?;
         let content = std::fs::read_to_string(file)
-            .with_context(|| format!("lecture recette {}", file.display()))?;
+            .with_context(|| format!("reading recipe {}", file.display()))?;
         let r = nie_trace::recette::parser(&content)
-            .map_err(|e| anyhow::anyhow!("erreur syntaxe recette : {e}"))?;
+            .map_err(|e| anyhow::anyhow!("recipe syntax error: {e}"))?;
 
         let name = if r.nom.is_empty() {
             file.display().to_string()
@@ -3215,13 +3147,13 @@ mod host_only_cmds {
             r.nom.clone()
         };
         println!(
-            "\n  recette « {} » ({} règle(s)) sur pid {pid} [{}]",
+            "\n  recipe `{}` ({} rule(s)) on pid {pid} [{}]",
             name,
             r.regles.len(),
             if force {
-                "ÉCRITURE ACTIVE"
+                "WRITE ENABLED"
             } else {
-                "À BLANC / DRY-RUN"
+                "DRY RUN"
             }
         );
 
@@ -3230,37 +3162,37 @@ mod host_only_cmds {
             let statut = if res.erreur.is_none() && res.trouvees > 0 {
                 "OK"
             } else {
-                "ÉCHEC"
+                "FAILED"
             };
             let msg = res.erreur.as_deref().unwrap_or("");
             println!(
-                "  [{statut}] règle {:?} (trouvées={}, écrites={}) : {msg}",
+                "  [{statut}] rule {:?} (found={}, written={}): {msg}",
                 res.regle, res.trouvees, res.ecrites
             );
         }
         println!(
-            "\n  Bilan : {} écriture(s), {} échec(s)",
+            "\n  Summary: {} write(s), {} failure(s)",
             rapport.total_ecrites(),
             rapport.echecs()
         );
         if !force {
-            println!("  Note : Mode à blanc par défaut. Passez --force pour appliquer réellement.");
+            println!("  Note: dry run by default. Pass --force to apply the writes.");
         }
         Ok(())
     }
 
-    /// Parse `0x…` (absolu) ou `module+0xRVA` (résolu via la base du module).
+    /// Parse `0x…` (absolute) or `module+0xRVA` (resolved through the module base).
     fn mem_resolve_addr(addr: &str, pid: i32) -> anyhow::Result<u64> {
         let s = addr.trim();
         if let Some(plus) = s.find('+') {
             let module = &s[..plus];
             let rva = parse_u64_hex(&s[plus + 1..])
-                .with_context(|| format!("RVA invalide: {}", &s[plus + 1..]))?;
+                .with_context(|| format!("invalid RVA: {}", &s[plus + 1..]))?;
             let base = nie_trace::find_module_base(pid, module)
-                .with_context(|| format!("Module « {module} » introuvable"))?;
+                .with_context(|| format!("module `{module}` not found"))?;
             return Ok(base + rva);
         }
-        parse_u64_hex(s).with_context(|| format!("Adresse invalide: {s}"))
+        parse_u64_hex(s).with_context(|| format!("invalid address: {s}"))
     }
 
     fn parse_u64_hex(s: &str) -> anyhow::Result<u64> {
@@ -3272,15 +3204,15 @@ mod host_only_cmds {
         Ok(u64::from_str_radix(s, 16)?)
     }
 
-    /// Parse un motif : `wstr:texte` (UTF-16LE), `str:texte` (UTF-8), ou octets hex `48 8B 0D`.
+    /// Parse a pattern: `wstr:text` (UTF-16LE), `str:text` (UTF-8), or hex bytes `48 8B 0D`.
     fn mem_parse_pattern(pattern: &str) -> anyhow::Result<(Vec<u8>, String)> {
         if let Some(text) = pattern.strip_prefix("wstr:") {
             let needle: Vec<u8> = text.encode_utf16().flat_map(u16::to_le_bytes).collect();
-            anyhow::ensure!(!needle.is_empty(), "Motif wstr: vide");
+            anyhow::ensure!(!needle.is_empty(), "empty wstr: pattern");
             return Ok((needle, format!("wstr \"{text}\"")));
         }
         if let Some(text) = pattern.strip_prefix("str:") {
-            anyhow::ensure!(!text.is_empty(), "Motif str: vide");
+            anyhow::ensure!(!text.is_empty(), "empty str: pattern");
             return Ok((text.as_bytes().to_vec(), format!("\"{text}\"")));
         }
         let hex: String = pattern
@@ -3289,13 +3221,13 @@ mod host_only_cmds {
             .collect();
         anyhow::ensure!(
             !hex.is_empty() && hex.len().is_multiple_of(2),
-            "Motif hex de longueur impaire/vide"
+            "hex pattern of odd length or empty"
         );
         let mut bytes = Vec::with_capacity(hex.len() / 2);
         for i in (0..hex.len()).step_by(2) {
             bytes.push(
                 u8::from_str_radix(&hex[i..i + 2], 16)
-                    .with_context(|| format!("Octet hex invalide à {i}"))?,
+                    .with_context(|| format!("invalid hex byte at {i}"))?,
             );
         }
         let label = format!(
@@ -3317,11 +3249,11 @@ mod host_only_cmds {
         if let Some(parent) = db_path.parent() {
             std::fs::create_dir_all(parent).ok();
         }
-        let mut db = nie_index::Db::open(db_path).context("ouverture base")?;
+        let mut db = nie_index::Db::open(db_path).context("opening the database")?;
 
         let (sha, size, path_str) = match exe {
             Some(p) => {
-                let bytes = std::fs::read(p).with_context(|| format!("lecture {}", p.display()))?;
+                let bytes = std::fs::read(p).with_context(|| format!("reading {}", p.display()))?;
                 let mut h = Sha256::new();
                 h.update(&bytes);
                 (
@@ -3367,9 +3299,9 @@ mod host_only_cmds {
     ) -> anyhow::Result<()> {
         let vfs = open_vfs(game_dir)?;
         let db = nie_index::Db::open(db_path)
-            .with_context(|| format!("ouverture {}", db_path.display()))?;
-        // `hash_name` peut ne pas exister encore sur une base fraîche.
-        db.init().context("application du schéma")?;
+            .with_context(|| format!("opening {}", db_path.display()))?;
+        // `hash_name` may not exist yet on a fresh database.
+        db.init().context("applying the schema")?;
 
         let stats = seed_ui::run(&db, &vfs, textures)?;
         let par_kind = stats
@@ -3379,11 +3311,11 @@ mod host_only_cmds {
             .collect::<Vec<_>>()
             .join(" ");
         println!(
-            "seed-ui écrans={} objbin={} g4tx={} — {par_kind}",
+            "seed-ui screens={} objbin={} g4tx={} | {par_kind}",
             stats.screens, stats.objbins, stats.g4tx
         );
         println!(
-            "  lignes hash_name (source vfs-ui) = {} ; crc_mismatch={} ; sautés={}",
+            "  hash_name rows (source vfs-ui) = {}; crc_mismatch={}; skipped={}",
             stats.inserted, stats.crc_mismatch, stats.skipped
         );
         Ok(())
@@ -3395,9 +3327,9 @@ mod host_only_cmds {
         opts: &strings_cmd::Options,
     ) -> anyhow::Result<()> {
         let db = nie_index::Db::open(db_path)
-            .with_context(|| format!("ouverture {}", db_path.display()))?;
-        // `str.kind` / `func_str_ref.source` peuvent manquer sur une base antérieure.
-        db.init().context("application du schéma")?;
+            .with_context(|| format!("opening {}", db_path.display()))?;
+        // `str.kind` / `func_str_ref.source` may be missing on an older database.
+        db.init().context("applying the schema")?;
 
         let s = strings_cmd::run(&db, exe, opts)?;
         let par_sec = s
@@ -3407,48 +3339,45 @@ mod host_only_cmds {
             .collect::<Vec<_>>()
             .join(" ");
         println!(
-            "strings binaire={} ({}) — ascii={} utf16={} (trop longues={}) | {par_sec}",
+            "strings binary={} ({}) | ascii={} utf16={} (too long={}) | {par_sec}",
             s.binary_id, s.binary_path, s.ascii, s.utf16, s.oversized
         );
         if s.dry_run {
-            println!("  DRY-RUN : aucune écriture");
+            println!("  DRY RUN: nothing written");
         } else {
-            println!("  str : {} lignes insérées", s.str_inserted);
+            println!("  str: {} rows inserted", s.str_inserted);
         }
         if !opts.no_xrefs {
             println!(
-                "  .text : {} racines .pdata ({} avec ligne function), {} corps décodés ({} tronqués), {} instructions",
+                "  .text: {} .pdata roots ({} with a function row), {} bodies decoded ({} truncated), {} instructions",
                 s.roots, s.roots_mapped, s.funcs_scanned, s.bodies_truncated, s.insns
             );
             println!(
-                "  hits : lea exact={} + suffixe={} sur {} lea rip | imm64={} | rip non-lea sur chaîne (non ingéré) = {}",
+                "  hits: lea exact={} + suffix={} over {} lea rip | imm64={} | non-lea rip on string (not ingested) = {}",
                 s.lea_hits, s.lea_suffix, s.lea_rip, s.imm_hits, s.rip_other_hits
             );
             println!(
-                "  couples (fonction, chaîne) = {} sur {} fonctions ; suffixes matérialisés = {}",
+                "  (function, string) pairs = {} over {} functions; suffixes materialized = {}",
                 s.pairs, s.funcs_with_str, s.suffixes
             );
             println!(
-                "  func_str_ref +{} (-{} remplacées) ; xref str +{}",
+                "  func_str_ref +{} (-{} replaced); xref str +{}",
                 s.str_refs_inserted, s.str_refs_deleted, s.xrefs_inserted
             );
         }
         Ok(())
     }
 
-    /// Binaire à **lire** pour une mesure ou une propagation.
+    /// Binary to **read** for a measure or a propagation.
     ///
-    /// Deux binaires cohabitent : l'index Ghidra (`id` le plus bas, adresses désalignées) et la vérité
-    /// terrain `…#pdata` que produit `rebuild`. `ORDER BY id LIMIT 1` tombe sur le premier — donc sur
-    /// un binaire qui ne porte ni fonction ni ancre dès que la KB a été refondée sur `.pdata`, et la
-    /// commande annonce alors `0/0` sans erreur. Préférer `#pdata` quand il existe.
+    /// Two binaries coexist: the Ghidra index (lowest `id`, misaligned addresses) and the `…#pdata` ground truth produced by `rebuild`. `ORDER BY id LIMIT 1` picks the first, which carries no function or anchor once the knowledge base was rebuilt on `.pdata`, so the command reports `0/0` without error. Prefer `#pdata` when it exists.
     fn analysis_binary(conn: &nie_index::rusqlite::Connection) -> anyhow::Result<i64> {
         conn.query_row(
             "SELECT id FROM binary ORDER BY (path LIKE '%#pdata') DESC, id LIMIT 1",
             [],
             |r| r.get(0),
         )
-        .context("aucun binaire indexé — lancer `nie seed` d'abord")
+        .context("no indexed binary: run `nie seed` first")
     }
 
     pub(crate) fn coverage(db_path: &std::path::Path) -> anyhow::Result<()> {
@@ -3473,23 +3402,23 @@ mod host_only_cmds {
         match op {
             QueueOp::Push { addr } => {
                 let added = f.push(addr)?;
-                println!("{}", if added { "ajoutée" } else { "déjà vue" });
+                println!("{}", if added { "added" } else { "already seen" });
             }
             QueueOp::Pop => match f.pop()? {
                 Some(a) => println!("0x{a:x}"),
-                None => println!("(frontière vide)"),
+                None => println!("(empty frontier)"),
             },
-            QueueOp::Len => println!("frontière: {} | vues: {}", f.len()?, f.seen_count()?),
+            QueueOp::Len => println!("frontier: {} | seen: {}", f.len()?, f.seen_count()?),
             QueueOp::Reset => {
                 f.reset()?;
-                println!("frontière réinitialisée");
+                println!("frontier reset");
             }
         }
         Ok(())
     }
 
     pub(crate) fn propagate(db_path: &std::path::Path, rounds: usize) -> anyhow::Result<()> {
-        let mut db = nie_index::Db::open(db_path).context("ouverture base")?;
+        let mut db = nie_index::Db::open(db_path).context("opening the database")?;
         let bin: i64 = analysis_binary(db.conn())?;
 
         let stats =
@@ -3512,16 +3441,16 @@ mod host_only_cmds {
         db_path: &std::path::Path,
         exe_path: &std::path::Path,
     ) -> anyhow::Result<()> {
-        let mut db = nie_index::Db::open(db_path).context("ouverture base")?;
+        let mut db = nie_index::Db::open(db_path).context("opening the database")?;
         let bin: i64 = db
             .conn()
             .query_row("SELECT id FROM binary ORDER BY id LIMIT 1", [], |r| {
                 r.get(0)
             })
-            .context("aucun binaire indexé — lancer `nie seed` d'abord")?;
+            .context("no indexed binary: run `nie seed` first")?;
 
         let bytes =
-            std::fs::read(exe_path).with_context(|| format!("lecture {}", exe_path.display()))?;
+            std::fs::read(exe_path).with_context(|| format!("reading {}", exe_path.display()))?;
 
         let stats = nie_re_core::nie::rtti::parse_and_ingest(&mut db, bin, &bytes)
             .context("parsing RTTI")?;
@@ -3537,16 +3466,16 @@ mod host_only_cmds {
         db_path: &std::path::Path,
         exe_path: &std::path::Path,
     ) -> anyhow::Result<()> {
-        let mut db = nie_index::Db::open(db_path).context("ouverture base")?;
+        let mut db = nie_index::Db::open(db_path).context("opening the database")?;
         let bin: i64 = db
             .conn()
             .query_row("SELECT id FROM binary ORDER BY id LIMIT 1", [], |r| {
                 r.get(0)
             })
-            .context("aucun binaire indexé — lancer `nie seed` d'abord")?;
+            .context("no indexed binary: run `nie seed` first")?;
 
         let stats = nie_re_core::nie::indexer::triage_into(&mut db, bin, exe_path)
-            .context("indexation PE")?;
+            .context("indexing PE")?;
 
         println!(
             "index fmt={} sections={} imports={} exports={}",
@@ -3559,18 +3488,18 @@ mod host_only_cmds {
         db_path: &std::path::Path,
         exe_path: &std::path::Path,
     ) -> anyhow::Result<()> {
-        let mut db = nie_index::Db::open(db_path).context("ouverture base")?;
+        let mut db = nie_index::Db::open(db_path).context("opening the database")?;
         let bin: i64 = db
             .conn()
             .query_row("SELECT id FROM binary ORDER BY id LIMIT 1", [], |r| {
                 r.get(0)
             })
-            .context("aucun binaire indexé — lancer `nie seed` d'abord")?;
+            .context("no indexed binary: run `nie seed` first")?;
 
-        // A/B : NIE_NO_INDIRECT=1 détecte les LEA (stats) mais ne les insère pas.
+        // A/B: NIE_NO_INDIRECT=1 detects the LEAs (stats) but does not insert them.
         let skip_lea = std::env::var("NIE_NO_INDIRECT").is_ok();
         let stats = nie_re_core::nie::disasm::recover_call_edges(&mut db, bin, exe_path, skip_lea)
-            .context("désassemblage des arêtes d'appel")?;
+            .context("disassembling the call edges")?;
 
         println!(
             "disasm insn={} call={} jmp={} thunk={} miss={} cand={} new={} | lea_insn={} lea_cand={} lea_new={}",
@@ -3592,16 +3521,16 @@ mod host_only_cmds {
         db_path: &std::path::Path,
         exe_path: &std::path::Path,
     ) -> anyhow::Result<()> {
-        let mut db = nie_index::Db::open(db_path).context("ouverture base")?;
+        let mut db = nie_index::Db::open(db_path).context("opening the database")?;
         let bin: i64 = db
             .conn()
             .query_row("SELECT id FROM binary ORDER BY id LIMIT 1", [], |r| {
                 r.get(0)
             })
-            .context("aucun binaire indexé — lancer `nie seed` d'abord")?;
+            .context("no indexed binary: run `nie seed` first")?;
 
         let stats = nie_re_core::nie::pdata::discover_into(&mut db, bin, exe_path)
-            .context("découverte .pdata")?;
+            .context("discovering .pdata")?;
 
         let pct_aligned = if stats.ghidra_total > 0 {
             100.0 * stats.overlap_ghidra as f64 / stats.ghidra_total as f64
@@ -3622,11 +3551,9 @@ mod host_only_cmds {
         Ok(())
     }
 
-    /// Résout l'id du binaire `…#pdata` (vérité terrain des bornes de fonction).
+    /// Resolve the id of the `…#pdata` binary (ground truth for function bounds).
     ///
-    /// `rebuild` le crée à partir du premier binaire indexé ; les passes qui
-    /// travaillent sur les fonctions doivent viser **celui-là**, pas l'index
-    /// Ghidra d'origine.
+    /// `rebuild` creates it from the first indexed binary; passes working on functions must target this one, not the original Ghidra index.
     fn pdata_binary_id(db: &nie_index::Db) -> anyhow::Result<i64> {
         db.conn()
             .query_row(
@@ -3634,7 +3561,7 @@ mod host_only_cmds {
                 [],
                 |r| r.get(0),
             )
-            .context("binaire #pdata absent — lancer `nie rebuild` d'abord")
+            .context("#pdata binary missing: run `nie rebuild` first")
     }
 
     pub(crate) fn recover_cmd(
@@ -3643,9 +3570,9 @@ mod host_only_cmds {
         dry_run: bool,
         ghidra_csv: Option<&std::path::Path>,
     ) -> anyhow::Result<()> {
-        let mut db = nie_index::Db::open(db_path).context("ouverture base")?;
+        let mut db = nie_index::Db::open(db_path).context("opening the database")?;
         let bin = pdata_binary_id(&db)?;
-        let mut observe = |step| eprintln!("recover: étape terminée: {step:?}");
+        let mut observe = |step| eprintln!("recover: step done: {step:?}");
         let report = nie_re_core::nie::workflow::recover_with_observer(
             &mut db,
             exe_path,
@@ -3659,7 +3586,7 @@ mod host_only_cmds {
 
         if let Some(gs) = report.ghidra {
             println!(
-                "  ghidra: {} lignes | {} noms par defaut ecartes, {} adresses sans correspondance | {} noms ecrits (dont {} remplacant un nom structurel)",
+                "  ghidra: {} rows | {} default names dropped, {} unmatched addresses | {} names written ({} replacing a structural name)",
                 gs.rows, gs.default_names, gs.unmatched, gs.named, gs.replaced_struct,
             );
         }
@@ -3670,7 +3597,7 @@ mod host_only_cmds {
             0.0
         };
         println!(
-            "recover pdata={} o | trous={} ({} o) | candidats neufs={} | feuilles mesurees={} (par ref={} par scan={}) rejetees={} | code mesure={} o | code en trou={} o padding={} o | residu={} o | explique {:.2}% des trous | inserees={} thunks={} edges={}",
+            "recover pdata={} B | gaps={} ({} B) | new candidates={} | leaves measured={} (by ref={} by scan={}) rejected={} | code measured={} B | code in gaps={} B padding={} B | residue={} B | explains {:.2}% of gaps | inserted={} thunks={} edges={}",
             st.pdata_bytes,
             st.gaps,
             st.gap_bytes,
@@ -3689,7 +3616,7 @@ mod host_only_cmds {
             st.edges_new,
         );
         println!(
-            "  formes: thunk={} const={} ptr={} stub={} | noms structurels={} | sous-systeme herite={} | fausses bornes purgees={}",
+            "  shapes: thunk={} const={} ptr={} stub={} | structural names={} | subsystem inherited={} | false bounds purged={}",
             st.shape_thunk,
             st.shape_const,
             st.shape_ptr,
@@ -3703,7 +3630,7 @@ mod host_only_cmds {
         };
         let av = enrichment.anonymous_vtables;
         println!(
-            "  vtables sans RTTI: {}/{} tables ({} slots, {} methodes) | fonctions+={} cohesion={} noms={}",
+            "  vtables without RTTI: {}/{} tables ({} slots, {} methods) | functions+={} cohesion={} names={}",
             av.tables,
             av.tables_seen,
             av.slots,
@@ -3714,24 +3641,24 @@ mod host_only_cmds {
         );
         let sr = enrichment.string_references;
         println!(
-            "  chaines: {} relevees | {} fonctions scannees, {} references ({} nouvelles) | {} chaines identifiantes a referent unique | {} noms semantiques",
+            "  strings: {} read | {} functions scanned, {} references ({} new) | {} identifying strings with a unique referent | {} semantic names",
             sr.strings, sr.scanned, sr.refs, sr.refs_new, sr.unique_idents, sr.named,
         );
         let fl = enrichment.func_lua;
         println!(
-            "  funcLua: {} tables ({} entrees, {} handlers) | fonctions+={} nommes={} classes script={}",
+            "  funcLua: {} tables ({} entries, {} handlers) | functions+={} named={} script classes={}",
             fl.tables, fl.entries, fl.handlers, fl.new_funcs, fl.named, fl.classified,
         );
         let ad = enrichment.adjacency;
         println!(
-            "  contiguite: {} classees | coherence {:.1}% mesuree sur {} cas de controle (cohérence avec l'etiquetage existant, pas verite terrain)",
+            "  contiguity: {} classified | coherence {:.1}% measured over {} control cases (agreement with the existing labeling, not ground truth)",
             ad.classified,
             ad.precision_estimate(),
             ad.control_cases,
         );
         let cov = enrichment.coverage;
         println!(
-            "  couverture: {}/{} classees ({:.2}%), {} nommees",
+            "  coverage: {}/{} classified ({:.2}%), {} named",
             cov.classified, cov.total, cov.pct, cov.named,
         );
         Ok(())
@@ -3742,13 +3669,13 @@ mod host_only_cmds {
         exe_path: &std::path::Path,
         rounds: usize,
     ) -> anyhow::Result<()> {
-        let mut db = nie_index::Db::open(db_path).context("ouverture base")?;
+        let mut db = nie_index::Db::open(db_path).context("opening the database")?;
         let source_binary_id = db
             .conn()
             .query_row("SELECT id FROM binary ORDER BY id LIMIT 1", [], |row| {
                 row.get(0)
             })
-            .context("aucun binaire indexé — lancer `nie seed` d'abord")?;
+            .context("no indexed binary: run `nie seed` first")?;
         let report = nie_re_core::nie::workflow::rebuild(
             &mut db,
             exe_path,
@@ -3771,7 +3698,7 @@ mod host_only_cmds {
             0.0
         };
         println!(
-            "rebuild roots={} str={} ce={} rtti={} | vtable methods={} leaf+={} cohesion={} anchored={} named_struct={} | disasm new={} lea_new={} | named={}/{} ({:.2}%) | cov_brut={}/{} ({:.2}%) cov_conf>=0.3={}/{} ({:.2}%)",
+            "rebuild roots={} str={} ce={} rtti={} | vtable methods={} leaf+={} cohesion={} anchored={} named_struct={} | disasm new={} lea_new={} | named={}/{} ({:.2}%) | cov_raw={}/{} ({:.2}%) cov_conf>=0.3={}/{} ({:.2}%)",
             report.pdata.roots,
             report.pdata.str_refs_moved,
             report.pdata.ce_edges_mapped,
@@ -3796,8 +3723,7 @@ mod host_only_cmds {
         Ok(())
     }
 
-    /// Une région d'atlas (sous-texture) du manifeste — mêmes clés que `/tex-info` de
-    /// `nie-model-serve`, pour que les deux vues du même conteneur restent interchangeables.
+    /// An atlas region (sub-texture) of the manifest, with the same keys as `/tex-info` of `nie-model-serve`.
     #[derive(serde::Serialize)]
     struct TexRegion<'a> {
         name: &'a str,
@@ -3807,14 +3733,9 @@ mod host_only_cmds {
         height: i16,
     }
 
-    /// Entrée du manifeste NDJSON pour une texture G4TX.
+    /// NDJSON manifest entry for a G4TX texture.
     ///
-    /// `name` et `regions_detail` manquaient jusqu'ici (issue #… vécue le 2026-08-15) : le
-    /// parseur les avait déjà sous la main (`G4txTexture::name`/`sub_textures`), seule la
-    /// sérialisation les jetait — le manifeste ne permettait donc de résoudre AUCUN nom de
-    /// texture ni AUCUNE région d'atlas, condition bloquante pour toute correspondance
-    /// nom→rôle. `regions` reste le compte, pour ne pas casser les consommateurs existants
-    /// qui ne lisent que ce champ.
+    /// Carries `name` and `regions_detail` so texture names and atlas regions can be resolved; `regions` stays the count for existing consumers.
     #[derive(serde::Serialize)]
     struct TexEntry<'a> {
         path: &'a str,
@@ -3844,18 +3765,9 @@ mod host_only_cmds {
         // Initialiser le VFS depuis cpk_list.cfg.bin
         let mut vfs = Vfs::new();
         vfs.init(&data_dir)
-            .context("init VFS depuis cpk_list.cfg.bin")?;
+            .context("init VFS from cpk_list.cfg.bin")?;
 
-        // Collecter tous les chemins .g4tx indexés, depuis l'index que le VFS vient
-        // de construire.
-        //
-        // Cette liste était auparavant reconstruite par `collect_g4tx_paths`, qui
-        // rouvrait `cpk_list.cfg.bin` pour son compte : déchiffrement Viola
-        // inconditionnel puis parse T2B. Le commentaire justifiait ce doublon par
-        // une API `Vfs` sans itérateur — or `vfs.iter()` existe et sert déjà à
-        // `vfs find` / `vfs stats`. Le build du 2026-07-24 a cassé ce second
-        // parseur (« T2B header: negative count/offset/length ») alors que
-        // `Vfs::init`, juste au-dessus, lisait le même fichier sans broncher.
+        // Collect every indexed .g4tx path from the index the VFS just built (`vfs.iter()`).
         let mut all_g4tx: Vec<(String, String)> = vfs
             .iter()
             .filter(|(p, _)| p.ends_with(".g4tx"))
@@ -3871,25 +3783,25 @@ mod host_only_cmds {
             total_found,
             to_process,
             dropped,
-            "fichiers .g4tx découverts"
+            ".g4tx files discovered"
         );
 
-        // Préparer le fichier manifeste
+        // Prepare the manifest file
         if let Some(parent) = manifest_path.parent() {
             std::fs::create_dir_all(parent).ok();
         }
         let mut manifest_file = std::fs::File::create(manifest_path)
-            .with_context(|| format!("création manifeste {}", manifest_path.display()))?;
+            .with_context(|| format!("creating manifest {}", manifest_path.display()))?;
 
         // Connexion Redis optionnelle
         let mut redis_conn: Option<redis::Connection> = if use_redis {
             match redis::Client::open(redis_url).and_then(|c| c.get_connection()) {
                 Ok(conn) => {
-                    tracing::info!("Redis connecté : {redis_url}");
+                    tracing::info!("Redis connected: {redis_url}");
                     Some(conn)
                 }
                 Err(e) => {
-                    tracing::warn!("Redis indisponible ({e}) — poursuite sans Redis");
+                    tracing::warn!("Redis unavailable ({e}); continuing without Redis");
                     None
                 }
             }
@@ -3904,7 +3816,7 @@ mod host_only_cmds {
             let raw = match vfs.read(internal_path) {
                 Ok(b) => b,
                 Err(e) => {
-                    tracing::warn!("échec extraction {internal_path}: {e}");
+                    tracing::warn!("extraction failed {internal_path}: {e}");
                     failed += 1;
                     continue;
                 }
@@ -3913,18 +3825,18 @@ mod host_only_cmds {
             let g = match g4tx::parse(&raw) {
                 Ok(g) => g,
                 Err(e) => {
-                    tracing::warn!("échec parse g4tx {internal_path}: {e}");
+                    tracing::warn!("g4tx parse failed {internal_path}: {e}");
                     failed += 1;
                     continue;
                 }
             };
 
-            // Pour chaque texture dans le conteneur g4tx
+            // For each texture in the g4tx container
             for tex in &g.textures {
-                // Format : on déduit depuis is_dds ; mips : approximation depuis les dimensions
-                // (le champ mips n'est pas dans le header G4TX public — on expose 0 comme sentinelle)
+                // Format: deduced from is_dds; mips: approximated from the dimensions
+                // (the mips field is not in the public G4TX header: 0 is exposed as a sentinel)
                 let format_str: &'static str = if tex.is_dds { "DDS" } else { "NXTCH" };
-                let mips: u8 = 0; // G4txHeader n'expose pas de champ mips explicite
+                let mips: u8 = 0; // G4txHeader exposes no explicit mips field
 
                 let regions_detail: Vec<TexRegion> = tex
                     .sub_textures
@@ -3950,16 +3862,16 @@ mod host_only_cmds {
                     regions_detail,
                 };
 
-                let line = serde_json::to_string(&entry).context("sérialisation JSON")?;
-                writeln!(manifest_file, "{line}").context("écriture manifeste")?;
+                let line = serde_json::to_string(&entry).context("serializing JSON")?;
+                writeln!(manifest_file, "{line}").context("writing manifest")?;
 
-                // Pousser dans Redis si activé
+                // Push to Redis if enabled
                 if let Some(ref mut conn) = redis_conn {
                     use redis::Commands;
                     let redis_path_key = format!("iev:tex:{internal_path}");
                     if let Err(e) = conn.sadd::<_, _, i64>("iev:tex:index", internal_path.as_str())
                     {
-                        tracing::warn!("redis SADD échec: {e}");
+                        tracing::warn!("redis SADD failed: {e}");
                     }
                     if let Err(e) = conn.hset_multiple::<_, _, _, ()>(
                         &redis_path_key,
@@ -3973,16 +3885,16 @@ mod host_only_cmds {
                             ("cpk", cpk_name.clone()),
                         ],
                     ) {
-                        tracing::warn!("redis HSET échec: {e}");
+                        tracing::warn!("redis HSET failed: {e}");
                     }
-                    // Index inversé nom-de-région → conteneur : c'est ce qui manque pour résoudre
-                    // « où est gtxt_rarity01_05 » sans reparser tous les g4tx.
+                    // Inverted region-name -> container index: this is what is missing to resolve
+                    // "where is gtxt_rarity01_05" without reparsing every g4tx.
                     for region in &tex.sub_textures {
                         if let Err(e) = conn.sadd::<_, _, i64>(
                             format!("iev:tex:region:{}", region.name),
                             internal_path.as_str(),
                         ) {
-                            tracing::warn!("redis SADD région échec: {e}");
+                            tracing::warn!("redis SADD region failed: {e}");
                         }
                     }
                 }
@@ -3991,7 +3903,7 @@ mod host_only_cmds {
             parsed += 1;
         }
 
-        // Écrire meta Redis
+        // Write the Redis meta
         if let Some(ref mut conn) = redis_conn {
             use redis::Commands;
             if let Err(e) = conn.hset_multiple::<_, _, _, ()>(
@@ -4004,7 +3916,7 @@ mod host_only_cmds {
                     ("dropped", dropped.to_string()),
                 ],
             ) {
-                tracing::warn!("redis meta HSET échec: {e}");
+                tracing::warn!("redis meta HSET failed: {e}");
             }
         }
 
@@ -4016,7 +3928,7 @@ mod host_only_cmds {
             0
         };
 
-        // Sortie terse (convention nie : 1 ligne clé=val)
+        // Terse output (nie convention: one key=val line)
         if dropped > 0 {
             println!(
                 "tex.parsed={parsed} tex.failed={failed} tex.total={total_found} tex.dropped={dropped} manifest={} redis_index={}",
@@ -4045,7 +3957,7 @@ fn save_cmd(op: SaveOp) -> anyhow::Result<()> {
 
     match op {
         SaveOp::Read { file, hexdump } => {
-            let container = read_save(&file).map_err(|e| anyhow::anyhow!("lecture save : {e}"))?;
+            let container = read_save(&file).map_err(|e| anyhow::anyhow!("reading save: {e}"))?;
             print_summary(&container);
             if hexdump > 0 {
                 for (i, blob) in container.blobs.iter().enumerate() {
@@ -4056,29 +3968,29 @@ fn save_cmd(op: SaveOp) -> anyhow::Result<()> {
         }
         SaveOp::Decrypt { file, out } => {
             // XOR direct sur le fichier brut : le keystream est involutif, donc
-            // decrypt = encrypt = XOR(données, keystream).
-            // On n'utilise PAS serialize_plaintext() pour rester byte-identique à l'original.
+            // decrypt = encrypt = XOR(data, keystream).
+            // serialize_plaintext() is NOT used, to stay byte-identical to the original.
             let raw =
-                std::fs::read(&file).with_context(|| format!("lecture {}", file.display()))?;
+                std::fs::read(&file).with_context(|| format!("reading {}", file.display()))?;
             let filename = file
                 .file_name()
                 .and_then(|s| s.to_str())
-                .ok_or_else(|| anyhow::anyhow!("nom de fichier invalide : {}", file.display()))?;
+                .ok_or_else(|| anyhow::anyhow!("invalid file name: {}", file.display()))?;
             let key = nie_save::key_from_filename(filename);
             let mut plain = raw;
             nie_save::decrypt_block(&mut plain, 0, key);
             std::fs::write(&out, &plain)
-                .with_context(|| format!("écriture plaintext {}", out.display()))?;
+                .with_context(|| format!("writing plaintext {}", out.display()))?;
             println!("decrypt ok={} bytes={}", out.display(), plain.len());
         }
         SaveOp::Encrypt { file, slot, out } => {
             let plain =
-                std::fs::read(&file).with_context(|| format!("lecture {}", file.display()))?;
-            // Chiffrer le plaintext avec la clé dérivée du nom de slot
+                std::fs::read(&file).with_context(|| format!("reading {}", file.display()))?;
+            // Encrypt the plaintext with the key derived from the slot name
             let key = nie_save::key_from_filename(&slot);
             let mut enc = plain;
             nie_save::decrypt_block(&mut enc, 0, key);
-            std::fs::write(&out, &enc).with_context(|| format!("écriture {}", out.display()))?;
+            std::fs::write(&out, &enc).with_context(|| format!("writing {}", out.display()))?;
             println!(
                 "encrypt slot={slot} key=0x{key:08X} out={} bytes={}",
                 out.display(),
@@ -4093,23 +4005,23 @@ fn save_cmd(op: SaveOp) -> anyhow::Result<()> {
             out,
         } => {
             if !(0..=255).contains(&value) {
-                anyhow::bail!("valeur {value} hors plage [0, 255]");
+                anyhow::bail!("value {value} out of range [0, 255]");
             }
             if offset < 0 {
-                anyhow::bail!("offset {offset} négatif");
+                anyhow::bail!("negative offset {offset}");
             }
             let mut container =
-                read_save(&file).map_err(|e| anyhow::anyhow!("lecture save : {e}"))?;
+                read_save(&file).map_err(|e| anyhow::anyhow!("reading save: {e}"))?;
             let ok = edit_blob_byte(&mut container, &blob_name, offset as usize, value as u8);
             if !ok {
                 anyhow::bail!(
-                    "blob '{}' introuvable ou offset {} hors limites",
+                    "blob '{}' not found or offset {} out of range",
                     blob_name,
                     offset
                 );
             }
             let out_path = out.as_deref().unwrap_or(&file);
-            write_save(&container, out_path).map_err(|e| anyhow::anyhow!("écriture save : {e}"))?;
+            write_save(&container, out_path).map_err(|e| anyhow::anyhow!("writing save: {e}"))?;
             println!(
                 "edit blob={blob_name} offset=0x{offset:X} value=0x{value:02X} out={}",
                 out_path.display()
@@ -4148,7 +4060,7 @@ mod host_launcher_and_maps {
         let mut session = nie_launcher::SaveSession::new(live_save, mod_save);
         session
             .park_and_install_mod_save()
-            .map_err(|e| anyhow::anyhow!("parking sauvegarde : {e}"))?;
+            .map_err(|e| anyhow::anyhow!("parking save: {e}"))?;
         session.is_active = false;
         println!(
             "park ok: live={} -> .bk, installed mod_save={}",
@@ -4166,7 +4078,7 @@ mod host_launcher_and_maps {
         session.is_active = true;
         session
             .restore_original_save()
-            .map_err(|e| anyhow::anyhow!("restauration sauvegarde : {e}"))?;
+            .map_err(|e| anyhow::anyhow!("restoring save: {e}"))?;
         println!("restore ok: live={} restored from .bk", live_save.display());
         Ok(())
     }
@@ -4177,34 +4089,34 @@ mod host_launcher_and_maps {
         out: Option<&std::path::Path>,
     ) -> anyhow::Result<()> {
         let team_content = std::fs::read_to_string(team_path)
-            .with_context(|| format!("lecture équipe {}", team_path.display()))?;
+            .with_context(|| format!("reading team {}", team_path.display()))?;
         let lineup: nie_launcher::TeamLineup = if let Ok(envelope) =
             serde_json::from_str::<nie_launcher::TeamExportEnvelope>(&team_content)
         {
             nie_launcher::decrypt_team_envelope(&envelope, nie_launcher::DEFAULT_PASSPHRASE)
-                .map_err(|e| anyhow::anyhow!("déchiffrement équipe : {e}"))?
+                .map_err(|e| anyhow::anyhow!("team decryption: {e}"))?
         } else {
-            serde_json::from_str(&team_content).context("désérialisation TeamLineup")?
+            serde_json::from_str(&team_content).context("deserializing TeamLineup")?
         };
 
         let mut container = nie_save::io::read_save(save_path)
-            .map_err(|e| anyhow::anyhow!("lecture container save : {e}"))?;
+            .map_err(|e| anyhow::anyhow!("reading save container: {e}"))?;
 
         let blob_idx = container
             .entries
             .iter()
             .position(|e| e.filename == "AUTOSAVE_data.bin" || e.filename == "SYSTEM_data.bin")
             .ok_or_else(|| {
-                anyhow::anyhow!("aucun blob de données compatible trouvé dans la sauvegarde")
+                anyhow::anyhow!("no compatible data blob found in the save")
             })?;
         let blob = &mut container.blobs[blob_idx];
 
         nie_launcher::save::apply_team_to_autosave(&mut blob.body, &lineup)
-            .map_err(|e| anyhow::anyhow!("injection équipe dans blob : {e}"))?;
+            .map_err(|e| anyhow::anyhow!("injecting the team into the blob: {e}"))?;
 
         let target_out = out.unwrap_or(save_path);
         nie_save::io::write_save(&container, target_out)
-            .map_err(|e| anyhow::anyhow!("écriture sauvegarde injectée : {e}"))?;
+            .map_err(|e| anyhow::anyhow!("writing the injected save: {e}"))?;
 
         println!(
             "inject team ok='{}' characters={} out={}",
@@ -4224,15 +4136,15 @@ mod host_launcher_and_maps {
                     out,
                 } => {
                     let content = std::fs::read_to_string(&file)
-                        .with_context(|| format!("lecture {}", file.display()))?;
+                        .with_context(|| format!("reading {}", file.display()))?;
                     let envelope: nie_launcher::TeamExportEnvelope = serde_json::from_str(&content)
-                        .context("désérialisation enveloppe chiffrée")?;
+                        .context("deserializing the encrypted envelope")?;
                     let lineup = nie_launcher::decrypt_team_envelope(&envelope, &passphrase)
-                        .map_err(|e| anyhow::anyhow!("déchiffrement équipe : {e}"))?;
+                        .map_err(|e| anyhow::anyhow!("team decryption: {e}"))?;
                     let json = serde_json::to_string_pretty(&lineup)?;
                     if let Some(out_path) = out {
                         std::fs::write(&out_path, &json)
-                            .with_context(|| format!("écriture {}", out_path.display()))?;
+                            .with_context(|| format!("writing {}", out_path.display()))?;
                         println!(
                             "decrypt team ok={} team='{}' chars={}",
                             out_path.display(),
@@ -4249,9 +4161,9 @@ mod host_launcher_and_maps {
                     out,
                 } => {
                     let content = std::fs::read_to_string(&file)
-                        .with_context(|| format!("lecture {}", file.display()))?;
+                        .with_context(|| format!("reading {}", file.display()))?;
                     let lineup: nie_launcher::TeamLineup = serde_json::from_str(&content)
-                        .context("désérialisation composition équipe")?;
+                        .context("deserializing the team composition")?;
                     let mut salt = [0u8; 16];
                     let mut iv = [0u8; 12];
                     for (i, b) in salt.iter_mut().enumerate() {
@@ -4262,11 +4174,11 @@ mod host_launcher_and_maps {
                     }
                     let envelope =
                         nie_launcher::encrypt_team_envelope(&lineup, &passphrase, &salt, &iv)
-                            .map_err(|e| anyhow::anyhow!("chiffrement équipe : {e}"))?;
+                            .map_err(|e| anyhow::anyhow!("team encryption: {e}"))?;
                     let json = serde_json::to_string_pretty(&envelope)?;
                     if let Some(out_path) = out {
                         std::fs::write(&out_path, &json)
-                            .with_context(|| format!("écriture {}", out_path.display()))?;
+                            .with_context(|| format!("writing {}", out_path.display()))?;
                         println!(
                             "encrypt team ok={} team='{}'",
                             out_path.display(),
@@ -4280,9 +4192,9 @@ mod host_launcher_and_maps {
             LauncherOp::Package { cmd } => match cmd {
                 LauncherPackageOp::Info { file } => {
                     let bytes = std::fs::read(&file)
-                        .with_context(|| format!("lecture package {}", file.display()))?;
+                        .with_context(|| format!("reading package {}", file.display()))?;
                     let header = nie_launcher::inspect_package_header(&bytes)
-                        .map_err(|e| anyhow::anyhow!("inspection conteneur package : {e}"))?;
+                        .map_err(|e| anyhow::anyhow!("inspecting the package container: {e}"))?;
                     let json = serde_json::to_string_pretty(&header)?;
                     println!("{json}");
                 }
@@ -4314,7 +4226,7 @@ mod host_launcher_and_maps {
                     if json {
                         println!("{}", serde_json::to_string_pretty(&cards)?);
                     } else {
-                        println!("Esprits ({}) :", cards.len());
+                        println!("Spirits ({}):", cards.len());
                         for c in cards {
                             println!("  0x{} | {:<30} | {}", c.hex_id, c.name, c.variant);
                         }
@@ -4336,7 +4248,7 @@ mod host_launcher_and_maps {
                     if json {
                         println!("{}", serde_json::to_string_pretty(&moves)?);
                     } else {
-                        println!("Techniques spéciales ({}) :", moves.len());
+                        println!("Special techniques ({}):", moves.len());
                         for m in moves {
                             println!("  0x{} | {:<35} | {}", m.hex_id, m.name, m.category);
                         }
@@ -4386,12 +4298,12 @@ mod host_launcher_and_maps {
             }
             LauncherUtOp::Open { pack, seed, json } => {
                 let db = nie_launcher::UtDatabase::open_default()
-                    .context("ouverture de data/ievr-ut.sqlite")?;
+                    .context("opening data/ievr-ut.sqlite")?;
                 let packs = db.get_packs()?;
                 let pack_def = packs
                     .into_iter()
                     .find(|p| p.id.eq_ignore_ascii_case(&pack))
-                    .ok_or_else(|| anyhow::anyhow!("Pack inconnu: {pack}"))?;
+                    .ok_or_else(|| anyhow::anyhow!("Unknown pack: {pack}"))?;
                 let players = db.get_players()?;
                 let result = nie_launcher::open_pack_with_optional_seed(&pack_def, &players, seed);
 
@@ -4399,7 +4311,7 @@ mod host_launcher_and_maps {
                     println!("{}", serde_json::to_string_pretty(&result)?);
                 } else {
                     println!(
-                        "OUVERTURE PACK: {} ({} cartes, {} pièces)",
+                        "PACK OPENING: {} ({} cards, {} coins)",
                         result.pack_name,
                         result.cards.len(),
                         pack_def.price
@@ -4407,7 +4319,7 @@ mod host_launcher_and_maps {
                     println!("{:-<60}", "");
                     for (i, c) in result.cards.iter().enumerate() {
                         println!(
-                            "  Card #{}: [{:<18}] {:<24} ({} | {}) -> {:>6} pièces",
+                            "  Card #{}: [{:<18}] {:<24} ({} | {}) -> {:>6} coins",
                             i + 1,
                             c.rolled_rarity,
                             c.player.name,
@@ -4418,7 +4330,7 @@ mod host_launcher_and_maps {
                     }
                     println!("{:-<60}", "");
                     println!(
-                        "VALEUR VENTE RAPIDE TOTALE: {} pièces",
+                        "TOTAL QUICK-SELL VALUE: {} coins",
                         result.total_quicksell_value
                     );
                 }
@@ -4431,7 +4343,7 @@ mod host_launcher_and_maps {
                 json,
             } => {
                 let db = nie_launcher::UtDatabase::open_default()
-                    .context("ouverture de data/ievr-ut.sqlite")?;
+                    .context("opening data/ievr-ut.sqlite")?;
                 let players = db.search_players(
                     query.as_deref(),
                     element.as_deref(),
@@ -4444,7 +4356,7 @@ mod host_launcher_and_maps {
                 } else {
                     println!(
                         "{:<10} | {:<26} | {:<8} | {:<4} | {:<16} | {:<12}",
-                        "CRC32", "Nom", "Élément", "Pos", "Équipe", "Rareté"
+                        "CRC32", "Name", "Element", "Pos", "Team", "Rarity"
                     );
                     println!(
                         "{:-<10}-+-{:-<26}-+-{:-<8}-+-{:-<4}-+-{:-<16}-+-{:-<12}",
@@ -4456,7 +4368,7 @@ mod host_launcher_and_maps {
                             p.id, p.name, p.element, p.position, p.team_id, p.rarity
                         );
                     }
-                    println!("Total: {} joueurs affichés", players.len());
+                    println!("Total: {} players shown", players.len());
                 }
             }
             LauncherUtOp::Formation { name, json } => {
@@ -4465,7 +4377,7 @@ mod host_launcher_and_maps {
                     println!("{}", serde_json::to_string_pretty(&layout)?);
                 } else {
                     println!(
-                        "FORMATION: {} ({} slots terrain)",
+                        "FORMATION: {} ({} field slots)",
                         layout.name,
                         layout.slots.len()
                     );
@@ -4480,7 +4392,7 @@ mod host_launcher_and_maps {
                             s.key, s.label, s.x, s.y
                         );
                     }
-                    println!("\nRépartition par ligne de terrain :");
+                    println!("\nBreakdown by field line:");
                     for (bande, slots) in layout.group_by_pitch_third() {
                         let keys: Vec<_> = slots
                             .iter()
@@ -4496,16 +4408,16 @@ mod host_launcher_and_maps {
                 json,
             } => {
                 let content = std::fs::read_to_string(&file)
-                    .with_context(|| format!("lecture {}", file.display()))?;
+                    .with_context(|| format!("reading {}", file.display()))?;
 
                 let lineup = if let Ok(envelope) =
                     serde_json::from_str::<nie_launcher::TeamExportEnvelope>(&content)
                 {
                     nie_launcher::decrypt_team_envelope(&envelope, &passphrase)
-                        .map_err(|e| anyhow::anyhow!("déchiffrement équipe : {e}"))?
+                        .map_err(|e| anyhow::anyhow!("team decryption: {e}"))?
                 } else {
                     serde_json::from_str::<nie_launcher::TeamLineup>(&content)
-                        .context("désérialisation composition équipe")?
+                        .context("deserializing the team composition")?
                 };
 
                 let db = nie_launcher::UtDatabase::open_default().ok();
@@ -4514,15 +4426,15 @@ mod host_launcher_and_maps {
                 if json {
                     println!("{}", serde_json::to_string_pretty(&valuation)?);
                 } else {
-                    println!("ÉVALUATION EFFECTIF : '{}'", valuation.team_name);
-                    println!("  Nombre de joueurs : {}", valuation.total_players);
+                    println!("SQUAD EVALUATION: '{}'", valuation.team_name);
+                    println!("  Number of players: {}", valuation.total_players);
                     println!(
-                        "  Valeur marchande vente rapide : {} pièces",
+                        "  Quick-sell market value: {} coins",
                         valuation.total_quicksell_value
                     );
-                    println!("  Distribution des raretés :");
+                    println!("  Rarity distribution:");
                     for (rar, count) in &valuation.rarity_counts {
-                        println!("    - {:<18}: {} cartes", rar, count);
+                        println!("    - {:<18}: {} cards", rar, count);
                     }
                 }
             }
@@ -4530,11 +4442,10 @@ mod host_launcher_and_maps {
         Ok(())
     }
 
-    /// Construit un manifeste NDJSON CRC32->chemin pour tous les fichiers .g4md et .g4mg du VFS.
-    /// Chaque ligne JSON : `{"crc":3735928559,"path":"chr/c01000010.g4md","cpk":"abc123.cpk"}`
+    /// Build an NDJSON CRC32-to-path manifest for all .g4md and .g4mg files of the VFS.
+    /// Each JSON line: `{"crc":3735928559,"path":"chr/c01000010.g4md","cpk":"abc123.cpk"}`
     ///
-    /// Le CRC32 est calculé avec l'algorithme du jeu (accumulteur sans inversion finale,
-    /// sur le nom de fichier complet sans extension, en minuscules, sans chemin).
+    /// The CRC32 uses the game's algorithm (accumulator without final inversion, over the full file name without extension, lowercase, without path).
     pub(crate) fn uniform_map(
         game_dir: &std::path::Path,
         out: &std::path::Path,
@@ -4545,19 +4456,19 @@ mod host_launcher_and_maps {
         let data_dir = game_dir.join("data");
         let mut vfs = Vfs::new();
         vfs.init(&data_dir)
-            .context("init VFS depuis cpk_list.cfg.bin")?;
+            .context("init VFS from cpk_list.cfg.bin")?;
 
         tracing::info!(
             asset_count = vfs.asset_count(),
             cpk_count = vfs.cpk_count(),
-            "VFS initialisé"
+            "VFS initialized"
         );
 
         if let Some(parent) = out.parent() {
             std::fs::create_dir_all(parent).ok();
         }
         let mut f = std::fs::File::create(out)
-            .with_context(|| format!("création manifeste {}", out.display()))?;
+            .with_context(|| format!("creating manifest {}", out.display()))?;
 
         let entries = nie_explore::uniform_map::build(&vfs);
         for entry in &entries {
@@ -4565,7 +4476,7 @@ mod host_launcher_and_maps {
         }
 
         eprintln!(
-            "uniform-map: {} fichiers .g4md/.g4mg indexés → {}",
+            "uniform-map: {} .g4md/.g4mg files indexed -> {}",
             entries.len(),
             out.display()
         );
@@ -4599,50 +4510,50 @@ use host_launcher_and_maps::{
     menu_predecode_cmd, uniform_map,
 };
 
-// ─── nie vfs — explorateur CPK (VFS) ─────────────────────────────────────────────
+// --- nie vfs: CPK (VFS) explorer ---
 
 // ---------------------------------------------------------------------------
-// nie convert — un asset du jeu vers un format d'échange
+// nie convert: a game asset to an interchange format
 // ---------------------------------------------------------------------------
 
-/// Lit la source : fichier du disque si présent, sinon entrée du VFS.
+/// Read the source: disk file if present, otherwise VFS entry.
 fn lire_source(src: &str, game_dir: Option<PathBuf>) -> anyhow::Result<Vec<u8>> {
     let p = std::path::Path::new(src);
     if p.is_file() {
-        return std::fs::read(p).with_context(|| format!("lecture « {src} »"));
+        return std::fs::read(p).with_context(|| format!("reading `{src}`"));
     }
     let vfs = open_vfs(game_dir)?;
     vfs.read(src)
-        .with_context(|| format!("« {src} » introuvable, ni sur le disque ni dans le VFS"))
+        .with_context(|| format!("`{src}` not found, neither on disk nor in the VFS"))
 }
 
-/// Charge une reference de comparaison : chemin local, ou URL `http(s)://` recuperee par `reqwest`.
+/// Load a comparison reference: local path, or `http(s)://` URL fetched by `reqwest`.
 #[cfg(feature = "host")]
 fn lire_reference(reference: &str) -> anyhow::Result<Vec<u8>> {
     if !reference.starts_with("http://") && !reference.starts_with("https://") {
         return std::fs::read(reference)
-            .with_context(|| format!("lecture de la reference « {reference} »"));
+            .with_context(|| format!("reading reference `{reference}`"));
     }
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
-        .context("initialisation du runtime tokio pour lire_reference")?;
+        .context("initializing the tokio runtime for lire_reference")?;
     rt.block_on(async {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(120))
             .build()
-            .context("construction client reqwest")?;
+            .context("building the reqwest client")?;
         let resp = client
             .get(reference)
             .send()
             .await
-            .with_context(|| format!("telechargement HTTP « {reference} »"))?
+            .with_context(|| format!("HTTP download `{reference}`"))?
             .error_for_status()
-            .with_context(|| format!("statut HTTP en echec pour « {reference} »"))?;
+            .with_context(|| format!("HTTP status failure for `{reference}`"))?;
         let bytes = resp
             .bytes()
             .await
-            .with_context(|| format!("lecture du corps « {reference} »"))?;
+            .with_context(|| format!("reading the body of `{reference}`"))?;
         Ok(bytes.to_vec())
     })
 }
@@ -4651,15 +4562,14 @@ fn lire_reference(reference: &str) -> anyhow::Result<Vec<u8>> {
 fn lire_reference(reference: &str) -> anyhow::Result<Vec<u8>> {
     if !reference.starts_with("http://") && !reference.starts_with("https://") {
         return std::fs::read(reference)
-            .with_context(|| format!("lecture de la reference « {reference} »"));
+            .with_context(|| format!("reading reference `{reference}`"));
     }
-    anyhow::bail!("support HTTP reqwest indisponible sans feature host pour « {reference} »")
+    anyhow::bail!("reqwest HTTP support is unavailable without the host feature for `{reference}`")
 }
 
-/// Décrit l'installation : binaire, VFS, corpus de dumps.
+/// Describe the install: binary, VFS, dump corpus.
 ///
-/// Le sha256 du binaire est ce qui permet de dire *quelle* version du jeu est en place — la
-/// forge s'y adosse, et aucune autre commande ne le rend.
+/// The binary sha256 tells which game version is in place.
 fn info_cmd(game_dir: Option<PathBuf>, json: bool) -> anyhow::Result<()> {
     use sha2::{Digest, Sha256};
 
@@ -4694,22 +4604,22 @@ fn info_cmd(game_dir: Option<PathBuf>, json: bool) -> anyhow::Result<()> {
         Err(_) => (None, None),
     };
 
-    // La chaine de lancement du vrai jeu. `nie.exe` seul ne demarre pas : le binaire est lance
-    // par EAC, qui exige EOS, et le jeu appelle Steamworks. La forge sait produire `nie.exe` au
-    // byte pres — elle ne produit RIEN de ce qui suit, et ne le pourra pas : ce sont des
-    // composants tiers signes. Les inventorier evite de croire qu'un `nie.exe` identique suffit.
+    // Launch chain of the real game. `nie.exe` alone does not start: EAC launches the binary,
+    // EAC requires EOS, and the game calls Steamworks. The forge can produce `nie.exe`
+    // byte for byte; it produces none of the following, which are signed third-party
+    // components. Listing them avoids assuming an identical `nie.exe` is enough.
     const CHAINE: [(&str, &str); 5] = [
-        ("nie.exe", "binaire du jeu — produit par la forge"),
+        ("nie.exe", "game binary, produced by the forge"),
         (
             "EACLauncher.exe",
-            "Easy Anti-Cheat — lance le jeu, tiers non reproductible",
+            "Easy Anti-Cheat: launches the game, third party, not reproducible",
         ),
-        ("EasyAntiCheat/Settings.json", "configuration EAC"),
+        ("EasyAntiCheat/Settings.json", "EAC configuration"),
         (
             "EOSSDK-Win64-Shipping.dll",
-            "Epic Online Services — exige par EAC, tiers",
+            "Epic Online Services: required by EAC, third party",
         ),
-        ("steam_api64.dll", "Steamworks — tiers"),
+        ("steam_api64.dll", "Steamworks: third party"),
     ];
     let chaine: Vec<(&str, &str, bool, u64)> = CHAINE
         .iter()
@@ -4724,12 +4634,12 @@ fn info_cmd(game_dir: Option<PathBuf>, json: bool) -> anyhow::Result<()> {
         .unwrap_or_else(|| racine.join("data"))
         .join("cpk_list.cfg.bin");
     let vfs = open_vfs(Some(racine.clone())).ok();
-    // Deux montages servent les memes chemins : les packs CPK, ou un dump deja extrait. Le
-    // dire evite de lire « 255 308 entrees » sans savoir d'ou elles sortent.
+    // Two mounts serve the same paths: the CPK packs, or an already extracted dump. Naming
+    // the mount avoids reading an entry count without knowing where it comes from.
     let montage = match vfs.as_ref() {
         Some(v) if v.is_dump() => "dump",
         Some(_) => "packs",
-        None => "aucun",
+        None => "none",
     };
     let entrees = vfs.as_ref().map_or(0, |v| v.iter().count());
     let paquets: std::collections::BTreeSet<String> =
@@ -4739,8 +4649,8 @@ fn info_cmd(game_dir: Option<PathBuf>, json: bool) -> anyhow::Result<()> {
                 .map(|(_, e)| e.cpk_filename.clone())
                 .collect()
         });
-    // Le corpus de dumps conditionne l'execution reelle des goldens : le dire ici evite de
-    // decouvrir trop tard qu'ils passent au vert sans rien lire.
+    // The dump corpus decides whether the goldens really run: saying so here avoids
+    // finding out too late that they pass without reading anything.
     let dumps = ["dump/gamedata", "data/common/gamedata"]
         .iter()
         .map(|r| racine.join(r))
@@ -4761,54 +4671,54 @@ fn info_cmd(game_dir: Option<PathBuf>, json: bool) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    println!("racine      {}", racine.display());
+    println!("root        {}", racine.display());
     match (taille_exe, &sha) {
         (Some(t), Some(s)) => {
-            println!("binaire     nie.exe ({t} octets)");
+            println!("binary      nie.exe ({t} bytes)");
             println!("sha256      {s}");
         }
-        _ => println!("binaire     absent ({})", exe.display()),
+        _ => println!("binary      missing ({})", exe.display()),
     }
     println!(
         "cpk_list    {}",
         if cpk_list.is_file() {
             "present"
         } else {
-            "absent"
+            "missing"
         }
     );
     println!(
-        "vfs         {montage} — {entrees} entrees, {} paquets",
+        "vfs         {montage}: {entrees} entries, {} packs",
         paquets.len()
     );
     match &dumps {
         Some(p) => println!("dumps       {}", p.display()),
         None => {
-            println!("dumps       absents — les goldens adosses au corpus ne s'executeront pas")
+            println!("dumps       missing: the corpus-backed goldens will not run")
         }
     }
 
     println!(
         "
-chaine de lancement"
+launch chain"
     );
     for (f, role, present, taille) in &chaine {
         let etat = if *present {
-            format!("{taille:>10} o")
+            format!("{taille:>10} B")
         } else {
-            "   ABSENT".to_string()
+            "   MISSING".to_string()
         };
         println!("  {etat}  {f:<28} {role}");
     }
     if manquants == 0 {
         println!(
             "
-lancable    oui — les 5 composants sont la"
+launchable  yes: all 5 components are present"
         );
     } else {
         println!(
             "
-lancable    NON — {manquants} composant(s) manquant(s)"
+launchable  NO: {manquants} component(s) missing"
         );
     }
     Ok(())
@@ -4855,7 +4765,7 @@ fn locales_cmd(
     }
 
     if report.locales.is_empty() {
-        println!("locales  aucune langue prouvée par data/common/text dans ce VFS");
+        println!("locales  no language proven by data/common/text in this VFS");
         return Ok(());
     }
     for locale in report.locales {
@@ -5216,8 +5126,8 @@ fn convert_cmd(
 ) -> anyhow::Result<()> {
     use nie_formats::image_out::ImageOut;
 
-    // Sorties « feuille de sprites » : elles ne rendent pas une image mais la description des
-    // régions de l'atlas, sous la forme qu'attend le web.
+    // "Sprite sheet" outputs: they render no image but the description of the
+    // atlas regions, in the form the web expects.
     if matches!(to, "css" | "svg" | "json") {
         return convert_sprites(src, to, out, game_dir, masque);
     }
@@ -5225,7 +5135,7 @@ fn convert_cmd(
     let format = ImageOut::depuis_extension(to).ok_or_else(|| {
         let connus: Vec<&str> = ImageOut::TOUS.iter().map(|f| f.extension()).collect();
         anyhow::anyhow!(
-            "format « {to} » inconnu — formats gérés : {}",
+            "unknown format `{to}`; supported formats: {}",
             connus.join(", ")
         )
     })?;
@@ -5236,7 +5146,7 @@ fn convert_cmd(
         nie_formats::g4tx_decode::basename_of(src),
         format,
     )
-    .map_err(|e| anyhow::anyhow!("conversion de « {src} » en {} : {e}", format.extension()))?;
+    .map_err(|e| anyhow::anyhow!("converting `{src}` to {}: {e}", format.extension()))?;
 
     let destination = out.map_or_else(
         || {
@@ -5247,20 +5157,20 @@ fn convert_cmd(
         std::path::Path::to_path_buf,
     );
     std::fs::write(&destination, &produit)
-        .with_context(|| format!("écriture « {} »", destination.display()))?;
+        .with_context(|| format!("writing `{}`", destination.display()))?;
 
-    println!("source      {src} ({} octets)", data.len());
+    println!("source      {src} ({} bytes)", data.len());
     println!(
         "format      {}{}",
         format.extension(),
         if format.sans_perte() {
             ""
         } else {
-            " (avec perte)"
+            " (lossy)"
         }
     );
     println!(
-        "sortie      {} ({} octets)",
+        "output      {} ({} bytes)",
         destination.display(),
         produit.len()
     );
@@ -5274,28 +5184,22 @@ fn convert_cmd(
             hex::encode(h.finalize())
         };
         let (a, b) = (empreinte(&produit), empreinte(&attendu));
-        println!("reference   {reference} ({} octets)", attendu.len());
-        println!("sha256      produit={a}");
-        println!("            attendu={b}");
+        println!("reference   {reference} ({} bytes)", attendu.len());
+        println!("sha256      produced={a}");
+        println!("            expected={b}");
         if a == b {
-            println!("verdict     identique a l'octet");
+            println!("verdict     byte-identical");
         } else {
-            println!("verdict     DIVERGENT");
-            anyhow::bail!("la sortie diffère de la référence");
+            println!("verdict     DIFFERENT");
+            anyhow::bail!("the output differs from the reference");
         }
     }
     Ok(())
 }
 
-/// Écrit **toutes** les textures d'un `.g4tx`, une image par texture.
+/// Write **every** texture of a `.g4tx`, one image per texture.
 ///
-/// `convert` sans `--toutes` passe par `select_main_texture`, qui retient la texture portant le
-/// nom du fichier : sur un atlas qui en contient plusieurs — cas courant des menus, où le fichier
-/// `vroad01_01.g4tx` porte un masque 4×4 *et* l'atlas `top_season_base01_atl` en 100×40 — cela
-/// rendait tout le reste inatteignable depuis la CLI.
-///
-/// Les textures sans charge DDS décodable sont signalées et sautées : un atlas partiellement
-/// illisible rend quand même ce qu'il a.
+/// `convert` without `--toutes` goes through `select_main_texture`, which keeps the texture named like the file; textures without a decodable DDS payload are reported and skipped.
 fn convert_toutes(
     src: &str,
     to: &str,
@@ -5307,24 +5211,24 @@ fn convert_toutes(
     let format = ImageOut::depuis_extension(to).ok_or_else(|| {
         let connus: Vec<&str> = ImageOut::TOUS.iter().map(|f| f.extension()).collect();
         anyhow::anyhow!(
-            "format « {to} » inconnu — formats gérés : {}",
+            "unknown format `{to}`; supported formats: {}",
             connus.join(", ")
         )
     })?;
 
     let data = lire_source(src, game_dir)?;
     let atlas = nie_formats::g4tx::parse(&data)
-        .map_err(|e| anyhow::anyhow!("« {src} » n'est pas un G4TX lisible : {e}"))?;
+        .map_err(|e| anyhow::anyhow!("`{src}` is not a readable G4TX: {e}"))?;
 
     let dossier = out.map_or_else(|| PathBuf::from("."), std::path::Path::to_path_buf);
     std::fs::create_dir_all(&dossier)
-        .with_context(|| format!("création « {} »", dossier.display()))?;
+        .with_context(|| format!("creating `{}`", dossier.display()))?;
 
     let base = src.rsplit('/').next().unwrap_or(src);
     let tronc = base.rsplit_once('.').map_or(base, |(t, _)| t);
 
     println!(
-        "source      {src} ({} octets, {} texture(s))",
+        "source      {src} ({} bytes, {} texture(s))",
         data.len(),
         atlas.textures.len()
     );
@@ -5332,7 +5236,7 @@ fn convert_toutes(
     for tex in &atlas.textures {
         let Some((w, h, rgba)) = nie_formats::g4tx_decode::decode_texture_rgba(&data, tex) else {
             println!(
-                "  · {:<32} {}x{}  NON DÉCODABLE",
+                "  - {:<32} {}x{}  NOT DECODABLE",
                 tex.name, tex.width, tex.height
             );
             continue;
@@ -5340,12 +5244,12 @@ fn convert_toutes(
         let produit = match image_out::encoder_rgba(&rgba, w, h, format) {
             Ok(p) => p,
             Err(e) => {
-                println!("  · {:<32} {w}x{h}  ÉCHEC ENCODAGE : {e}", tex.name);
+                println!("  - {:<32} {w}x{h}  ENCODING FAILED: {e}", tex.name);
                 continue;
             }
         };
-        // Le nom de texture vient du fichier : il peut porter des séparateurs. On le réduit à ce
-        // qui fait un nom de fichier sûr plutôt que d'écrire hors du dossier demandé.
+        // The texture name comes from the file and may carry separators. It is reduced to
+        // what makes a safe file name rather than writing outside the requested folder.
         let nom: String = tex
             .name
             .chars()
@@ -5359,9 +5263,9 @@ fn convert_toutes(
             .collect();
         let cible = dossier.join(format!("{tronc}__{nom}.{}", format.extension()));
         std::fs::write(&cible, &produit)
-            .with_context(|| format!("écriture « {} »", cible.display()))?;
+            .with_context(|| format!("writing `{}`", cible.display()))?;
         println!(
-            "  · {:<32} {w}x{h}  {} régions  → {} ({} octets)",
+            "  - {:<32} {w}x{h}  {} regions  -> {} ({} bytes)",
             tex.name,
             tex.sub_textures.len(),
             cible.display(),
@@ -5369,15 +5273,13 @@ fn convert_toutes(
         );
         ecrites += 1;
     }
-    println!("écrites     {ecrites}/{}", atlas.textures.len());
+    println!("written     {ecrites}/{}", atlas.textures.len());
     Ok(())
 }
 
-/// Convertit un atlas `.g4tx` en feuille de sprites pour le web (`css`, `svg` ou `json`).
+/// Convert a `.g4tx` atlas to a web sprite sheet (`css`, `svg` or `json`).
 ///
-/// Le `.g4tx` décrit lui-même ses régions (nom + rectangle) : on les recopie, on ne les devine
-/// pas. `css` écrit **deux** fichiers (la feuille et l'atlas en WebP sans perte) ; `svg` et
-/// `json` en écrivent un seul, le SVG embarquant l'atlas pour rester autonome.
+/// The `.g4tx` describes its own regions (name + rectangle), which are copied, not guessed. `css` writes **two** files (the sheet and the atlas as lossless WebP); `svg` and `json` write one, the SVG embedding the atlas.
 fn convert_sprites(
     src: &str,
     to: &str,
@@ -5390,9 +5292,9 @@ fn convert_sprites(
 
     let data = lire_source(src, game_dir)?;
     let atlas = nie_formats::g4tx::parse(&data)
-        .map_err(|e| anyhow::anyhow!("« {src} » n'est pas un G4TX lisible : {e}"))?;
+        .map_err(|e| anyhow::anyhow!("`{src}` is not a readable G4TX: {e}"))?;
     let feuille = sprite_sheet::depuis_g4tx(&atlas, 0)
-        .ok_or_else(|| anyhow::anyhow!("« {src} » ne contient aucune texture"))?;
+        .ok_or_else(|| anyhow::anyhow!("`{src}` contains no texture"))?;
 
     let base = src.rsplit('/').next().unwrap_or(src);
     let tronc = base.rsplit_once('.').map_or(base, |(t, _)| t).to_string();
@@ -5401,14 +5303,14 @@ fn convert_sprites(
         std::path::Path::to_path_buf,
     );
 
-    println!("source      {src} ({} octets)", data.len());
+    println!("source      {src} ({} bytes)", data.len());
     println!(
-        "atlas       {} — {}×{}",
+        "atlas       {}: {}x{}",
         feuille.nom, feuille.largeur, feuille.hauteur
     );
     println!("regions     {}", feuille.len());
     if feuille.is_empty() {
-        println!("note        image simple (aucune région d'atlas déclarée)");
+        println!("note        plain image (no atlas region declared)");
     }
 
     let contenu = match to {
@@ -5416,16 +5318,16 @@ fn convert_sprites(
         "css" => {
             // L'atlas accompagne la feuille : WebP sans perte, le plus petit des formats exacts.
             let image = nie_formats::image_out::g4tx_vers(&data, &tronc, ImageOut::Webp)
-                .map_err(|e| anyhow::anyhow!("encodage de l'atlas : {e}"))?;
+                .map_err(|e| anyhow::anyhow!("encoding the atlas: {e}"))?;
             let image_path = destination.with_extension("webp");
             std::fs::write(&image_path, &image)
-                .with_context(|| format!("écriture « {} »", image_path.display()))?;
+                .with_context(|| format!("writing `{}`", image_path.display()))?;
             let nom_image = image_path.file_name().map_or_else(
                 || tronc.clone() + ".webp",
                 |n| n.to_string_lossy().into_owned(),
             );
             println!(
-                "atlas       {} ({} octets)",
+                "atlas       {} ({} bytes)",
                 image_path.display(),
                 image.len()
             );
@@ -5438,16 +5340,16 @@ fn convert_sprites(
         }
         "svg" => {
             let image = nie_formats::image_out::g4tx_vers(&data, &tronc, ImageOut::Png)
-                .map_err(|e| anyhow::anyhow!("encodage de l'atlas : {e}"))?;
+                .map_err(|e| anyhow::anyhow!("encoding the atlas: {e}"))?;
             feuille.vers_svg(&sprite_sheet::data_uri("image/png", &image))
         }
-        _ => unreachable!("format filtré par l'appelant"),
+        _ => unreachable!("format filtered by the caller"),
     };
 
     std::fs::write(&destination, contenu.as_bytes())
-        .with_context(|| format!("écriture « {} »", destination.display()))?;
+        .with_context(|| format!("writing `{}`", destination.display()))?;
     println!(
-        "sortie      {} ({} octets)",
+        "output      {} ({} bytes)",
         destination.display(),
         contenu.len()
     );
@@ -5473,11 +5375,11 @@ fn viola_cmd(op: ViolaOp) -> anyhow::Result<()> {
             // Un preset nomme se resout en specification de filtre ; un nom inconnu est une
             // erreur, jamais un dump silencieux du jeu entier.
             let filtre = match (filtre, preset) {
-                (Some(_), Some(_)) => anyhow::bail!("--filtre et --preset sont exclusifs"),
+                (Some(_), Some(_)) => anyhow::bail!("--filtre and --preset are mutually exclusive"),
                 (f, None) => f,
                 (None, Some(p)) => Some(nie_viola::presets::resoudre(&p).ok_or_else(|| {
                     anyhow::anyhow!(
-                        "preset « {p} » inconnu — presets : {}",
+                        "unknown preset `{p}`; presets: {}",
                         nie_viola::presets::NOMS.join(", ")
                     )
                 })?),
@@ -5495,11 +5397,11 @@ fn viola_cmd(op: ViolaOp) -> anyhow::Result<()> {
                 controler_casse: true,
             };
             let annuler = std::sync::atomic::AtomicBool::new(false);
-            // Le rapport d'avancement n'écrit qu'une ligne réécrite en place : appelé depuis
-            // plusieurs threads, il doit rester bon marché.
+            // The progress report writes a single line rewritten in place: called from
+            // several threads, it must stay cheap.
             let progres = |p: nie_viola::DumpProgress| {
                 eprint!(
-                    "\r  {} / {} fichiers — {:.1} Gio",
+                    "\r  {} / {} files, {:.1} GiB",
                     p.faits,
                     p.total,
                     p.octets as f64 / 1.073_741_824e9
@@ -5509,40 +5411,40 @@ fn viola_cmd(op: ViolaOp) -> anyhow::Result<()> {
             let r = nie_viola::dump_all(&vfs, &out, &options, &annuler, &progres)
                 .map_err(anyhow::Error::msg)?;
             eprintln!();
-            println!("planifiés {}", r.total);
-            println!("extraits  {}", r.extraits);
-            println!("sautés    {}", r.sautes);
-            println!("échecs    {}", r.echecs);
+            println!("planned   {}", r.total);
+            println!("extracted {}", r.extraits);
+            println!("skipped   {}", r.sautes);
+            println!("failures  {}", r.echecs);
             println!(
-                "octets    {} ({:.2} Gio)",
+                "bytes     {} ({:.2} GiB)",
                 r.octets,
                 r.octets as f64 / 1.073_741_824e9
             );
-            println!("packs repris {}", r.packs_repris);
-            // Ce que `Vfs::iter` seul ne voyait pas : le chiffrer rend le gain de couverture
-            // vérifiable au lieu de le supposer.
+            println!("packs resumed {}", r.packs_repris);
+            // What `Vfs::iter` alone did not see: counting it makes the coverage gain
+            // verifiable instead of assumed.
             if r.depuis_extra > 0 {
                 println!(
-                    "hors cpk_list {} (packs absents de l'index principal)",
+                    "outside cpk_list {} (packs absent from the main index)",
                     r.depuis_extra
                 );
             }
-            // Sur NTFS le second de deux chemins homographes écrase le premier, sans erreur :
-            // la sortie compte alors moins de fichiers qu'annoncé, et rien ne le disait.
+            // On NTFS the second of two homograph paths overwrites the first without error:
+            // the output then holds fewer files than announced, and nothing said so.
             if r.collisions_casse > 0 {
                 println!(
-                    "collisions de casse {} — chemins écrasés sur NTFS, détail dans {}",
+                    "case collisions {}: paths overwritten on NTFS, details in {}",
                     r.collisions_casse,
                     nie_viola::dump::chemin_journal(&out).display()
                 );
             }
-            // Un total d'échecs ne se répare pas ; une ventilation, si.
+            // A total of failures cannot be fixed; a breakdown can.
             for (raison, n) in r.echecs_par_raison() {
                 println!("  {:<20} {n}", raison.nom());
             }
             if r.echecs > 0 && !sans_journal {
                 println!(
-                    "journal   {}",
+                    "log       {}",
                     nie_viola::dump::chemin_journal(&out).display()
                 );
             }
@@ -5553,7 +5455,7 @@ fn viola_cmd(op: ViolaOp) -> anyhow::Result<()> {
                 );
             }
             if r.annule {
-                println!("annulé    oui");
+                println!("cancelled yes");
             }
             Ok(())
         }
@@ -5575,29 +5477,29 @@ fn viola_cmd(op: ViolaOp) -> anyhow::Result<()> {
                 threads,
             };
             let r = nie_viola::verifier(&vfs, &dir, &options).map_err(anyhow::Error::msg)?;
-            println!("attendus  {}", r.attendus);
-            println!("conformes {} ({:.3} %)", r.conformes, r.couverture());
-            println!("manquants {}", r.manquants);
-            println!("tailles divergentes {}", r.tailles_divergentes);
+            println!("expected  {}", r.attendus);
+            println!("matching  {} ({:.3} %)", r.conformes, r.couverture());
+            println!("missing   {}", r.manquants);
+            println!("size mismatches {}", r.tailles_divergentes);
             println!(
-                "octets    {} ({:.2} Gio)",
+                "bytes     {} ({:.2} GiB)",
                 r.octets,
                 r.octets as f64 / 1.073_741_824e9
             );
-            // Une taille juste ne prouve pas un contenu juste : un déchiffrement à mauvaise clé
-            // rend exactement le bon nombre d'octets. C'est l'échantillon qui le détecte.
+            // A correct size does not prove correct content: a decryption with the wrong key
+            // returns exactly the right number of bytes. The sample is what detects it.
             if r.compares > 0 {
                 println!(
-                    "contenus comparés {} — divergents {}",
+                    "contents compared {}; differing {}",
                     r.compares, r.contenus_divergents
                 );
             }
             if r.illisibles > 0 {
-                println!("illisibles {}", r.illisibles);
+                println!("unreadable {}", r.illisibles);
             }
             for c in r.constats.iter().take(limite) {
                 println!(
-                    "  {:<18} {} (attendu {}, trouvé {})",
+                    "  {:<18} {} (expected {}, found {})",
                     c.anomalie.nom(),
                     c.chemin,
                     c.attendu,
@@ -5605,19 +5507,19 @@ fn viola_cmd(op: ViolaOp) -> anyhow::Result<()> {
                 );
             }
             if r.constats.len() > limite {
-                println!("  … {} autres", r.constats.len() - limite);
+                println!("  ... {} more", r.constats.len() - limite);
             }
             if intrus {
                 let liste = nie_viola::verify::intrus(&vfs, &dir).map_err(anyhow::Error::msg)?;
-                println!("hors index {}", liste.len());
+                println!("not in index {}", liste.len());
                 for c in liste.iter().take(limite) {
-                    println!("  intrus  {c}");
+                    println!("  extra   {c}");
                 }
             }
             if !sans_rapport {
                 nie_viola::verify::ecrire_rapport(&dir, &r)?;
                 println!(
-                    "rapport   {}",
+                    "report    {}",
                     nie_viola::verify::chemin_rapport(&dir).display()
                 );
             }
@@ -5626,7 +5528,7 @@ fn viola_cmd(op: ViolaOp) -> anyhow::Result<()> {
                 if r.conforme() {
                     "conforme"
                 } else {
-                    "NON CONFORME"
+                    "NOT CONFORMING"
                 }
             );
             Ok(())
@@ -5647,15 +5549,15 @@ fn viola_cmd(op: ViolaOp) -> anyhow::Result<()> {
                 .unwrap_or_else(|| racine_jeu(game_dir).join("data").join("cpk_list.cfg.bin"));
             let r = nie_viola::pack_mod(&cpk_list, &mod_dir, &out, plateforme)
                 .map_err(anyhow::Error::msg)?;
-            println!("mis à jour {}", r.mis_a_jour);
-            println!("ajoutés    {}", r.ajoutes);
-            println!("copiés     {}", r.copies);
-            println!("entrées    {}", r.total);
-            println!("enveloppe  {:?}", r.crypto);
-            // Un `cpk_list` déjà packé empilerait les entrées d'un mod précédent : le dire.
+            println!("updated    {}", r.mis_a_jour);
+            println!("added      {}", r.ajoutes);
+            println!("copied     {}", r.copies);
+            println!("entries    {}", r.total);
+            println!("envelope  {:?}", r.crypto);
+            // A `cpk_list` already packed would stack the entries of a previous mod: say so.
             if r.loose_avant > 64 {
                 eprintln!(
-                    "attention : {} entrées étaient déjà hors paquet — ce cpk_list semble déjà packé",
+                    "warning: {} entries were already out of the packs; this cpk_list looks already packed",
                     r.loose_avant
                 );
             }
@@ -5685,13 +5587,13 @@ fn viola_cmd(op: ViolaOp) -> anyhow::Result<()> {
                 }
             }
             .map_err(anyhow::Error::msg)?;
-            println!("copiés    {}", rapport.copies);
-            println!("fusionnés {}", rapport.fusionnes);
-            println!("conflits  {}", rapport.conflits.len());
+            println!("copied    {}", rapport.copies);
+            println!("merged    {}", rapport.fusionnes);
+            println!("conflicts {}", rapport.conflits.len());
             for c in &rapport.conflits {
                 let repli = c.repli.as_deref().unwrap_or("");
                 println!(
-                    "  {} — mods {:?}, {} champs fusionnés, {} en désaccord {repli}",
+                    "  {}: mods {:?}, {} fields merged, {} in conflict {repli}",
                     c.chemin, c.rangs, c.champs_fusionnes, c.champs_en_desaccord
                 );
             }
@@ -5716,8 +5618,8 @@ fn viola_cmd(op: ViolaOp) -> anyhow::Result<()> {
                 (None, false) => nie_viola::CriwareKey::Viola,
             };
             let octets = nie_viola::crypt_file(&src, &out, &cle).map_err(anyhow::Error::msg)?;
-            println!("clé    {:08X}", cle.valeur());
-            println!("octets {octets}");
+            println!("key    {:08X}", cle.valeur());
+            println!("bytes {octets}");
             Ok(())
         }
     }
@@ -5894,11 +5796,9 @@ fn vfs_cmd(op: VfsOp) -> anyhow::Result<()> {
     }
 }
 
-/// Ouvre le VFS depuis `game_dir`, ou sur ce que la machine offre quand l'argument est absent
-/// — installation du jeu, sinon dump extrait (cf. [`nie_formats::vfs::open_game`]).
+/// Open the VFS from `game_dir`, or from what the machine offers when the argument is absent (game install, else extracted dump; see [`nie_formats::vfs::open_game`]).
 ///
-/// Une racine explicite reste servie telle quelle : c'est l'argument de l'utilisateur, pas une
-/// heuristique. `init` y bascule seul sur le dump si `cpk_list.cfg.bin` manque.
+/// An explicit root is served as is. `init` falls back to the dump by itself if `cpk_list.cfg.bin` is missing.
 fn open_vfs(game_dir: Option<PathBuf>) -> anyhow::Result<nie_formats::vfs::Vfs> {
     let source = game_dir.as_ref().map(|path| path.to_string_lossy());
     nie_formats::vfs::open_source(source.as_deref()).map_err(Into::into)
@@ -5909,8 +5809,8 @@ fn vfs_ls(prefix: &str, game_dir: Option<PathBuf>) -> anyhow::Result<()> {
     let prefix = prefix.trim_matches('/');
 
     if let Some(role) = nie_explore::folder_roles::describe_folder(prefix) {
-        println!("  rôle : {}", role.role);
-        println!("  statut : {}\n", role.status);
+        println!("  role: {}", role.role);
+        println!("  status: {}\n", role.status);
     }
 
     let mut dirs: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
@@ -5948,17 +5848,14 @@ fn vfs_ls(prefix: &str, game_dir: Option<PathBuf>) -> anyhow::Result<()> {
         println!("  {:>10}  {name}  [{cpk}]", entry.file_size);
     }
     println!(
-        "\n  {} sous-dossier(s), {} fichier(s)",
+        "\n  {} subfolder(s), {} file(s)",
         dirs.len(),
         files.len()
     );
     Ok(())
 }
 
-/// Une entrée de `nie vfs find --json` — même convention compacte-sur-une-ligne que
-/// [`SearchJsonEntry`] (`chara`/`waza`), mais sans index préalable : `find` marche sur
-/// n'importe quelle install du jeu (VFS seul), c'est la recherche « fichiers » générique que
-/// `nie_bridge.py` (addon Blender `plugins/nie-blender`) utilise pour son panneau de recherche.
+/// An entry of `nie vfs find --json`: same compact one-line convention as [`SearchJsonEntry`] (`chara`/`waza`), but without a prior index: `find` works on any game install (VFS only).
 #[derive(serde::Serialize)]
 struct FindJsonEntry<'a> {
     path: &'a str,
@@ -6016,11 +5913,11 @@ fn vfs_find(
         println!("  {:>10}  {path}  [{cpk}]", entry.file_size);
     }
     let capped = if total > limit {
-        format!(" (limité à {limit})")
+        format!(" (limited to {limit})")
     } else {
         String::new()
     };
-    println!("\n  {total} résultat(s){capped}");
+    println!("\n  {total} result(s){capped}");
     Ok(())
 }
 
@@ -6028,9 +5925,9 @@ fn vfs_stat(path: &str, game_dir: Option<PathBuf>) -> anyhow::Result<()> {
     let vfs = open_vfs(game_dir)?;
     let entry = vfs
         .find(path)
-        .ok_or_else(|| anyhow::anyhow!("« {path} » absent du VFS"))?;
-    println!("  chemin      {path}");
-    println!("  taille      {} octets", entry.file_size);
+        .ok_or_else(|| anyhow::anyhow!("`{path}` is not in the VFS"))?;
+    println!("  path        {path}");
+    println!("  size        {} bytes", entry.file_size);
     println!(
         "  cpk         {}",
         if entry.cpk_filename.is_empty() {
@@ -6043,11 +5940,11 @@ fn vfs_stat(path: &str, game_dir: Option<PathBuf>) -> anyhow::Result<()> {
         Ok(data) => {
             let label = nie_explore::describe_content(path, &data)
                 .and_then(|lines| lines.into_iter().next())
-                .unwrap_or_else(|| "format      brut / non reconnu".to_string());
+                .unwrap_or_else(|| "format      raw / unrecognized".to_string());
             println!("  {label}");
             println!("  magic       {}", nie_explore::hex_prefix(&data, 16));
         }
-        Err(e) => println!("  lecture     ECHEC ({e})"),
+        Err(e) => println!("  read        FAILED ({e})"),
     }
     Ok(())
 }
@@ -6060,16 +5957,14 @@ fn vfs_cat(
     wav_out: Option<&std::path::Path>,
     game_dir: Option<PathBuf>,
 ) -> anyhow::Result<()> {
-    /// Chemin du `.awb` de streaming associé à un `.acb` (même dossier, même base).
+    /// Path of the streaming `.awb` associated with an `.acb` (same folder, same base).
     fn alloc_awb(base: &str) -> String {
         format!("{base}.awb")
     }
 
-    /// Décode vers WAV **dans un thread à grande pile**.
+    /// Decode to WAV **in a large-stack thread**.
     ///
-    /// `cridecoder` alloue ses tables de synthèse HCA sur la pile : sur le thread principal
-    /// Windows (1 Mio en debug) il déborde avant de produire le moindre échantillon. Même
-    /// contournement que `apps/inacord/src-tauri`.
+    /// `cridecoder` allocates its HCA synthesis tables on the stack: on the Windows main thread (1 MiB in debug) it overflows before producing a sample.
     fn decoder_wav(data: Vec<u8>) -> Option<Vec<u8>> {
         std::thread::Builder::new()
             .stack_size(16 * 1024 * 1024)
@@ -6082,8 +5977,8 @@ fn vfs_cat(
     let vfs = open_vfs(game_dir)?;
     let data = vfs
         .read(path)
-        .with_context(|| format!("lecture « {path} »"))?;
-    println!("  {path}  ({} octets)", data.len());
+        .with_context(|| format!("reading `{path}`"))?;
+    println!("  {path}  ({} bytes)", data.len());
 
     if let Some(out) = png_out {
         match nie_formats::g4tx_decode::decode_best_to_png(
@@ -6092,13 +5987,13 @@ fn vfs_cat(
         ) {
             Some(png) => {
                 std::fs::write(out, &png)?;
-                println!("  PNG écrit → {}", out.display());
+                println!("  PNG written -> {}", out.display());
             }
-            None => println!("  échec décodage PNG (pas une texture reconnue)"),
+            None => println!("  PNG decoding failed (not a recognized texture)"),
         }
     }
     if let Some(out) = wav_out {
-        // `decode_to_wav` dispatche par magic : ADX, HCA (clé IEVR), AWB/AFS2, ACB.
+        // `decode_to_wav` dispatches by magic: ADX, HCA (IEVR key), AWB/AFS2, ACB.
         let mut wav = decoder_wav(data.clone());
 
         // Un `.acb` ne porte souvent que la table de cues : le son vit dans le `.awb` voisin
@@ -6109,7 +6004,7 @@ fn vfs_cat(
             let voisin = alloc_awb(base);
             if let Ok(awb) = vfs.read(&voisin) {
                 println!(
-                    "  ACB sans données : reprise sur {voisin} ({} octets)",
+                    "  ACB without data: falling back to {voisin} ({} bytes)",
                     awb.len()
                 );
                 wav = decoder_wav(awb);
@@ -6119,9 +6014,9 @@ fn vfs_cat(
         match wav {
             Some(w) => {
                 std::fs::write(out, &w)?;
-                println!("  WAV écrit → {} ({} octets)", out.display(), w.len());
+                println!("  WAV written -> {} ({} bytes)", out.display(), w.len());
             }
-            None => println!("  échec décodage audio (ni ADX, ni HCA, ni AWB/ACB exploitable)"),
+            None => println!("  audio decoding failed (neither ADX, HCA, nor a usable AWB/ACB)"),
         }
     }
 
@@ -6135,7 +6030,7 @@ fn vfs_cat(
     print_hexdump(&data[..n], 0);
     if data.len() > n {
         println!(
-            "  … {} octet(s) de plus (--len pour en voir davantage)",
+            "  ... {} more byte(s) (--len to see more)",
             data.len() - n
         );
     }
@@ -6174,8 +6069,8 @@ fn vfs_extract(
     game_dir: Option<PathBuf>,
 ) -> anyhow::Result<()> {
     let vfs = open_vfs(game_dir)?;
-    // Même sémantique que `vfs find` : suffixe `.<ext>` en minuscules, ce qui
-    // couvre les extensions composées (`cfg.bin`).
+    // Same semantics as `vfs find`: lowercase `.<ext>` suffix, which
+    // covers compound extensions (`cfg.bin`).
     let ext_dot = ext.map(|e| format!(".{}", e.trim_start_matches('.').to_lowercase()));
 
     if ext_dot.is_none() && vfs.find(path).is_some() {
@@ -6185,14 +6080,14 @@ fn vfs_extract(
         }
         std::fs::write(out, &data)?;
         println!(
-            "  1 fichier extrait ({} octets) → {}",
+            "  1 file extracted ({} bytes) -> {}",
             data.len(),
             out.display()
         );
         return Ok(());
     }
 
-    // Pas de correspondance exacte : traiter `path` comme un préfixe de dossier.
+    // No exact match: treat `path` as a folder prefix.
     let prefix = path.trim_end_matches('/');
     let sub_prefix = format!("{prefix}/");
     let matches: Vec<String> = vfs
@@ -6207,9 +6102,9 @@ fn vfs_extract(
         .collect();
     anyhow::ensure!(
         !matches.is_empty(),
-        "« {path} » absent du VFS (ni fichier exact, ni préfixe){}",
+        "`{path}` is not in the VFS (neither an exact file nor a prefix){}",
         ext.map_or(String::new(), |e| format!(
-            " — ou aucun fichier en .{e} dessous"
+            " (or no .{e} file under it)"
         ))
     );
 
@@ -6234,7 +6129,7 @@ fn vfs_extract(
         })
         .reduce(|| (0, 0), |a, b| (a.0 + b.0, a.1 + b.1));
     println!(
-        "  {ok} fichier(s) extrait(s) sous {} ({failed} échec(s))",
+        "  {ok} file(s) extracted under {} ({failed} failure(s))",
         out.display()
     );
     Ok(())
@@ -6255,7 +6150,7 @@ fn vfs_stats(top: usize, game_dir: Option<PathBuf>) -> anyhow::Result<()> {
     v.sort_by_key(|(_, c)| std::cmp::Reverse(*c));
 
     println!(
-        "  total = {} fichiers, {} CPK, {} entrées extra, {} loose",
+        "  total = {} files, {} CPKs, {} extra entries, {} loose",
         vfs.asset_count(),
         vfs.cpk_count(),
         vfs.extra_count(),
@@ -6275,7 +6170,7 @@ fn vfs_remotes(json: bool) -> anyhow::Result<()> {
     }
     let remotes: Vec<serde_json::Value> = serde_json::from_str(&raw)?;
     if remotes.is_empty() {
-        println!("  aucun remote rclone configuré");
+        println!("  no rclone remote configured");
         return Ok(());
     }
     for r in remotes {
@@ -6358,30 +6253,21 @@ fn vfs_cloud(
     Ok(())
 }
 
-/// Ce qu'on sait d'une extension que `nie_formats::decode` ne route pas.
+/// What is known about an extension that `nie_formats::decode` does not route.
 ///
-/// La table de dispatch n'est pas tout le dépôt : du bytecode Lua est lu par `nie-lua` (qui
-/// dépend de `nie-formats`, donc `decode` ne peut pas l'appeler sans inverser la dépendance), et
-/// un `.g4mg` n'est pas décodable seul par construction. Sans ces notes, la mesure ferait passer
-/// des capacités acquises et des impossibilités de principe pour un même « reste à faire ».
+/// The dispatch table is not the whole workspace: Lua bytecode is read by `nie-lua` (which depends on `nie-formats`, so `decode` cannot call it), and a `.g4mg` cannot be decoded alone. These notes keep the measure from counting acquired capabilities and impossibilities of principle as the same "to do".
 fn note_hors_dispatch(ext: &str) -> Option<&'static str> {
     match ext {
-        "g4mg" => Some("tampon de sommets brut, decrit par le .g4md frere : rien a decoder seul"),
-        "bin" => Some("dont le bytecode Lua 5.2 (.lua.bin), charge et execute par nie-lua"),
-        "webp" | "png" | "jpg" | "log" | "cfg" => Some("fichier de travail, pas un asset du jeu"),
+        "g4mg" => Some("raw vertex buffer, described by the sibling .g4md: nothing to decode alone"),
+        "bin" => Some("includes Lua 5.2 bytecode (.lua.bin), loaded and run by nie-lua"),
+        "webp" | "png" | "jpg" | "log" | "cfg" => Some("working file, not a game asset"),
         _ => None,
     }
 }
 
-/// Mesure la part du VFS que le dépôt sait lire, en lisant réellement les fichiers.
+/// Measures the share of the VFS the workspace reads, by parsing every file.
 ///
-/// Le chiffre publié dans `docs/PLAN.md` sous « Formats » vient d'ici : sans commande qui le
-/// régénère, il n'était falsifiable par personne — et le plan exige justement des chiffres
-/// qu'on peut rejouer.
-///
-/// Les fichiers illisibles (pack absent, entrée déclarée mais manquante sur disque) sont
-/// comptés à part : les fondre dans les « non reconnus » ferait passer un défaut d'installation
-/// pour un format non porté.
+/// Unreadable files (missing pack, entry declared but absent on disk) are counted apart, so an install defect is not reported as an unported format.
 fn vfs_formats(
     parse: bool,
     prefix: Option<&str>,
@@ -6395,19 +6281,19 @@ fn vfs_formats(
         .map(|(p, _)| p)
         .filter(|p| prefix.is_none_or(|pref| p.starts_with(pref)))
         .collect();
-    // Ordre stable : deux exécutions doivent rendre le même nombre, et un sondage doit porter
-    // sur le même échantillon d'une fois sur l'autre.
+    // Stable order: two runs must give the same number, and a probe must cover
+    // the same sample every time.
     chemins.sort_unstable();
     if let Some(n) = limit
         && n < chemins.len()
     {
-        // Échantillon RÉPARTI, pas les n premiers : l'index est trié par chemin, donc les n
-        // premiers tiennent tous dans un ou deux dossiers (`common/action`, `common/chr/_animal`)
-        // et ne disent rien du VFS entier. Un pas régulier couvre toutes les familles.
+        // SPREAD sample, not the first n: the index is sorted by path, so the first n
+        // all sit in one or two folders (`common/action`, `common/chr/_animal`) and
+        // say nothing about the whole VFS. A regular step covers every family.
         let pas = chemins.len().div_ceil(n);
         chemins = chemins.into_iter().step_by(pas).collect();
     }
-    anyhow::ensure!(!chemins.is_empty(), "aucun fichier ne correspond");
+    anyhow::ensure!(!chemins.is_empty(), "no file matches");
 
     let mut par_format: std::collections::BTreeMap<String, usize> =
         std::collections::BTreeMap::new();
@@ -6449,7 +6335,7 @@ fn vfs_formats(
                     let base = chemin.rsplit('/').next().unwrap_or(chemin);
                     let ext = base
                         .rsplit_once('.')
-                        .map_or_else(|| "<sans>".to_string(), |(_, e)| e.to_lowercase());
+                        .map_or_else(|| "<none>".to_string(), |(_, e)| e.to_lowercase());
                     *inconnus_par_ext.entry(ext).or_default() += 1;
                     if exemples_inconnus.len() < 10 {
                         exemples_inconnus.push(chemin);
@@ -6481,14 +6367,14 @@ fn vfs_formats(
     }
 
     println!(
-        "  montage {} | mode {} | {examines} fichiers examines",
+        "  mount {} | mode {} | {examines} files examined",
         if vfs.is_dump() { "dump" } else { "packs" },
-        if parse { "parse complet" } else { "magic" },
+        if parse { "full parse" } else { "magic" },
     );
-    println!("  reconnus   {reconnus:>8}  ({:.2} %)", pct(reconnus));
+    println!("  recognized {reconnus:>8}  ({:.2} %)", pct(reconnus));
     if n_sans_decodeur > 0 {
         println!(
-            "  magic connu, pas de decodeur autonome : {n_sans_decodeur} ({:.2} %) — {}",
+            "  known magic, no standalone decoder: {n_sans_decodeur} ({:.2} %): {}",
             pct(n_sans_decodeur),
             sans_decodeur
                 .iter()
@@ -6497,10 +6383,10 @@ fn vfs_formats(
                 .join(", "),
         );
     }
-    println!("  inconnus   {inconnus:>8}  ({:.2} %)", pct(inconnus));
+    println!("  unknown    {inconnus:>8}  ({:.2} %)", pct(inconnus));
     if illisibles > 0 {
         println!(
-            "  illisibles {illisibles:>8}  ({:.2} %) — absents du disque, pas un format manquant",
+            "  unreadable {illisibles:>8}  ({:.2} %): missing on disk, not a missing format",
             pct(illisibles)
         );
     }
@@ -6510,22 +6396,22 @@ fn vfs_formats(
         println!("  {n:>8}  {format}");
     }
     if !inconnus_par_ext.is_empty() {
-        println!("\n  non reconnus, par extension :");
+        println!("\n  unrecognized, by extension:");
         let mut v: Vec<(&String, &usize)> = inconnus_par_ext.iter().collect();
         v.sort_by(|a, b| b.1.cmp(a.1));
         for (ext, n) in v.iter().take(15) {
             match note_hors_dispatch(ext) {
-                Some(note) => println!("    {n:>8}  .{ext}  — {note}"),
+                Some(note) => println!("    {n:>8}  .{ext}  {note}"),
                 None => println!("    {n:>8}  .{ext}"),
             }
         }
         println!(
-            "\n  « non reconnu » = absent de la table de dispatch `nie_formats::decode`, PAS\n  \
-             forcement illisible par le depot : les notes ci-dessus disent qui sait deja les lire."
+            "\n  `unknown` = absent from the `nie_formats::decode` dispatch table, NOT\n  \
+             necessarily unreadable by the workspace: the notes above say who can already read them."
         );
     }
     if !exemples_inconnus.is_empty() {
-        println!("\n  exemples non reconnus :");
+        println!("\n  unrecognized examples:");
         for chemin in &exemples_inconnus {
             println!("    {chemin}");
         }
@@ -6533,8 +6419,7 @@ fn vfs_formats(
     Ok(())
 }
 
-/// Options communes à `vfs_search_chara`/`vfs_search_waza` (regroupées pour l'arité — clippy
-/// `too_many_arguments`), indépendantes des filtres de catégorie propres à chaque famille.
+/// Options shared by `vfs_search_chara` and `vfs_search_waza`, independent of the per-family category filters.
 struct SearchOpts {
     show_paths: bool,
     json: bool,
@@ -6542,9 +6427,7 @@ struct SearchOpts {
     game_dir: Option<PathBuf>,
 }
 
-/// Cherche un personnage dans les `.cfg.bin` du VFS (nom, ID ou code interne), avec filtres
-/// optionnels par élément/poste (catégorie), puis liste ses fichiers dans le VFS (le code
-/// interne, ex. `c01000100`, apparaît dans les chemins modèle/texture/anim du personnage).
+/// Search a character in the VFS `.cfg.bin` files (name, ID or internal code) with optional element/position filters, then list its VFS files (the internal code, e.g. `c01000100`, appears in the model, texture and animation paths).
 fn vfs_domain_search(
     domain: &str,
     query: &str,
@@ -6616,9 +6499,7 @@ fn vfs_search_chara(
     )
 }
 
-/// Cherche une technique dans les `.cfg.bin` du VFS (nom, ID ou code interne), avec filtres
-/// optionnels par catégorie/élément, puis liste ses fichiers dans le VFS (le code interne, ex.
-/// `whs00010`, apparaît dans les chemins de cut-in/telop/vidéo de la technique).
+/// Search a technique in the VFS `.cfg.bin` files (name, ID or internal code) with optional category/element filters, then list its VFS files (the internal code, e.g. `whs00010`, appears in the cut-in, telop and video paths).
 fn vfs_search_waza(
     query: &str,
     category: Option<&str>,

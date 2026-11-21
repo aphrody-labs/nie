@@ -1,10 +1,10 @@
-//! `nie atlas` — l'index unique des surfaces RE du dépôt.
+//! `nie atlas`: the single index of the repository's RE surfaces.
 //!
-//! Une seule base (`var/nie-atlas.sqlite`) rassemble ce qui était éparpillé : la base de
-//! connaissance de 19 Go, l'arborescence `data/re/`, la forge (`forge/`, `data/forge/`), les
-//! exports (C, ASM, EXE, JSON), la documentation Markdown, les 45 crates et les outils
-//! exécutables. Un miroir Redis (`db4` par défaut) rend l'ensemble interrogeable sans ouvrir
-//! SQLite, et `atlas gaps`/`atlas next` donnent la route mesurée vers les 100 %.
+//! One database (`var/nie-atlas.sqlite`) gathers the knowledge base,
+//! the `data/re/` tree, the forge (`forge/`, `data/forge/`), the exports (C, ASM, EXE, JSON), the
+//! Markdown documentation, the crates and the executable tools. A Redis mirror (`db4` by
+//! default) makes it queryable without opening SQLite, and `atlas gaps`/`atlas next` give the
+//! measured route to 100%.
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -13,7 +13,7 @@ use anyhow::{Context, Result};
 use clap::{CommandFactory, Subcommand};
 use nie_index::atlas::{Atlas, ScanConfig, ToolRecord};
 
-/// Binaires connus de la chaîne, dans l'ordre `(chemin relatif, rôle)`.
+/// Known chain binaries, as `(relative path, role)`.
 const BINARIES: &[(&str, &str)] = &[
     ("nie.exe", "reference"),
     ("dist/nie.exe", "produced"),
@@ -21,55 +21,55 @@ const BINARIES: &[(&str, &str)] = &[
 
 #[derive(Debug, Subcommand)]
 pub enum AtlasCmd {
-    /// Construit (ou met à jour) l'index complet : fichiers, crates, docs, base de
-    /// connaissance, binaires, outils, métriques et écarts.
+    /// Build (or update) the full index: files, crates, docs, knowledge base, binaries, tools,
+    /// metrics and gaps.
     Build {
-        /// Base atlas cible.
+        /// Target atlas database.
         #[arg(long, env = "NIE_ATLAS", default_value = nie_index::atlas::DEFAULT_ATLAS_PATH)]
         db: PathBuf,
-        /// Racine du dépôt.
+        /// Repository root.
         #[arg(long, default_value = ".")]
         root: PathBuf,
-        /// Base de connaissance à digérer.
+        /// Knowledge base to digest.
         #[arg(long, default_value = "var/nie.sqlite")]
         kb: PathBuf,
-        /// Saute le digest de la base de connaissance (scan de fichiers seul).
+        /// Skip the knowledge base digest (file scan only).
         #[arg(long)]
         no_kb: bool,
-        /// Plafond de lignes comptées par table de la base de connaissance.
+        /// Cap on rows counted per knowledge base table.
         #[arg(long, default_value_t = 20_000_000)]
         row_cap: i64,
-        /// Saute l'appariement symbole → source Rust (le plus coûteux du build).
+        /// Skip symbol to Rust source matching (the most expensive build step).
         #[arg(long)]
         no_link: bool,
-        /// Miroir Redis à écrire dans la foulée.
+        /// Redis mirror to write afterwards.
         #[arg(long)]
         redis: Option<String>,
-        /// Sortie JSON.
+        /// JSON output.
         #[arg(long)]
         json: bool,
     },
-    /// Une ligne d'état mesurée.
+    /// One measured status line.
     Status {
         #[arg(long, env = "NIE_ATLAS", default_value = nie_index::atlas::DEFAULT_ATLAS_PATH)]
         db: PathBuf,
         #[arg(long)]
         json: bool,
     },
-    /// Affiche l'inventaire des 38 écrans de menu réels et leur couverture.
+    /// Print the menu screen inventory and its coverage.
     Menu {
         #[arg(long, env = "NIE_ATLAS", default_value = nie_index::atlas::DEFAULT_ATLAS_PATH)]
         db: PathBuf,
         #[arg(long)]
         json: bool,
     },
-    /// Cherche dans tout l'index d'un coup (docs, symboles, outils, fichiers, crates).
+    /// Search the whole index at once (docs, symbols, tools, files, crates).
     Search {
-        /// Motif recherché.
+        /// Search pattern.
         query: String,
         #[arg(long, env = "NIE_ATLAS", default_value = nie_index::atlas::DEFAULT_ATLAS_PATH)]
         db: PathBuf,
-        /// Restreint à un type (`doc`, `symbol`, `tool`, `artifact`, `crate`).
+        /// Restrict to one kind (`doc`, `symbol`, `tool`, `artifact`, `crate`).
         #[arg(long)]
         kind: Option<String>,
         #[arg(long, default_value_t = 20)]
@@ -77,7 +77,7 @@ pub enum AtlasCmd {
         #[arg(long)]
         json: bool,
     },
-    /// La route vers les 100 %, classée par travail restant × poids.
+    /// The route to 100%, ranked by remaining work x weight.
     Gaps {
         #[arg(long, env = "NIE_ATLAS", default_value = nie_index::atlas::DEFAULT_ATLAS_PATH)]
         db: PathBuf,
@@ -86,75 +86,75 @@ pub enum AtlasCmd {
         #[arg(long)]
         json: bool,
     },
-    /// Le prochain chantier (écart le mieux classé), en JSON pour la boucle autonome.
+    /// The next work item (top-ranked gap), as JSON for the autonomous loop.
     Next {
         #[arg(long, env = "NIE_ATLAS", default_value = nie_index::atlas::DEFAULT_ATLAS_PATH)]
         db: PathBuf,
     },
-    /// Enregistre une mesure dans la chronologie (source obligatoire : la commande qui l'a produite).
+    /// Record a measurement in the timeline (source required: the command that produced it).
     Metric {
-        /// Nom de la métrique (`re.classified`, `proofs.ok`, `forge.units`…).
+        /// Metric name (`re.classified`, `proofs.ok`, `forge.units`...).
         name: String,
-        /// Valeur mesurée.
+        /// Measured value.
         value: f64,
         #[arg(long, env = "NIE_ATLAS", default_value = nie_index::atlas::DEFAULT_ATLAS_PATH)]
         db: PathBuf,
-        /// Total, quand la métrique est un ratio.
+        /// Total, when the metric is a ratio.
         #[arg(long)]
         total: Option<f64>,
-        /// Commande ou table qui a produit le chiffre.
+        /// Command or table that produced the number.
         #[arg(long)]
         source: String,
         /// Note libre.
         #[arg(long)]
         note: Option<String>,
-        /// Recalcule les écarts après enregistrement.
+        /// Recompute gaps after recording.
         #[arg(long)]
         refresh: bool,
     },
-    /// Enregistre un pas de la boucle autonome.
+    /// Record one step of the autonomous loop.
     Run {
-        /// Étape exécutée.
+        /// Step executed.
         step: String,
         #[arg(long, env = "NIE_ATLAS", default_value = nie_index::atlas::DEFAULT_ATLAS_PATH)]
         db: PathBuf,
-        /// Domaine visé (`forge.identity`, `re.named`…).
+        /// Target area (`forge.identity`, `re.named`...).
         #[arg(long)]
         area: Option<String>,
-        /// Succès de l'étape.
+        /// Step succeeded.
         #[arg(long)]
         ok: bool,
-        /// Durée en millisecondes.
+        /// Duration in milliseconds.
         #[arg(long, default_value_t = 0)]
         ms: i64,
-        /// Métriques JSON associées.
+        /// Associated JSON metrics.
         #[arg(long)]
         metrics: Option<String>,
-        /// Dernières lignes de journal.
+        /// Last log lines.
         #[arg(long)]
         log: Option<String>,
     },
-    /// Documents indexés, classés par ancrage machine (adresses, symboles, empreintes).
+    /// Indexed documents, ranked by machine anchoring (addresses, symbols, fingerprints).
     Docs {
         #[arg(long, env = "NIE_ATLAS", default_value = nie_index::atlas::DEFAULT_ATLAS_PATH)]
         db: PathBuf,
-        /// N'affiche que les documents sans aucune référence machine.
+        /// Only show documents with no machine reference.
         #[arg(long)]
         orphans: bool,
         #[arg(long, default_value_t = 30)]
         limit: usize,
     },
-    /// Fichiers strictement identiques (même sha256) présents à plusieurs chemins.
+    /// Files that are byte-identical (same sha256) at several paths.
     Dupes {
         #[arg(long, env = "NIE_ATLAS", default_value = nie_index::atlas::DEFAULT_ATLAS_PATH)]
         db: PathBuf,
-        /// Restreint à une zone (`re-data`, `doc`, `forge`, `crate`…).
+        /// Restrict to one zone (`re-data`, `doc`, `forge`, `crate`...).
         #[arg(long)]
         zone: Option<String>,
         #[arg(long, default_value_t = 20)]
         limit: usize,
     },
-    /// Miroir Redis de l'index (statut, écarts, outils, symbole → adresse).
+    /// Redis mirror of the index (status, gaps, tools, symbol -> address).
     Sync {
         #[arg(long, env = "NIE_ATLAS", default_value = nie_index::atlas::DEFAULT_ATLAS_PATH)]
         db: PathBuf,
@@ -163,11 +163,11 @@ pub enum AtlasCmd {
         #[arg(long, default_value = "atlas")]
         prefix: String,
     },
-    /// Lie et marque les symboles nommés de la KB apparaissant dans le code source Rust du workspace.
+    /// Link and mark the knowledge base's named symbols that appear in the workspace's Rust source.
     Link {
         #[arg(long, env = "NIE_ATLAS", default_value = nie_index::atlas::DEFAULT_ATLAS_PATH)]
         db: PathBuf,
-        /// Racine du dépôt.
+        /// Repository root.
         #[arg(long, default_value = ".")]
         root: PathBuf,
     },
@@ -250,15 +250,15 @@ fn build(
     json: bool,
 ) -> Result<()> {
     let started = std::time::Instant::now();
-    let mut atlas = Atlas::open(db).context("ouverture de l'atlas")?;
+    let mut atlas = Atlas::open(db).context("opening atlas")?;
     let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
 
     let tracked = git_tracked(&root);
     let scan = atlas
         .scan(&ScanConfig::new(&root), &tracked)
-        .context("scan du dépôt")?;
-    let crates = atlas.import_crates(&root).context("import des crates")?;
-    let docs = atlas.import_docs(&root).context("import des documents")?;
+        .context("scanning repository")?;
+    let crates = atlas.import_crates(&root).context("importing crates")?;
+    let docs = atlas.import_docs(&root).context("importing documents")?;
     let binaries = atlas
         .import_binaries(
             &root,
@@ -267,17 +267,17 @@ fn build(
                 .map(|(p, r)| ((*p).to_string(), (*r).to_string()))
                 .collect::<Vec<_>>(),
         )
-        .context("import des binaires")?;
-    let forge = atlas.import_forge(&root).context("import de la forge")?;
+        .context("importing binaries")?;
+    let forge = atlas.import_forge(&root).context("importing forge")?;
     let menu_screens = atlas
         .import_menu(&root)
-        .context("import du catalogue menu")?;
+        .context("importing menu catalog")?;
     let mut tools = atlas
         .import_repo_tools(&root)
-        .context("import des outils du dépôt")?;
+        .context("importing repository tools")?;
     tools += atlas
         .import_tools(&cli_tools())
-        .context("import des sous-commandes nie")?;
+        .context("importing nie subcommands")?;
 
     let mut kb_digest = None;
     if !no_kb {
@@ -289,12 +289,12 @@ fn build(
         if kb_path.is_file() {
             let digest = atlas
                 .import_kb(&kb_path, row_cap)
-                .with_context(|| format!("digest de {}", kb_path.display()))?;
+                .with_context(|| format!("digest of {}", kb_path.display()))?;
             record_kb_metrics(&atlas, &digest)?;
             kb_digest = Some(digest);
         } else {
             eprintln!(
-                "atlas: base de connaissance absente ({}) — index construit sans son digest",
+                "atlas: knowledge base missing ({}); index built without its digest",
                 kb_path.display()
             );
         }
@@ -305,7 +305,7 @@ fn build(
     } else {
         atlas
             .link_ported_symbols(&root)
-            .context("appariement symbole → source Rust")?
+            .context("matching symbols to Rust source")?
     };
 
     atlas.record_metric(
@@ -317,7 +317,7 @@ fn build(
         None,
     )?;
     record_forge_metrics(&atlas)?;
-    let gaps = atlas.refresh_gaps().context("calcul des écarts")?;
+    let gaps = atlas.refresh_gaps().context("computing gaps")?;
     let mirrored = match redis {
         Some(url) => atlas.sync_redis(url, "atlas").unwrap_or(0),
         None => 0,
@@ -377,19 +377,19 @@ fn build(
     Ok(())
 }
 
-/// Métriques dérivées du digest de la base de connaissance.
+/// Metrics derived from the knowledge base digest.
 ///
-/// La couverture n'est pas recalculée ici : la dernière ligne de `kb.coverage`, écrite par
-/// `nie rebuild`, est reprise telle quelle — c'est la mesure honnête de la boucle.
+/// Coverage is not recomputed here: the last `kb.coverage` row, written by `nie rebuild`, is
+/// taken as is, since it is the loop's honest measurement.
 fn record_kb_metrics(atlas: &Atlas, digest: &nie_index::atlas::KbDigest) -> Result<()> {
     atlas.record_metric(
         "kb.rows",
         digest.rows as f64,
         None,
-        "atlas import_kb (COUNT borné par --row-cap)",
+        "atlas import_kb (COUNT capped by --row-cap)",
         None,
         Some(&format!(
-            "{} tables, {} plafonnées",
+            "{} tables, {} capped",
             digest.tables, digest.capped
         )),
     )?;
@@ -398,7 +398,7 @@ fn record_kb_metrics(atlas: &Atlas, digest: &nie_index::atlas::KbDigest) -> Resu
             "re.classified",
             cov.classified as f64,
             Some(cov.total as f64),
-            "kb.coverage (dernière ligne)",
+            "kb.coverage (last row)",
             None,
             None,
         )?;
@@ -406,13 +406,13 @@ fn record_kb_metrics(atlas: &Atlas, digest: &nie_index::atlas::KbDigest) -> Resu
             "re.named",
             cov.named as f64,
             Some(cov.total as f64),
-            "kb.coverage (dernière ligne)",
+            "kb.coverage (last row)",
             None,
             None,
         )?;
         return Ok(());
     }
-    // Sans ligne de couverture, la seule mesure disponible est le digest lui-même.
+    // Without a coverage row, the only available measurement is the digest itself.
     let functions: Option<i64> = atlas
         .conn()
         .query_row(
@@ -436,7 +436,7 @@ fn record_kb_metrics(atlas: &Atlas, digest: &nie_index::atlas::KbDigest) -> Resu
     Ok(())
 }
 
-/// Métriques de la forge : identité du binaire produit, unités relevées et byte-exactes.
+/// Forge metrics: identity of the produced binary, lifted units and byte-exact units.
 fn record_forge_metrics(atlas: &Atlas) -> Result<()> {
     let conn = atlas.conn();
     let (units, exact, lifted): (i64, i64, i64) = conn.query_row(
@@ -655,9 +655,9 @@ fn docs(db: &Path, orphans: bool, limit: usize) -> Result<()> {
     Ok(())
 }
 
-/// Doublons stricts : même sha256, plusieurs chemins. Le dépôt en porte par construction
-/// (`refs/re/` et `data/re/50-source/upstream/` sont deux copies du même
-/// corpus) ; les mesurer est la condition pour décider laquelle fait autorité.
+/// Strict duplicates: same sha256, several paths. The repository has some by construction
+/// (`refs/re/` and `data/re/50-source/upstream/` are two copies of the same corpus); measuring
+/// them is the condition for deciding which one is authoritative.
 fn dupes(db: &Path, zone: Option<&str>, limit: usize) -> Result<()> {
     let atlas = Atlas::open(db)?;
     let conn = atlas.conn();
@@ -680,7 +680,7 @@ fn dupes(db: &Path, zone: Option<&str>, limit: usize) -> Result<()> {
     for row in rows {
         let (n, total, paths) = row?;
         wasted += total - total / n;
-        println!("{n:>3}x {:>10} o  {paths}", total / n);
+        println!("{n:>3}x {:>10} B  {paths}", total / n);
         groups += 1;
     }
     println!("dupes groups={groups} redundant_bytes={wasted}");
@@ -701,14 +701,14 @@ fn link(db: &Path, root: &Path) -> Result<()> {
     let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
     let linked = atlas
         .link_ported_symbols(&root)
-        .context("appariement symbole → source Rust")?;
-    let gaps = atlas.refresh_gaps().context("calcul des écarts")?;
+        .context("matching symbols to Rust source")?;
+    let gaps = atlas.refresh_gaps().context("computing gaps")?;
     println!("atlas-link linked={linked} gaps_updated={gaps}");
     Ok(())
 }
 
-/// Chemins suivis par git sous `root` (relatifs à `root`), lus dans l'index du dépôt : distingue
-/// versionné et matière locale (`data/re/`). Vide hors d'un dépôt.
+/// Paths tracked by git under `root` (relative to `root`), read from the repository index:
+/// distinguishes versioned files from local material (`data/re/`). Empty outside a repository.
 fn git_tracked(root: &Path) -> HashSet<String> {
     let Some(top) = root.ancestors().find(|dir| dir.join(".git").is_dir()) else {
         return HashSet::new();
@@ -740,8 +740,8 @@ fn git_tracked(root: &Path) -> HashSet<String> {
         .collect()
 }
 
-/// Les sous-commandes de `nie`, lues sur la définition clap elle-même : l'index ne peut
-/// pas dériver de la CLI réelle.
+/// The `nie` subcommands, read from the clap definition itself, so the index cannot drift from
+/// the real CLI.
 fn cli_tools() -> Vec<ToolRecord> {
     let cmd = crate::Cli::command();
     cmd.get_subcommands()

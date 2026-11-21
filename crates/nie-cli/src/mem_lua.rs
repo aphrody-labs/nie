@@ -1,47 +1,47 @@
-//! `nie mem lua-field` — relève la valeur d'un champ de table Lua dans le jeu vivant.
+//! `nie mem lua-field` - read the value of a Lua table field in the live game.
 //!
-//! Certaines valeurs d'écran ne vivent dans **aucun fichier** du jeu : le chunk Lua déclare la
-//! clé (`listRowNum`, `listLineNum`, `pageNum`…) mais ne l'affecte jamais ; c'est le moteur C++
-//! qui la pose au moment où l'écran s'instancie. Cinq sources de fichiers ont été épuisées sans
-//! la trouver (cf. `docs/AVATAR.md`). La seule lecture possible est donc la mémoire du process.
+//! Some screen values live in **no game file**: the Lua chunk declares the key (`listRowNum`,
+//! `listLineNum`, `pageNum`...) but never assigns it; the C++ engine sets it when the screen is
+//! instantiated. File sources were exhausted without finding it, so the only possible read is
+//! process memory.
 //!
-//! La chaîne, telle qu'elle a été établie à la main sur le process du jeu :
+//! The chain, established by hand on the game process:
 //!
-//! 1. Lua interne les chaînes courtes. Une `TString` x86-64 (Lua 5.2) est
-//!    `next(8) | tt(1) marked(1) extra(1) pad(1) hash(4) | len(8) | données…` : chercher
-//!    `len` suivi du nom et de son NUL identifie l'objet chaîne, et `TString* = addr(len) - 16`.
-//! 2. Une entrée de table est un `Node { TValue i_val; TKey i_key; }` = **40 octets**
-//!    (`TValue` 16 ; `TKey` = `value_(8) tt_(4) pad(4) next(8)` 24). Chercher le pointeur vers
-//!    la `TString` donne la position de `i_key.value_` ; la valeur est 16 octets AVANT.
-//! 3. `i_key.tt_` doit valoir `LUA_TSTRING` (4) — le runtime observé marque en plus le bit
-//!    collectable 0x40, d'où le masque.
+//! 1. Lua interns short strings. An x86-64 `TString` (Lua 5.2) is
+//!    `next(8) | tt(1) marked(1) extra(1) pad(1) hash(4) | len(8) | data...`: searching for `len`
+//!    followed by the name and its NUL identifies the string object, and `TString* = addr(len) - 16`.
+//! 2. A table entry is a `Node { TValue i_val; TKey i_key; }` = **40 bytes** (`TValue` 16; `TKey` =
+//!    `value_(8) tt_(4) pad(4) next(8)` 24). Searching for the pointer to the `TString` gives the
+//!    position of `i_key.value_`; the value is 16 bytes BEFORE it.
+//! 3. `i_key.tt_` must be `LUA_TSTRING` (4); the observed runtime also sets the collectable bit
+//!    0x40, hence the mask.
 //!
-//! Le même process porte plusieurs états Lua (plusieurs `TString` internées pour un même nom) et
-//! plusieurs écrans instanciés : la commande rend **toutes** les occurrences plutôt qu'une
-//! réponse unique — c'est à l'appelant de savoir quel écran il a ouvert.
+//! The same process holds several Lua states (several interned `TString`s for one name) and
+//! several instantiated screens: the command returns **all** occurrences rather than one answer;
+//! the caller knows which screen it opened.
 
 use anyhow::Context as _;
 
-/// Taille d'un `Node` de table Lua 5.2 sur x86-64.
+/// Size of a Lua 5.2 table `Node` on x86-64.
 const NODE_SIZE: u64 = 40;
-/// Décalage de `i_key.value_` depuis le début du `Node` (la taille d'un `TValue`).
+/// Offset of `i_key.value_` from the start of the `Node` (the size of a `TValue`).
 const KEY_OFFSET: u64 = 16;
-/// Décalage de `TString.len` depuis le début de l'objet `TString`.
+/// Offset of `TString.len` from the start of the `TString` object.
 const TSTRING_LEN_OFFSET: u64 = 16;
-/// Masque qui retire le bit « collectable » du tag de type.
+/// Mask that removes the "collectable" bit from the type tag.
 const TT_MASK: u32 = 0x3f;
 
-/// Un champ relevé : où il vit, et ce qu'il vaut.
+/// A field read: where it lives and what it holds.
 struct Releve {
-    /// Adresse du `Node` (début de `i_val`).
+    /// `Node` address (start of `i_val`).
     node: u64,
-    /// Valeur décodée, rendue lisible.
+    /// Decoded value, made readable.
     valeur: String,
-    /// Tag de type Lua de la valeur, masqué du bit collectable.
+    /// Lua type tag of the value, with the collectable bit masked.
     tt: u32,
 }
 
-/// Nom lisible d'un tag de type Lua.
+/// Readable name of a Lua type tag.
 fn nom_type(tt: u32) -> &'static str {
     match tt & TT_MASK {
         0 => "nil",
@@ -57,10 +57,10 @@ fn nom_type(tt: u32) -> &'static str {
     }
 }
 
-/// Rend un `TValue` (8 octets de charge utile + tag) sous forme lisible.
+/// Render a `TValue` (8 payload bytes + tag) as readable text.
 ///
-/// Un `number` Lua 5.2 est un `double` : `2.0` s'affiche `2` pour rester comparable à ce qu'un
-/// script Lua en ferait, et la forme fractionnaire est conservée quand elle existe.
+/// A Lua 5.2 `number` is a `double`: `2.0` prints as `2` to stay comparable with what a Lua script
+/// would show, and the fractional form is kept when present.
 fn decoder_valeur(charge: [u8; 8], tt: u32) -> String {
     let brut = u64::from_le_bytes(charge);
     match tt & TT_MASK {
@@ -78,18 +78,18 @@ fn decoder_valeur(charge: [u8; 8], tt: u32) -> String {
     }
 }
 
-/// Lit `n` octets, ou rend `None` si la plage n'est pas lisible.
+/// Read `n` bytes, or return `None` if the range is not readable.
 fn lire(pid: i32, addr: u64, n: usize) -> Option<Vec<u8>> {
     nie_trace::read_exact(pid, addr, n).ok()
 }
 
-/// Lit un `u32` little-endian.
+/// Read a little-endian `u32`.
 fn u32_at(buf: &[u8], off: usize) -> Option<u32> {
     buf.get(off..off + 4)
         .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
 }
 
-/// Lit un `u64` little-endian.
+/// Read a little-endian `u64`.
 fn u64_at(buf: &[u8], off: usize) -> Option<u64> {
     let b = buf.get(off..off + 8)?;
     Some(u64::from_le_bytes([
@@ -97,7 +97,7 @@ fn u64_at(buf: &[u8], off: usize) -> Option<u64> {
     ]))
 }
 
-/// Rend le nom d'une `TString` Lua, si l'objet a bien cette forme.
+/// Return the name of a Lua `TString`, if the object has that shape.
 fn nom_tstring(pid: i32, tstring: u64, max: usize) -> Option<String> {
     let buf = lire(pid, tstring, TSTRING_LEN_OFFSET as usize + 8 + max)?;
     let tt = *buf.get(8)?;
@@ -113,7 +113,7 @@ fn nom_tstring(pid: i32, tstring: u64, max: usize) -> Option<String> {
     std::str::from_utf8(octets).ok().map(str::to_string)
 }
 
-/// Cherche les objets `TString` internés qui portent exactement `nom`.
+/// Find interned `TString` objects holding exactly `nom`.
 fn trouver_tstrings(pid: i32, nom: &str, limite: usize) -> Vec<u64> {
     let mut motif = (nom.len() as u64).to_le_bytes().to_vec();
     motif.extend_from_slice(nom.as_bytes());
@@ -125,13 +125,13 @@ fn trouver_tstrings(pid: i32, nom: &str, limite: usize) -> Vec<u64> {
         .collect()
 }
 
-/// Cherche les `Node` dont la clé est `tstring`, et décode leur valeur.
+/// Find `Node`s whose key is `tstring` and decode their value.
 fn relever_nodes(pid: i32, tstring: u64, limite: usize) -> Vec<Releve> {
     let motif = tstring.to_le_bytes().to_vec();
     let regions = nie_trace::module_regions(pid, "", true);
     let mut out = Vec::new();
     for hit in nie_trace::scan_regions(pid, &regions, None, &motif, limite) {
-        // `hit.addr` est la position de `i_key.value_` ; le Node commence 16 octets avant.
+        // `hit.addr` is the position of `i_key.value_`; the Node starts 16 bytes before.
         let node = match hit.addr.checked_sub(KEY_OFFSET) {
             Some(n) => n,
             None => continue,
@@ -139,8 +139,8 @@ fn relever_nodes(pid: i32, tstring: u64, limite: usize) -> Vec<Releve> {
         let Some(buf) = lire(pid, node, NODE_SIZE as usize) else {
             continue;
         };
-        // La clé doit être une chaîne : sinon le pointeur a été trouvé ailleurs qu'en position
-        // de clé (table de chaînes internées, pool de constantes d'un prototype…).
+        // The key must be a string: otherwise the pointer was found somewhere other than a key
+        // position (interned string table, a prototype constant pool...).
         let Some(key_tt) = u32_at(&buf, KEY_OFFSET as usize + 8) else {
             continue;
         };
@@ -161,7 +161,7 @@ fn relever_nodes(pid: i32, tstring: u64, limite: usize) -> Vec<Releve> {
     out
 }
 
-/// Balaie les `Node` voisins et rend les paires `clé → valeur` du même tableau de hachage.
+/// Scan neighbouring `Node`s and return the `key -> value` pairs of the same hash table.
 fn voisins(pid: i32, node: u64, rayon: i64, max_nom: usize) -> Vec<(String, String)> {
     let mut out = Vec::new();
     for k in -rayon..=rayon {
@@ -193,12 +193,12 @@ fn voisins(pid: i32, node: u64, rayon: i64, max_nom: usize) -> Vec<(String, Stri
     out
 }
 
-/// Point d'entrée de `nie mem lua-field`.
+/// Entry point of `nie mem lua-field`.
 ///
-/// `rayon` > 0 déclenche l'affichage des entrées voisines de chaque `Node` trouvé — c'est ce qui
-/// donne la table d'état complète (`listNum`, `listRowNum`, `listLineNum`, `pageNum`, `lastLine`)
-/// plutôt qu'un champ isolé. `nombres_seuls` écarte les entrées dont la valeur n'est pas un
-/// scalaire, seul bruit notable de la méthode.
+/// `rayon` > 0 also prints the neighbouring entries of each `Node` found, which yields the full
+/// state table (`listNum`, `listRowNum`, `listLineNum`, `pageNum`, `lastLine`) instead of an
+/// isolated field. `nombres_seuls` drops entries whose value is not a scalar, the main noise of
+/// the method.
 pub fn lua_field(
     pid: i32,
     nom: &str,
@@ -211,25 +211,25 @@ pub fn lua_field(
         pid
     } else {
         nie_trace::find_pid_by_name("nie.exe")
-            .context("nie.exe introuvable — lance le jeu, ou précise --pid")?
+            .context("nie.exe not found: start the game, or pass --pid")?
     };
 
     let tstrings = trouver_tstrings(pid, nom, limite_chaines);
     if tstrings.is_empty() {
-        println!("  aucune TString internée « {nom} » — le champ n'existe pas dans ce process.");
+        println!("  no interned TString '{nom}'; the field does not exist in this process.");
         return Ok(());
     }
     println!(
-        "  {} objet(s) TString « {nom} » (pid {pid})",
+        "  {} TString object(s) '{nom}' (pid {pid})",
         tstrings.len()
     );
 
     let mut total = 0usize;
     for ts in &tstrings {
         let mut releves = relever_nodes(pid, *ts, limite_nodes);
-        // Le pointeur d'une TString se retrouve aussi en position de clé d'entrées SANS rapport
-        // (tables de globales, `_LOADED`, pools de constantes). Ne garder que les valeurs
-        // numériques élimine ce bruit d'un coup quand on cherche une dimension d'écran.
+        // A TString pointer also shows up in key position of UNRELATED entries (global tables,
+        // `_LOADED`, constant pools). Keeping only numeric values removes that noise at once when
+        // looking for a screen dimension.
         if nombres_seuls {
             releves.retain(|r| r.tt == 3 || r.tt == 1);
         }
@@ -237,7 +237,7 @@ pub fn lua_field(
             continue;
         }
         println!(
-            "\n  TString 0x{ts:x} — {} entrée(s) de table",
+            "\n  TString 0x{ts:x} - {} table entry(ies)",
             releves.len()
         );
         for r in &releves {
@@ -253,32 +253,31 @@ pub fn lua_field(
         }
     }
     if total == 0 {
-        println!("\n  aucune entrée de table : la clé est internée mais aucune table ne la porte.");
+        println!("\n  no table entry: the key is interned but no table holds it.");
     } else {
-        println!("\n  {total} entrée(s) au total.");
+        println!("\n  {total} entry(ies) in total.");
     }
     Ok(())
 }
 
-// ─── Palettes de l'éditeur d'avatar ───────────────────────────────────────────
+// --- Avatar editor palettes ---
 
-/// Taille d'une entrée de la table de palettes : identifiant puis couleur, alignés sur 16.
+/// Size of a palette table entry: id then color, aligned to 16.
 const TAILLE_ENTREE_PALETTE: usize = 16;
 
-/// Relève la table `colorPresetID → couleur` de l'éditeur d'avatar dans le jeu vivant.
+/// Read the `colorPresetID -> color` table of the avatar editor from the live game.
 ///
-/// Le catalogue (`m_CharaEditColorDataList`) ne donne que des **identifiants** : les valeurs de
-/// couleur n'existent ni dans ce fichier, ni dans le binaire — le motif d'une entrée connue y est
-/// absent — ni sous une forme résoluble depuis les chaînes, contrairement aux canaux `red`,
-/// `green` et `blue` (0 identifiant de palette sur 165 s'y retrouve). Elles ne sont donc lisibles
-/// que dans la mémoire du processus, où le jeu les charge.
+/// The catalogue (`m_CharaEditColorDataList`) only gives **ids**: the color values exist neither in
+/// that file nor in the binary (the pattern of a known entry is absent there), nor in a form
+/// resolvable from strings, unlike the `red`, `green` and `blue` channels. They are readable only
+/// in process memory, where the game loads them.
 ///
-/// Forme de la table, relevée : par entrée, l'identifiant CRC-32 en little-endian sur 4 octets,
-/// puis la couleur **ARGB** sur 4 octets (l'alpha en tête, `0xFF` pour une couleur opaque), le
-/// reste servant d'alignement. Les entrées se suivent, alignées sur 4.
+/// Table shape, as read: per entry, the CRC-32 id little-endian on 4 bytes, then the **ARGB** color
+/// on 4 bytes (alpha first, `0xFF` for an opaque color), the rest being alignment. Entries follow
+/// each other, aligned to 4.
 ///
-/// `identifiants` borne la recherche : seuls les identifiants attendus sont retenus, ce qui écarte
-/// les coïncidences qu'un balayage libre de la mémoire produirait à coup sûr.
+/// `identifiants` bounds the search: only the expected ids are kept, which drops the coincidences
+/// a free memory scan would certainly produce.
 pub fn palettes(
     pid: i32,
     identifiants: &[u32],
@@ -289,11 +288,11 @@ pub fn palettes(
         pid
     } else {
         nie_trace::find_pid_by_name("nie.exe")
-            .context("nie.exe introuvable — lance le jeu, ou précise --pid")?
+            .context("nie.exe not found: start the game, or pass --pid")?
     };
     let attendus: std::collections::BTreeSet<u32> = identifiants.iter().copied().collect();
     let octets = nie_trace::read_exact(pid, debut, longueur)
-        .map_err(|e| anyhow::anyhow!("lecture de {longueur} octets à 0x{debut:x} : {e}"))?;
+        .map_err(|e| anyhow::anyhow!("read of {longueur} bytes at 0x{debut:x}: {e}"))?;
 
     let mut vus: std::collections::BTreeMap<u32, [u8; 4]> = std::collections::BTreeMap::new();
     let mut offset = 0usize;
@@ -308,9 +307,9 @@ pub fn palettes(
                 octets[offset + 6],
                 octets[offset + 7],
             ];
-            // Un identifiant peut réapparaître ailleurs qu'en tête d'entrée — le balayage est
-            // libre, au pas de 4 octets. Les entrées de la vraie table sont OPAQUES : privilégier
-            // `alpha = 255` écarte ces coïncidences, qui rendaient des couleurs semi-transparentes.
+            // An id can reappear elsewhere than at an entry head: the scan is free, in 4-byte steps. Real
+            // table entries are OPAQUE: preferring `alpha = 255` drops those coincidences, which produced
+            // semi-transparent colors.
             match vus.entry(id) {
                 std::collections::btree_map::Entry::Vacant(v) => {
                     v.insert(argb);
@@ -345,7 +344,7 @@ mod tests {
 
     #[test]
     fn le_bit_collectable_ne_change_pas_le_type() {
-        // Le runtime observé marque les chaînes 0x44 = LUA_TSTRING | 0x40.
+        // The observed runtime marks strings 0x44 = LUA_TSTRING | 0x40.
         assert_eq!(nom_type(0x44), "string");
         assert_eq!(nom_type(4), "string");
         assert_eq!(nom_type(0x45), "table");

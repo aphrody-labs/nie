@@ -1,28 +1,23 @@
-//! `nie video` — inventaire, mesure, remux et export des cinématiques du jeu.
+//! `nie video` - inventory, measure, remux and export the game cutscenes.
 //!
-//! Les 97 films d'Inazuma Eleven: Victory Road (194 entrées VFS, chaque film étant présent sous
-//! `common/movie` et `dx11/movie`) sont des conteneurs **USM / Sofdec2** : du H.264 et du HCA
-//! Criware entrelacés par blocs. Aucun lecteur ne sait ouvrir ça directement.
+//! The films are **USM / Sofdec2** containers: H.264 and CRI HCA interleaved in blocks, which no
+//! player opens directly. This command is a text facade: the film record lives in
+//! [`nie_explore::cinema`], shared with `nie-model-serve` and the explorer.
 //!
-//! Cette commande n'est qu'une **façade texte** : la fiche d'un film vit dans
-//! [`nie_explore::cinema`], la même que sert `nie-model-serve` à la page `/videos` d'azalée et
-//! que lit l'explorateur. Trois fiches concurrentes décrivaient les mêmes octets sans en dire la
-//! même chose ; il n'y en a plus qu'une.
+//! It sits on three pure-Rust pieces:
 //!
-//! Sous elle, trois briques pures Rust :
+//! * [`nie_formats::usm`]: demux, `@UTF` metadata, one access unit per frame;
+//! * [`nie_formats::mp4`]: MP4 remux of H.264 streams (bytes kept, Annex-B start codes become
+//!   AVCC length prefixes);
+//! * [`nie_formats::webm`]: WebM mux of VP9 streams, after stripping their IVF wrapper.
 //!
-//! * [`nie_formats::usm`] — démultiplexage, métadonnées `@UTF`, une unité d'accès par image ;
-//! * [`nie_formats::mp4`] — remux MP4 des flux H.264 (les octets sont conservés, seuls les
-//!   start-codes Annex-B deviennent des préfixes de longueur AVCC) ;
-//! * [`nie_formats::webm`] — muxage WebM des flux VP9, après retrait de leur emballage IVF.
+//! The remux is lossless and smaller: only the USM interleaving is dropped (block headers,
+//! alignment padding, and the audio track when exported separately). `info` and `export` report
+//! the saving.
 //!
-//! Le remux est donc sans perte ET compressant : tout ce que perd le fichier, c'est
-//! l'entrelacement du conteneur USM (en-têtes de bloc de 32 octets, bourrage d'alignement sur 32,
-//! et la piste sonore quand elle est exportée à part). `info` et `export` chiffrent ce gain.
-//!
-//! Les trois codecs du corpus, mesurés par `nie video catalogue` : **75 H.264**, **20 MPEG-2**,
-//! **2 VP9**. Les MPEG-2 (les écrans-titres et les deux logos) n'ont pas de conteneur web — ils
-//! sortent en flux élémentaire `.m2v`, que VLC et mpv lisent.
+//! The corpus mixes H.264, MPEG-2 and VP9 (see `nie video catalogue`). MPEG-2 (title screens and
+//! logos) has no web container and is written as a raw `.m2v` elementary stream that VLC and mpv
+//! play.
 
 use std::path::{Path, PathBuf};
 
@@ -31,85 +26,84 @@ use nie_explore::cinema::{self, Film};
 use nie_formats::usm::{self, Usm};
 use nie_formats::vfs::Vfs;
 
-/// Sous-commandes de `nie video`.
+/// `nie video` subcommands.
 #[derive(clap::Subcommand, Debug)]
 pub enum VideoCmd {
-    /// Métadonnées d'un film + mesure du remux MP4 (dimensions, cadence, durée, gain).
+    /// Film metadata plus MP4 remux measurement (size, frame rate, duration, saving).
     Info {
-        /// Chemin VFS (`data/common/movie/ev01_00050.usm`) ou nom court (`ev01_00050`).
+        /// VFS path (`data/common/movie/ev01_00050.usm`) or short name (`ev01_00050`).
         chemin: String,
-        /// Sortie JSON.
+        /// JSON output.
         #[arg(long)]
         json: bool,
-        /// Vide aussi les tables `@UTF` d'en-tête du conteneur (diagnostic de format).
+        /// Also dump the container header `@UTF` tables (format diagnostics).
         #[arg(long)]
         tables: bool,
     },
 
-    /// Inventaire des films, avec leurs métadonnées réelles.
+    /// List films with their real metadata.
     Liste {
-        /// Préfixe VFS à parcourir.
+        /// VFS prefix to scan.
         #[arg(long, default_value = cinema::DOSSIER_FILMS)]
         prefixe: String,
-        /// Sortie JSON.
+        /// JSON output.
         #[arg(long)]
         json: bool,
-        /// Nombre maximal de films traités.
+        /// Maximum number of films processed.
         #[arg(long)]
         limit: Option<usize>,
-        /// Ne pas mesurer le remux : durée, définition et bande-son restent lues, à mémoire
-        /// constante (aucune image n'est retenue).
+        /// Skip the remux measurement: duration, size and audio are still read, in constant memory.
         #[arg(long)]
         rapide: bool,
     },
 
-    /// Exporte un film en MP4 (piste vidéo) et, avec `--audio`, sa bande-son en WAV.
+    /// Export a film as MP4 (video track) and, with `--audio`, its soundtrack as WAV.
     Export {
-        /// Chemin VFS ou nom court du film.
+        /// VFS path or short name of the film.
         chemin: String,
-        /// Fichier `.mp4` de sortie, ou dossier (le nom du film est alors repris).
+        /// Output `.mp4` file, or a folder (the film name is then used).
         #[arg(long)]
         out: PathBuf,
-        /// Écrit aussi `<sortie>.wav` — la piste sonore décodée depuis le HCA.
+        /// Also write `<output>.wav`, the track decoded from HCA.
         #[arg(long)]
         audio: bool,
-        /// Écrit le flux vidéo élémentaire tel quel, sans conteneur — diagnostic de format, ou
-        /// lecture dans VLC/mpv quand aucun navigateur ne décode le codec.
+        /// Write the raw elementary video stream without a container (format diagnostics, or playback
+        /// in VLC/mpv when no browser decodes the codec).
         #[arg(long)]
         brut: bool,
     },
 
-    /// Catalogue complet, prêt pour l'interface : rubriques, langues, durées, jointure gamedata.
+    /// Full catalogue for the UI: categories, languages, durations, gamedata join.
     Catalogue {
-        /// Fichier JSON de sortie (défaut : la sortie standard).
+        /// Output JSON file (default: standard output).
         #[arg(long)]
         out: Option<PathBuf>,
-        /// Ne pas mesurer le remux — catalogue à mémoire constante, celui que sert le CDN.
+        /// Skip the remux measurement: constant-memory catalogue, the one the CDN serves.
         #[arg(long)]
         rapide: bool,
     },
 
-    /// Convertit une vidéo WebM / VP9 (ex: supertechnique CloudFront) en conteneur USM ou IVF.
+    /// Convert a WebM / VP9 video (e.g. a CloudFront super move) to a USM or IVF container.
     ConvertWebm {
-        /// Fichier `.webm` source.
+        /// Source `.webm` file.
         source: PathBuf,
-        /// Fichier de sortie (`.usm` ou `.ivf`).
+        /// Output file (`.usm` or `.ivf`).
         #[arg(long)]
         out: PathBuf,
-        /// Nom logique du film dans les métadonnées USM (optionnel).
+        /// Logical film name in the USM metadata (optional).
         #[arg(long)]
         nom: Option<String>,
-        /// Cadence imposée en images par seconde (numérateur). Défaut : 60.
+        /// Forced frame rate in frames per second (numerator). Default: 60.
         #[arg(long, default_value_t = 60)]
         fps: u32,
     },
 }
 
-/// Point d'entrée de la commande.
+/// Command entry point.
 ///
-/// # Erreurs
+/// # Errors
 ///
-/// Remonte les échecs de lecture VFS, de démultiplexage et d'écriture de fichier.
+/// Propagates VFS read, demux and file write failures.
 pub fn run(op: &VideoCmd, vfs: &Vfs) -> Result<()> {
     match op {
         VideoCmd::Info {
@@ -139,33 +133,33 @@ pub fn run(op: &VideoCmd, vfs: &Vfs) -> Result<()> {
     }
 }
 
-/// Lit et démultiplexe un film. Renvoie aussi la taille brute du conteneur.
+/// Read and demux a film. Also returns the raw container size.
 fn charger(vfs: &Vfs, chemin: &str) -> Result<(Usm, u64)> {
     let brut = vfs
         .read(chemin)
-        .with_context(|| format!("lecture VFS {chemin}"))?;
+        .with_context(|| format!("VFS read {chemin}"))?;
     let taille = brut.len() as u64;
     let u = usm::demuxer_nomme(&brut, usm::nom_fichier_de(chemin))
-        .with_context(|| format!("démultiplexage {chemin}"))?;
+        .with_context(|| format!("demux {chemin}"))?;
     Ok((u, taille))
 }
 
-// ── Opérations ────────────────────────────────────────────────────────────────
+// -- Operations --
 
-/// Vide les tables `@UTF` d'en-tête d'un conteneur, colonne par colonne.
+/// Dump the container header `@UTF` tables, column by column.
 ///
-/// C'est le seul moyen de trancher entre « ce film ne se démuxe pas » et « ce film est chiffré » :
-/// les en-têtes restent en clair même quand la charge utile ne l'est pas, et ce sont eux qui
-/// déclarent la définition, la cadence et le codec réellement encodés.
+/// This is the only way to tell "this film does not demux" from "this film is encrypted": the
+/// headers stay in clear even when the payload does not, and they declare the real size, frame
+/// rate and codec.
 fn vider_tables(vfs: &Vfs, chemin: &str) -> Result<()> {
     let (u, _) = charger(vfs, chemin)?;
     for t in &u.entetes {
-        println!("── {} ({} ligne(s)) ──", t.name, t.row_count());
+        println!("-- {} ({} row(s)) --", t.name, t.row_count());
         for (i, ligne) in t.rows.iter().enumerate() {
             for (col, val) in t.columns.iter().zip(ligne) {
                 let rendu = match val {
                     nie_formats::cpk::UtfValue::String(s) => s.clone(),
-                    nie_formats::cpk::UtfValue::Bytes(b) => format!("<{} octets>", b.len()),
+                    nie_formats::cpk::UtfValue::Bytes(b) => format!("<{} bytes>", b.len()),
                     autre => format!("{autre:?}"),
                 };
                 println!("  [{i}] {:<22} {rendu}", col.name);
@@ -176,25 +170,25 @@ fn vider_tables(vfs: &Vfs, chemin: &str) -> Result<()> {
     Ok(())
 }
 
-/// Rend la fiche d'un film en texte, telle qu'on la lit dans un terminal.
+/// Print a film record as text, as read in a terminal.
 fn afficher(f: &Film) {
     println!("{}", f.chemin);
     if let Some(e) = &f.erreur {
-        println!("  erreur      {e}");
+        println!("  error       {e}");
         return;
     }
-    println!("  rubrique    {}", f.rubrique);
+    println!("  category    {}", f.rubrique);
     if let Some(l) = &f.langue {
-        println!("  langue      {l}");
+        println!("  language    {l}");
     }
     if let Some(o) = &f.nom_origine {
-        println!("  nom encodé  {o}");
+        println!("  encoded name {o}");
     }
     if f.dechiffre {
-        println!("  chiffrement enveloppe CRI (clé dérivée du nom de fichier)");
+        println!("  encryption  CRI envelope (key derived from the file name)");
     }
     println!(
-        "  vidéo       {}×{} {} — {} images, {:.3} i/s, {:.2} s",
+        "  video       {}x{} {} - {} frames, {:.3} fps, {:.2} s",
         f.largeur,
         f.hauteur,
         f.codec,
@@ -203,48 +197,48 @@ fn afficher(f: &Film) {
         f.duree.unwrap_or(0.0)
     );
     if let Some(c) = f.cles {
-        println!("  clés        {c} image(s) de synchronisation");
+        println!("  keyframes   {c}");
     }
     for p in &f.audio {
         println!(
-            "  audio {}     {} — {} Hz, {} canal/aux, {} o",
+            "  audio {}     {} - {} Hz, {} channel(s), {} B",
             p.canal, p.codec, p.frequence, p.canaux, p.octets
         );
     }
     match &f.bande_son {
         Some(b) => println!(
-            "  bande-son   anime_stream / cue {} — {} {} Hz, {} canal/aux, {:.2} s{}",
+            "  soundtrack  anime_stream / cue {} - {} {} Hz, {} channel(s), {:.2} s{}",
             b.cue,
             b.codec,
             b.frequence,
             b.canaux,
             f64::from(b.duree_ms) / 1000.0,
             if b.confirme_par_hash {
-                " (confirmée par le bgmName)"
+                " (confirmed by bgmName)"
             } else {
                 ""
             },
         ),
         None if f.audio.is_empty() => {
-            println!("  bande-son   aucune (ni conteneur, ni anime_stream)");
+            println!("  soundtrack  none (neither container nor anime_stream)");
         }
         None => {}
     }
     if let Some(m) = f.conteneur_octets {
         println!(
-            "  remux       {} — {} o depuis {} o, {:.2} % de moins, sans réencodage",
+            "  remux       {} - {} B from {} B, {:.2} % smaller, no re-encode",
             f.conteneur.as_deref().unwrap_or("?"),
             m,
             f.octets,
             f.gain_remux.unwrap_or(0.0)
         );
     } else if let Some(e) = &f.remux_impossible {
-        println!("  remux       impossible : {e}");
+        println!("  remux       impossible: {e}");
     }
     if let Some(g) = &f.gamedata {
         println!("  gamedata    {}", g.source);
         if let Some(s) = &g.subtitle_text_path {
-            println!("  sous-titres {s}");
+            println!("  subtitles   {s}");
         }
     }
 }
@@ -297,12 +291,12 @@ fn liste(
     }
 
     println!(
-        "{:<24} {:>10} {:>11} {:>8} {:>9}  {:<5} rubrique",
-        "film", "octets", "définition", "durée", "cadence", "son"
+        "{:<24} {:>10} {:>11} {:>8} {:>9}  {:<5} category",
+        "film", "bytes", "size", "duration", "rate", "audio"
     );
     for f in &fiches {
         let definition = if f.largeur > 0 {
-            format!("{}×{}", f.largeur, f.hauteur)
+            format!("{}x{}", f.largeur, f.hauteur)
         } else {
             "-".to_string()
         };
@@ -313,12 +307,12 @@ fn liste(
             definition,
             f.duree.unwrap_or(0.0),
             f.cadence.unwrap_or(0.0),
-            if f.a_du_son() { "oui" } else { "—" },
+            if f.a_du_son() { "yes" } else { "-" },
             f.rubrique,
         );
     }
     let sonores = fiches.iter().filter(|f| f.a_du_son()).count();
-    println!("\n{} film(s), {sonores} avec bande-son", fiches.len());
+    println!("\n{} film(s), {sonores} with soundtrack", fiches.len());
     Ok(())
 }
 
@@ -326,7 +320,7 @@ fn export(vfs: &Vfs, entree: &str, out: &Path, avec_audio: bool, brut: bool) -> 
     let chemin = cinema::resoudre(vfs, entree);
     let (u, taille) = charger(vfs, &chemin)?;
 
-    // `--out` accepte un dossier : c'est la forme naturelle pour exporter plusieurs films.
+    // `--out` accepts a folder: the natural form for exporting several films.
     let cible = if out.is_dir() {
         out.join(format!("{}.mp4", usm::radical_de(&chemin)))
     } else {
@@ -341,18 +335,18 @@ fn export(vfs: &Vfs, entree: &str, out: &Path, avec_audio: bool, brut: bool) -> 
     if u.codec.lisible_par_navigateur() && !brut {
         let c = u
             .en_conteneur_web()
-            .map_err(|e| anyhow::anyhow!("remux : {e}"))?;
-        // L'extension suit le conteneur choisi par le codec, pas celle demandée : écrire un
-        // WebM sous un nom `.mp4` tromperait tous les lecteurs qui se fient à l'extension.
+            .map_err(|e| anyhow::anyhow!("remux: {e}"))?;
+        // The extension follows the container chosen by the codec, not the requested one: a WebM under
+        // a `.mp4` name would mislead every player that trusts the extension.
         let cible = cible.with_extension(if c.mime == "video/webm" {
             "webm"
         } else {
             "mp4"
         });
         std::fs::write(&cible, &c.octets)
-            .with_context(|| format!("écriture {}", cible.display()))?;
+            .with_context(|| format!("write {}", cible.display()))?;
         println!(
-            "{} — {}×{} {}, {} images ({} clés), {:.2} s, {} o (USM : {} o, {:.2} % de moins)",
+            "{} - {}x{} {}, {} frames ({} keyframes), {:.2} s, {} B (USM: {} B, {:.2} % smaller)",
             cible.display(),
             c.largeur,
             c.hauteur,
@@ -365,14 +359,14 @@ fn export(vfs: &Vfs, entree: &str, out: &Path, avec_audio: bool, brut: bool) -> 
             100.0 - (c.octets.len() as f64 * 100.0 / taille as f64),
         );
     } else {
-        // MPEG-2 (ou VP9) : le MP4 `avc1` serait un mensonge. On sort le flux élémentaire tel
-        // quel, que VLC/mpv lisent directement, plutôt qu'un conteneur que rien ne décode.
+        // MPEG-2 (or VP9): an `avc1` MP4 would be a lie. Write the raw elementary stream, which VLC/mpv
+        // play directly, rather than a container nothing decodes.
         let cible = cible.with_extension(u.codec.extension());
         let flux = u.flux_brut();
-        std::fs::write(&cible, &flux).with_context(|| format!("écriture {}", cible.display()))?;
+        std::fs::write(&cible, &flux).with_context(|| format!("write {}", cible.display()))?;
         println!(
-            "{} — {}×{} {}, {} images, {:.2} s, {} o — flux élémentaire (pas de remux MP4 : \
-             aucun navigateur ne décode ce codec)",
+            "{} - {}x{} {}, {} frames, {:.2} s, {} B - elementary stream (no MP4 remux: \
+                 no browser decodes this codec)",
             cible.display(),
             u.entete.largeur,
             u.entete.hauteur,
@@ -384,39 +378,38 @@ fn export(vfs: &Vfs, entree: &str, out: &Path, avec_audio: bool, brut: bool) -> 
     }
 
     if avec_audio {
-        // Le conteneur d'abord, la banque `anime_stream` ensuite : c'est là que vivent 95 des
-        // 97 bandes-son. L'archive est matérialisée dans `var/audio-cache` — 654 Mo extraits une
-        // seule fois, puis seule l'entrée voulue est relue. La résolution est celle du catalogue,
-        // pas une seconde implémentation : le `bgmName` du gamedata y confirme la cue.
+        // Container first, then the `anime_stream` bank, where most soundtracks live. The archive is
+        // extracted once into `var/audio-cache`, then only the wanted entry is re-read. Resolution is
+        // the catalogue's, not a second implementation: the gamedata `bgmName` confirms the cue.
         let jointure = cinema::jointure_gamedata(vfs);
         let film = cinema::fiche_de_usm(vfs, &chemin, taille, &u, Some(&jointure));
         if !film.a_du_son() {
-            println!("  (aucune bande-son : ni dans le conteneur, ni dans anime_stream)");
+            println!("  (no soundtrack: neither in the container nor in anime_stream)");
             return Ok(());
         }
         let cache = Path::new("var/audio-cache");
         let wav = cinema::wav_bande_son(vfs, cache, &film)
-            .map_err(|e| anyhow::anyhow!("bande-son : {e}"))?;
+            .map_err(|e| anyhow::anyhow!("soundtrack: {e}"))?;
         let provenance = match (&film.bande_son, film.audio.first()) {
             (Some(b), _) => format!("anime_stream, cue {}, {}", b.cue, b.codec),
-            (None, Some(p)) => format!("conteneur, {}", p.codec),
-            (None, None) => "inconnue".to_string(),
+            (None, Some(p)) => format!("container, {}", p.codec),
+            (None, None) => "unknown".to_string(),
         };
         let cible_wav = cible.with_extension("wav");
         std::fs::write(&cible_wav, &wav)
-            .with_context(|| format!("écriture {}", cible_wav.display()))?;
-        println!("{} — {} o ({provenance})", cible_wav.display(), wav.len());
+            .with_context(|| format!("write {}", cible_wav.display()))?;
+        println!("{} - {} B ({provenance})", cible_wav.display(), wav.len());
     }
     Ok(())
 }
 
 fn catalogue(vfs: &Vfs, out: Option<&Path>, rapide: bool) -> Result<()> {
-    // `common/movie` seul : `dx11/movie` porte les mêmes films en définition supérieure, et le
-    // VFS bascule tout seul de l'un à l'autre. Deux entrées par film feraient un doublon.
+    // `common/movie` only: `dx11/movie` carries the same films at higher resolution and the VFS
+    // switches between them on its own. Two entries per film would duplicate.
     let cat = cinema::catalogue(vfs, cinema::DOSSIER_FILMS, !rapide);
     match out {
-        // À l'écran on lit ; dans un fichier on sert. `--out` produit exactement ce que
-        // `nie-model-serve` publie sur `/video/catalog.json` : compact, empreinte comprise.
+        // On screen we read; in a file we serve. `--out` writes exactly what `nie-model-serve` publishes
+        // at `/video/catalog.json`: compact, fingerprint included.
         None => println!("{}", serde_json::to_string_pretty(&cat)?),
         Some(p) => {
             let texte = serde_json::to_string(&cat)?;
@@ -425,10 +418,10 @@ fn catalogue(vfs: &Vfs, out: Option<&Path>, rapide: bool) -> Result<()> {
             {
                 std::fs::create_dir_all(parent)?;
             }
-            std::fs::write(p, &texte).with_context(|| format!("écriture {}", p.display()))?;
+            std::fs::write(p, &texte).with_context(|| format!("write {}", p.display()))?;
             let sonores = cat.films.iter().filter(|f| f.a_du_son()).count();
             println!(
-                "{} — {} film(s), {} rubrique(s), {sonores} avec bande-son",
+                "{} - {} film(s), {} categories, {sonores} with soundtrack",
                 p.display(),
                 cat.films.len(),
                 cat.rubriques.len()
@@ -439,9 +432,9 @@ fn catalogue(vfs: &Vfs, out: Option<&Path>, rapide: bool) -> Result<()> {
 }
 
 fn convert_webm(source: &Path, out: &Path, nom: Option<&str>, fps: u32) -> Result<()> {
-    let brut = std::fs::read(source).with_context(|| format!("lecture {}", source.display()))?;
+    let brut = std::fs::read(source).with_context(|| format!("read {}", source.display()))?;
     let demux = nie_formats::webm::demuxer_webm_vp9(&brut)
-        .with_context(|| format!("démultiplexage WebM {}", source.display()))?;
+        .with_context(|| format!("WebM demux {}", source.display()))?;
 
     let trames_ref: Vec<&[u8]> = demux.trames.iter().map(|t| t.octets.as_slice()).collect();
     let ext = out.extension().and_then(|e| e.to_str()).unwrap_or("usm");
@@ -461,9 +454,9 @@ fn convert_webm(source: &Path, out: &Path, nom: Option<&str>, fps: u32) -> Resul
                 &trames_ref,
             );
             std::fs::write(out, &ivf_bytes)
-                .with_context(|| format!("écriture IVF {}", out.display()))?;
+                .with_context(|| format!("IVF write {}", out.display()))?;
             println!(
-                "{} — {}×{} VP9, {} images ({} clés), {:.2} s, {} octets (format IVF autonome)",
+                "{} - {}x{} VP9, {} frames ({} keyframes), {:.2} s, {} bytes (standalone IVF)",
                 out.display(),
                 demux.info.largeur,
                 demux.info.hauteur,
@@ -488,9 +481,9 @@ fn convert_webm(source: &Path, out: &Path, nom: Option<&str>, fps: u32) -> Resul
                 demux.info.hauteur,
             );
             std::fs::write(out, &usm_bytes)
-                .with_context(|| format!("écriture USM {}", out.display()))?;
+                .with_context(|| format!("USM write {}", out.display()))?;
             println!(
-                "{} — {}×{} VP9, {} images ({} clés), {:.2} s, {} octets (conteneur USM/Sofdec2)",
+                "{} - {}x{} VP9, {} frames ({} keyframes), {:.2} s, {} bytes (USM/Sofdec2 container)",
                 out.display(),
                 demux.info.largeur,
                 demux.info.hauteur,

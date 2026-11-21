@@ -1,44 +1,43 @@
-//! Extraction des chaînes littérales du binaire et ancrage **fonction → chaîne**.
+//! Extract string literals from the binary and anchor **function -> string**.
 //!
-//! ## Pourquoi
+//! ## Why
 //!
-//! La table `str` de la base de connaissance était vide : aucune chaîne du binaire n'y était
-//! adressée. Or une chaîne est l'ancre la moins ambiguë du reverse — une fonction qui référence
-//! `"CHARA_PARAM_INFO"` charge des personnages, celle qui référence `"ACF file is not
-//! registered."` parle à CriWare. Sans `str`, ces ancres n'existent que dans le désassembleur.
+//! The knowledge-base `str` table was empty: no binary string was addressed. A string is the
+//! least ambiguous reverse anchor (a function referencing `"CHARA_PARAM_INFO"` loads characters),
+//! and without `str` those anchors exist only in the disassembler.
 //!
-//! `func_str_ref`, elle, n'était pas vide : elle porte les références **héritées de l'index
-//! Ghidra**, repliées par inclusion sur les racines `.pdata` (`nie_re_core::nie::pdata::rebuild_from_pdata`).
-//! Ces lignes n'ont pas de provenance et sont massivement redondantes. Ce module en écrit d'autres,
-//! **dérivées du désassemblage réel**, sous l'étiquette [`SOURCE`] : elles cohabitent sans se
-//! confondre, et la colonne `source` permet de n'interroger que la vérité terrain.
+//! `func_str_ref` already held references **inherited from the Ghidra index**, folded by inclusion
+//! onto the `.pdata` roots (`nie_re_core::nie::pdata::rebuild_from_pdata`). Those rows have no
+//! provenance and are heavily redundant. This module writes others, **derived from the real
+//! disassembly**, under the [`SOURCE`] label: they coexist without mixing, and the `source` column
+//! allows querying ground truth only.
 //!
-//! ## Méthode
+//! ## Method
 //!
-//! 1. `goblin` parse le PE : géométrie des sections et `ImageBase`.
-//! 2. Balayage octet par octet des sections de données (`.rdata`, `.data`, `.rodata`) :
-//!    - **ASCII** — suite d'octets imprimables terminée par un `NUL`, longueur ≥ `min_len` ;
-//!    - **UTF-16LE** — suite d'unités `u16` textuelles (latin, kana, CJK, pleine chasse)
-//!      terminée par `0x0000`, alignée, et **ne recouvrant aucune chaîne ASCII déjà retenue**
-//!      (sans quoi tout texte ASCII se relit comme du CJK).
+//! 1. `goblin` parses the PE: section geometry and `ImageBase`.
+//! 2. Byte-by-byte scan of data sections (`.rdata`, `.data`, `.rodata`):
+//!    - **ASCII**: printable bytes ended by a `NUL`, length >= `min_len`;
+//!    - **UTF-16LE**: text `u16` units (latin, kana, CJK, fullwidth) ended by `0x0000`, aligned,
+//!      and **not overlapping any retained ASCII string** (otherwise any ASCII text re-reads as
+//!      CJK).
 //!
-//!      La terminaison `NUL` obligatoire est le filtre décisif : le compilateur met en commun
-//!      des littéraux terminés, pas des fragments.
-//! 3. Bornes de fonction : `.pdata` (`nie_re_core::nie::pdata::parse_roots`), la vérité terrain — pas
-//!    l'index Ghidra, dont les adresses sont désalignées.
-//! 4. Décodage `iced-x86` de chaque corps de fonction ; une référence n'est retenue que si sa
-//!    cible **coïncide exactement** avec le début d'une chaîne retenue :
-//!    - `lea r64, [rip+disp32]` — la forme que MSVC émet pour l'adresse d'un littéral ;
-//!    - `mov r64, imm64` — la forme absolue (rare en `/O2`, mais elle existe).
+//!      The mandatory `NUL` terminator is the deciding filter: the compiler merges terminated
+//!      literals, not fragments.
+//! 3. Function bounds: `.pdata` (`nie_re_core::nie::pdata::parse_roots`), the ground truth, not the
+//!    Ghidra index whose addresses are misaligned.
+//! 4. `iced-x86` decoding of each function body; a reference is kept only if its target
+//!    **exactly matches** the start of a retained string:
+//!    - `lea r64, [rip+disp32]`: the form MSVC emits for a literal address;
+//!    - `mov r64, imm64`: the absolute form (rare with `/O2`, but it exists).
 //!
-//!      Les autres accès RIP-relatifs (`mov`/`cmp [rip+x]`) sont **comptés et non ingérés** :
-//!      ils visent l'IAT et des variables, et un `mov rax, [rip+s]` qui tombe sur une chaîne
-//!      lit ses huit premiers octets sans la « référencer » au sens d'une ancre.
-//! 5. **Suffixes.** MSVC met les littéraux en commun par la fin : `"…/chara.cfg.bin"` et
-//!    `"chara.cfg.bin"` partagent les mêmes octets, et le second n'a pas d'adresse propre — le
-//!    `lea` vise l'**intérieur** de la chaîne longue. Ces cibles sont résolues en chaînes à part
-//!    entière (l'octet visé démarre bien une suite terminée par `NUL`) et comptées séparément
-//!    (`suffix=`) : rien n'est deviné, la chaîne suffixe est lue dans l'image.
+//!      Other RIP-relative accesses (`mov`/`cmp [rip+x]`) are **counted, not ingested**: they hit
+//!      the IAT and variables, and a `mov rax, [rip+s]` landing on a string reads its first eight
+//!      bytes without "referencing" it as an anchor.
+//! 5. **Suffixes.** MSVC merges literals by their tail: `".../chara.cfg.bin"` and `"chara.cfg.bin"`
+//!    share bytes, and the second has no address of its own; the `lea` targets the **inside** of the
+//!    long string. Those targets are resolved into full strings (the targeted byte does start a
+//!    `NUL`-terminated run) and counted separately (`suffix=`): nothing is guessed, the suffix
+//!    string is read from the image.
 
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -49,33 +48,33 @@ use iced_x86::{Decoder, DecoderOptions, Instruction, Mnemonic, OpKind};
 use nie_index::rusqlite::{Connection, params};
 use sha2::{Digest, Sha256};
 
-/// Étiquette de provenance écrite dans `func_str_ref.source`.
+/// Provenance label written to `func_str_ref.source`.
 ///
-/// Les lignes sans `source` (`NULL`) sont l'héritage de l'index Ghidra replié sur `.pdata` ;
-/// celles-ci viennent du désassemblage du binaire.
+/// Rows without `source` (`NULL`) are the Ghidra index legacy folded onto `.pdata`; these come from
+/// the binary disassembly.
 const SOURCE: &str = "rdata-xref";
 
-/// `kind` des arêtes fonction → chaîne écrites dans `xref` (`from_addr` = début de fonction,
-/// `to_addr` = adresse de la chaîne). C'est la seule table qui conserve l'**adresse** de la
-/// chaîne référencée ; `func_str_ref` n'en garde que le texte.
+/// `kind` of the function -> string edges written to `xref` (`from_addr` = function start,
+/// `to_addr` = string address). It is the only table that keeps the string **address**;
+/// `func_str_ref` keeps only the text.
 const XREF_KIND: &str = "str";
 
-/// Sections de données balayées par défaut.
+/// Data sections scanned by default.
 const DEFAULT_SECTIONS: &[&str] = &[".rdata", ".data", ".rodata"];
 
-/// Garde-fou : longueur maximale décodée pour un corps de fonction.
+/// Guard: maximum decoded length of a function body.
 const MAX_FUNC_LEN: u64 = 256 * 1024;
 
-/// Longueur maximale d'une chaîne retenue, en octets. Au-delà, ce n'est plus un littéral mais
-/// un bloc de données qui se lit par hasard comme du texte.
+/// Maximum length of a retained string, in bytes. Beyond that it is no longer a literal but a
+/// data block that happens to read as text.
 const MAX_STR_BYTES: usize = 8192;
 
-/// Encodage d'une chaîne trouvée (colonne `str.kind`).
+/// Encoding of a found string (`str.kind` column).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Enc {
-    /// Octets imprimables ASCII terminés par `NUL`.
+    /// Printable ASCII bytes ended by `NUL`.
     Ascii,
-    /// Unités `u16` little-endian terminées par `0x0000`.
+    /// Little-endian `u16` units ended by `0x0000`.
     Utf16,
 }
 
@@ -88,97 +87,96 @@ impl Enc {
     }
 }
 
-/// Une chaîne retenue, avec son adresse virtuelle.
+/// A retained string, with its virtual address.
 struct FoundStr {
     vaddr: u64,
-    /// Longueur en octets, terminateur exclu.
+    /// Length in bytes, terminator excluded.
     len: usize,
-    /// Indice de la section dans `Stats::par_section`.
+    /// Section index in `Stats::par_section`.
     sec: usize,
     enc: Enc,
     value: String,
 }
 
-/// Options de la passe.
+/// Pass options.
 #[derive(Debug, Clone)]
 pub struct Options {
-    /// Longueur minimale retenue (caractères, pas octets).
+    /// Minimum retained length (characters, not bytes).
     pub min_len: usize,
-    /// Sections balayées ; vide = [`DEFAULT_SECTIONS`].
+    /// Sections scanned; empty = [`DEFAULT_SECTIONS`].
     pub sections: Vec<String>,
-    /// Force l'identifiant de binaire au lieu de le résoudre par sha256.
+    /// Force the binary id instead of resolving it by sha256.
     pub binary_id: Option<i64>,
-    /// N'écrit ni `func_str_ref` ni `xref` (extraction des chaînes seule).
+    /// Write neither `func_str_ref` nor `xref` (string extraction only).
     pub no_xrefs: bool,
-    /// Calcule tout, n'écrit rien.
+    /// Compute everything, write nothing.
     pub dry_run: bool,
-    /// Affiche `n` chaînes en exemple (vérification à l'œil).
+    /// Print `n` sample strings (eyeball check).
     pub sample: usize,
 }
 
-/// Compteurs d'une passe.
+/// Pass counters.
 #[derive(Debug, Default, Clone)]
 pub struct Stats {
-    /// Binaire résolu dans la table `binary`.
+    /// Binary resolved in the `binary` table.
     pub binary_id: i64,
-    /// Chemin enregistré pour ce binaire.
+    /// Path recorded for this binary.
     pub binary_path: String,
     /// Par section : `(nom, ascii, utf16)`.
     pub par_section: Vec<(String, usize, usize)>,
-    /// Chaînes ASCII retenues.
+    /// Retained ASCII strings.
     pub ascii: usize,
-    /// Chaînes UTF-16LE retenues.
+    /// Retained UTF-16LE strings.
     pub utf16: usize,
-    /// Candidates écartées car plus longues que [`MAX_STR_BYTES`].
+    /// Candidates dropped for being longer than [`MAX_STR_BYTES`].
     pub oversized: usize,
-    /// Lignes réellement insérées dans `str` (hors doublons).
+    /// Rows actually inserted into `str` (excluding duplicates).
     pub str_inserted: usize,
-    /// Racines `.pdata` du binaire.
+    /// `.pdata` roots of the binary.
     pub roots: usize,
-    /// Racines qui correspondent à une ligne `function` du binaire ciblé.
+    /// Roots matching a `function` row of the target binary.
     pub roots_mapped: usize,
-    /// Corps de fonction décodés.
+    /// Decoded function bodies.
     pub funcs_scanned: usize,
-    /// Instructions décodées.
+    /// Decoded instructions.
     pub insns: u64,
-    /// `lea r64, [rip+disp32]` rencontrés.
+    /// `lea r64, [rip+disp32]` met.
     pub lea_rip: u64,
-    /// `lea` dont la cible est exactement le début d'une chaîne retenue.
+    /// `lea` whose target is exactly the start of a retained string.
     pub lea_hits: u64,
-    /// `lea` dont la cible tombe à l'intérieur d'une chaîne (suffixe mis en commun par MSVC).
+    /// `lea` whose target falls inside a string (suffix merged by MSVC).
     pub lea_suffix: u64,
-    /// Chaînes suffixes matérialisées et ajoutées à `str`.
+    /// Suffix strings materialized and added to `str`.
     pub suffixes: usize,
-    /// Corps de fonction interrompus sur des octets non décodables (données en ligne).
+    /// Function bodies stopped on undecodable bytes (inline data).
     pub bodies_truncated: usize,
-    /// Fonctions distinctes portant au moins une chaîne.
+    /// Distinct functions carrying at least one string.
     pub funcs_with_str: usize,
-    /// `mov r64, imm64` dont l'immédiat est exactement le début d'une chaîne.
+    /// `mov r64, imm64` whose immediate is exactly the start of a string.
     pub imm_hits: u64,
-    /// Accès RIP-relatifs **non-`lea`** tombant sur une chaîne — comptés, **non ingérés**.
+    /// **Non-`lea`** RIP-relative accesses landing on a string: counted, **not ingested**.
     pub rip_other_hits: u64,
-    /// Couples distincts (fonction, chaîne).
+    /// Distinct (function, string) pairs.
     pub pairs: usize,
-    /// Lignes `func_str_ref` de source [`SOURCE`] effacées avant réécriture.
+    /// `func_str_ref` rows of source [`SOURCE`] deleted before rewriting.
     pub str_refs_deleted: usize,
-    /// Lignes `func_str_ref` insérées.
+    /// Inserted `func_str_ref` rows.
     pub str_refs_inserted: usize,
-    /// Arêtes `xref` (`kind='str'`) insérées.
+    /// Inserted `xref` edges (`kind='str'`).
     pub xrefs_inserted: usize,
-    /// Aucune écriture n'a eu lieu.
+    /// Nothing was written.
     pub dry_run: bool,
 }
 
-/// Un octet qui peut appartenir à un littéral C.
+/// A byte that can belong to a C literal.
 fn ascii_is_text(b: u8) -> bool {
     matches!(b, 0x20..=0x7E | b'\t' | b'\r' | b'\n')
 }
 
-/// Une unité UTF-16 qui peut appartenir à un littéral large.
+/// A UTF-16 unit that can belong to a wide literal.
 ///
-/// Volontairement restreint aux blocs réellement utilisés par le jeu (latin, ponctuation
-/// générale, kana, CJK, pleine chasse) : accepter tout le plan multilingue ferait passer
-/// n'importe quel couple d'octets pour du texte.
+/// Deliberately limited to the blocks the game really uses (latin, general punctuation, kana,
+/// CJK, fullwidth): accepting the whole multilingual plane would make any byte pair pass as text.
 fn wide_is_text(u: u16) -> bool {
     matches!(u,
         0x09 | 0x0A | 0x0D
@@ -191,7 +189,7 @@ fn wide_is_text(u: u16) -> bool {
     )
 }
 
-/// Balaye les littéraux ASCII d'une section et marque leur emprise dans `covered`.
+/// Scan the ASCII literals of a section and mark their span in `covered`.
 fn scan_ascii(
     data: &[u8],
     va: u64,
@@ -211,7 +209,7 @@ fn scan_ascii(
         while j < data.len() && ascii_is_text(data[j]) {
             j += 1;
         }
-        // Terminaison NUL obligatoire : c'est elle qui distingue un littéral d'un fragment.
+        // Mandatory NUL terminator: it tells a literal from a fragment.
         if j < data.len() && data[j] == 0 && j - i >= min_len {
             if j - i > MAX_STR_BYTES {
                 *oversized += 1;
@@ -232,8 +230,8 @@ fn scan_ascii(
     }
 }
 
-/// Balaye les littéraux UTF-16LE d'une section, en écartant tout ce qui recouvre une chaîne
-/// ASCII déjà retenue.
+/// Scan the UTF-16LE literals of a section, dropping anything that overlaps an already retained
+/// ASCII string.
 fn scan_utf16(
     data: &[u8],
     va: u64,
@@ -276,21 +274,21 @@ fn scan_utf16(
     }
 }
 
-/// Index des chaînes retenues : appartenance exacte, et résolution des **suffixes**.
+/// Index of retained strings: exact membership, and **suffix** resolution.
 ///
-/// MSVC met les littéraux en commun par la fin : une chaîne suffixe n'a pas d'octets à elle,
-/// seulement une adresse à l'intérieur de la chaîne longue. Une cible qui tombe strictement
-/// dans une chaîne retenue démarre donc, par construction, une suite terminée par `NUL`.
+/// MSVC merges literals by their tail: a suffix string has no bytes of its own, only an address
+/// inside the long string. A target strictly inside a retained string therefore starts, by
+/// construction, a `NUL`-terminated run.
 struct StrIndex {
-    /// Adresses de début, triées.
+    /// Start addresses, sorted.
     starts: Vec<u64>,
-    /// `(fin exclusive, indice dans `found`)`, aligné élément par élément sur `starts`.
+    /// `(exclusive end, index in `found`)`, element-aligned with `starts`.
     spans: Vec<(u64, usize)>,
     exact: HashSet<u64>,
 }
 
 impl StrIndex {
-    /// `found` doit être trié par adresse croissante et dédoublonné.
+    /// `found` must be sorted by ascending address and deduplicated.
     fn new(found: &[FoundStr]) -> Self {
         Self {
             starts: found.iter().map(|f| f.vaddr).collect(),
@@ -303,8 +301,8 @@ impl StrIndex {
         }
     }
 
-    /// `(indice de la chaîne contenante, décalage en octets)` si `t` tombe strictement à
-    /// l'intérieur d'une chaîne retenue. Le décalage d'une chaîne large reste pair.
+    /// `(index of the containing string, byte offset)` if `t` falls strictly inside a retained
+    /// string. The offset in a wide string stays even.
     fn suffix_of(&self, found: &[FoundStr], t: u64) -> Option<(usize, usize)> {
         let idx = self.starts.partition_point(|&s| s <= t);
         if idx == 0 {
@@ -322,16 +320,16 @@ impl StrIndex {
         Some((fi, off))
     }
 
-    /// La cible désigne-t-elle une chaîne (début exact ou suffixe) ?
+    /// Does the target designate a string (exact start or suffix)?
     fn hits(&self, found: &[FoundStr], t: u64) -> bool {
         self.exact.contains(&t) || self.suffix_of(found, t).is_some()
     }
 }
 
-/// Fabrique la chaîne suffixe située à `off` octets dans `src`.
+/// Build the suffix string located `off` bytes into `src`.
 fn suffix_str(src: &FoundStr, vaddr: u64, off: usize) -> FoundStr {
     let value = match src.enc {
-        // Contenu ASCII : un décalage d'octets est un décalage de caractères.
+        // ASCII content: a byte offset is a character offset.
         Enc::Ascii => src.value[off..].to_string(),
         Enc::Utf16 => src.value.chars().skip(off / 2).collect(),
     };
@@ -344,14 +342,14 @@ fn suffix_str(src: &FoundStr, vaddr: u64, off: usize) -> FoundStr {
     }
 }
 
-/// Géométrie d'une section chargée.
+/// Geometry of a loaded section.
 struct SecView<'a> {
     name: String,
     va: u64,
     data: &'a [u8],
 }
 
-/// Sections du PE effectivement présentes dans le fichier, par nom.
+/// PE sections actually present in the file, by name.
 fn sections<'a>(pe: &PE, bytes: &'a [u8], wanted: &[String]) -> Vec<SecView<'a>> {
     let mut out = Vec::new();
     for s in &pe.sections {
@@ -360,8 +358,8 @@ fn sections<'a>(pe: &PE, bytes: &'a [u8], wanted: &[String]) -> Vec<SecView<'a>>
             continue;
         }
         let off = s.pointer_to_raw_data as usize;
-        // `virtual_size` déborde `size_of_raw_data` pour les sections à BSS (`.data`) :
-        // seule la partie présente dans le fichier porte des octets lisibles.
+        // `virtual_size` exceeds `size_of_raw_data` for BSS sections (`.data`): only the part present in
+        // the file holds readable bytes.
         let len = s.virtual_size.min(s.size_of_raw_data) as usize;
         let Some(data) = bytes.get(off..off + len) else {
             continue;
@@ -375,8 +373,8 @@ fn sections<'a>(pe: &PE, bytes: &'a [u8], wanted: &[String]) -> Vec<SecView<'a>>
     out
 }
 
-/// Résout le binaire ciblé : la vue `#pdata` en priorité (c'est elle qui porte les fonctions
-/// aux bornes réelles), sinon la vue fichier.
+/// Resolve the target binary: the `#pdata` view first (it carries the functions with their real
+/// bounds), otherwise the file view.
 fn resolve_binary(
     conn: &Connection,
     exe: &Path,
@@ -386,7 +384,7 @@ fn resolve_binary(
     if let Some(id) = forced {
         let path: String = conn
             .query_row("SELECT path FROM binary WHERE id = ?1", [id], |r| r.get(0))
-            .with_context(|| format!("aucun binaire d'id {id} dans la base"))?;
+            .with_context(|| format!("no binary with id {id} in the database"))?;
         return Ok((id, path));
     }
     let pdata_key = format!("{sha}-pdata");
@@ -412,14 +410,14 @@ fn resolve_binary(
         })?
         .collect::<std::result::Result<_, _>>()?;
     bail!(
-        "aucun binaire indexé ne correspond à {} (sha256 {sha}).\nBinaires connus :\n{}\n\
-         Passer --binary-id <id> pour forcer, ou indexer ce binaire d'abord.",
+        "no indexed binary matches {} (sha256 {sha}).\nKnown binaries:\n{}\n\
+         Pass --binary-id <id> to force, or index this binary first.",
         exe.display(),
         known.join("\n")
     );
 }
 
-/// Décode les corps de fonction et collecte les couples (début de fonction, adresse de chaîne).
+/// Decode function bodies and collect (function start, string address) pairs.
 fn scan_text(
     text: &[u8],
     text_va: u64,
@@ -451,8 +449,7 @@ fn scan_text(
         while dec.can_decode() {
             dec.decode_out(&mut insn);
             if insn.is_invalid() {
-                // Données en ligne : on arrête ce corps plutôt que d'émettre des références
-                // issues d'une désynchronisation.
+                // Inline data: stop this body rather than emit references from a desync.
                 stats.bodies_truncated += 1;
                 break;
             }
@@ -470,7 +467,7 @@ fn scan_text(
                         hits.insert((r.start, t));
                     }
                 } else if known.hits(found, t) {
-                    // Diagnostic seulement : ce n'est pas une prise d'adresse.
+                    // Diagnostic only: not an address-taking.
                     stats.rip_other_hits += 1;
                 }
             }
@@ -487,16 +484,16 @@ fn scan_text(
         }
     }
 
-    // Ne garde que les fonctions présentes en base : une racine sans ligne `function` n'a pas
-    // d'ancre où accrocher sa chaîne.
+    // Keep only functions present in the database: a root without a `function` row has no anchor
+    // to attach its string to.
     hits.retain(|(f, _)| mapped.contains(f));
     hits
 }
 
-/// Extrait les chaînes de `exe`, les ingère dans `str`, et — sauf `no_xrefs` — ancre les
-/// fonctions qui les référencent dans `func_str_ref` et `xref`.
+/// Extract strings from `exe`, ingest them into `str`, and (unless `no_xrefs`) anchor the
+/// functions that reference them in `func_str_ref` and `xref`.
 pub fn run(db: &nie_index::Db, exe: &Path, opts: &Options) -> Result<Stats> {
-    let bytes = std::fs::read(exe).with_context(|| format!("lecture {}", exe.display()))?;
+    let bytes = std::fs::read(exe).with_context(|| format!("read {}", exe.display()))?;
     let sha = hex::encode(Sha256::digest(&bytes));
     let pe = PE::parse(&bytes).with_context(|| format!("parse PE {}", exe.display()))?;
 
@@ -516,7 +513,7 @@ pub fn run(db: &nie_index::Db, exe: &Path, opts: &Options) -> Result<Stats> {
         ..Stats::default()
     };
 
-    // --- 1. Chaînes ---------------------------------------------------------
+    // --- 1. Strings ---------------------------------------------------------
     let mut found: Vec<FoundStr> = Vec::new();
     for (idx, sec) in sections(&pe, &bytes, &wanted).into_iter().enumerate() {
         let before = (stats.ascii, stats.utf16);
@@ -557,7 +554,7 @@ pub fn run(db: &nie_index::Db, exe: &Path, opts: &Options) -> Result<Stats> {
         }
     }
 
-    // --- 2. Références depuis .text ----------------------------------------
+    // --- 2. References from .text ----------------------------------------
     let mut hits: HashSet<(u64, u64)> = HashSet::new();
     let mut fid: HashMap<u64, i64> = HashMap::new();
     if !opts.no_xrefs {
@@ -584,12 +581,12 @@ pub fn run(db: &nie_index::Db, exe: &Path, opts: &Options) -> Result<Stats> {
             .sections
             .iter()
             .find(|s| s.name().is_ok_and(|n| n.starts_with(".text")))
-            .context("section .text introuvable")?;
+            .context("section .text not found")?;
         let toff = text.pointer_to_raw_data as usize;
         let tlen = text.virtual_size.min(text.size_of_raw_data) as usize;
         let tbytes = bytes
             .get(toff..toff + tlen)
-            .context(".text hors des limites du fichier")?;
+            .context(".text outside the file bounds")?;
         let tva = pe.image_base + u64::from(text.virtual_address);
 
         let index = StrIndex::new(&found);
@@ -597,8 +594,8 @@ pub fn run(db: &nie_index::Db, exe: &Path, opts: &Options) -> Result<Stats> {
         stats.pairs = hits.len();
         stats.funcs_with_str = hits.iter().map(|(f, _)| *f).collect::<HashSet<_>>().len();
 
-        // Les cibles suffixes n'ont pas de ligne `str` : on les matérialise depuis la chaîne
-        // qui les contient, sinon l'ancre pointerait sur une adresse sans texte.
+        // Suffix targets have no `str` row: materialize them from the containing string, otherwise the
+        // anchor would point to an address without text.
         let mut extra: Vec<FoundStr> = Vec::new();
         for (_, t) in &hits {
             if index.exact.contains(t) {
@@ -670,7 +667,7 @@ mod tests {
 
     #[test]
     fn ascii_exige_la_terminaison_nul() {
-        // "abcd\0" est retenu ; "efgh" sans NUL final ne l'est pas.
+        // "abcd\0" is kept; "efgh" without a final NUL is not.
         let data = b"abcd\0efgh".to_vec();
         let mut out = Vec::new();
         let mut cov = vec![false; data.len() + 1];
@@ -711,7 +708,7 @@ mod tests {
 
     #[test]
     fn utf16_refuse_ce_qui_recouvre_une_ascii() {
-        // "abcdefgh\0\0" se relit en UTF-16 comme du CJK : la couverture ASCII l'interdit.
+        // "abcdefgh\0\0" re-reads as CJK in UTF-16: the ASCII coverage forbids it.
         let data = b"abcdefgh\0\0".to_vec();
         let mut ascii = Vec::new();
         let mut cov = vec![false; data.len() + 1];
@@ -720,7 +717,7 @@ mod tests {
         assert_eq!(ascii.len(), 1);
         let mut wide = Vec::new();
         scan_utf16(&data, 0, 0, 4, &mut wide, &cov, &mut over);
-        assert!(wide.is_empty(), "recouvrement ASCII non filtré");
+        assert!(wide.is_empty(), "ASCII overlap not filtered");
     }
 
     #[test]
@@ -730,6 +727,6 @@ mod tests {
         assert!(wide_is_text(0x4E00)); // CJK 一
         assert!(!wide_is_text(0x0000));
         assert!(!wide_is_text(0x0007));
-        assert!(!wide_is_text(0xD800)); // demi-paire de substitution
+        assert!(!wide_is_text(0xD800)); // half of a surrogate pair
     }
 }

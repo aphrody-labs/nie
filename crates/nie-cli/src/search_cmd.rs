@@ -1,21 +1,20 @@
-//! `nie find` et `nie grep` — recherche de fichiers et de contenu **sur le disque**.
+//! `nie find` and `nie grep`: file and content search **on disk**.
 //!
-//! Complète `nie vfs find`, qui ne voit que l'intérieur des CPK du jeu. Ici c'est l'arbre de
-//! travail : sources, dumps, scratchpad.
+//! Complements `nie vfs find`, which only sees inside the game's CPK archives. Here the target is
+//! the working tree: sources, dumps, scratchpad.
 //!
-//! ## Pourquoi dans la CLI plutôt qu'en shell
+//! ## Why in the CLI rather than in a shell
 //!
-//! Une question simple (« où est ce symbole ? », « quels fichiers portent cette extension ? »)
-//! se payait jusqu'ici en chaînes `find | xargs grep | sort | uniq`, longues à écrire, lentes,
-//! et pleines de pièges déjà rencontrés dans ce dépôt : `comm` exige `LC_ALL=C sort`,
-//! `xargs wc -l` sous-compte (une ligne `total` par invocation), `git ls-files 'dir/**'` rate
-//! les fichiers à la racine de `dir`. Une commande dédiée supprime la classe entière.
+//! A simple question ("where is this symbol?", "which files have this extension?") otherwise
+//! needs `find | xargs grep | sort | uniq` chains that are slow and full of pitfalls: `comm`
+//! requires `LC_ALL=C sort`, `xargs wc -l` undercounts (one `total` line per invocation),
+//! `git ls-files 'dir/**'` misses files at the root of `dir`. A dedicated command removes the
+//! whole class of problems.
 //!
-//! ## Moteur
+//! ## Engine
 //!
-//! [`ignore`] et [`grep_searcher`]/[`grep_regex`] — les bibliothèques qui *sont* ripgrep et fd.
-//! Parcours parallèle, respect de `.gitignore`, recherche ligne à ligne sans allocation par
-//! ligne. Rien de maison : le but est d'égaler l'outil de référence, pas de le réécrire.
+//! [`ignore`] and [`grep_searcher`]/[`grep_regex`], the libraries that power ripgrep and fd:
+//! parallel walk, `.gitignore` support, line-by-line search without per-line allocation.
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -28,33 +27,33 @@ use grep_searcher::{BinaryDetection, SearcherBuilder};
 use ignore::WalkState;
 use nie_explore::depot::{construire_globs, parcours_disque};
 
-/// Options de `nie find`.
+/// Options for `nie find`.
 pub struct FindArgs {
-    /// Sous-chaîne cherchée dans le chemin (vide = tout lister).
+    /// Substring searched in the path (empty = list everything).
     pub pattern: String,
-    /// Racine du parcours.
+    /// Walk root.
     pub dir: PathBuf,
-    /// Motifs glob (`**/*.rs`) — cumulatifs avec `ext`.
+    /// Glob patterns (`**/*.rs`), cumulative with `ext`.
     pub globs: Vec<String>,
-    /// Extensions (`rs`, `.toml`) — sucre pour `**/*.<ext>`.
+    /// Extensions (`rs`, `.toml`), shorthand for `**/*.<ext>`.
     pub exts: Vec<String>,
-    /// `f` = fichiers seuls, `d` = répertoires seuls, sinon les deux.
+    /// `f` = files only, `d` = directories only, otherwise both.
     pub kind: Option<String>,
-    /// Inclure les fichiers cachés.
+    /// Include hidden files.
     pub hidden: bool,
-    /// Ignorer les règles `.gitignore`.
+    /// Ignore `.gitignore` rules.
     pub no_ignore: bool,
-    /// Profondeur maximale.
+    /// Maximum depth.
     pub depth: Option<usize>,
-    /// Nombre maximal de résultats (0 = illimité).
+    /// Maximum number of results (0 = unlimited).
     pub limit: usize,
-    /// Sensible à la casse (défaut : insensible).
+    /// Case-sensitive (default: insensitive).
     pub case_sensitive: bool,
-    /// N'afficher que le nombre de résultats.
+    /// Print only the result count.
     pub count: bool,
 }
 
-/// Cherche des fichiers par chemin. Renvoie le nombre de correspondances.
+/// Searches files by path. Returns the number of matches.
 pub fn find(args: &FindArgs) -> Result<usize> {
     let set = construire_globs(&args.globs, &args.exts)?;
     let needle = if args.case_sensitive {
@@ -84,10 +83,9 @@ pub fn find(args: &FindArgs) -> Result<usize> {
                     return WalkState::Continue;
                 }
                 let path = e.path();
-                // Un filtre de motif porte sur des FICHIERS. Un répertoire ne « match » jamais
-                // `**/*.rs` : le rejeter d'un `is_match` couperait la descente, mais le laisser
-                // passer le ferait LISTER — `--ext rs` rendait alors 717 entrées là où il y a
-                // 608 fichiers. On le saute donc à l'émission, sans couper le parcours.
+                // A pattern filter applies to FILES. A directory never matches `**/*.rs`: rejecting
+                // it in `is_match` would cut the descent, but letting it through would LIST it.
+                // So it is skipped at emission time, without cutting the walk.
                 if set.is_some() && is_dir {
                     return WalkState::Continue;
                 }
@@ -133,35 +131,35 @@ pub fn find(args: &FindArgs) -> Result<usize> {
     Ok(n)
 }
 
-/// La casse est déjà normalisée en amont ; ce prédicat existe pour garder la closure lisible.
+/// Case is already normalized upstream; this predicate keeps the closure readable.
 fn args_case(needle: &str) -> bool {
     needle.chars().any(char::is_uppercase)
 }
 
-/// Options de `nie grep`.
+/// Options for `nie grep`.
 pub struct GrepArgs {
-    /// Expression régulière cherchée dans le contenu.
+    /// Regular expression searched in the content.
     pub pattern: String,
-    /// Racine du parcours.
+    /// Walk root.
     pub dir: PathBuf,
-    /// Motifs glob restreignant les fichiers visités.
+    /// Glob patterns restricting the visited files.
     pub globs: Vec<String>,
-    /// Extensions restreignant les fichiers visités.
+    /// Extensions restricting the visited files.
     pub exts: Vec<String>,
-    /// Insensible à la casse.
+    /// Case-insensitive.
     pub ignore_case: bool,
-    /// Inclure les fichiers cachés.
+    /// Include hidden files.
     pub hidden: bool,
-    /// Ignorer les règles `.gitignore`.
+    /// Ignore `.gitignore` rules.
     pub no_ignore: bool,
-    /// Nombre maximal de lignes affichées (0 = illimité).
+    /// Maximum number of lines printed (0 = unlimited).
     pub limit: usize,
-    /// N'afficher que les chemins des fichiers qui contiennent au moins une correspondance.
+    /// Print only the paths of files with at least one match.
     pub files_with_matches: bool,
 }
 
-/// Cherche un motif dans le contenu des fichiers. Renvoie le nombre de lignes correspondantes
-/// (ou de fichiers en mode `files_with_matches`).
+/// Searches a pattern in file contents. Returns the number of matching lines (or of files in
+/// `files_with_matches` mode).
 pub fn grep(args: &GrepArgs) -> Result<usize> {
     let set = construire_globs(&args.globs, &args.exts)?;
     let matcher = RegexMatcher::new_line_matcher(&if args.ignore_case {
@@ -169,7 +167,7 @@ pub fn grep(args: &GrepArgs) -> Result<usize> {
     } else {
         args.pattern.clone()
     })
-    .with_context(|| format!("expression régulière invalide : {}", args.pattern))?;
+    .with_context(|| format!("invalid regular expression: {}", args.pattern))?;
 
     let out: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
     let seen = Arc::new(AtomicUsize::new(0));
@@ -181,7 +179,7 @@ pub fn grep(args: &GrepArgs) -> Result<usize> {
             let seen = Arc::clone(&seen);
             let matcher = matcher.clone();
             let set = set.clone();
-            // `BinaryDetection::quit` évite de déverser des octets d'un CPK ou d'un .exe.
+            // `BinaryDetection::quit` avoids dumping bytes from a CPK or an .exe.
             let mut searcher = SearcherBuilder::new()
                 .binary_detection(BinaryDetection::quit(0))
                 .line_number(true)
@@ -218,7 +216,7 @@ pub fn grep(args: &GrepArgs) -> Result<usize> {
                         Ok(true)
                     }),
                 );
-                // Un fichier illisible (permission, lien cassé) ne doit pas arrêter la recherche.
+                // An unreadable file (permission, broken link) must not stop the search.
                 if res.is_ok() && args.files_with_matches && file_hits > 0 {
                     if args.limit > 0 && seen.fetch_add(1, Ordering::Relaxed) >= args.limit {
                         return WalkState::Quit;

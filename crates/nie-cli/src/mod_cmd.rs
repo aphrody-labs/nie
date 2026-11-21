@@ -1,37 +1,4 @@
-//! `nie mod` — le cycle de modding, de bout en bout, en ligne de commande.
-//!
-//! # Le trou que ce module comble
-//!
-//! `nie viola` savait **dumper, vérifier, fusionner et packer**, mais pas **éditer**. Les
-//! encodeurs existaient pourtant et étaient prouvés sur le jeu réel — `cfgbin::encode_t2b`,
-//! `cfgbin::encode_rdbn`, `g4tx_encode::encode_g4tx_single_texture` — sans **aucun appelant**
-//! dans cette CLI. Autrement dit, la seule façon de produire un asset modifié était de passer
-//! par l'application Tauri. Le cycle n'était complet nulle part en ligne de commande.
-//!
-//! # Le cycle
-//!
-//! ```text
-//! mod init      un dossier, un manifeste
-//! mod add       le fichier vanilla entre dans le mod, tel que le VFS le rend
-//! mod get/set   on le lit, on le modifie, il est réencodé
-//! mod status    ce que le mod change, comparé au vanilla
-//! mod validate  chaque fichier réencodé est relu — un mod qui ne se relit pas ne s'installe pas
-//! mod install   merge → pack → copie, après sauvegarde du cpk_list vanilla
-//! mod uninstall le cpk_list vanilla revient, à l'octet
-//! ```
-//!
-//! # Deux partis pris
-//!
-//! **Le pointeur est un JSON Pointer (RFC 6901).** Le format d'édition est celui du pont
-//! `nie_explore::bridge`, déjà prouvé par un aller-retour sur le vrai jeu, et c'est exactement
-//! ce que l'interface graphique édite. Inventer une syntaxe de chemin propre à la CLI aurait
-//! créé un second dialecte à maintenir, et deux façons de désigner le même champ.
-//!
-//! **`set` ne crée jamais un nœud.** Un pointeur qui ne désigne rien est une erreur, jamais une
-//! insertion. La raison est structurelle : `json_to_rdbn_lists` reconstruit les listes **à
-//! partir des originales**, et `encode_t2b` attend l'arborescence de conteneurs d'origine.
-//! Ajouter un champ produirait soit un refus d'encodage, soit — bien pire — un fichier
-//! syntaxiquement valide que le jeu lirait de travers.
+//! Mod workflow: init, add, get/set, texture, recolor, status, validate, install, uninstall.
 
 use std::path::{Path, PathBuf};
 
@@ -42,73 +9,64 @@ use nie_formats::g4tx_recolor::NouvelleCharge;
 use nie_viola::manifeste::{self, Manifeste};
 use serde_json::Value;
 
-/// Nom de la sauvegarde du `cpk_list.cfg.bin` vanilla, déposée à côté de lui.
-///
-/// Le C# amont posait un `.loose_bak` pour le même besoin ; le nom change parce que le geste
-/// n'est pas le même (il basculait un fichier isolé, ici on installe un mod entier), et parce
-/// qu'un préfixe `nie-` dit d'où vient le fichier quand on le retrouve six mois plus tard.
+/// Name of the vanilla `cpk_list.cfg.bin` backup, stored next to it.
 const SAUVEGARDE: &str = "cpk_list.cfg.bin.nie-vanilla";
 
-/// Chemin de la sauvegarde, résolu à côté du **vrai** `cpk_list.cfg.bin`.
+/// Backup path, resolved next to the real `cpk_list.cfg.bin`.
 ///
-/// `data/cpk_list.cfg.bin` est fréquemment un lien symbolique vers l'installation Steam. Composer
-/// la sauvegarde à partir du répertoire *non résolu* la fait écrire à un endroit et chercher à un
-/// autre dès que la racine est atteinte par un autre chemin : `install` la déposait à côté de la
-/// cible du lien, `uninstall` la cherchait à côté du lien lui-même et annonçait « le mod n'a pas
-/// été installé » alors que la sauvegarde existait bel et bien.
+/// `data/cpk_list.cfg.bin` is often a symlink to the Steam install; resolving the link first keeps
+/// `install` and `uninstall` looking at the same location.
 fn chemin_sauvegarde(cpk_list: &Path) -> PathBuf {
     std::fs::canonicalize(cpk_list)
         .unwrap_or_else(|_| cpk_list.to_path_buf())
         .with_file_name(SAUVEGARDE)
 }
 
-/// Au-delà, un `cpk_list` est réputé **déjà packé** par un mod précédent.
+/// Above this entry count a `cpk_list` is considered already packed by a previous mod.
 ///
-/// Le jeu a légitimement quelques entrées *loose* (vidéos d'introduction, configuration
-/// système) — cinq sur l'installation Steam. Le seuil est celui qu'emploie déjà l'interface
-/// graphique via [`nie_viola::PackReport::loose_avant`].
+/// The game legitimately ships a few loose entries (intro videos, system configuration). The
+/// threshold matches the one the GUI uses via [`nie_viola::PackReport::loose_avant`].
 const SEUIL_DEJA_PACKE: usize = 64;
 
-/// Les opérations du cycle de modding.
+/// Mod workflow operations.
 #[derive(Subcommand)]
 pub enum ModOp {
-    /// Crée un dossier de mod et son manifeste.
+    /// Create a mod folder and its manifest.
     Init {
-        /// Nom du mod — sert aussi d'identifiant aux dépendances.
+        /// Mod name, also used as the dependency id.
         #[arg(long)]
         nom: String,
-        /// Auteur ou équipe.
+        /// Author or team.
         #[arg(long)]
         auteur: String,
-        /// Dossier du mod (créé s'il manque).
+        /// Mod folder (created if missing).
         #[arg(long, short = 'd', default_value = ".")]
         dir: PathBuf,
-        /// Description libre.
+        /// Free-form description.
         #[arg(long, default_value = "")]
         description: String,
     },
-    /// Fait entrer un ou plusieurs fichiers **vanilla** dans le mod, prêts à être édités.
+    /// Copy vanilla files into the mod, ready to edit.
     Add {
-        /// Chemins VFS (`data/common/gamedata/...`). Un préfixe de dossier prend tout ce qu'il
-        /// contient.
+        /// VFS paths (`data/common/gamedata/...`); a folder prefix takes everything under it.
         #[arg(required = true, num_args = 1..)]
         chemins: Vec<String>,
         #[arg(long, short = 'd', default_value = ".")]
         dir: PathBuf,
-        /// Réécrit le fichier même s'il est déjà dans le mod (les éditions seraient perdues).
+        /// Overwrite files already in the mod (edits are lost).
         #[arg(long)]
         ecraser: bool,
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Affiche un fichier du mod (ou son vanilla) en JSON, entier ou à un pointeur.
+    /// Print a mod file (or its vanilla version) as JSON, whole or at a pointer.
     Get {
-        /// Chemin VFS.
+        /// VFS path.
         chemin: String,
-        /// JSON Pointer (RFC 6901), ex. `/entries/0/children/3/variables/2/value`.
+        /// JSON Pointer (RFC 6901), e.g. `/entries/0/children/3/variables/2/value`.
         #[arg(long, short = 'p')]
         pointeur: Option<String>,
-        /// Tronque l'affichage à N caractères (0 = pas de troncature).
+        /// Truncate output to N characters (0 = no truncation).
         #[arg(long, default_value_t = 4096)]
         limite: usize,
         #[arg(long, short = 'd', default_value = ".")]
@@ -116,34 +74,32 @@ pub enum ModOp {
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Modifie un champ et réencode le fichier dans le mod.
+    /// Edit a field and re-encode the file in the mod. The pointer must match an existing node.
     Set {
-        /// Chemin VFS.
+        /// VFS path.
         chemin: String,
-        /// JSON Pointer du champ à modifier — doit désigner un nœud **existant**.
+        /// JSON Pointer of the field; must match an existing node.
         pointeur: String,
-        /// Nouvelle valeur. Interprétée comme du texte si le nœud actuel est une chaîne
-        /// (le cas normal dans ce format), comme du JSON sinon.
+        /// New value: text if the current node is a string, JSON otherwise.
         valeur: String,
         #[arg(long, short = 'd', default_value = ".")]
         dir: PathBuf,
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Remplace une texture principale par un PNG ; les autres textures et les régions d'atlas
-    /// du conteneur sont recopiées telles quelles.
+    /// Replace a main texture with a PNG; other textures and atlas regions are copied unchanged.
     Texture {
-        /// Chemin VFS du `.g4tx`.
+        /// VFS path of the `.g4tx`.
         chemin: String,
-        /// Image source.
+        /// Source image.
         #[arg(long)]
         png: PathBuf,
-        /// Nom de la texture principale à remplacer — requis si le conteneur en porte plusieurs
-        /// (les icônes de portrait en ont deux : `<code>_1_l00` et `<code>_2_l00`).
+        /// Main texture to replace; required when the container has several
+        /// (portrait icons have two: `<code>_1_l00` and `<code>_2_l00`).
         #[arg(long)]
         texture: Option<String>,
-        /// Encode en BC7 avec chaîne de mips complète (format des textures de personnage retail)
-        /// au lieu de BGRA8 sans mips. Avec perte, mais 3× plus léger et sans scintillement à distance.
+        /// Encode as BC7 with a full mip chain (retail character texture format) instead of
+        /// BGRA8 without mips. Lossy, about 3x smaller.
         #[arg(long)]
         bc7: bool,
         #[arg(long, short = 'd', default_value = ".")]
@@ -151,34 +107,33 @@ pub enum ModOp {
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Recolore un `.g4tx` sans toucher à sa géométrie : décalage TSV et/ou rampe de luminance.
+    /// Recolor a `.g4tx` without touching its geometry: hue shift and/or luminance ramp.
     ///
-    /// Contrairement à `texture`, accepte les conteneurs découpés en régions d'atlas — une
-    /// recoloration est une transformation par pixel à dimensions constantes, donc chaque
-    /// rectangle de région reste exact.
+    /// Unlike `texture`, it accepts atlas-region containers; recoloring keeps pixel dimensions, so
+    /// region rectangles stay exact.
     Recolor {
-        /// Chemin VFS du `.g4tx`.
+        /// VFS path of the `.g4tx`.
         chemin: String,
-        /// Décalage de teinte en degrés (cyclique) : `120` fait passer le rouge au vert.
+        /// Hue shift in degrees (cyclic): `120` turns red into green.
         #[arg(long, default_value_t = 0.0, allow_negative_numbers = true)]
         teinte: f32,
-        /// Facteur de saturation (`1` = inchangé, `0` = gris).
+        /// Saturation factor (`1` = unchanged, `0` = gray).
         #[arg(long, default_value_t = 1.0)]
         saturation: f32,
-        /// Facteur de luminosité (`1` = inchangé).
+        /// Brightness factor (`1` = unchanged).
         #[arg(long, default_value_t = 1.0)]
         valeur: f32,
-        /// Rampe de luminance `#RRGGBB[@position]` séparée par des virgules — trois couleurs
-        /// sans position donnent le trio ombre / mi-teinte / haute lumière.
+        /// Comma-separated luminance ramp `#RRGGBB[@position]`; three colors without positions
+        /// map to shadow / midtone / highlight.
         #[arg(long)]
         rampe: Option<String>,
-        /// Force du mélange de la rampe, de `0` (original) à `1` (rampe pure).
+        /// Ramp blend strength, `0` (original) to `1` (pure ramp).
         #[arg(long, default_value_t = 1.0)]
         force: f32,
-        /// Alpha en dessous duquel un pixel est laissé intact (remplissage transparent d'atlas).
+        /// Alpha below which a pixel is left untouched (transparent atlas fill).
         #[arg(long, default_value_t = 1)]
         alpha_min: u8,
-        /// Restreint la recoloration à une texture principale ; par défaut, toutes.
+        /// Restrict recoloring to one main texture; default: all.
         #[arg(long)]
         texture: Option<String>,
         #[arg(long, short = 'd', default_value = ".")]
@@ -186,90 +141,89 @@ pub enum ModOp {
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Ce que le mod change, fichier par fichier, comparé au vanilla du VFS.
+    /// Show what the mod changes, file by file, against the vanilla VFS.
     Status {
         #[arg(long, short = 'd', default_value = ".")]
         dir: PathBuf,
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Vérifie le manifeste, l'arborescence, et que chaque fichier se relit après encodage.
+    /// Check the manifest, the tree, and that every file re-reads after encoding.
     Validate {
         #[arg(long, short = 'd', default_value = ".")]
         dir: PathBuf,
         #[arg(long)]
         game_dir: Option<PathBuf>,
     },
-    /// Installe le mod dans le jeu : sauvegarde le `cpk_list`, le réécrit, copie les fichiers.
+    /// Install the mod: back up `cpk_list`, rewrite it, copy the files.
     Install {
-        /// Dossiers de mods, du **moins** au **plus** prioritaire si plusieurs.
+        /// Mod folders, from lowest to highest priority when several.
         #[arg(long, short = 'd', default_value = ".", num_args = 1..)]
         dir: Vec<PathBuf>,
         #[arg(long)]
         game_dir: Option<PathBuf>,
-        /// Cible Switch (`romfs/data/…`) au lieu de PC.
+        /// Target Switch (`romfs/data/...`) instead of PC.
         #[arg(long)]
         switch: bool,
-        /// Montre ce qui serait fait, sans rien écrire.
+        /// Show what would be done without writing anything.
         #[arg(long)]
         a_blanc: bool,
     },
-    /// Rend au jeu son `cpk_list.cfg.bin` d'origine.
+    /// Restore the game's original `cpk_list.cfg.bin`.
     Uninstall {
         #[arg(long)]
         game_dir: Option<PathBuf>,
-        /// Supprime aussi les fichiers du mod copiés dans le jeu.
+        /// Also delete the mod files copied into the game.
         #[arg(long, short = 'd')]
         dir: Option<PathBuf>,
     },
 }
 
-/// Un `.cfg.bin` décodé, avec de quoi le réencoder dans **sa** variante.
+/// A decoded `.cfg.bin`, with what is needed to re-encode it in its own variant.
 ///
-/// Les deux variantes ne se ré-encodent pas de la même façon : le RDBN a besoin de ses listes
-/// d'origine comme gabarit (la forme JSON n'encode pas les types de champs), le T2B non.
+/// RDBN needs its original lists as a template (the JSON form does not encode field types);
+/// T2B does not.
 enum Doc {
-    /// Arbre T2B.
+    /// T2B tree.
     T2b,
-    /// Listes RDBN, conservées comme gabarit de réencodage.
+    /// RDBN lists, kept as the re-encoding template.
     Rdbn(Vec<cfgbin::RdbnList>),
 }
 
-/// Décode des octets `.cfg.bin` vers la forme JSON du pont, quelle que soit la variante.
+/// Decode `.cfg.bin` bytes into the bridge JSON form, whatever the variant.
 fn charger(octets: &[u8]) -> anyhow::Result<(Doc, Value)> {
     if cfgbin::is_rdbn(octets) {
-        let brut = cfgbin::parse(octets).map_err(|e| anyhow::anyhow!("RDBN illisible : {e}"))?;
+        let brut = cfgbin::parse(octets).map_err(|e| anyhow::anyhow!("unreadable RDBN: {e}"))?;
         let listes = cfgbin::read_values(&brut, octets);
         let json = nie_explore::bridge::rdbn_to_json(&listes);
         return Ok((Doc::Rdbn(listes), json));
     }
-    let cfg = cfgbin::cfgbin_parse(octets).map_err(|e| anyhow::anyhow!("T2B illisible : {e}"))?;
+    let cfg = cfgbin::cfgbin_parse(octets).map_err(|e| anyhow::anyhow!("unreadable T2B: {e}"))?;
     let json = nie_explore::bridge::t2b_to_json(&cfg);
     Ok((Doc::T2b, json))
 }
 
-/// Réencode la forme JSON dans la variante d'origine.
+/// Re-encode the JSON form into the original variant.
 fn reencoder(doc: &Doc, json: &Value) -> anyhow::Result<Vec<u8>> {
     match doc {
         Doc::T2b => {
             let entries = nie_explore::bridge::json_to_t2b_entries(json)
-                .map_err(|e| anyhow::anyhow!("JSON → T2B : {e}"))?;
+                .map_err(|e| anyhow::anyhow!("JSON -> T2B: {e}"))?;
             Ok(cfgbin::encode_t2b(&entries))
         }
         Doc::Rdbn(original) => {
             let listes = nie_explore::bridge::json_to_rdbn_lists(original, json)
-                .map_err(|e| anyhow::anyhow!("JSON → RDBN : {e}"))?;
-            cfgbin::encode_rdbn(&listes).map_err(|e| anyhow::anyhow!("encodage RDBN : {e}"))
+                .map_err(|e| anyhow::anyhow!("JSON -> RDBN: {e}"))?;
+            cfgbin::encode_rdbn(&listes).map_err(|e| anyhow::anyhow!("RDBN encoding: {e}"))
         }
     }
 }
 
-/// Ramène un pointeur à la forme RFC 6901, en tolérant l'absence du `/` initial.
+/// Normalize a pointer to RFC 6901 form, accepting a missing leading `/`.
 ///
-/// Ce n'est pas de la complaisance : sous Git Bash, MSYS réécrit **tout** argument commençant
-/// par `/` en chemin Windows, si bien que `/entries/0/...` arrive au programme sous la forme
-/// `C:/Program Files/Git/entries/0/...`. L'erreur qui en découle accuse le pointeur alors que
-/// le shell est en cause. Accepter `entries/0/...` donne une forme qui traverse le shell intacte.
+/// Under Git Bash, MSYS rewrites any argument starting with `/` into a Windows path, so
+/// `/entries/0/...` reaches the program as `C:/Program Files/Git/entries/0/...`. Accepting
+/// `entries/0/...` survives the shell intact.
 fn normaliser_pointeur(p: &str) -> String {
     if p.is_empty() || p.starts_with('/') {
         p.to_string()
@@ -278,12 +232,11 @@ fn normaliser_pointeur(p: &str) -> String {
     }
 }
 
-/// Compte les entrées **déjà hors paquet** d'un `cpk_list.cfg.bin`.
+/// Count entries of a `cpk_list.cfg.bin` that are already outside the pack.
 ///
-/// C'est le seul moyen de reconnaître un `cpk_list` qu'un mod précédent a déjà réécrit : le
-/// fichier n'en porte aucune marque, et repartir de lui empilerait les deux mods. Un
-/// `cpk_list` illisible rend `0` — on ne bloquera pas l'installation sur un fichier qu'on n'a
-/// pas su lire, `pack_mod` échouera de toute façon avec une meilleure erreur.
+/// This is the only way to recognise a `cpk_list` an earlier mod already rewrote: the file
+/// carries no marker, and starting from it would stack both mods. An unreadable `cpk_list`
+/// returns `0`; `pack_mod` fails later with a better error.
 fn compter_loose(cpk_list: &[u8]) -> usize {
     let Ok((cfg, _)) = nie_viola::decode_cpk_list(cpk_list) else {
         return 0;
@@ -300,40 +253,39 @@ fn compter_loose(cpk_list: &[u8]) -> usize {
     })
 }
 
-/// Emplacement d'un chemin VFS à l'intérieur d'un dossier de mod.
+/// Location of a VFS path inside a mod folder.
 fn dans_le_mod(dir: &Path, vfs: &str) -> PathBuf {
     dir.join(vfs.trim_start_matches('/'))
 }
 
-/// Octets d'un fichier : ceux du mod s'il y est, sinon le vanilla lu dans le VFS.
+/// Bytes of a file: the mod's copy if present, otherwise vanilla from the VFS.
 ///
-/// L'ordre compte : éditer deux fois de suite le même champ doit partir de la première édition,
-/// pas repartir du vanilla en écrasant silencieusement la précédente.
+/// Order matters: editing the same field twice must start from the first edit, not from vanilla.
 fn octets_courants(dir: &Path, vfs: &str, game_dir: Option<PathBuf>) -> anyhow::Result<Vec<u8>> {
     let p = dans_le_mod(dir, vfs);
     if p.is_file() {
-        return std::fs::read(&p).with_context(|| format!("lecture « {} »", p.display()));
+        return std::fs::read(&p).with_context(|| format!("read '{}'", p.display()));
     }
     let v = crate::open_vfs(game_dir)?;
     v.read(vfs)
-        .map_err(|e| anyhow::anyhow!("« {vfs} » introuvable dans le VFS : {e}"))
+        .map_err(|e| anyhow::anyhow!("'{vfs}' not found in the VFS: {e}"))
 }
 
-/// Écrit un fichier dans le mod, en créant l'arborescence.
+/// Write a file into the mod, creating the directory tree.
 fn ecrire_dans_le_mod(dir: &Path, vfs: &str, octets: &[u8]) -> anyhow::Result<PathBuf> {
     let p = dans_le_mod(dir, vfs);
     if let Some(parent) = p.parent() {
         std::fs::create_dir_all(parent)
-            .with_context(|| format!("création « {} »", parent.display()))?;
+            .with_context(|| format!("create '{}'", parent.display()))?;
     }
-    std::fs::write(&p, octets).with_context(|| format!("écriture « {} »", p.display()))?;
+    std::fs::write(&p, octets).with_context(|| format!("write '{}'", p.display()))?;
     Ok(p)
 }
 
-/// Aiguillage des sous-commandes.
+/// Dispatch subcommands.
 ///
 /// # Errors
-/// Remonte toute erreur d'E/S, de format ou de validation.
+/// Propagates any I/O, format or validation error.
 pub fn executer(op: ModOp) -> anyhow::Result<()> {
     match op {
         ModOp::Init {
@@ -410,16 +362,16 @@ pub fn executer(op: ModOp) -> anyhow::Result<()> {
 fn init(nom: &str, auteur: &str, dir: &Path, description: &str) -> anyhow::Result<()> {
     if Manifeste::chemin(dir).exists() {
         bail!(
-            "« {} » contient déjà un mod — `init` n'écrase pas",
+            "'{}' already contains a mod; `init` does not overwrite it",
             dir.display()
         );
     }
     let mut m = Manifeste::gabarit(nom, auteur);
     m.description = description.to_string();
     m.ecrire(dir).map_err(anyhow::Error::msg)?;
-    println!("mod       {nom} v{} par {auteur}", m.version);
-    println!("manifeste {}", Manifeste::chemin(dir).display());
-    println!("\nEnsuite : `nie mod add <chemin-vfs>` pour y faire entrer un fichier du jeu.");
+    println!("mod       {nom} v{} by {auteur}", m.version);
+    println!("manifest  {}", Manifeste::chemin(dir).display());
+    println!("\nNext: `nie mod add <vfs-path>` to bring a game file into the mod.");
     Ok(())
 }
 
@@ -430,8 +382,8 @@ fn add(
     game_dir: Option<PathBuf>,
 ) -> anyhow::Result<()> {
     let vfs = crate::open_vfs(game_dir)?;
-    // Un préfixe de dossier vaut pour tout ce qu'il contient : ajouter une famille entière au
-    // mod est le geste courant, et l'énumérer à la main sur des milliers d'entrées ne l'est pas.
+    // A folder prefix covers everything under it: adding a whole family to the mod is the common
+    // case, and listing thousands of entries by hand is not.
     let mut cibles: Vec<String> = Vec::new();
     for c in chemins {
         let c = c.trim_matches('/');
@@ -447,7 +399,7 @@ fn add(
             .map(String::from)
             .collect();
         if sous.is_empty() {
-            bail!("« {c} » n'est ni un fichier ni un dossier du VFS");
+            bail!("'{c}' is neither a file nor a folder of the VFS");
         }
         cibles.extend(sous);
     }
@@ -466,17 +418,17 @@ fn add(
                 ajoutes += 1;
             }
             Err(e) => {
-                eprintln!("  échec  {vfs_path} : {e}");
+                eprintln!("  failed  {vfs_path}: {e}");
                 echecs += 1;
             }
         }
     }
-    println!("ajoutés   {ajoutes}");
+    println!("added     {ajoutes}");
     if sautes > 0 {
-        println!("sautés    {sautes} (déjà dans le mod — `--ecraser` pour repartir du vanilla)");
+        println!("skipped   {sautes} (already in the mod; `--ecraser` to restart from vanilla)");
     }
     if echecs > 0 {
-        println!("échecs    {echecs}");
+        println!("failed    {echecs}");
     }
     Ok(())
 }
@@ -494,17 +446,17 @@ fn get(
     let vue = match &pointeur {
         None => &json,
         Some(p) => json.pointer(p).ok_or_else(|| {
-            anyhow::anyhow!("le pointeur « {p} » ne désigne rien dans ce fichier")
+            anyhow::anyhow!("pointer '{p}' matches nothing in this file")
         })?,
     };
     let texte = serde_json::to_string_pretty(vue)?;
     if limite > 0 && texte.len() > limite {
-        // Compter en caractères et non en octets : tronquer au milieu d'un caractère multioctet
-        // produirait une chaîne invalide, et ces fichiers portent du texte japonais.
+        // Count characters, not bytes: cutting inside a multibyte character would produce an invalid
+        // string, and these files hold Japanese text.
         let coupe: String = texte.chars().take(limite).collect();
         println!("{coupe}");
         println!(
-            "… tronqué à {limite} caractères sur {} — `--limite 0` pour tout voir",
+            "... truncated to {limite} characters of {} (`--limite 0` shows everything)",
             texte.chars().count()
         );
     } else {
@@ -526,41 +478,41 @@ fn set(
 
     let cible = json.pointer_mut(pointeur).ok_or_else(|| {
         anyhow::anyhow!(
-            "le pointeur « {pointeur} » ne désigne rien — `set` ne crée jamais un champ, \
-             car un champ ajouté ne serait pas réencodable (cf. doc du module)"
+            "pointer '{pointeur}' matches nothing; `set` never creates a field, \
+                 because an added field could not be re-encoded"
         )
     })?;
 
     let avant = cible.clone();
-    // Dans la forme du pont, toute valeur de variable est une chaîne — y compris les entiers et
-    // les flottants, que les lecteurs de `nie-data` re-parsent. Respecter le type en place évite
-    // de produire un JSON que l'encodeur refusera.
+    // In the bridge form every variable value is a string, including integers and floats, which
+    // the `nie-data` readers re-parse. Keeping the existing type avoids producing JSON the encoder
+    // will reject.
     if cible.is_string() {
         *cible = Value::String(valeur.to_string());
     } else {
         *cible = serde_json::from_str(valeur).with_context(|| {
-            format!("« {valeur} » n'est pas du JSON, et le nœud visé n'est pas une chaîne")
+            format!("'{valeur}' is not JSON, and the target node is not a string")
         })?;
     }
     let apres = cible.clone();
 
     let nouveaux = reencoder(&doc, &json)?;
-    // Relire ce qu'on vient d'écrire, tout de suite : un encodage qui ne se redécode pas doit
-    // échouer ici, pas au moment de l'installation, et surtout pas dans le jeu.
+    // Re-read what was just written, immediately: an encoding that does not decode back must fail
+    // here, not at install time, and above all not in the game.
     let (_, verif) =
-        charger(&nouveaux).context("le fichier réencodé ne se relit pas — modification refusée")?;
-    // Dire ce qui a été relu, et non pas seulement que ça diffère : sans la valeur trouvée, on
-    // ne distingue pas un pointeur qui a glissé (nœud absent) d'un reformatage de la valeur.
+        charger(&nouveaux).context("the re-encoded file does not re-read; edit refused")?;
+    // Report the value read back, not just that it differs: without it a drifted pointer (missing
+    // node) cannot be told from a reformatted value.
     match verif.pointer(pointeur) {
         Some(relu) if relu == &apres => {}
         Some(relu) => {
-            bail!("le fichier réencodé rend {relu} là où {apres} a été posé — modification refusée")
+            bail!("the re-encoded file reads {relu} where {apres} was written; edit refused")
         }
         None => {
-            // Dire OÙ le chemin se brise : un pointeur perdu sans plus de précision ne se
-            // diagnostique pas. On redescend segment par segment jusqu'au premier absent.
+            // Say WHERE the path breaks: a lost pointer is not diagnosable without it. Walk down segment
+            // by segment to the first missing one.
             let mut chemin = String::new();
-            let mut rompu = String::from("(racine)");
+            let mut rompu = String::from("(root)");
             for seg in pointeur.split('/').skip(1) {
                 chemin.push('/');
                 chemin.push_str(seg);
@@ -573,10 +525,10 @@ fn set(
             let dispo = verif.pointer(&avant_rupture).map_or_else(
                 || "—".to_string(),
                 |v| match v {
-                    Value::Array(a) => format!("tableau de {} éléments", a.len()),
+                    Value::Array(a) => format!("array of {} elements", a.len()),
                     Value::Object(o) => {
                         format!(
-                            "objet {{{}}}",
+                            "object {{{}}}",
                             o.keys().cloned().collect::<Vec<_>>().join(", ")
                         )
                     }
@@ -584,18 +536,18 @@ fn set(
                 },
             );
             bail!(
-                "après réencodage, le pointeur « {pointeur} » se brise à « {rompu} » ; \
-                 « {avant_rupture} » contient : {dispo} — modification refusée"
+                "after re-encoding, pointer '{pointeur}' breaks at '{rompu}'; \
+                 '{avant_rupture}' contains: {dispo}; edit refused"
             )
         }
     }
 
     let p = ecrire_dans_le_mod(dir, chemin, &nouveaux)?;
-    println!("fichier   {}", p.display());
-    println!("pointeur  {pointeur}");
-    println!("avant     {avant}");
-    println!("après     {apres}");
-    println!("octets    {} → {}", octets.len(), nouveaux.len());
+    println!("file      {}", p.display());
+    println!("pointer   {pointeur}");
+    println!("before    {avant}");
+    println!("after     {apres}");
+    println!("bytes     {} -> {}", octets.len(), nouveaux.len());
     Ok(())
 }
 
@@ -609,15 +561,14 @@ fn texture(
 ) -> anyhow::Result<()> {
     let octets = octets_courants(dir, chemin, game_dir)?;
     let atlas = nie_formats::g4tx::parse(&octets)
-        .map_err(|e| anyhow::anyhow!("« {chemin} » n'est pas un G4TX lisible : {e}"))?;
+        .map_err(|e| anyhow::anyhow!("'{chemin}' is not a readable G4TX: {e}"))?;
     if atlas.textures.is_empty() {
-        bail!("{chemin} : aucune texture");
+        bail!("{chemin}: no texture");
     }
 
-    // Quelle texture principale est remplacée. Un conteneur mono-texture n'a pas besoin de
-    // `--texture` ; au-delà, le choix doit être explicite plutôt que deviné — les icônes de
-    // portrait portent deux textures (`<code>_1_l00` / `<code>_2_l00`) qui ne sont pas
-    // interchangeables.
+    // Which main texture is replaced. A single-texture container needs no `--texture`; beyond that
+    // the choice must be explicit rather than guessed: portrait icons carry two textures
+    // (`<code>_1_l00` / `<code>_2_l00`) that are not interchangeable.
     let index = match nom_texture {
         Some(nom) => atlas
             .textures
@@ -625,33 +576,32 @@ fn texture(
             .position(|t| t.name == nom)
             .ok_or_else(|| {
                 anyhow::anyhow!(
-                    "« {chemin} » ne porte pas de texture « {nom} » ; disponibles : {}",
+                    "'{chemin}' has no texture '{nom}'; available: {}",
                     noms_des_textures(&atlas)
                 )
             })?,
         None if atlas.textures.len() == 1 => 0,
         None => bail!(
-            "« {chemin} » porte {} textures — préciser --texture parmi : {}",
+            "'{chemin}' has {} textures; pass --texture, one of: {}",
             atlas.textures.len(),
             noms_des_textures(&atlas)
         ),
     };
 
-    // Une texture découpée en régions d'atlas reste refusée : plusieurs régions partagent alors
-    // une image, et « remplacer » n'y a pas de sens univoque. Les régions rattachées aux AUTRES
-    // textures, elles, sont recopiées telles quelles.
+    // A texture split into atlas regions stays refused: several regions share one image, so
+    // "replace" has no single meaning. Regions attached to the OTHER textures are copied unchanged.
     if !atlas.textures[index].sub_textures.is_empty() {
         bail!(
-            "« {chemin} » : la texture « {} » porte {} région(s) d'atlas — le remplacement d'une \
-             texture découpée en régions n'est pas défini",
+            "'{chemin}': texture '{}' has {} atlas region(s); replacing a texture split into regions \
+                 is not defined",
             atlas.textures[index].name,
             atlas.textures[index].sub_textures.len()
         );
     }
 
-    let image = std::fs::read(png).with_context(|| format!("lecture « {} »", png.display()))?;
+    let image = std::fs::read(png).with_context(|| format!("read '{}'", png.display()))?;
     let (l, h, rgba) = nie_formats::g4tx_encode::decode_png_to_rgba8(&image)
-        .map_err(|e| anyhow::anyhow!("« {} » : {e}", png.display()))?;
+        .map_err(|e| anyhow::anyhow!("'{}': {e}", png.display()))?;
     let dds = if bc7 {
         #[cfg(feature = "textures-encode")]
         {
@@ -667,14 +617,13 @@ fn texture(
     } else {
         nie_formats::g4tx_encode::encode_dds_bgra8(l, h, &rgba)
     }
-    .map_err(|e| anyhow::anyhow!("encodage DDS : {e}"))?;
+    .map_err(|e| anyhow::anyhow!("DDS encoding: {e}"))?;
     let (li, hi) = (i16::try_from(l)?, i16::try_from(h)?);
 
-    // La reconstruction du conteneur — charges non touchées recopiées octet pour octet, régions
-    // d'atlas reportées, relecture immédiate du résultat — vit dans `nie_formats::g4tx_recolor`.
-    // C'est la source unique, partagée avec `nie mod recolor` : deux reconstructions
-    // dériveraient, et celle-ci a déjà à tenir quatre invariants (noms, ids, comptes de régions,
-    // reparse).
+    // Rebuilding the container (untouched payloads copied byte for byte, atlas regions carried
+    // over, immediate re-read of the result) lives in `nie_formats::g4tx_recolor`. It is the single
+    // source shared with `nie mod recolor`: two rebuilders would drift, and this one already has
+    // four invariants to keep (names, ids, region counts, reparse).
     let mut charges: Vec<NouvelleCharge> = atlas
         .textures
         .iter()
@@ -686,13 +635,13 @@ fn texture(
         height: hi,
     };
     let nouveaux = nie_formats::g4tx_recolor::reencode_with_payloads(&octets, &atlas, &charges)
-        .map_err(|e| anyhow::anyhow!("« {chemin} » : {e} — modification refusée"))?;
+        .map_err(|e| anyhow::anyhow!("'{chemin}': {e}; edit refused"))?;
 
     let p = ecrire_dans_le_mod(dir, chemin, &nouveaux)?;
-    println!("texture   {} — {l}×{h}", atlas.textures[index].name);
+    println!("texture   {} - {l}x{h}", atlas.textures[index].name);
     if atlas.textures.len() > 1 {
         println!(
-            "conservées {}",
+            "kept       {}",
             atlas
                 .textures
                 .iter()
@@ -703,13 +652,13 @@ fn texture(
                 .join(", ")
         );
     }
-    println!("fichier   {}", p.display());
-    println!("octets    {} → {}", octets.len(), nouveaux.len());
+    println!("file      {}", p.display());
+    println!("bytes     {} -> {}", octets.len(), nouveaux.len());
     Ok(())
 }
 
-/// Les réglages de `nie mod recolor`, regroupés — sept arguments de plus sur `recolor` auraient
-/// déclenché `clippy::too_many_arguments` et se seraient lus comme une suite de flottants anonymes.
+/// Settings of `nie mod recolor`, grouped: seven more arguments on `recolor` would trip
+/// `clippy::too_many_arguments` and read as a row of anonymous floats.
 struct Filtre<'a> {
     teinte: f32,
     saturation: f32,
@@ -729,7 +678,7 @@ fn recolor(
     let rampe = match filtre.rampe {
         Some(spec) => {
             let mut r = nie_formats::recolor::Ramp::parse(spec)
-                .map_err(|e| anyhow::anyhow!("--rampe : {e}"))?;
+                .map_err(|e| anyhow::anyhow!("--rampe: {e}"))?;
             r.strength = filtre.force;
             Some(r)
         }
@@ -745,30 +694,30 @@ fn recolor(
 
     let octets = octets_courants(dir, chemin, game_dir)?;
     let r = nie_formats::g4tx_recolor::recolour(&octets, &f, nom_texture)
-        .map_err(|e| anyhow::anyhow!("« {chemin} » : {e}"))?;
+        .map_err(|e| anyhow::anyhow!("'{chemin}': {e}"))?;
 
     let p = ecrire_dans_le_mod(dir, chemin, &r.octets)?;
     for (nom, l, h) in &r.recolorees {
-        println!("recoloré  {nom} — {l}×{h}");
+        println!("recolored {nom} - {l}x{h}");
     }
     if !r.hors_cible.is_empty() {
-        println!("hors cible {}", r.hors_cible.join(", "));
+        println!("off target {}", r.hors_cible.join(", "));
     }
-    // Une charge illisible est RECOPIÉE, jamais remplacée par du vide : il faut donc la dire, et
-    // séparément de `hors cible` — sinon un conteneur à moitié recoloré passe pour entièrement
-    // recoloré, et la seule ligne qui l'aurait signalé se confond avec un choix de l'appelant.
+    // An unreadable payload is COPIED, never replaced by nothing: say so, separately from
+    // `off target`, or a half-recolored container passes for fully recolored and the only line
+    // that would have flagged it blends in with a caller choice.
     if !r.illisibles.is_empty() {
         println!(
-            "ILLISIBLES {} — recopiées telles quelles",
+            "UNREADABLE {} - copied unchanged",
             r.illisibles.join(", ")
         );
     }
-    println!("fichier   {}", p.display());
-    println!("octets    {} → {}", octets.len(), r.octets.len());
+    println!("file      {}", p.display());
+    println!("bytes     {} -> {}", octets.len(), r.octets.len());
     Ok(())
 }
 
-/// Noms des textures principales d'un conteneur, pour les messages d'erreur de `--texture`.
+/// Main texture names of a container, for `--texture` error messages.
 fn noms_des_textures(atlas: &nie_formats::g4tx::G4tx) -> String {
     atlas
         .textures
@@ -781,12 +730,12 @@ fn noms_des_textures(atlas: &nie_formats::g4tx::G4tx) -> String {
 fn status(dir: &Path, game_dir: Option<PathBuf>) -> anyhow::Result<()> {
     let m = Manifeste::lire(dir).map_err(anyhow::Error::msg)?;
     let fichiers = manifeste::fichiers(dir).map_err(anyhow::Error::msg)?;
-    println!("mod       {} v{} par {}", m.nom, m.version, m.auteur);
+    println!("mod       {} v{} by {}", m.nom, m.version, m.auteur);
     if !m.description.is_empty() {
         println!("           {}", m.description);
     }
-    println!("priorité  {}", m.priorite);
-    println!("fichiers  {}", fichiers.len());
+    println!("priority  {}", m.priorite);
+    println!("files     {}", fichiers.len());
 
     if fichiers.is_empty() {
         return Ok(());
@@ -799,7 +748,7 @@ fn status(dir: &Path, game_dir: Option<PathBuf>) -> anyhow::Result<()> {
             Err(_) => {
                 neufs += 1;
                 println!(
-                    "  neuf       {} ({taille} o) — absent du jeu vanilla",
+                    "  new        {} ({taille} B) - absent from vanilla",
                     f.vfs
                 );
             }
@@ -809,74 +758,74 @@ fn status(dir: &Path, game_dir: Option<PathBuf>) -> anyhow::Result<()> {
                     identiques += 1;
                 } else {
                     modifies += 1;
-                    println!("  modifié    {} ({} → {taille} o)", f.vfs, vanilla.len());
+                    println!("  modified   {} ({} -> {taille} B)", f.vfs, vanilla.len());
                 }
             }
         }
     }
     if identiques > 0 {
-        // Un fichier identique au vanilla ne change rien mais bascule quand même son entrée en
-        // loose : ce n'est pas neutre, et le taire donnerait un mod plus gros que son effet.
+        // A file identical to vanilla changes nothing but still flips its entry to loose: not neutral,
+        // and staying silent would yield a mod bigger than its effect.
         println!(
-            "  {identiques} identique(s) au vanilla — sans effet, mais installé(s) quand même"
+            "  {identiques} identical to vanilla; no effect, but installed anyway"
         );
     }
-    println!("bilan     {modifies} modifié(s), {neufs} neuf(s), {identiques} identique(s)");
+    println!("summary   {modifies} modified, {neufs} new, {identiques} identical");
     Ok(())
 }
 
-/// Vérifie un mod et rend ses fichiers. Le cœur partagé par `validate` et `install`.
+/// Validate a mod and return its files. Shared core of `validate` and `install`.
 fn validate(dir: &Path, game_dir: Option<PathBuf>) -> anyhow::Result<Vec<manifeste::FichierMod>> {
     let m = Manifeste::lire(dir).map_err(anyhow::Error::msg)?;
     let mut fautes: Vec<String> = m.reproches();
 
-    // Un fichier hors `data/` ne serait jamais chargé, et surtout jamais signalé : c'est le
-    // piège exact du dossier de travail à noms aplatis.
+    // A file outside `data/` would never be loaded, and never reported: the exact trap of a
+    // flattened-name working folder.
     for f in manifeste::valider_arborescence(dir).map_err(anyhow::Error::msg)? {
         fautes.push(format!(
-            "« {f} » n'est pas sous data/ — le jeu ne le chargerait jamais"
+            "'{f}' is not under data/; the game would never load it"
         ));
     }
 
     let fichiers = manifeste::fichiers(dir).map_err(anyhow::Error::msg)?;
     let vfs = crate::open_vfs(game_dir).ok();
     for f in &fichiers {
-        // Un chemin absent du VFS n'est pas fatal (un mod peut ajouter un fichier), mais c'est
-        // presque toujours une faute de frappe : le dire sans refuser.
+        // A path missing from the VFS is not fatal (a mod can add a file), but it is almost always a
+        // typo: say so without refusing.
         if let Some(v) = &vfs
             && !v.iter().any(|(p, _)| p == f.vfs)
         {
             println!(
-                "  note     {} est absent du jeu vanilla (fichier ajouté ?)",
+                "  note     {} is absent from vanilla (added file?)",
                 f.vfs
             );
         }
         if !f.vfs.ends_with(".cfg.bin") {
             continue;
         }
-        // La vraie vérification : un `.cfg.bin` du mod doit se décoder. S'il ne se décode pas
-        // ici, le jeu ne le lira pas davantage.
+        // The real check: a mod `.cfg.bin` must decode. If it does not decode here, the game will not
+        // read it either.
         let octets = std::fs::read(&f.absolu)
-            .with_context(|| format!("lecture « {} »", f.absolu.display()))?;
+            .with_context(|| format!("read '{}'", f.absolu.display()))?;
         if let Err(e) = charger(&octets) {
-            fautes.push(format!("{} : illisible — {e}", f.vfs));
+            fautes.push(format!("{}: unreadable - {e}", f.vfs));
         }
     }
 
     if fautes.is_empty() {
         println!(
-            "mod       {} v{} — {} fichier(s)",
+            "mod       {} v{} - {} file(s)",
             m.nom,
             m.version,
             fichiers.len()
         );
-        println!("verdict   valide");
+        println!("verdict   valid");
         return Ok(fichiers);
     }
     for f in &fautes {
-        println!("  faute    {f}");
+        println!("  fault    {f}");
     }
-    bail!("{} faute(s) — mod invalide", fautes.len())
+    bail!("{} fault(s); mod invalid", fautes.len())
 }
 
 fn install(
@@ -891,24 +840,24 @@ fn install(
     let sauvegarde = chemin_sauvegarde(&cpk_list);
     if !cpk_list.is_file() {
         bail!(
-            "« {} » introuvable — ce n'est pas une installation du jeu",
+            "'{}' not found; not a game install",
             cpk_list.display()
         );
     }
 
-    // Valider AVANT de toucher au jeu. Un mod refusé ne doit laisser aucune trace.
+    // Validate BEFORE touching the game. A refused mod must leave no trace.
     let mut manifestes = Vec::with_capacity(dirs.len());
     for d in dirs {
         validate(d, game_dir.clone())?;
         manifestes.push(Manifeste::lire(d).map_err(anyhow::Error::msg)?);
     }
-    // L'ordre d'application vient des dépendances puis de la priorité, jamais de l'ordre de
-    // frappe sur la ligne de commande — sinon `enabled`/`priorite` resteraient décoratifs.
+    // Apply order comes from dependencies then priority, never from the command-line order;
+    // otherwise `enabled`/`priorite` would be decorative.
     let ordre = nie_viola::ordonner(&manifestes).map_err(anyhow::Error::msg)?;
     let sources: Vec<PathBuf> = ordre.iter().rev().map(|&i| dirs[i].clone()).collect();
     if sources.len() > 1 {
         println!(
-            "ordre     {} (du plus prioritaire au moins prioritaire)",
+            "order     {} (highest priority first)",
             sources
                 .iter()
                 .filter_map(|p| p.file_name())
@@ -918,31 +867,31 @@ fn install(
         );
     }
 
-    // Le `cpk_list` passé à `pack_mod` doit être le vanilla : repartir d'un cpk_list déjà packé
-    // empilerait les entrées d'un mod précédent. La sauvegarde est donc la source, toujours.
+    // The `cpk_list` given to `pack_mod` must be vanilla: starting from an already packed one would
+    // stack a previous mod's entries. The backup is therefore always the source.
     if !sauvegarde.exists() {
         let vanilla = std::fs::read(&cpk_list)?;
         let deja_loose = compter_loose(&vanilla);
         if deja_loose > SEUIL_DEJA_PACKE {
             bail!(
-                "ce cpk_list porte déjà {deja_loose} entrées hors paquet : il a été packé par \
-                 un mod précédent et aucune sauvegarde n'existe. Restaurez le fichier vanilla \
-                 (vérification des fichiers par Steam) avant d'installer."
+                "this cpk_list already has {deja_loose} entries outside the pack: it was packed by a \
+                     previous mod and no backup exists. Restore the vanilla file (Steam file verification) \
+                     before installing."
             );
         }
         if a_blanc {
             println!(
-                "à blanc   sauvegarderait {} → {}",
+                "dry run   would back up {} -> {}",
                 cpk_list.display(),
                 sauvegarde.display()
             );
         } else {
             std::fs::copy(&cpk_list, &sauvegarde)?;
-            println!("sauvegarde {}", sauvegarde.display());
+            println!("backup     {}", sauvegarde.display());
         }
     } else {
         println!(
-            "sauvegarde {} (déjà présente, réutilisée comme vanilla)",
+            "backup     {} (already present, reused as vanilla)",
             sauvegarde.display()
         );
     }
@@ -951,17 +900,17 @@ fn install(
         for d in &sources {
             let n = manifeste::fichiers(d).map_err(anyhow::Error::msg)?.len();
             println!(
-                "à blanc   {} : {n} fichier(s) vers {}",
+                "dry run   {}: {n} file(s) to {}",
                 d.display(),
                 racine.display()
             );
         }
-        println!("à blanc   rien n'a été écrit");
+        println!("dry run   nothing written");
         return Ok(());
     }
 
-    // Plusieurs mods : les fusionner d'abord, au champ, ce qui laisse survivre deux mods qui
-    // touchent des champs différents d'un même fichier.
+    // Several mods: merge them first, per field, so two mods touching different fields of one
+    // file both survive.
     let temporaire = std::env::temp_dir().join(format!("nie-mod-fusion-{}", std::process::id()));
     let source_unique = if sources.len() == 1 {
         sources[0].clone()
@@ -975,30 +924,29 @@ fn install(
         )
         .map_err(anyhow::Error::msg)?;
         println!(
-            "fusion    {} copiés, {} fusionnés, {} conflits",
+            "merge     {} copied, {} merged, {} conflicts",
             r.copies,
             r.fusionnes,
             r.conflits.len()
         );
         for c in &r.conflits {
             println!(
-                "  conflit  {} — {} champs en désaccord",
+                "  conflict {} - {} fields disagree",
                 c.chemin, c.champs_en_desaccord
             );
         }
         temporaire.clone()
     };
 
-    let _ = switch; // la plateforme ne change rien au patch d'octets : même format, même enveloppe.
+    let _ = switch; // the platform does not change the byte patch: same format, same envelope.
 
-    // Installation par **patch d'octets**, jamais par réencodage. `encode_t2b` n'est pas fidèle
-    // sur ce fichier — mesuré : −27 octets et 5,4 M d'octets différents pour un aller-retour à
-    // vide — et le jeu refuse alors le `cpk_list` (E-02000000), y compris quand le mod est
-    // rigoureusement identique au vanilla. Ici on déchiffre, on écrit 4 octets par fichier, on
-    // rechiffre : l'enveloppe AES, elle, est fidèle.
+    // Install by **byte patch**, never by re-encoding. `encode_t2b` is not faithful on this file
+    // (measured: a no-op round trip changes the size and millions of bytes) and the game then
+    // refuses the `cpk_list` (E-02000000), even when the mod is identical to vanilla. Here we
+    // decrypt, write 4 bytes per file, and re-encrypt: the AES envelope is faithful.
     let vanilla = std::fs::read(&sauvegarde)?;
     let mut clair = nie_formats::cpk::decrypt_cpk_list(&vanilla)
-        .map_err(|e| anyhow::anyhow!("déchiffrement du cpk_list : {e}"))?;
+        .map_err(|e| anyhow::anyhow!("cpk_list decryption: {e}"))?;
     let avant = clair.len();
 
     let fichiers = manifeste::fichiers(&source_unique).map_err(anyhow::Error::msg)?;
@@ -1007,14 +955,14 @@ fn install(
         nie_viola::patch::patcher_clair(&mut clair, &chemins).map_err(anyhow::Error::msg)?;
     anyhow::ensure!(
         clair.len() == avant,
-        "le patch a changé la taille du cpk_list — abandon"
+        "the patch changed the cpk_list size; aborting"
     );
 
     if !rapport.introuvables.is_empty() {
-        // Ajouter une entrée déplacerait tous les offsets : hors de portée d'un patch en place.
+        // Adding an entry would shift every offset: out of reach of an in-place patch.
         bail!(
-            "{} fichier(s) absent(s) du cpk_list — l'installation par patch ne sait que \
-             REMPLACER un fichier existant, pas en AJOUTER un neuf : {}",
+            "{} file(s) missing from the cpk_list; patch install can only REPLACE an existing file, \
+                 not ADD a new one: {}",
             rapport.introuvables.len(),
             rapport.introuvables.join(", ")
         );
@@ -1023,13 +971,13 @@ fn install(
     let rechiffre = nie_formats::cpk::encrypt_cpk_list(&clair);
     anyhow::ensure!(
         rechiffre.len() == vanilla.len(),
-        "le rechiffrement a changé la taille ({} → {}) — abandon",
+        "re-encryption changed the size ({} -> {}); aborting",
         vanilla.len(),
         rechiffre.len()
     );
     std::fs::write(&cpk_list, &rechiffre)?;
 
-    // Copier les fichiers du mod là où le jeu les cherchera désormais.
+    // Copy the mod files where the game will now look for them.
     let mut copies = 0usize;
     for f in &fichiers {
         let dest = racine.join(&f.vfs);
@@ -1041,15 +989,15 @@ fn install(
     }
     std::fs::remove_dir_all(&temporaire).ok();
 
-    println!("rendus loose {}", rapport.rendus_loose.len());
-    println!("déjà loose   {}", rapport.deja_loose.len());
+    println!("made loose  {}", rapport.rendus_loose.len());
+    println!("already loose {}", rapport.deja_loose.len());
     println!(
-        "octets patchés {} (sur {} du cpk_list)",
+        "bytes patched {} (of {} in the cpk_list)",
         rapport.octets_modifies, avant
     );
-    println!("copiés     {copies}");
-    println!("installé dans {}", racine.display());
-    println!("\n`nie mod uninstall` rend au jeu son cpk_list d'origine, à l'octet.");
+    println!("copied     {copies}");
+    println!("installed in {}", racine.display());
+    println!("\n`nie mod uninstall` restores the original cpk_list, byte for byte.");
     Ok(())
 }
 
@@ -1060,20 +1008,20 @@ fn uninstall(game_dir: Option<PathBuf>, dir: Option<&Path>) -> anyhow::Result<()
     let sauvegarde = chemin_sauvegarde(&cpk_list);
     if !sauvegarde.is_file() {
         bail!(
-            "aucune sauvegarde à « {} » — rien à restaurer (le mod n'a pas été installé par \
-             `nie mod install`)",
+            "no backup at '{}'; nothing to restore (the mod was not installed by \
+                 `nie mod install`)",
             sauvegarde.display()
         );
     }
     let vanilla = std::fs::read(&sauvegarde)?;
     std::fs::write(&cpk_list, &vanilla)?;
-    // Vérifier plutôt qu'affirmer : c'est bon marché, et « restauré » doit vouloir dire restauré.
+    // Verify rather than assert: it is cheap, and "restored" must mean restored.
     let relu = std::fs::read(&cpk_list)?;
     if relu != vanilla {
-        bail!("la restauration n'a pas rendu les mêmes octets — le jeu est dans un état incertain");
+        bail!("the restore did not give back the same bytes; the game is in an uncertain state");
     }
     println!(
-        "restauré  {} ({} octets, identiques à la sauvegarde)",
+        "restored  {} ({} bytes, identical to the backup)",
         cpk_list.display(),
         relu.len()
     );
@@ -1087,12 +1035,12 @@ fn uninstall(game_dir: Option<PathBuf>, dir: Option<&Path>) -> anyhow::Result<()
                 retires += 1;
             }
         }
-        println!("retirés   {retires} fichier(s) du mod");
+        println!("removed   {retires} mod file(s)");
     } else {
-        // Sans le cpk_list qui les référence, ces fichiers sont inertes : les laisser est le
-        // choix sûr, les supprimer sans le demander ne l'est pas.
-        println!("note      les fichiers du mod restent sur le disque, désormais inertes ;");
-        println!("          `--dir <mod>` les retire aussi.");
+        // Without the cpk_list that references them these files are inert: leaving them is the safe
+        // choice, deleting them unasked is not.
+        println!("note      the mod files stay on disk, now inert;");
+        println!("          `--dir <mod>` removes them too.");
     }
     std::fs::remove_file(&sauvegarde).ok();
     Ok(())

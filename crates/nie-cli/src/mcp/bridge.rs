@@ -1,4 +1,4 @@
-//! Optional loopback WebSocket bridge between the MCP server and Inacord.
+//! Loopback WebSocket bridge (NIE_BRIDGE_PORT, default 8791, path /bridge) between the MCP server and an explorer client.
 
 use std::{
     collections::HashMap,

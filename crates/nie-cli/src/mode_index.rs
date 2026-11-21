@@ -1,22 +1,21 @@
-//! `nie mode` — catalogue des **modes de jeu** : écrans, calques, objets, assets et scripts.
+//! `nie mode` - catalogue of game modes: screens, layers, objects, assets and scripts.
 //!
-//! ## Ce qu'est un « mode » ici
+//! ## What a "mode" is here
 //!
-//! Une entrée du menu principal (une tuile de `mode_base01_atl`, cf. `mainmenu90_01.g4tx`).
-//! Le jeu ne stocke nulle part la liste en clair : le script `main_menu` désigne ses onglets par
-//! un `TAB_TYPE` **entier**, et l'include ne porte aucune chaîne exploitable. La liste des modes
-//! est donc **éditoriale** — [`MODES`] ci-dessous — mais chaque entrée est adossée à des écrans
-//! `*_setting.cfg.bin` qui existent réellement dans le VFS ; l'agrégation, elle, est mécanique.
+//! A main-menu entry (a tile of `mode_base01_atl`, see `mainmenu90_01.g4tx`). The game stores the
+//! list nowhere in clear: the `main_menu` script names its tabs by an **integer** `TAB_TYPE`, and
+//! the include carries no usable string. The mode list is therefore editorial ([`MODES`]), but
+//! each entry is backed by `*_setting.cfg.bin` screens that exist in the VFS; the aggregation is
+//! mechanical.
 //!
-//! Le cas `victory_road` montre pourquoi une liste curatée est nécessaire : ses assets vivent
-//! sous **quatre** orthographes (`victory_road`, `victory_load`, `victory_lode`, `vroad`)
-//! qu'aucune règle de préfixe ne relierait automatiquement.
+//! `victory_road` shows why a curated list is needed: its assets live under four spellings
+//! (`victory_road`, `victory_load`, `victory_lode`, `vroad`) that no prefix rule would link.
 //!
-//! ## Agrégation
+//! ## Aggregation
 //!
-//! Pour chaque mode : écrans (par préfixe) → calques (`MENU_LAYER_INFO`) → objbin → `g4pkm` /
-//! `g4tx` référencés, plus les scripts Lua de même préfixe. Tout est écrit dans `mode`,
-//! `mode_screen` et `mode_asset`.
+//! Per mode: screens (by prefix) -> layers (`MENU_LAYER_INFO`) -> objbin -> referenced `g4pkm` /
+//! `g4tx`, plus Lua scripts with the same prefix. Everything is written to `mode`, `mode_screen`
+//! and `mode_asset`.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -30,11 +29,10 @@ use serde_json::Value as Json;
 pub use nie_explore::menu_modes::MODES;
 use nie_explore::menu_modes::{ModeDef, matches_stem};
 
-/// Retourne les modes auxquels un écran est rattaché par ses préfixes réels.
+/// Modes a screen belongs to, by its real prefixes.
 ///
-/// Une liste vide est un résultat utile : le catalogue contient aussi des écrans communs ou
-/// utilitaires qui ne sont pas des tuiles de mode. Plusieurs résultats signalent au contraire
-/// un recouvrement éditorial qui doit rester visible dans l'audit.
+/// An empty list is a useful result: the catalogue also holds shared or utility screens that are
+/// not mode tiles. Several results signal an editorial overlap that must stay visible in the audit.
 fn classify_screen(stem: &str) -> Vec<&'static str> {
     MODES
         .iter()
@@ -43,12 +41,11 @@ fn classify_screen(stem: &str) -> Vec<&'static str> {
         .collect()
 }
 
-/// Audite le rattachement de chaque définition `*_menu_setting.cfg.bin` du VFS aux modes.
+/// Audit how each `*_menu_setting.cfg.bin` definition in the VFS maps to modes.
 ///
-/// Le rendu et `mode index` consomment les mêmes fichiers, mais leurs anciennes sorties ne
-/// permettaient pas de vérifier leur couverture ensemble. Cette sortie est volontairement
-/// indépendante de SQLite : elle peut être comparée directement au JSON `--menu-matrix` de
-/// `nie-game` sans recréer un catalogue intermédiaire.
+/// The renderer and `mode index` consume the same files, but their outputs could not be checked
+/// together for coverage. This output is independent of SQLite and can be compared directly with
+/// the `--menu-matrix` JSON of `nie-game` without rebuilding an intermediate catalogue.
 pub fn menu_coverage_json(vfs: &Vfs) -> Json {
     let mut screens: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for (path, _) in vfs.iter() {
@@ -133,13 +130,13 @@ pub fn menu_coverage_json(vfs: &Vfs) -> Json {
     })
 }
 
-/// Locales dont on résout le libellé officiel.
+/// Locales whose official label is resolved.
 const LOCALES: [&str; 3] = ["fr", "en", "ja"];
 
-/// Charge `menu_text` d'une locale : `hash` → libellé.
+/// Load `menu_text` of a locale: `hash` -> label.
 ///
-/// Le fichier porte `TEXT_INFO_BEGIN > TEXT_INFO [hash, 0, texte]`. Absence = locale non
-/// installee, ce qui n'est pas une erreur : le catalogue retombe sur le libellé de repli.
+/// The file holds `TEXT_INFO_BEGIN > TEXT_INFO [hash, 0, text]`. A missing file means the locale
+/// is not installed, which is not an error: the catalogue falls back to the default label.
 fn charger_menu_text(vfs: &Vfs, locale: &str) -> BTreeMap<u32, String> {
     let mut out = BTreeMap::new();
     let path = format!("data/common/text/{locale}/menu_text.cfg.bin");
@@ -168,29 +165,29 @@ fn charger_menu_text(vfs: &Vfs, locale: &str) -> BTreeMap<u32, String> {
     out
 }
 
-/// Ce qui a été trouvé pour un mode.
+/// What was found for a mode.
 #[derive(Default)]
 pub struct ModeFacts {
-    /// Écrans `*_setting.cfg.bin` (stem → chemin VFS).
+    /// `*_setting.cfg.bin` screens (stem -> VFS path).
     pub screens: BTreeMap<String, String>,
-    /// Calques déclarés par ces écrans.
+    /// Layers declared by those screens.
     pub layers: BTreeSet<String>,
-    /// Objbin résolus depuis les calques.
+    /// Objbin resolved from the layers.
     pub objbins: BTreeSet<String>,
-    /// `g4pkm` référencés par ces objbin.
+    /// `g4pkm` referenced by those objbin.
     pub g4pkm: BTreeSet<String>,
-    /// `g4tx` référencés (SETUP ou paramètre de composant).
+    /// `g4tx` referenced (SETUP or component parameter).
     pub g4tx: BTreeSet<String>,
-    /// Types de composants rencontrés (noms de classes RTTI).
+    /// Component types met (RTTI class names).
     pub components: BTreeSet<String>,
-    /// Scripts Lua de même préfixe.
+    /// Lua scripts with the same prefix.
     pub lua: BTreeSet<String>,
-    /// Nombre d'éléments focusables cumulés.
+    /// Total focusable element count.
     pub focus: usize,
-    /// Slots de texte des composants `MenuTextSetting` : `(objet, slot, hash)`.
+    /// Text slots of `MenuTextSetting` components: `(object, slot, hash)`.
     ///
-    /// Le hash se résout dans `menu_text` ; beaucoup pointent des guides de boutons
-    /// (`<CMD_BACK|10>`), ce qui est une donnée en soi — c'est l'UI de l'écran.
+    /// The hash resolves in `menu_text`; many point to button guides (`<CMD_BACK|10>`), which is data
+    /// in itself: the screen UI.
     pub text_slots: BTreeSet<(String, String, u32)>,
 }
 
@@ -208,7 +205,7 @@ fn walk<'a>(entries: &'a [CfgEntry], f: &mut impl FnMut(&'a CfgEntry)) {
     }
 }
 
-/// Récolte les faits d'un mode depuis le VFS.
+/// Gather the facts of a mode from the VFS.
 pub fn collect(vfs: &Vfs, def: &ModeDef) -> ModeFacts {
     let paths = MenuPaths::from_paths(vfs.iter().map(|(path, _)| path));
     let shared = collect_mode(vfs, &paths, def, &BTreeMap::new());
@@ -233,12 +230,11 @@ pub fn collect(vfs: &Vfs, def: &ModeDef) -> ModeFacts {
     }
 }
 
-/// Table `cmdId -> VA handler` de `data/re/funclua-cmdid-handlers.json`, ou vide si absente.
+/// `cmdId -> handler VA` table from `data/re/funclua-cmdid-handlers.json`, or empty if absent.
 ///
-/// Remonte depuis le répertoire courant (même convention que `fichier_re` dans l'exemple
-/// `couverture_funclua`) : le fichier est gitignoré (© LEVEL-5, dump de reverse), donc absent
-/// tant qu'il n'a pas été régénéré sur la machine — son absence n'est pas une erreur, juste un
-/// enrichissement en moins.
+/// Walks up from the current directory (same convention as `fichier_re` in the `couverture_funclua`
+/// example): the file is gitignored (reverse dump), so absent until regenerated on the machine;
+/// its absence is not an error, just less enrichment.
 fn charger_handlers_funclua() -> BTreeMap<u32, u64> {
     let mut out = BTreeMap::new();
     let Ok(cwd) = std::env::current_dir() else {
@@ -275,16 +271,14 @@ fn charger_handlers_funclua() -> BTreeMap<u32, u64> {
     out
 }
 
-/// Analyse **byte-exacte** d'un script `.lua.bin` : désassemble le conteneur bytecode Lua 5.2
-/// réel ([`nie_lua::bytecode::parse`], PAS un décompilateur externe — cf. tête de ce module dans
-/// `nie-lua`) et en extrait ce qui intéresse une fiche de mode : nombre d'instructions/fonctions,
-/// modules `INCLUDE`d, et les commandes `funcLuaMenuCommand` que le script est **structurellement
-/// capable d'émettre** (un entier constant du pool qui correspond à un `cmdId` connu du dump de
-/// reverse — un faux positif exigerait une collision de hash 32 bits, négligeable sur ~3 700
-/// entrées).
+/// Byte-exact analysis of a `.lua.bin` script: disassembles the real Lua 5.2 bytecode container
+/// ([`nie_lua::bytecode::parse`], not an external decompiler) and extracts what a mode record
+/// needs: instruction/function counts, `INCLUDE`d modules, and the `funcLuaMenuCommand` commands
+/// the script is structurally able to emit (a constant integer in the pool matching a known
+/// `cmdId` of the reverse dump; a false positive would need a 32-bit hash collision).
 ///
-/// Renvoie `{"erreur": ...}` si le fichier n'est pas un bytecode Lua 5.2 reconnu, plutôt qu'un
-/// objet vide qui se ferait passer pour « rien à signaler ».
+/// Returns `{"erreur": ...}` if the file is not a recognised Lua 5.2 bytecode, rather than an empty
+/// object that would pass for "nothing to report".
 fn analyse_lua(bytes: &[u8], handlers: &BTreeMap<u32, u64>) -> Json {
     let analysis = analyze_mode_script("", bytes, handlers);
     if let Some(error) = analysis.error {
@@ -311,22 +305,22 @@ fn analyse_lua(bytes: &[u8], handlers: &BTreeMap<u32, u64>) -> Json {
     })
 }
 
-/// Le **contenu** des fichiers d'un mode, pas seulement leur inventaire.
+/// The **content** of a mode's files, not just their inventory.
 ///
-/// `collect` compte et nomme ; ici on ouvre. Chaque écran rend ses calques et ses focusables,
-/// chaque `objbin` son objet parsé, chaque `g4tx` ses textures et leurs régions, et les clés de
-/// texte du mode — celles que porte `nie.exe`, pas celles des objets — sont résolues dans les
-/// tables localisées.
+/// `collect` counts and names; here the files are opened. Each screen yields its layers and
+/// focusables, each `objbin` its parsed object, each `g4tx` its textures and regions, and the
+/// mode text keys (those carried by `nie.exe`, not by the objects) are resolved in the localized
+/// tables.
 ///
-/// # Erreurs
+/// # Errors
 ///
-/// Rend une erreur si le VFS ne s'ouvre pas. Un fichier illisible **individuellement** n'en est
-/// pas une : il est simplement absent du résultat, comme dans `collect`.
+/// Returns an error if the VFS cannot be opened. A single unreadable file is not one: it is just
+/// absent from the result, as in `collect`.
 pub fn contenu_json(vfs: &Vfs, def: &ModeDef, exe: Option<&std::path::Path>) -> Result<Json> {
     let facts = collect(vfs, def);
 
-    // Écrans : on relit le cfg pour rendre ses calques dans l'ordre du fichier, ce que
-    // l'ensemble trié de `collect` perd.
+    // Screens: re-read the cfg to render its layers in file order, which the sorted set of `collect`
+    // loses.
     let mut screens = Vec::new();
     for (stem, path) in &facts.screens {
         let Ok(bytes) = vfs.read(path) else { continue };
@@ -352,7 +346,7 @@ pub fn contenu_json(vfs: &Vfs, def: &ModeDef, exe: Option<&std::path::Path>) -> 
         }));
     }
 
-    // Objets de menu : l'objet parsé en entier (composants compris).
+    // Menu objects: the whole parsed object (components included).
     let mut objbins = Vec::new();
     for path in &facts.objbins {
         let Ok(bytes) = vfs.read(path) else { continue };
@@ -364,10 +358,10 @@ pub fn contenu_json(vfs: &Vfs, def: &ModeDef, exe: Option<&std::path::Path>) -> 
         }));
     }
 
-    // Textures : dimensions et régions, telles que le `.g4tx` les déclare.
+    // Textures: dimensions and regions, as the `.g4tx` declares them.
     let mut textures = Vec::new();
     for path in &facts.g4tx {
-        // Le chemin catalogué porte `<LG>` pour la locale ; le VFS, lui, veut un chemin réel.
+        // The catalogued path carries `<LG>` for the locale; the VFS wants a real path.
         for candidat in chemins_locale(path) {
             let Ok(bytes) = vfs.read(&candidat) else {
                 continue;
@@ -428,10 +422,10 @@ pub fn contenu_json(vfs: &Vfs, def: &ModeDef, exe: Option<&std::path::Path>) -> 
     }))
 }
 
-/// Chemins réels possibles pour un chemin catalogué portant `<LG>`.
+/// Possible real paths for a catalogued path carrying `<LG>`.
 ///
-/// L'ordre porte une décision : `fr` d'abord — le wiki est francophone —, puis la variante sans
-/// dossier de locale, qui est celle des atlas non localisés.
+/// Order is a decision: `fr` first (the wiki is French), then the variant without a locale
+/// folder, which is the one for non-localized atlases.
 fn chemins_locale(path: &str) -> Vec<String> {
     let prefixe = |p: &str| {
         if p.starts_with("data/") {
@@ -451,12 +445,12 @@ fn chemins_locale(path: &str) -> Vec<String> {
     v
 }
 
-/// Résout les clés de texte du mode que porte le binaire, dans chaque locale.
+/// Resolve the mode text keys held by the binary, in each locale.
 ///
-/// Les libellés d'écran passent par les slots des `objbin` ; les **messages** du mode, eux
-/// (erreurs réseau, confirmations), ne sont nommés que dans `nie.exe` — les tables ne portent
-/// que leur CRC-32. On lit donc les chaînes du binaire, on garde celles qui contiennent `motif`,
-/// et on les cherche dans toutes les tables de la locale.
+/// Screen labels go through the `objbin` slots; the mode **messages** (network errors,
+/// confirmations) are named only in `nie.exe`, and the tables hold just their CRC-32. So we read
+/// the binary strings, keep those containing `motif`, and look them up in every table of the
+/// locale.
 fn messages_du_mode(vfs: &Vfs, motif: &str, exe: Option<&std::path::Path>) -> Json {
     let Some(exe) = exe else {
         return serde_json::json!({});
@@ -465,9 +459,9 @@ fn messages_du_mode(vfs: &Vfs, motif: &str, exe: Option<&std::path::Path>) -> Js
         return serde_json::json!({});
     };
 
-    // Chaînes ASCII et UTF-16LE imprimables du binaire, filtrées sur le motif du mode.
-    // Les noms des classes/menus Kizuna sont stockés en UTF-16 dans nie.exe ; se limiter à
-    // l'ASCII produisait un catalogue de messages vide, alors que les CRC étaient bien présents.
+    // Printable ASCII and UTF-16LE strings of the binary, filtered on the mode pattern. Kizuna
+    // class/menu names are stored as UTF-16 in nie.exe; limiting to ASCII produced an empty message
+    // catalogue although the CRCs were present.
     let mut cles: BTreeSet<String> = BTreeSet::new();
     let mut collect = |s: &str| {
         if s.len() >= 4
@@ -519,9 +513,8 @@ fn messages_du_mode(vfs: &Vfs, motif: &str, exe: Option<&std::path::Path>) -> Js
         collect(&s);
     }
 
-    // Le dictionnaire de RE est la source de vérité lorsque l'exécutable ne conserve que le
-    // CRC (cas fréquent pour les tables de texte). Il permet notamment de relier les noms
-    // `TEXT_ID_*`, `*_message_*` et les identifiants Kizuna aux entrées localisées.
+    // The RE dictionary is the source of truth when the executable keeps only the CRC (common for
+    // text tables). It links `TEXT_ID_*`, `*_message_*` and Kizuna ids to localized entries.
     if let Ok(cwd) = std::env::current_dir() {
         let mut courant = cwd.as_path();
         'cherche_dico: loop {
@@ -601,11 +594,10 @@ fn messages_du_mode(vfs: &Vfs, motif: &str, exe: Option<&std::path::Path>) -> Js
     Json::Object(out)
 }
 
-/// Crée les tables du catalogue si elles manquent.
+/// Create the catalogue tables if missing.
 ///
-/// Volontairement hors de `schema.sql` (nie-index) : ce catalogue est un produit de l'outillage
-/// UI, pas du socle RE, et le poser ici évite de toucher un fichier partagé par d'autres
-/// chantiers.
+/// Deliberately outside `schema.sql` (nie-index): this catalogue is a UI tooling product, not part
+/// of the RE base, and defining it here avoids touching a file shared with other work.
 pub fn ensure_schema(conn: &nie_index::rusqlite::Connection) -> Result<()> {
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS mode (
@@ -650,17 +642,17 @@ pub fn ensure_schema(conn: &nie_index::rusqlite::Connection) -> Result<()> {
         );
         CREATE INDEX IF NOT EXISTS idx_mode_text ON mode_text(mode_id, locale);",
     )
-    .context("création des tables du catalogue de modes")?;
+    .context("create the mode catalogue tables")?;
     Ok(())
 }
 
-/// Indexe tous les modes et écrit le catalogue. Renvoie (modes, écrans, assets).
+/// Index every mode and write the catalogue. Returns (modes, screens, assets, ...).
 pub fn index(db: &nie_index::Db, vfs: &Vfs) -> Result<(usize, usize, usize, usize)> {
     let conn = db.conn();
     ensure_schema(conn)?;
     conn.execute_batch("BEGIN")?;
 
-    // Libellés officiels : le nom que le JEU affiche, dans les trois locales.
+    // Official labels: the name the GAME displays, in the three locales.
     let textes: Vec<(&str, BTreeMap<u32, String>)> = LOCALES
         .iter()
         .map(|lg| (*lg, charger_menu_text(vfs, lg)))
@@ -673,7 +665,7 @@ pub fn index(db: &nie_index::Db, vfs: &Vfs) -> Result<(usize, usize, usize, usiz
     let (mut n_modes, mut n_screens, mut n_assets, mut n_texts) = (0usize, 0usize, 0usize, 0usize);
     for def in MODES {
         let f = collect(vfs, def);
-        // Le libellé du jeu prime sur le nom de repli ; s'il manque, on garde le nôtre.
+        // The game label wins over the fallback name; if missing, keep ours.
         let label_fr = libelle("fr", def.text_hash).unwrap_or_else(|| def.label.to_string());
         conn.execute(
             "INSERT INTO mode(slug, label, label_en, label_ja, text_hash, official,
@@ -707,9 +699,8 @@ pub fn index(db: &nie_index::Db, vfs: &Vfs) -> Result<(usize, usize, usize, usiz
                 r.get(0)
             })?;
 
-        // Réindexation exacte : les ensembles d'un écran peuvent diminuer après une mise à
-        // jour du VFS. `INSERT OR IGNORE` seul conservait alors des assets fantômes dans SQLite,
-        // ce qui rendait l'API différente de l'export JSON courant.
+        // Exact reindex: a screen's sets can shrink after a VFS update. `INSERT OR IGNORE` alone kept
+        // ghost assets in SQLite, making the API differ from the current JSON export.
         for table in ["mode_screen", "mode_asset", "mode_text"] {
             conn.execute(&format!("DELETE FROM {table} WHERE mode_id=?1"), [mode_id])?;
         }
@@ -737,9 +728,8 @@ pub fn index(db: &nie_index::Db, vfs: &Vfs) -> Result<(usize, usize, usize, usiz
                 n_assets += 1;
             }
         }
-        // Textes d'interface de l'écran, résolus dans chaque locale disponible. Un slot dont le
-        // hash n'est pas dans `menu_text` n'est PAS inséré : mieux vaut un trou visible qu'une
-        // ligne vide qui se ferait passer pour un libellé.
+        // Screen interface texts, resolved in each available locale. A slot whose hash is not in
+        // `menu_text` is NOT inserted: a visible gap beats an empty line passing for a label.
         for (obj, slot, hash) in &f.text_slots {
             for (lg, table) in &textes {
                 if let Some(t) = table.get(hash) {
@@ -755,7 +745,7 @@ pub fn index(db: &nie_index::Db, vfs: &Vfs) -> Result<(usize, usize, usize, usiz
 
         n_modes += 1;
         println!(
-            "  {} {:<15} ecrans={:<3} calques={:<4} objbin={:<4} g4pkm={:<4} g4tx={:<4} lua={:<3} focus={}",
+            "  {} {:<15} screens={:<3} layers={:<4} objbin={:<4} g4pkm={:<4} g4tx={:<4} lua={:<3} focus={}",
             if def.official { "*" } else { " " },
             def.slug,
             f.screens.len(),
@@ -772,7 +762,7 @@ pub fn index(db: &nie_index::Db, vfs: &Vfs) -> Result<(usize, usize, usize, usiz
     Ok((n_modes, n_screens, n_assets, n_texts))
 }
 
-/// Exporte le catalogue en JSON (pour azalée).
+/// Export the catalogue as JSON (for the web UI).
 pub fn export_json(db: &nie_index::Db) -> Result<serde_json::Value> {
     let conn = db.conn();
     let mut stmt = conn.prepare(
@@ -823,7 +813,7 @@ pub fn export_json(db: &nie_index::Db) -> Result<serde_json::Value> {
                 .expect("tableau")
                 .push(serde_json::Value::String(path));
         }
-        // Textes d'interface, regroupés par locale.
+        // Interface texts, grouped by locale.
         let mut textes = serde_json::Map::new();
         let mut t = conn.prepare(
             "SELECT locale, obj, slot, text FROM mode_text WHERE mode_id=?1
@@ -871,7 +861,7 @@ mod tests {
     fn coverage_keeps_empty_prefix_modes_unassigned() {
         assert!(
             classify_screen("competition").is_empty(),
-            "un mode sans préfixe ne doit pas capturer un stem"
+            "a mode without a prefix must not capture a stem"
         );
     }
 

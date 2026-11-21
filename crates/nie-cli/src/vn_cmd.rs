@@ -1,16 +1,15 @@
-//! `nie vn` — alimente un projet de visual novel avec les assets réels du jeu.
+//! `nie vn` - feed a visual novel project with the real game assets.
 //!
-//! Le VN (`nie-vn-engine`, un fork de Ren'Py) ne contient aucun asset : il lit un **catalogue**
-//! produit ici, sur la machine de l'utilisateur, depuis son installation du jeu. Rien de ce que
-//! cette commande écrit n'est destiné à entrer dans un dépôt — la sortie va dans un dossier que
-//! le projet Ren'Py ignore explicitement.
+//! The VN (`nie-vn-engine`, a Ren'Py fork) ships no asset: it reads a **catalogue** produced here,
+//! on the user's machine, from their own game install. Nothing this command writes is meant for
+//! a repository; the output goes to a folder the Ren'Py project ignores.
 //!
-//! Deux opérations :
+//! Two operations:
 //!
-//! * [`VnCmd::Casting`] — dit quels personnages sont **doublés**, par taille de banque
-//!   décroissante : les rôles principaux ont le plus de lignes enregistrées.
-//! * [`VnCmd::Export`] — extrait voix (HCA → WAV), atlas d'expressions (G4TX → PNG) et musique,
-//!   puis écrit `catalogue.json`, la seule interface que connaît le côté Ren'Py.
+//! * [`VnCmd::Casting`]: list which characters are **voiced**, by decreasing bank size (main
+//!   roles have the most recorded lines).
+//! * [`VnCmd::Export`]: extract voices (HCA to WAV), expression atlases (G4TX to PNG) and music,
+//!   then write `catalogue.json`, the only interface the Ren'Py side knows.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -28,67 +27,67 @@ use nie_explore::vn::{
 };
 use nie_formats::vfs::Vfs;
 
-/// Sous-commandes de `nie vn`.
+/// `nie vn` subcommands.
 #[derive(clap::Subcommand, Debug)]
 pub enum VnCmd {
-    /// Liste les personnages doublés, du plus fourni au moins fourni.
+    /// List voiced characters, largest bank first.
     Casting {
-        /// Langue des voix (`ja`, `en`, …).
+        /// Voice language (`ja`, `en`, ...).
         #[arg(long, default_value = "ja")]
         langue: String,
-        /// Nombre de personnages affichés.
+        /// Number of characters shown.
         #[arg(long, default_value_t = 30)]
         limit: usize,
-        /// Sortie JSON plutôt que tabulaire.
+        /// JSON output instead of a table.
         #[arg(long)]
         json: bool,
-        /// Ne garde que les personnages dont le nom contient ce motif (sans accent ni casse).
+        /// Keep only characters whose name contains this pattern (accent- and case-insensitive).
         #[arg(long)]
         chercher: Option<String>,
-        /// Langue des noms affichés (`fr`, `en`, `ja`, …).
+        /// Language of displayed names (`fr`, `en`, `ja`, ...).
         #[arg(long, default_value = "fr")]
         langue_noms: String,
-        /// Ne garde qu'un genre : `m` ou `f`.
+        /// Keep one gender: `m` or `f`.
         #[arg(long)]
         genre: Option<String>,
     },
 
-    /// Extrait voix, portraits et musique vers un dossier consommable par le projet Ren'Py.
+    /// Extract voices, portraits and music into a folder the Ren'Py project consumes.
     Export {
-        /// Dossier de sortie — typiquement `<projet-renpy>/game/nie`.
+        /// Output folder, typically `<renpy-project>/game/nie`.
         #[arg(long)]
         out: PathBuf,
-        /// Codes internes à extraire (`c01000010,c01000020`). Défaut : les mieux doublés.
+        /// Internal codes to extract (`c01000010,c01000020`). Default: the best voiced.
         #[arg(long, value_delimiter = ',')]
         casting: Vec<String>,
-        /// Noms à extraire, résolus sur la table maîtresse locale (`--noms "Kazemaru,Byron"`).
+        /// Names to extract, resolved against the local master table (`--noms "Kazemaru,Byron"`).
         #[arg(long, value_delimiter = ',')]
         noms: Vec<String>,
-        /// Langue des noms résolus (`fr`, `en`, `ja`, …).
+        /// Language of resolved names (`fr`, `en`, `ja`, ...).
         #[arg(long, default_value = "fr")]
         langue_noms: String,
-        /// Langue des voix.
+        /// Voice language.
         #[arg(long, default_value = "ja")]
         langue: String,
-        /// Nombre maximal de répliques extraites par personnage.
+        /// Maximum lines extracted per character.
         #[arg(long, default_value_t = 24)]
         voix_max: usize,
-        /// Nombre maximal de pistes extraites de `bgm.acb` (0 = aucune).
+        /// Maximum tracks extracted from `bgm.acb` (0 = none).
         #[arg(long, default_value_t = 6)]
         bgm_max: usize,
-        /// Nombre maximal de textures extraites par personnage.
+        /// Maximum textures extracted per character.
         #[arg(long, default_value_t = 4)]
         textures_max: usize,
-        /// Nombre maximal de repliques d'evenement relevees par personnage (0 = aucune).
+        /// Maximum event lines collected per character (0 = none).
         #[arg(long, default_value_t = 60)]
         dialogues_max: usize,
-        /// Langue des repliques d'evenement (`fr`, `en`, `ja`, ...).
+        /// Event line language (`fr`, `en`, `ja`, ...).
         #[arg(long, default_value = "fr")]
         langue_dialogues: String,
     },
 }
 
-/// Point d'entrée de `nie vn`.
+/// Entry point of `nie vn`.
 pub fn run(cmd: &VnCmd, vfs: &Vfs) -> Result<()> {
     match cmd {
         VnCmd::Casting {
@@ -135,10 +134,10 @@ pub fn run(cmd: &VnCmd, vfs: &Vfs) -> Result<()> {
 }
 
 // ---------------------------------------------------------------------------
-// Identités : code interne <-> nom, lus dans l'installation locale
+// Identities: internal code <-> name, read from the local install
 // ---------------------------------------------------------------------------
 
-/// Lit un `cfg.bin` T2B du VFS et le rend dans la forme `tagged`.
+/// Read a T2B `cfg.bin` from the VFS and return it in `tagged` form.
 fn lire_t2b(vfs: &Vfs, chemin: &str) -> Option<serde_json::Value> {
     let raw = vfs.read(chemin).ok()?;
     if nie_formats::cfgbin::is_rdbn(&raw) {
@@ -148,7 +147,7 @@ fn lire_t2b(vfs: &Vfs, chemin: &str) -> Option<serde_json::Value> {
     Some(serde_json::json!({ "entries": t2b_vers_tagged(&cfg.entries) }))
 }
 
-/// Premier chemin du VFS commençant par `prefixe` et finissant par `suffixe`.
+/// First VFS path starting with `prefixe` and ending with `suffixe`.
 fn chercher_chemin(vfs: &Vfs, prefixe: &str, suffixe: &str) -> Option<String> {
     let mut trouves: Vec<String> = vfs
         .iter()
@@ -159,10 +158,10 @@ fn chercher_chemin(vfs: &Vfs, prefixe: &str, suffixe: &str) -> Option<String> {
     trouves.pop()
 }
 
-/// Construit l'index des identités depuis la table maîtresse et les textes localisés.
+/// Build the identity index from the master table and the localized texts.
 ///
-/// Rend une liste vide — sans erreur — quand l'installation ne porte pas ces tables : le
-/// pipeline doit rester utilisable avec les seuls codes internes.
+/// Returns an empty list, without error, when the install lacks those tables: the pipeline
+/// must stay usable with internal codes alone.
 fn identites(vfs: &Vfs, langue_noms: &str) -> Vec<CharacterIdentity> {
     let Some(chemin_base) = chercher_chemin(
         vfs,
@@ -183,10 +182,10 @@ fn identites(vfs: &Vfs, langue_noms: &str) -> Vec<CharacterIdentity> {
 }
 
 // ---------------------------------------------------------------------------
-// Repérage des banques
+// Bank discovery
 // ---------------------------------------------------------------------------
 
-/// Toutes les banques `sound_asset/<langue>/c########.acb`, triées par poids décroissant.
+/// All `sound_asset/<langue>/c########.acb` banks, sorted by decreasing weight.
 fn banques(vfs: &Vfs, langue: &str) -> Vec<VoiceBank> {
     discover_voice_banks(
         vfs.iter()
@@ -206,7 +205,7 @@ fn casting(
 ) -> Result<()> {
     let banques = banques(vfs, langue);
     if banques.is_empty() {
-        anyhow::bail!("aucune banque de voix sous data/common/sound_asset/{langue}/");
+        anyhow::bail!("no voice bank under data/common/sound_asset/{langue}/");
     }
 
     let index: BTreeMap<String, CharacterIdentity> = identites(vfs, langue_noms)
@@ -242,36 +241,32 @@ fn casting(
     }
 
     println!(
-        "{} banque(s) de voix en « {langue} », {} affichée(s)\n",
+        "{} voice bank(s) in '{langue}', {} shown\n",
         banques.len(),
         retenues.len()
     );
     for b in retenues {
-        let nom = b.name.as_deref().unwrap_or("—");
+        let nom = b.name.as_deref().unwrap_or("-");
         let genre = b.gender.as_deref().unwrap_or(" ");
-        println!("  {:>10}  {genre}  {:>12} o  {nom}", b.code, b.awb_bytes);
+        println!("  {:>10}  {genre}  {:>12} B  {nom}", b.code, b.awb_bytes);
     }
     Ok(())
 }
 
 // ---------------------------------------------------------------------------
-// Repliques d'evenement
+// Event lines
 // ---------------------------------------------------------------------------
 
-/// Releve, pour chaque code vise, les repliques que le jeu lui fait prononcer.
+/// Collect, for each target code, the lines the game makes that character say.
 ///
-/// Le lien entre un personnage et son texte tient en deux regles, verifiees sur
-/// l'installation :
+/// The link between a character and its text rests on two rules:
 ///
-/// * dans `event_cfg/evt/<ev>.cfg.bin`, la commande d'opcode [`OP_REPLIQUE`] porte
-///   l'identifiant de la ligne (`ev01_01200_010_010`) et, en derniere chaine, le
-///   code interne de celui qui la dit ;
-/// * dans `text/<langue>/event/<ev>.cfg.bin`, la replique est indexee par le
-///   `crc32` de cet identifiant.
+/// * in `event_cfg/evt/<ev>.cfg.bin`, the command with opcode [`OP_REPLIQUE`] carries the line
+///   id (`ev01_01200_010_010`) and, as its last string, the internal code of the speaker;
+/// * in `text/<langue>/event/<ev>.cfg.bin`, the line is indexed by the `crc32` of that id.
 ///
-/// Les scripts sont parcourus une seule fois pour tout le casting. Un evenement
-/// sans table de texte dans la langue demandee est saute sans bruit : toutes les
-/// langues ne couvrent pas tous les evenements.
+/// Scripts are walked once for the whole cast. An event without a text table in the requested
+/// language is skipped silently: not every language covers every event.
 fn relever_dialogues(
     vfs: &Vfs,
     codes: &BTreeSet<String>,
@@ -348,15 +343,15 @@ fn relever_dialogues(
     out
 }
 
-/// Table des balises de nom employees dans le texte des evenements.
+/// Table of name tags used in event text.
 ///
-/// Le jeu n'ecrit pas les noms en clair : il pose `<FLC:YASHIMA>`, `<FUL:RAIKA>`,
-/// ou seul le segment apres le `:` identifie le personnage. Ce segment est la
-/// forme romanisee majuscule de `chara_text_roma` ; le nom affichable se lit sous
-/// le meme hash dans `chara_text` de la langue demandee.
+/// The game does not write names in clear: it places `<FLC:YASHIMA>`, `<FUL:RAIKA>`, where only
+/// the segment after `:` identifies the character. That segment is the upper-case romanized form
+/// of `chara_text_roma`; the displayable name is read under the same hash in `chara_text` of the
+/// requested language.
 ///
-/// Une balise non resolue est laissee telle quelle plutot que supprimee : mieux
-/// vaut un `<FLC:XXX>` visible qu'une phrase amputee de son sujet.
+/// An unresolved tag is left as is rather than removed: a visible `<FLC:XXX>` beats a sentence
+/// stripped of its subject.
 fn table_des_balises(vfs: &Vfs, langue: &str) -> BTreeMap<String, String> {
     use nie_formats::cfgbin;
 
@@ -375,7 +370,7 @@ fn table_des_balises(vfs: &Vfs, langue: &str) -> BTreeMap<String, String> {
 
     let mut out = BTreeMap::new();
     for (hash, forme) in &roma {
-        // Seules les formes tout en majuscules servent de balise.
+        // Only all-uppercase forms serve as tags.
         if forme.is_empty()
             || !forme
                 .chars()
@@ -410,7 +405,7 @@ fn export(
 ) -> Result<()> {
     let toutes = banques(vfs, langue);
     if toutes.is_empty() {
-        anyhow::bail!("aucune banque de voix sous data/common/sound_asset/{langue}/");
+        anyhow::bail!("no voice bank under data/common/sound_asset/{langue}/");
     }
 
     let index: BTreeMap<String, CharacterIdentity> = identites(vfs, langue_noms)
@@ -433,11 +428,10 @@ fn export(
     }
     let retenues = plan.banks;
 
-    std::fs::create_dir_all(out).with_context(|| format!("création de {}", out.display()))?;
+    std::fs::create_dir_all(out).with_context(|| format!("create {}", out.display()))?;
 
-    // Les repliques se relevent en une seule passe sur les scripts d'evenement :
-    // les ~2 000 fichiers sont parcourus une fois pour tout le casting, pas une
-    // fois par personnage.
+    // Lines are collected in a single pass over the event scripts: every file is walked once for
+    // the whole cast, not once per character.
     let vises: BTreeSet<String> = retenues.iter().map(|b| b.code.clone()).collect();
     let mut dialogues = if dialogues_max > 0 {
         relever_dialogues(vfs, &vises, langue_dialogues, dialogues_max)
@@ -452,7 +446,7 @@ fn export(
         let repliques = dialogues.remove(&banque.code).unwrap_or_default();
         let fiche = index.get(&banque.code);
         eprintln!(
-            "  {} {} — {} voix, {} texture(s), {} replique(s) ecrite(s)",
+            "  {} {} - {} voice(s), {} texture(s), {} line(s) written",
             banque.code,
             fiche.map_or(String::new(), |f| format!("({})", f.name)),
             voix.len(),
@@ -478,10 +472,10 @@ fn export(
     let catalogue = construire_catalogue(langue, personnages, musique.clone());
     let chemin = out.join("catalogue.json");
     std::fs::write(&chemin, serde_json::to_vec_pretty(&catalogue)?)
-        .with_context(|| format!("écriture de {}", chemin.display()))?;
+        .with_context(|| format!("write {}", chemin.display()))?;
 
     println!(
-        "catalogue  {} personnage(s), {} piste(s) de musique → {}",
+        "catalogue  {} character(s), {} music track(s) -> {}",
         retenues.len(),
         musique.len(),
         chemin.display()
@@ -489,7 +483,7 @@ fn export(
     Ok(())
 }
 
-/// Décode jusqu'à `max` répliques d'une banque et rend leurs descripteurs JSON.
+/// Decode up to `max` lines of a bank and return their JSON descriptors.
 fn exporter_voix(
     vfs: &Vfs,
     out: &Path,
@@ -501,9 +495,9 @@ fn exporter_voix(
     }
     let raw = vfs
         .read(&banque.acb)
-        .with_context(|| format!("lecture de {}", banque.acb))?;
+        .with_context(|| format!("read {}", banque.acb))?;
     let Some((awb, _source)) = audio::resoudre_awb(vfs, &banque.acb, &raw) else {
-        eprintln!("  {} — banque d'octets introuvable, ignorée", banque.code);
+        eprintln!("  {} - byte bank not found, skipped", banque.code);
         return Ok(Vec::new());
     };
 
@@ -530,14 +524,14 @@ fn exporter_voix(
     Ok(sortie)
 }
 
-/// Extrait les textures du personnage (atlas d'expressions et planches de modèle) en PNG.
+/// Extract the character textures (expression atlas and model sheets) as PNG.
 fn exporter_textures(vfs: &Vfs, out: &Path, code: &str, max: usize) -> Vec<serde_json::Value> {
     let mut chemins: Vec<String> = vfs
         .iter()
         .filter(|(path, _)| path.ends_with(".g4tx") && path.contains(code))
         .map(|(path, _)| path.to_string())
         .collect();
-    // `_face` d'abord : c'est l'atlas d'expressions, le plus utile à un VN.
+    // `_face` first: it is the expression atlas, the most useful for a VN.
     chemins.sort_by_key(|p| (!p.contains("/_face/"), p.clone()));
 
     let dossier = out.join("images").join(code);
@@ -568,11 +562,11 @@ fn exporter_textures(vfs: &Vfs, out: &Path, code: &str, max: usize) -> Vec<serde
     sortie
 }
 
-/// Décode jusqu'à `max` pistes de `bgm.acb`.
+/// Decode up to `max` tracks of `bgm.acb`.
 fn exporter_bgm(vfs: &Vfs, out: &Path, max: usize) -> Result<Vec<serde_json::Value>> {
     const BGM: &str = "data/common/sound_asset/bgm.acb";
     let Ok(raw) = vfs.read(BGM) else {
-        eprintln!("  bgm.acb absent, musique ignorée");
+        eprintln!("  bgm.acb missing, music skipped");
         return Ok(Vec::new());
     };
     let Some((awb, _)) = audio::resoudre_awb(vfs, BGM, &raw) else {
@@ -599,7 +593,7 @@ fn exporter_bgm(vfs: &Vfs, out: &Path, max: usize) -> Result<Vec<serde_json::Val
             "ms": cue.length_ms,
         }));
     }
-    eprintln!("  musique — {} piste(s)", sortie.len());
+    eprintln!("  music - {} track(s)", sortie.len());
     Ok(sortie)
 }
 

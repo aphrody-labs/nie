@@ -1,34 +1,33 @@
-//! `nie avatar` — l'**éditeur d'avatar** (`chara_edit`) résolu de bout en bout.
+//! `nie avatar`: the avatar editor (`chara_edit`) catalog, resolved end to end.
 //!
-//! ## Ce que la commande relie
+//! ## What the command joins
 //!
-//! Le catalogue de l'éditeur vit dans deux `cfg.bin` de `gamedata/character/` et trois `cfg.bin`
-//! posés **à côté des modèles**, dans `chr/_face/20_EDIT/`. Aucun ne se suffit :
+//! The editor catalog lives in two `cfg.bin` files under `gamedata/character/` and three `cfg.bin`
+//! files placed next to the models, in `chr/_face/20_EDIT/`. None is self-sufficient:
 //!
-//! | fichier | ce qu'il apporte |
+//! | file | contribution |
 //! |---|---|
-//! | `chara_edit_<ver>.cfg.bin` | 16 listes : parts, curseurs, couleurs, voix, recettes de presets |
-//! | `chara_edit_parts_type_config_<ver>.cfg.bin` | modèles de base par morphologie (visage, accessoires) |
-//! | `20_EDIT/center.cfg.bin` | centre `(u, v, w, h)` de chaque texture de part dans l'atlas de visage |
-//! | `20_EDIT/texPartsDefaultPose.cfg.bin` | pose par défaut (translation/échelle) de chaque part |
-//! | `20_EDIT/editCharaMdlParts.cfg.bin` | règles de modèle : décalage de visage, oreilles masquées par les cheveux |
+//! | `chara_edit_<ver>.cfg.bin` | lists: parts, sliders, colors, voices, preset recipes |
+//! | `chara_edit_parts_type_config_<ver>.cfg.bin` | base models per body type (face, accessories) |
+//! | `20_EDIT/center.cfg.bin` | center `(u, v, w, h)` of each part texture in the face atlas |
+//! | `20_EDIT/texPartsDefaultPose.cfg.bin` | default pose (translation/scale) of each part |
+//! | `20_EDIT/editCharaMdlParts.cfg.bin` | model rules: face offset, ears hidden by hair |
 //!
-//! ## Les trois familles de hachage, et ce qu'elles désignent vraiment
+//! ## The three hash families and what they really name
 //!
-//! Tout est CRC-32 (`nie_formats::cfgbin::crc32`), mais les cibles diffèrent — et le nom des
-//! champs induit en erreur :
+//! Everything is CRC-32 (`nie_formats::cfgbin::crc32`), but the targets differ and the field
+//! names mislead:
 //!
-//! - `resourceName1` / `resourceName2` → **modèle 3D** du VFS (`hairF001` → `_hairF/hairF001.g4md`
-//!   + `.g4mg`). C'est aussi la clé des tables de pose de `20_EDIT`.
-//! - `textureName` → **pas** une texture de modèle : l'**icône d'interface** de la vignette dans
-//!   la grille de l'éditeur (`icon_ava_face06_004`), résolue par `hash_name` de la base de
-//!   connaissance (source `vfs-ui`, cf. `nie seed-ui`).
-//! - `presetID` d'une recette → le hash du nom d'une part de la catégorie « preset »
-//!   (`preset_01_normal`) : le même identifiant est à la fois une vignette sélectionnable et une
-//!   recette de 62 à 72 lignes.
+//! - `resourceName1` / `resourceName2`: the 3D model in the VFS (`hairF001` -> `_hairF/hairF001.g4md`
+//!   + `.g4mg`). Also the key of the `20_EDIT` pose tables.
+//! - `textureName`: not a model texture but the UI icon of the thumbnail in the editor grid
+//!   (`icon_ava_face06_004`), resolved through `hash_name` in the knowledge base (source
+//!   `vfs-ui`, see `nie seed-ui`).
+//! - `presetID` of a recipe: the hash of a part name in the "preset" category
+//!   (`preset_01_normal`); the same id is both a selectable thumbnail and a recipe.
 //!
-//! Les libellés de catégorie ne sont **pas** inventés ici : ils sont dérivés du plus long préfixe
-//! commun des noms de ressources de la catégorie, tels qu'ils apparaissent dans les fichiers.
+//! Category labels are not invented here: they are derived from the longest common prefix of the
+//! category's resource names, as they appear in the files.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -43,56 +42,55 @@ use nie_formats::cfgbin;
 use nie_formats::vfs::Vfs;
 use serde_json::{Value as Json, json};
 
-/// Racine des assets de l'éditeur dans le VFS.
+/// Root of the editor assets in the VFS.
 const EDIT_ROOT: &str = "chr/_face/20_EDIT/";
 
-/// Les sept statistiques du jeu, dans l'ordre horaire du radar de l'écran de statistiques.
+/// The game statistics, in clockwise order around the radar of the statistics screen.
 ///
-/// Ces hachages sont ceux de `menu_text` — les libellés sont donc traduits comme le reste. Ils ne
-/// viennent pas du pool de constantes de `chara_edit` : cet écran-là emprunte les libellés de
-/// statistiques communs au jeu, et l'ordre ci-dessous est celui que les captures montrent autour
-/// du radar (frappe en haut, puis dans le sens horaire). C'est la seule liste de ce module dont
-/// l'appartenance à l'écran vient d'une capture et non d'un fichier de l'éditeur.
+/// These hashes are `menu_text` keys, so labels are translated like the rest. They do not come
+/// from the `chara_edit` constant pool: that screen borrows the game-wide statistic labels, and
+/// the order below is the one captures show around the radar (strike on top, then clockwise). It
+/// is the only list in this module whose screen membership comes from a capture rather than an
+/// editor file.
 const STATS_RADAR: [u32; 7] = [
-    0x9676_CFF2, // Frappe
-    0xBF19_862F, // Contrôle
-    0x5E95_B812, // Pression
-    0xA9F1_F72B, // Physique
-    0xE0F2_0046, // Agilité
+    0x9676_CFF2, // Strike
+    0xBF19_862F, // Control
+    0x5E95_B812, // Pressure
+    0xA9F1_F72B, // Physical
+    0xE0F2_0046, // Agility
     0xAC95_CB90, // Intelligence
     0xD02A_224B, // Technique
 ];
 
-/// Écran de l'éditeur correspondant à une catégorie, par **rapprochement lexical**.
+/// Editor screen matching a category, by lexical matching.
 ///
-/// Les écrans du jeu s'appellent `chara_edit_parts_menu_<quoi>` (`_eye`, `_mouth`, `_eyebrow`,
-/// `_ear`, `_hair`, `_nose`, `_contour`, `_preset`…) et chaque catégorie porte un préfixe de
-/// ressources (`eye_`, `mouth_`, `eyebrow_`, `hairF`…). Quand l'un contient l'autre, le lien est
-/// mécanique — aucune table écrite à la main, et rien n'est rendu quand aucun nom ne concorde.
+/// Game screens are named `chara_edit_parts_menu_<what>` (`_eye`, `_mouth`, `_eyebrow`, `_ear`,
+/// `_hair`, `_nose`, `_contour`, `_preset`...) and each category carries a resource prefix
+/// (`eye_`, `mouth_`, `eyebrow_`, `hairF`...). When one contains the other the link is
+/// mechanical: no hand-written table, and nothing is returned when no name matches.
 fn ecran_de_categorie(prefixe: &str, ecrans: &[String]) -> Option<String> {
     category_screen(prefixe, ecrans)
 }
 
-/// Géométrie de la grille d'une palette, déduite de son nombre de couleurs.
+/// Grid geometry of a palette, deduced from its color count.
 ///
-/// Le jeu nomme ses écrans de palette par leur grille — `chara_edit_color_menu_10x4_skin`,
-/// `_12x5`, `_13x5` — et le compte de couleurs de chaque palette tombe exactement dessus :
-/// 40 = 10×4 (peau), 60 = 12×5 (œil), 65 = 13×5 (cheveux). La géométrie n'est donc pas devinée,
-/// elle est recoupée par deux sources indépendantes. Les autres tailles rendent `None` plutôt
-/// qu'une disposition inventée.
+/// The game names its palette screens after their grid (`chara_edit_color_menu_10x4_skin`,
+/// `_12x5`, `_13x5`) and each palette's color count matches exactly: 40 = 10x4 (skin),
+/// 60 = 12x5 (eye), 65 = 13x5 (hair). The geometry is therefore cross-checked by two independent
+/// sources, not guessed. Other sizes return `None` rather than an invented layout.
 fn geometrie_palette(n: usize) -> Option<(usize, usize)> {
     palette_grid(n)
 }
 
-/// Une image décodée : largeur, hauteur, octets RGBA.
+/// A decoded image: width, height, RGBA bytes.
 type Rgba = (u32, u32, Vec<u8>);
 
-/// Collecte, dans l'ordre, les constantes numériques d'un prototype Lua et de ses imbriqués.
+/// Collects, in order, the numeric constants of a Lua prototype and its nested ones.
 fn constantes_num(proto: &nie_lua::bytecode::Prototype, out: &mut Vec<u32>) {
     for c in &proto.constants {
         if let nie_lua::bytecode::Constant::Number(n) = c {
-            // Les hachages sont stockés en `double` : seuls les entiers exacts qui tiennent sur
-            // 32 bits peuvent en être un.
+            // Hashes are stored as `double`: only exact integers that fit in
+            // 32 bits can be one.
             if n.fract() == 0.0 && *n >= 0.0 && *n <= f64::from(u32::MAX) {
                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                 out.push(*n as u32);
@@ -108,17 +106,16 @@ fn constantes_num(proto: &nie_lua::bytecode::Prototype, out: &mut Vec<u32>) {
     }
 }
 
-/// Les **rubriques de l'éditeur**, dans l'ordre où le jeu les affiche.
+/// The editor sections, in the order the game shows them.
 ///
-/// Le script de l'écran de liste (`chara_edit_list_menu`) porte, dans son pool de constantes,
-/// une **suite contiguë** de hachages de libellés — et cette suite est l'ordre de la colonne de
-/// gauche de l'éditeur. On la retrouve mécaniquement : la plus longue séquence consécutive de
-/// constantes numériques qui sont toutes des clés de `menu_text`.
+/// The script of the list screen (`chara_edit_list_menu`) carries, in its constant pool, a
+/// contiguous run of label hashes, and that run is the order of the editor's left column. It is
+/// found mechanically: the longest consecutive sequence of numeric constants that are all
+/// `menu_text` keys.
 ///
-/// Ce que cela donne, et ce que cela ne donne pas : l'**ordre** et les **libellés** sont établis ;
-/// l'association d'une rubrique à un `faceSettingType` précis, elle, ne l'est pas — c'est le code
-/// du menu qui la fait, et le driver Lua du dépôt n'apparie aucun objet sur cet écran. Aucune
-/// correspondance n'est donc inventée ici.
+/// The order and the labels are established; the link between a section and a specific
+/// `faceSettingType` is not (the menu code makes it, and the repo's Lua driver pairs no object
+/// on this screen), so no mapping is invented here.
 fn rubriques(vfs: &Vfs, textes: &BTreeMap<u32, String>) -> Vec<(u32, String)> {
     let Some(chemin) = vfs.iter().map(|(p, _)| p.to_string()).find(|p| {
         p.rsplit('/')
@@ -140,26 +137,25 @@ fn rubriques(vfs: &Vfs, textes: &BTreeMap<u32, String>) -> Vec<(u32, String)> {
     longest_known_label_run(&nums, textes)
 }
 
-/// Un **panneau de l'éditeur** : un script d'écran et les libellés qu'il affiche, dans l'ordre.
+/// An editor panel: a screen script and the labels it shows, in order.
 struct Panneau {
-    /// Nom de base du script, sans la version ni `.lua.bin` (`chara_edit_parts_menu_contour`).
+        /// Script base name, without version or `.lua.bin` (`chara_edit_parts_menu_contour`).
     nom: String,
-    /// Libellés résolus dans `menu_text`, dans l'ordre du pool de constantes du script :
-    /// `(hash, texte affichable, gaiji du libellé)` — cf. `nie_data::text::split_markup`.
+        /// Labels resolved in `menu_text`, in the script's constant-pool order:
+        /// `(hash, displayable text, label gaiji)`, see `nie_data::text::split_markup`.
     libelles: Vec<(u32, String, Vec<String>)>,
 }
 
-/// Les libellés de **chaque panneau** de l'éditeur, dans l'ordre du script qui les affiche.
+/// The labels of each editor panel, in the order of the script that shows them.
 ///
-/// Même mécanique que [`rubriques`], appliquée à tous les scripts `chara_edit*` : le pool de
-/// constantes d'un script d'écran porte les hachages des libellés que cet écran pose, et l'ordre du
-/// pool est celui de leur première apparition dans le code — donc l'ordre d'affichage. On ne garde
-/// que les hachages qui sont des clés de `menu_text` : une constante numérique quelconque (un
-/// index, une couleur) n'en est pas une, et la collision est improbable sur 32 bits.
+/// Same mechanism as [`rubriques`], applied to all `chara_edit*` scripts: a screen script's
+/// constant pool carries the hashes of the labels it places, in order of first appearance in the
+/// code, hence display order. Only hashes that are `menu_text` keys are kept: an arbitrary numeric
+/// constant (an index, a color) is not one, and a 32-bit collision is unlikely.
 ///
-/// Contrairement à [`rubriques`], **aucune contiguïté n'est exigée** : un panneau mêle ses libellés
-/// à ses constantes de mise en page. En retour, l'ordre est celui du pool et non celui du dessin —
-/// il ne prouve pas la position d'un libellé à l'écran, seulement son appartenance au panneau.
+/// Unlike [`rubriques`], no contiguity is required: a panel mixes its labels with layout
+/// constants. The order is the pool's, not the drawing's: it shows membership in the panel, not
+/// the on-screen position of a label.
 fn panneaux(vfs: &Vfs, textes: &BTreeMap<u32, String>) -> Vec<Panneau> {
     let mut chemins: Vec<String> = vfs
         .iter()
@@ -207,16 +203,16 @@ fn panneaux(vfs: &Vfs, textes: &BTreeMap<u32, String>) -> Vec<Panneau> {
     out
 }
 
-/// Fragments de nom qui désignent un contenu que le dépôt ne reproduit pas encore.
+/// Name fragments denoting content the repo does not reproduce yet.
 const MOTIFS_DYNAMIQUES: [&str; 4] = ["model", "chara_3d", "cursor", "shadow"];
 
-/// `nie avatar roi` — dérive les régions de mesure d'un écran depuis son layout.
+/// `nie avatar roi`: derives the measurement regions of a screen from its layout.
 fn roi(ecran: &str, layouts: &Path, out: Option<&Path>) -> Result<()> {
     let chemin = layouts.join(format!("{ecran}.json"));
     let txt = std::fs::read_to_string(&chemin)
-        .with_context(|| format!("lecture {}", chemin.display()))?;
+        .with_context(|| format!("reading {}", chemin.display()))?;
     let doc: Json = serde_json::from_str(&txt)
-        .with_context(|| format!("layout invalide : {}", chemin.display()))?;
+        .with_context(|| format!("invalid layout: {}", chemin.display()))?;
     let (cw, ch) = (
         doc["canvas"]["w"].as_f64().unwrap_or(1280.0),
         doc["canvas"]["h"].as_f64().unwrap_or(720.0),
@@ -246,9 +242,9 @@ fn roi(ecran: &str, layouts: &Path, out: Option<&Path>) -> Result<()> {
             t["y"].as_f64().unwrap_or(0.0),
         );
 
-        // Signature du repli documenté : sprite factice, ou objet parqué au centre exact à
-        // l'échelle native. Dans les deux cas la géométrie du layout ne décrit PAS ce que la
-        // capture montre — l'avatar y occupe une large zone centrale, pas un carré de 4 px.
+        // Fallback signature: dummy sprite, or object parked at the exact center at
+        // native scale. In both cases the layout geometry does not describe what the
+        // capture shows: the avatar fills a large central area, not a 4 px square.
         let factice = sw.unwrap_or(0.0) <= 8.0 || sh.unwrap_or(0.0) <= 8.0;
         let parque = (sx - 1.0).abs() < 1e-6
             && (sy - 1.0).abs() < 1e-6
@@ -271,7 +267,7 @@ fn roi(ecran: &str, layouts: &Path, out: Option<&Path>) -> Result<()> {
         }));
     }
 
-    println!("{ecran} : {} région(s) dérivée(s) du layout", rois.len());
+    println!("{ecran}: {} region(s) derived from the layout", rois.len());
     for r in &rois {
         println!("  {} {:?}", r["nom"].as_str().unwrap_or(""), r["rect"]);
     }
@@ -279,16 +275,16 @@ fn roi(ecran: &str, layouts: &Path, out: Option<&Path>) -> Result<()> {
         non_derivables.sort_unstable();
         non_derivables.dedup();
         println!(
-            "  {} objet(s) dynamique(s) SANS géométrie exploitable — aucune région produite pour eux :",
+            "  {} dynamic object(s) without usable geometry, no region produced for them:",
             non_derivables.len()
         );
         for n in &non_derivables {
             println!("    {n}");
         }
         println!(
-            "  Ces objets sont des emplacements 3D : le layout leur donne un sprite factice posé au\n  \
-             centre. Leur étendue réelle n'est dans aucun fichier lu ici ; la mesure les compte donc\n  \
-             encore, et le rapport de `nie img diff` l'annonce par une surface exclue plus faible."
+            "  These objects are 3D slots: the layout gives them a dummy sprite parked at the\n  \
+             center. Their real extent is in no file read here, so the measurement still counts\n  \
+             them, and the `nie img diff` report shows a smaller excluded area."
         );
     }
 
@@ -297,26 +293,26 @@ fn roi(ecran: &str, layouts: &Path, out: Option<&Path>) -> Result<()> {
             std::fs::create_dir_all(parent).ok();
         }
         std::fs::write(out, serde_json::to_vec_pretty(&Json::Array(rois))?)
-            .with_context(|| format!("écriture {}", out.display()))?;
-        println!("  écrit : {}", out.display());
+            .with_context(|| format!("writing {}", out.display()))?;
+        println!("  wrote: {}", out.display());
     }
     Ok(())
 }
 
-/// Famille d'une planche : le premier segment de chemin qui suit le préfixe balayé.
+/// Family of a sheet: the first path segment after the swept prefix.
 ///
-/// `…/_facetex/04_eyebrow/eyebrow_00.g4tx` sous le préfixe `…/_facetex/` donne `04_eyebrow`. Une
-/// planche posée directement sous le préfixe n'a pas de famille et se range sous `.`.
+/// `.../_facetex/04_eyebrow/eyebrow_00.g4tx` under the prefix `.../_facetex/` gives `04_eyebrow`. A
+/// sheet placed directly under the prefix has no family and goes under `.`.
 fn famille_de(chemin: &str, prefix: &str) -> String {
     asset_family(chemin, prefix)
 }
 
-/// Rend une part en pourcentage à deux décimales, séparateur français.
+/// Formats a fraction as a percentage with two decimals and a comma separator.
 fn pct(part: f32) -> String {
     format!("{:.2} %", part * 100.0).replace('.', ",")
 }
 
-/// Rend une emprise normalisée `u[a;b] v[c;d]`, ou `—` si la zone est vide.
+/// Formats a normalized extent `u[a;b] v[c;d]`, or `—` if the zone is empty.
 fn fmt_emprise(e: Option<[f32; 4]>) -> String {
     e.map_or_else(
         || "—".to_string(),
@@ -324,7 +320,7 @@ fn fmt_emprise(e: Option<[f32; 4]>) -> String {
     )
 }
 
-/// Mesures d'une planche en JSON, telles que [`nie_formats::planche::Mesures`] les porte.
+/// Measurements of a sheet as JSON, as carried by [`nie_formats::planche::Mesures`].
 fn mesures_json(m: &nie_formats::planche::Mesures) -> Json {
     use nie_formats::planche::Zone;
     let zones: serde_json::Map<String, Json> = Zone::toutes()
@@ -356,23 +352,22 @@ fn mesures_json(m: &nie_formats::planche::Mesures) -> Json {
     })
 }
 
-/// Côté de la grille d'occupation UV : 32 × 32 cases sur le carré `[0, 1]²`.
+/// Side of the UV occupancy grid: 32 x 32 cells over the square `[0, 1]²`.
 ///
-/// Assez fin pour distinguer un dépliage qui couvre tout le carré d'un autre qui n'en occupe qu'un
-/// coin, assez grossier pour qu'une maille de quelques centaines de sommets remplisse ses cases.
+/// Fine enough to tell an unwrap covering the whole square from one occupying only a corner,
+/// coarse enough for a mesh of a few hundred vertices to fill its cells.
 const GRILLE_UV: usize = 32;
 
-/// `nie avatar depliage` — dit quelle part du carré UV chaque sous-maille échantillonne.
+/// `nie avatar depliage`: reports which part of the UV square each submesh samples.
 ///
-/// C'est le chaînon manquant entre une planche et la maille qui la lit. Une planche se mesure
-/// (cf. [`nie_formats::planche`]), une maille se déplie, et une composition n'est juste que si les
-/// deux se recouvrent. Le rangement des familles par matériau — [`nie_formats::assemble::face_layer_slot`] —
-/// repose sur des dépliages « disjoints » relevés une fois à la main ; cette commande les rend
-/// régénérables.
+/// This is the missing link between a sheet and the mesh that reads it. A sheet is measured
+/// (see [`nie_formats::planche`]), a mesh is unwrapped, and a composition is only right if the
+/// two overlap. The grouping of families by material, [`nie_formats::assemble::face_layer_slot`],
+/// rests on "disjoint" unwraps recorded once by hand; this command makes them regenerable.
 ///
-/// Deux mesures par sous-maille, car la boîte englobante ment sur un dépliage épars : son
-/// **emprise** (bornes u et v) et son **occupation**, la part des cases d'une grille
-/// [`GRILLE_UV`] × [`GRILLE_UV`] qui portent au moins un sommet.
+/// Two measurements per submesh, because the bounding box lies on a sparse unwrap: its extent
+/// (u and v bounds) and its occupancy, the share of cells of a [`GRILLE_UV`] x [`GRILLE_UV`]
+/// grid that hold at least one vertex.
 fn depliage(game_dir: &Path, modele: &str, limit: usize) -> Result<()> {
     let mut vfs = Vfs::new();
     vfs.init(game_dir.join("data")).context("init VFS")?;
@@ -384,34 +379,34 @@ fn depliage(game_dir: &Path, modele: &str, limit: usize) -> Result<()> {
     chemins.sort();
     chemins.dedup();
     if chemins.is_empty() {
-        println!("aucun .g4md sous {EDIT_ROOT} ne contient « {modele} »");
+        println!("no .g4md under {EDIT_ROOT} contains \"{modele}\"");
         return Ok(());
     }
     let total = chemins.len();
     chemins.truncate(limit);
-    println!("{total} modèle(s), {} affiché(s)", chemins.len());
+    println!("{total} model(s), {} shown", chemins.len());
 
     for chemin in &chemins {
         let Ok(brut_md) = vfs.read(chemin) else {
             continue;
         };
         let Ok(md) = nie_formats::g4md::parse(&brut_md) else {
-            println!("  {} — g4md illisible", court(chemin));
+            println!("  {} — unreadable g4md", court(chemin));
             continue;
         };
         let chemin_mg = format!("{}.g4mg", chemin.trim_end_matches(".g4md"));
         let Ok(brut_mg) = vfs.read(&chemin_mg) else {
-            println!("  {} — .g4mg absent", court(chemin));
+            println!("  {} — .g4mg missing", court(chemin));
             continue;
         };
         let geos = nie_formats::g4mg::extract_geometry(&brut_mg, &md);
-        println!("  {} — {} sous-maille(s)", court(chemin), geos.len());
+        println!("  {} — {} submesh(es)", court(chemin), geos.len());
         for geo in &geos {
             let materiau = nie_formats::g4mg::material_base_name(&md, geo)
-                .map_or("(sans nom)", String::as_str);
+                .map_or("(unnamed)", String::as_str);
             if geo.uv0.is_empty() {
                 println!(
-                    "    #{} {materiau:<18} {:>6} som.  aucun UV0",
+                    "    #{} {materiau:<18} {:>6} vtx.  no UV0",
                     geo.index, geo.vertex_count
                 );
                 continue;
@@ -426,16 +421,16 @@ fn depliage(game_dir: &Path, modele: &str, limit: usize) -> Result<()> {
                 v0 = v0.min(uv.v);
                 u1 = u1.max(uv.u);
                 v1 = v1.max(uv.v);
-                // Un UV hors [0, 1] est licite (répétition) : on le replie pour l'occupation, sans
-                // toucher à l'emprise, qui doit dire la vérité y compris quand elle déborde.
+                // A UV outside [0, 1] is legal (tiling): fold it for occupancy, without
+                // touching the extent, which must stay truthful even when it overflows.
                 let cx = ((uv.u.rem_euclid(1.0)) * GRILLE_UV as f32) as usize;
                 let cy = ((uv.v.rem_euclid(1.0)) * GRILLE_UV as f32) as usize;
                 cases[cy.min(GRILLE_UV - 1) * GRILLE_UV + cx.min(GRILLE_UV - 1)] = true;
             }
             let occupees = cases.iter().filter(|c| **c).count();
             println!(
-                "    #{} {materiau:<18} {:>6} som.  u[{u0:.3};{u1:.3}] v[{v0:.3};{v1:.3}]  \
-                 occupation {}",
+                "    #{} {materiau:<18} {:>6} vtx.  u[{u0:.3};{u1:.3}] v[{v0:.3};{v1:.3}]  \
+                 occupancy {}",
                 geo.index,
                 geo.vertex_count,
                 pct(occupees as f32 / (GRILLE_UV * GRILLE_UV) as f32)
@@ -445,33 +440,33 @@ fn depliage(game_dir: &Path, modele: &str, limit: usize) -> Result<()> {
     Ok(())
 }
 
-/// Grille d'occupation vide.
+/// Empty occupancy grid.
 fn alloc_grille() -> Vec<bool> {
     vec![false; GRILLE_UV * GRILLE_UV]
 }
 
-/// Écrit un tampon RGBA en PNG, éventuellement réduit à `cote` pixels de côté maximal.
+/// Writes an RGBA buffer as PNG, optionally downscaled to at most `cote` pixels per side.
 fn ecrire_png(dir: &Path, nom: &str, w: u32, h: u32, rgba: &[u8], cote: u32) -> Result<()> {
     let (w, h, pixels) = if cote > 0 {
         nie_formats::image_out::reduire_rgba(rgba, w, h, cote)
-            .map_err(|e| anyhow::anyhow!("réduction {nom} : {e}"))?
+            .map_err(|e| anyhow::anyhow!("resizing {nom}: {e}"))?
     } else {
         (w, h, rgba.to_vec())
     };
     let png = nie_formats::g4tx_decode::encode_rgba_to_png(&pixels, w as usize, h as usize)
-        .with_context(|| format!("encodage PNG de {nom}"))?;
-    std::fs::write(dir.join(nom), png).with_context(|| format!("écriture {nom}"))?;
+        .with_context(|| format!("PNG encoding of {nom}"))?;
+    std::fs::write(dir.join(nom), png).with_context(|| format!("writing {nom}"))?;
     Ok(())
 }
 
-/// Écrit en PNG une planche, son masque, et le tracé que sa convention en tire.
+/// Writes a sheet, its mask, and the trace its convention derives, as PNG.
 ///
-/// Le tracé n'est **pas teinté** : la teinte par canaux dépend de la recette de couleurs choisie
-/// dans l'éditeur, qui n'a rien à faire ici. Seul l'alpha vient de la convention, et c'est lui
-/// qu'on cherche à voir — un sourcil se reconnaît à sa forme, pas à sa couleur.
+/// The trace is not tinted: channel tinting depends on the color recipe chosen in the editor,
+/// which is out of scope here. Only the alpha comes from the convention, and it is what we want to
+/// see: an eyebrow is recognized by its shape, not its color.
 ///
-/// Une planche muette n'a pas de tracé, et une convention indéterminée ne s'en invente pas : ces
-/// deux cas n'écrivent que la couleur et le masque. Rend le nombre de fichiers écrits.
+/// A silent sheet has no trace, and an undetermined convention does not invent one: both cases
+/// write only the color and the mask. Returns the number of files written.
 fn extraire_planche(
     dir: &Path,
     vfs: &Vfs,
@@ -485,7 +480,7 @@ fn extraire_planche(
 
     let brut = vfs
         .read(chemin)
-        .with_context(|| format!("lecture {chemin}"))?;
+        .with_context(|| format!("reading {chemin}"))?;
     let Some((w, h, rgba)) = nie_formats::g4tx_decode::decode_named_to_rgba(&brut, &fiche.nom)
     else {
         return Ok(0);
@@ -509,7 +504,7 @@ fn extraire_planche(
         (Convention::FondRouge, Some(m)) => image_out::decouper_par_zones(w, h, &rgba, m),
         (Convention::TraceVert, Some(m)) => image_out::decouper_oeil(w, h, &rgba, m),
         (Convention::Decoupe, Some(m)) => {
-            // Masque gris : son canal rouge EST l'opacité.
+            // Gray mask: its red channel is the opacity.
             let mut copie = rgba.clone();
             for i in (0..copie.len()).step_by(4) {
                 copie[i + 3] = m[i];
@@ -526,35 +521,34 @@ fn extraire_planche(
     Ok(ecrits)
 }
 
-/// Les options de `nie avatar planches`, telles que la ligne de commande les porte.
+/// Options of `nie avatar planches`, as the command line carries them.
 struct OptionsPlanches<'a> {
-    /// Préfixe VFS balayé.
+        /// Swept VFS prefix.
     prefix: &'a str,
-    /// Fragment que le chemin doit contenir.
+        /// Fragment the path must contain.
     filtre: Option<&'a str>,
-    /// Détailler planche par planche.
+        /// Detail sheet by sheet.
     detail: bool,
-    /// Fichier JSON du relevé complet.
+        /// JSON file for the full record.
     out: Option<&'a Path>,
-    /// Répertoire d'extraction des PNG.
+        /// PNG extraction directory.
     extraire: Option<&'a Path>,
-    /// Côté maximal des PNG extraits ; 0 = taille d'origine.
+        /// Maximum side of extracted PNGs; 0 = original size.
     vignette: u32,
-    /// Nombre maximum de conteneurs analysés.
+        /// Maximum number of containers analyzed.
     limit: usize,
 }
 
-/// `nie avatar planches` — mesure les planches d'un préfixe du VFS et agrège par famille.
+/// `nie avatar planches`: measures the sheets under a VFS prefix and aggregates by family.
 ///
-/// La commande **constate** : elle ne modifie aucune donnée du jeu. Son intérêt est le contraste —
-/// une famille dont les 80 planches rendent la même convention justifie la règle codée pour elle,
-/// une famille qui en rend deux dit que la règle par famille est fausse, et une planche muette
-/// (ni tracé dans la couleur, ni forme dans le masque) explique une pièce absente du modèle sans
-/// qu'il faille soupçonner le compositeur.
+/// The command only observes: it modifies no game data. Its value is contrast: a family whose
+/// sheets all give the same convention justifies the rule coded for it, a family giving two says
+/// the per-family rule is wrong, and a silent sheet (no trace in the color, no shape in the mask)
+/// explains a missing model piece without suspecting the compositor.
 ///
-/// Avec `--extraire`, elle écrit aussi ce qu'elle a mesuré : la planche, son masque, et le tracé
-/// que la convention en tire. C'est la seule façon de vérifier une convention autrement que sur
-/// des pourcentages — un tracé de sourcil se reconnaît à l'œil, pas à ses 5,46 % de vert.
+/// With `--extraire`, it also writes what it measured: the sheet, its mask, and the trace the
+/// convention derives. It is the only way to check a convention other than by percentages: an
+/// eyebrow trace is recognized by eye, not by its share of green.
 fn planches(game_dir: &Path, o: &OptionsPlanches) -> Result<()> {
     let &OptionsPlanches {
         prefix,
@@ -581,12 +575,12 @@ fn planches(game_dir: &Path, o: &OptionsPlanches) -> Result<()> {
     }
     chemins.truncate(limit);
     println!(
-        "{} conteneur(s) .g4tx sous {prefix}{}",
+        "{} .g4tx container(s) under {prefix}{}",
         chemins.len(),
-        filtre.map_or(String::new(), |f| format!(" — filtre « {f} »"))
+        filtre.map_or(String::new(), |f| format!(" — filter \"{f}\""))
     );
 
-    /// Ce qu'on retient d'une famille.
+        /// What is kept for a family.
     #[derive(Default)]
     struct Agregat {
         conteneurs: usize,
@@ -629,7 +623,7 @@ fn planches(game_dir: &Path, o: &OptionsPlanches) -> Result<()> {
                     .map(|(z, p)| format!("{} {}", z.nom(), pct(p)))
                     .collect();
                 println!(
-                    "  {:<44} {:<16} {}×{}  {:<6} {:<12} encre {:<8} [{}]",
+                    "  {:<44} {:<16} {}×{}  {:<6} {:<12} ink {:<8} [{}]",
                     court(chemin),
                     f.nom,
                     f.couleur.largeur,
@@ -646,7 +640,7 @@ fn planches(game_dir: &Path, o: &OptionsPlanches) -> Result<()> {
                         .map(|(z, p)| format!("{} {}", z.nom(), pct(p)))
                         .collect();
                     println!(
-                        "  {:<44} {:<16} {:<6} {:<6} vert {} [{}]",
+                        "  {:<44} {:<16} {:<6} {:<6} green {} [{}]",
                         "",
                         nm,
                         "msk",
@@ -680,15 +674,15 @@ fn planches(game_dir: &Path, o: &OptionsPlanches) -> Result<()> {
     }
 
     if illisibles > 0 || sans_planche > 0 {
-        println!("  {illisibles} illisible(s), {sans_planche} sans planche de couleur");
+        println!("  {illisibles} unreadable, {sans_planche} without a color sheet");
     }
     if let Some(dir) = extraire {
-        println!("  {png_ecrits} PNG écrits dans {}", dir.display());
+        println!("  {png_ecrits} PNG written to {}", dir.display());
     }
     println!();
     println!(
         "  {:<14} {:>5} {:>5}  {:<28} conventions",
-        "famille", "cont.", "plan.", "rôles"
+        "family", "cont.", "tex.", "roles"
     );
     for (famille, agr) in &par_famille {
         let liste = |m: &BTreeMap<&'static str, usize>| -> String {
@@ -713,7 +707,7 @@ fn planches(game_dir: &Path, o: &OptionsPlanches) -> Result<()> {
     if muettes > 0 {
         println!();
         println!(
-            "  {muettes} planche(s) muette(s) — ni tracé dans la couleur, ni forme dans le masque :"
+            "  {muettes} silent sheet(s) — no trace in the color, no shape in the mask:"
         );
         for (famille, agr) in &par_famille {
             if agr.muettes.is_empty() {
@@ -733,8 +727,8 @@ fn planches(game_dir: &Path, o: &OptionsPlanches) -> Result<()> {
         }
     }
 
-    // Une convention minoritaire est le signal utile : elle dit qu'une règle codée par famille
-    // ne couvre pas toute sa famille.
+    // A minority convention is the useful signal: it shows that a rule coded per family
+    // does not cover the whole family.
     let mixtes: Vec<&String> = par_famille
         .iter()
         .filter(|(_, a)| a.conventions.len() > 1)
@@ -743,7 +737,7 @@ fn planches(game_dir: &Path, o: &OptionsPlanches) -> Result<()> {
     if !mixtes.is_empty() {
         println!();
         println!(
-            "  familles à convention non unique : {}",
+            "  families with more than one convention: {}",
             mixtes
                 .iter()
                 .map(|s| s.as_str())
@@ -757,10 +751,10 @@ fn planches(game_dir: &Path, o: &OptionsPlanches) -> Result<()> {
             std::fs::create_dir_all(parent).ok();
         }
         std::fs::write(fichier, serde_json::to_vec_pretty(&releve)?)
-            .with_context(|| format!("écriture {}", fichier.display()))?;
+            .with_context(|| format!("writing {}", fichier.display()))?;
         println!();
         println!(
-            "  {} planche(s) relevée(s) → {}",
+            "  {} sheet(s) recorded → {}",
             releve.len(),
             fichier.display()
         );
@@ -768,148 +762,148 @@ fn planches(game_dir: &Path, o: &OptionsPlanches) -> Result<()> {
     Ok(())
 }
 
-/// Chemin raccourci à ce qui distingue une planche d'une autre : famille et nom de fichier.
+/// Path shortened to what tells one sheet from another: family and file name.
 fn court(chemin: &str) -> String {
     let mut segments: Vec<&str> = chemin.rsplit('/').take(2).collect();
     segments.reverse();
     segments.join("/")
 }
 
-/// Ce que `nie avatar` sait faire.
+/// Subcommands of `nie avatar`.
 #[derive(Debug, Clone, clap::Subcommand)]
 pub enum AvatarCmd {
-    /// Vue d'ensemble : les 16 listes, les catégories et leur taux de résolution.
+        /// Overview: the lists, the categories and their resolution rate.
     Catalog,
-    /// Les parts d'une catégorie (toutes si `--category` est absent), avec modèles et icône.
+        /// Parts of a category (all if `--category` is absent), with models and icon.
     Parts {
-        /// `faceSettingType` visé.
+                /// Target `faceSettingType`.
         #[arg(long)]
         category: Option<i64>,
-        /// Nombre maximum de lignes affichées.
+                /// Maximum number of rows shown.
         #[arg(long, default_value_t = 40)]
         limit: usize,
     },
-    /// Les visages prédéfinis ; avec un argument, la recette décodée d'un preset.
+        /// Preset faces; with an argument, the decoded recipe of a preset.
     Preset {
-        /// Nom (`preset_01_normal`) ou hash (`0x06DE46FB`) du preset.
+                /// Name (`preset_01_normal`) or hash (`0x06DE46FB`) of the preset.
         id: Option<String>,
     },
-    /// Écrit le catalogue résolu complet en JSON.
+        /// Write the full resolved catalog as JSON.
     Export {
-        /// Fichier de sortie.
+                /// Output file.
         #[arg(short, long, default_value = "var/avatar-resolved.json")]
         out: std::path::PathBuf,
     },
-    /// Dérive les régions de mesure d'un écran depuis son layout, pour `nie img diff`.
-    ///
-    /// Un rectangle tracé sur une capture est une valeur calée sur l'image de référence : il fait
-    /// remonter le score sans rien prouver, et il ne se régénère pas. Ici les régions viennent des
-    /// **objets du layout** — donc des fichiers du jeu. Quand un objet n'a pas de géométrie
-    /// exploitable, la commande le **déclare non dérivable** au lieu d'inventer une boîte.
+        /// Derive the measurement regions of a screen from its layout, for `nie img diff`.
+        ///
+        /// A rectangle drawn on a capture is tuned to the reference image: it raises the score
+        /// without proving anything and cannot be regenerated. Here the regions come from the
+        /// layout objects, hence from game files. When an object has no usable geometry, the command
+        /// declares it non-derivable instead of inventing a box.
     Roi {
-        /// Écran (nom du layout, sans `.json`).
+                /// Screen (layout name, without `.json`).
         ecran: String,
-        /// Répertoire des layouts exportés.
+                /// Directory of exported layouts.
         #[arg(long, default_value = "var/avatar-ui/layouts")]
         layouts: std::path::PathBuf,
-        /// Fichier de sortie ; sans lui, la commande n'imprime que ce qu'elle trouve.
+                /// Output file; without it, the command only prints what it finds.
         #[arg(short, long)]
         out: Option<std::path::PathBuf>,
     },
-    /// Mesure les **planches de texture** de l'éditeur : zones, rôle, convention de composition.
-    ///
-    /// Les conventions de composition du visage ont été établies planche par planche, à la main,
-    /// sur une ou deux textures chacune — puis codées par famille (`if rel.starts_with("01_eye")`).
-    /// Cette commande les mesure sur le corpus entier, sans jamais regarder un nom de famille :
-    /// une convention qui vaut vraiment pour `01_eye` doit se lire dans les octets de ses 80
-    /// planches. Cf. `nie_formats::planche`.
+        /// Measure the editor texture sheets: zones, role, composition convention.
+        ///
+        /// Face composition conventions were first set by hand, sheet by sheet, on one or two
+        /// textures each, then coded per family (`if rel.starts_with("01_eye")`). This command
+        /// measures them across the whole corpus without looking at family names: a convention that
+        /// truly holds for `01_eye` must be readable in the bytes of all its sheets. See
+        /// `nie_formats::planche`.
     Planches {
-        /// Préfixe VFS balayé.
+                /// Swept VFS prefix.
         #[arg(long, default_value = "chr/_face/20_EDIT/_facetex/")]
         prefix: String,
-        /// Ne retient que les chemins contenant ce fragment (une famille, un nom de planche).
+                /// Keep only paths containing this fragment (a family, a sheet name).
         #[arg(long)]
         filtre: Option<String>,
-        /// Détaille planche par planche au lieu du seul agrégat par famille.
+                /// Detail sheet by sheet instead of only the per-family aggregate.
         #[arg(long)]
         detail: bool,
-        /// Écrit le relevé complet en JSON.
+                /// Write the full record as JSON.
         #[arg(short, long)]
         out: Option<std::path::PathBuf>,
-        /// Extrait en PNG, dans ce répertoire, la planche, son masque et le tracé qu'en tire la
-        /// convention mesurée.
+                /// Extract as PNG, into this directory, the sheet, its mask and the trace the
+                /// measured convention derives.
         #[arg(long)]
         extraire: Option<std::path::PathBuf>,
-        /// Côté maximal des PNG extraits ; 0 garde la taille d'origine (2048×1024 pour `_facetex`).
+                /// Maximum side of extracted PNGs; 0 keeps the original size.
         #[arg(long, default_value_t = 0)]
         vignette: u32,
-        /// Nombre maximum de conteneurs analysés.
+                /// Maximum number of containers analyzed.
         #[arg(long, default_value_t = usize::MAX)]
         limit: usize,
     },
-    /// Mesure le dépliage UV d'un modèle de `20_EDIT`, sous-maille par sous-maille.
-    ///
-    /// Répond à la question que la mesure des planches laisse ouverte : quelle maille lit quelle
-    /// planche. Une planche pleine cadre posée sur une maille qui n'occupe qu'un coin du carré ne
-    /// peut pas rendre ce qu'elle dessine.
+        /// Measure the UV unwrap of a `20_EDIT` model, submesh by submesh.
+        ///
+        /// Answers the question sheet measurement leaves open: which mesh reads which sheet. A
+        /// full-frame sheet on a mesh that occupies only a corner of the square cannot render what it
+        /// draws.
     Depliage {
-        /// Nom ou fragment de chemin du modèle (`face51_nose01`, `_facebase/face51`).
+                /// Model name or path fragment (`face51_nose01`, `_facebase/face51`).
         modele: String,
-        /// Nombre maximum de modèles affichés.
+                /// Maximum number of models shown.
         #[arg(long, default_value_t = 8)]
         limit: usize,
     },
-    /// Localise les icônes de vignette dans les atlas d'interface, et les extrait en PNG.
+        /// Locate the thumbnail icons in the UI atlases, and extract them as PNG.
     Icons {
-        /// Répertoire de sortie ; sans lui, la commande ne fait que localiser.
+                /// Output directory; without it, the command only locates.
         #[arg(short, long)]
         out: Option<std::path::PathBuf>,
-        /// Préfixe VFS des atlas balayés.
+                /// VFS prefix of the swept atlases.
         #[arg(long, default_value = "menu/200_icon/21_icon_avatar/")]
         atlas_prefix: String,
-        /// Nombre maximum d'icônes extraites.
+                /// Maximum number of icons extracted.
         #[arg(long, default_value_t = usize::MAX)]
         limit: usize,
     },
 }
 
-/// Les cinq fichiers de l'éditeur, déjà décodés en JSON forme étiquetée.
+/// The editor files, already decoded to tagged-form JSON.
 struct Sources {
-    /// `chara_edit_<ver>.cfg.bin` — les 16 listes.
+        /// `chara_edit_<ver>.cfg.bin`: the lists.
     catalogue: CharaEditConfig,
-    /// `chara_edit_parts_type_config_<ver>.cfg.bin` — modèles de base par morphologie.
+        /// `chara_edit_parts_type_config_<ver>.cfg.bin`: base models per body type.
     types: nie_data::chara_edit::CharaEditPartsTypeConfig,
-    /// `20_EDIT/center.cfg.bin` — atlas de visage.
+        /// `20_EDIT/center.cfg.bin`: face atlas.
     center: Json,
-    /// `20_EDIT/texPartsDefaultPose.cfg.bin` — poses par défaut.
+        /// `20_EDIT/texPartsDefaultPose.cfg.bin`: default poses.
     pose: Json,
-    /// `20_EDIT/editCharaMdlParts.cfg.bin` — règles de modèle.
+        /// `20_EDIT/editCharaMdlParts.cfg.bin`: model rules.
     rules: Json,
-    /// `stem` → chemins du VFS, pour tout ce qui vit sous `20_EDIT/`.
+        /// `stem` -> VFS paths, for everything under `20_EDIT/`.
     assets: BTreeMap<String, Vec<String>>,
-    /// `menu_text` de la locale demandée : hash → libellé affiché par le jeu.
+        /// `menu_text` of the requested locale: hash -> label shown by the game.
     textes: BTreeMap<u32, String>,
-    /// Racine du jeu, gardée pour les passes qui rouvrent le VFS (extraction d'icônes).
+        /// Game root, kept for passes that reopen the VFS (icon extraction).
     game_dir: std::path::PathBuf,
-    /// Rubriques de l'éditeur dans l'ordre du jeu, `(hash, libellé)` — cf. [`rubriques`].
+        /// Editor sections in game order, `(hash, label)`, see [`rubriques`].
     rubriques: Vec<(u32, String)>,
-    /// Shaders de l'éditeur, `(nom de fichier, taille)` — cf. [`shaders_editeur`].
+        /// Editor shaders, `(file name, size)`, see [`shaders_editeur`].
     shaders: Vec<(String, u64)>,
-    /// Écrans `chara_edit*` du jeu, tels que le VFS les nomme.
+        /// Game `chara_edit*` screens, as the VFS names them.
     ecrans: Vec<String>,
-    /// Libellés de chaque panneau de l'éditeur — cf. [`panneaux`].
+        /// Labels of each editor panel, see [`panneaux`].
     panneaux: Vec<Panneau>,
 }
 
-/// Les **shaders de l'éditeur** : la famille `chr_edit_toon` de `dx11/shader/`.
+/// The editor shaders: the `chr_edit_toon` family of `dx11/shader/`.
 ///
-/// Le jeu range ses shaders par nom, et ceux de l'éditeur de personnage forment une famille
-/// nette — `chr_edit_toon` et ses variantes `_hair`, `_metal`, `_metal_adv`, `_cutout`, avec les
-/// suffixes `_eff_status(_tex)`. Chaque programme vient en triplet : `.fxbin` (descripteur),
+/// The game stores shaders by name, and those of the character editor form a clear family:
+/// `chr_edit_toon` and its variants `_hair`, `_metal`, `_metal_adv`, `_cutout`, with the
+/// `_eff_status(_tex)` suffixes. Each program comes as a triplet: `.fxbin` (descriptor),
 /// `.vfxo` (vertex), `.pfxo` (pixel).
 ///
-/// L'identification se fait par **nom**, pas par contenu : le bytecode est du DXBC compilé, que
-/// le dépôt ne désassemble pas. Rien ici ne prétend dire ce que ces shaders calculent.
+/// Identification is by name, not content: the bytecode is compiled DXBC, which the repo does
+/// not disassemble. Nothing here claims to say what these shaders compute.
 fn shaders_editeur(vfs: &Vfs) -> Vec<(String, u64)> {
     let mut out: Vec<(String, u64)> = vfs
         .iter()
@@ -926,7 +920,7 @@ fn shaders_editeur(vfs: &Vfs) -> Vec<(String, u64)> {
     out
 }
 
-/// Cherche l'unique fichier dont le nom de base commence par `prefix` et finit par `.cfg.bin`.
+/// Finds the unique file whose base name starts with `prefix` and ends with `.cfg.bin`.
 fn find_one(vfs: &Vfs, contains: &str, prefix: &str) -> Result<String> {
     let mut hits: Vec<String> = vfs
         .iter()
@@ -941,28 +935,28 @@ fn find_one(vfs: &Vfs, contains: &str, prefix: &str) -> Result<String> {
     hits.sort();
     hits.into_iter()
         .next()
-        .with_context(|| format!("{prefix}*.cfg.bin introuvable dans le VFS"))
+        .with_context(|| format!("{prefix}*.cfg.bin not found in the VFS"))
 }
 
-/// Lit un `cfg.bin` du VFS et le rend en JSON forme étiquetée (RDBN à listes ou T2B, indifféremment).
+/// Reads a `cfg.bin` from the VFS and returns it as tagged-form JSON (list-style RDBN or T2B, either).
 fn read_json(vfs: &Vfs, path: &str) -> Result<Json> {
-    let raw = vfs.read(path).with_context(|| format!("lecture {path}"))?;
-    cfgbin::to_tagged_json(&raw).with_context(|| format!("décodage cfg.bin {path}"))
+    let raw = vfs.read(path).with_context(|| format!("reading {path}"))?;
+    cfgbin::to_tagged_json(&raw).with_context(|| format!("decoding cfg.bin {path}"))
 }
 
 impl Sources {
-    /// Ouvre le VFS et charge les cinq fichiers plus l'index des assets de `20_EDIT/`.
+        /// Opens the VFS and loads the five files plus the asset index of `20_EDIT/`.
     fn load(game_dir: &Path) -> Result<Self> {
         let mut vfs = Vfs::new();
         vfs.init(game_dir.join("data"))
-            .context("init VFS depuis cpk_list.cfg.bin")?;
+            .context("init VFS from cpk_list.cfg.bin")?;
 
         let p_cat = find_one(&vfs, "/gamedata/character/", "chara_edit_")?;
-        // `chara_edit_parts_type_config_*` commence aussi par `chara_edit_` : le tri alphabétique
-        // rend le catalogue d'abord (`chara_edit_1.` < `chara_edit_p`), mais on cible le second
-        // par son propre préfixe pour ne pas dépendre de cet ordre.
+        // `chara_edit_parts_type_config_*` also starts with `chara_edit_`: alphabetical order
+        // puts the catalog first (`chara_edit_1.` < `chara_edit_p`), but the second one is
+        // targeted by its own prefix so as not to depend on that order.
         let p_types = find_one(&vfs, "/gamedata/character/", "chara_edit_parts_type_config")?;
-        eprintln!("  catalogue : {p_cat}");
+        eprintln!("  catalog   : {p_cat}");
         eprintln!("  types     : {p_types}");
 
         let catalogue = parse_chara_edit(&read_json(&vfs, &p_cat)?);
@@ -973,7 +967,7 @@ impl Sources {
                 .iter()
                 .map(|(p, _)| p.to_string())
                 .find(|p| p.contains(EDIT_ROOT) && p.ends_with(base))
-                .with_context(|| format!("{base} introuvable sous {EDIT_ROOT}"))?;
+                .with_context(|| format!("{base} not found under {EDIT_ROOT}"))?;
             read_json(&vfs, &path)
         };
         let center = in_edit("center.cfg.bin")?;
@@ -998,8 +992,8 @@ impl Sources {
             v.sort();
         }
 
-        // `menu_text` porte les libellés que le jeu affiche pour les personnalités et les
-        // avatars-fichiers ; le catalogue ne les référence que par CRC-32.
+        // `menu_text` holds the labels the game shows for personalities and
+        // avatar files; the catalog references them only by CRC-32.
         let mut textes = BTreeMap::new();
         if let Some(path) = vfs
             .iter()
@@ -1044,20 +1038,20 @@ impl Sources {
     }
 }
 
-/// Une icône de vignette localisée dans un atlas d'interface.
+/// A thumbnail icon located in a UI atlas.
 struct IconLoc {
-    /// Chemin VFS de l'atlas `g4tx`.
+        /// VFS path of the `g4tx` atlas.
     atlas: String,
-    /// Nom de la texture principale à décoder.
+        /// Name of the main texture to decode.
     texture: String,
-    /// Rectangle `(x, y, w, h)` de la région, si l'icône est une région d'atlas.
+        /// Region rectangle `(x, y, w, h)`, if the icon is an atlas region.
     rect: Option<(i16, i16, i16, i16)>,
 }
 
-/// Indexe les noms de textures et de régions des `g4tx` sous `prefix` : nom → où le décoder.
+/// Indexes the texture and region names of the `g4tx` files under `prefix`: name -> where to decode.
 ///
-/// Les vignettes de l'éditeur sont pour l'essentiel des **régions** d'un grand atlas
-/// (`avatar01_00.g4tx` fait 6 Mo) : le nom cherché n'est pas celui d'une texture entière.
+/// Editor thumbnails are mostly regions of a large atlas (`avatar01_00.g4tx`): the name looked
+/// up is not that of a whole texture.
 fn index_atlases(
     vfs: &Vfs,
     prefix: &str,
@@ -1097,7 +1091,7 @@ fn index_atlases(
     out
 }
 
-/// Découpe un rectangle dans un tampon RGBA, en bornant aux dimensions réelles.
+/// Crops a rectangle from an RGBA buffer, clamped to the real dimensions.
 fn crop_rgba(
     rgba: &[u8],
     w: u32,
@@ -1126,14 +1120,14 @@ fn crop_rgba(
     Some((cw, ch, out))
 }
 
-/// Dictionnaire `hash → nom` lu dans `hash_name` de la base de connaissance.
+/// `hash -> name` dictionary read from `hash_name` in the knowledge base.
 ///
-/// Sans base, le dictionnaire est vide : les icônes restent des hachages, tout le reste marche.
+/// Without a database the dictionary is empty: icons stay hashes, everything else works.
 fn icon_dict(db_path: &Path) -> BTreeMap<u32, String> {
     let mut out = BTreeMap::new();
     let Ok(db) = nie_index::Db::open(db_path) else {
         eprintln!(
-            "  (base {} illisible : icônes non résolues)",
+            "  (database {} unreadable: icons unresolved)",
             db_path.display()
         );
         return out;
@@ -1155,37 +1149,24 @@ fn icon_dict(db_path: &Path) -> BTreeMap<u32, String> {
     out
 }
 
-/// Les chemins VFS d'une ressource nommée (modèle, maillage, texture).
+/// VFS paths of a named resource (model, mesh, texture).
 fn resource_paths<'a>(src: &'a Sources, name: &str) -> &'a [String] {
     src.assets.get(name).map_or(&[][..], Vec::as_slice)
 }
 
-/// Récolte les nœuds T2B portant un hash en première variable → leurs variables suivantes.
+/// Centers of `TEX_PARTS_CENTER_INFO`, resolved to texture sheet names.
 ///
-/// Sert aux trois tables de `20_EDIT` : chacune indexe une ressource par son CRC-32.
-/// Les centres de `TEX_PARTS_CENTER_INFO`, résolus en **noms de planches de texture**.
+/// The table is keyed by `crc32`, and these hashes do NOT name part `resourceName`s, contrary to
+/// what the rest of the catalog assumes: they are the sub-texture names of the `_facetex/`
+/// containers, found by hashing the names the `.g4tx` files declare themselves. Every entry
+/// then resolves (`eyebrow_R_01`, `eyebrow_L_01`, `eye_R_01`, `eye_L_01`, `mouth_00`).
 ///
-/// La table est indexée par `crc32`, et ces hachages ne désignent PAS des `resourceName` de parts,
-/// contrairement à ce que le reste du catalogue suppose : ce sont les noms des sous-textures des
-/// conteneurs de `_facetex/` — mesuré le 2026-09-01 en hachant les noms que les `.g4tx` déclarent
-/// eux-mêmes. Les cinq entrées se résolvent alors intégralement :
+/// This is facial anatomy: eyebrows on top, eyes below, mouth at the bottom, left/right pairs
+/// mirrored exactly around `u = 0.5`. It is also the same extent measured on the control grid
+/// in `nie_formats::image_out`, so the file already said what a capture was used to recover.
 ///
-/// | planche | u | v | w | h |
-/// |---|---|---|---|---|
-/// | `eyebrow_R_01` | 0,3125 | 0,2275 | 0,1309 | 0,0654 |
-/// | `eyebrow_L_01` | 0,6875 | 0,2275 | 0,1309 | 0,0654 |
-/// | `eye_R_01` | 0,3076 | 0,3896 | 0,0986 | 0,0850 |
-/// | `eye_L_01` | 0,6924 | 0,3896 | 0,0986 | 0,0850 |
-/// | `mouth_00` | 0,4980 | 0,5996 | 0,1172 | 0,0137 |
-///
-/// C'est l'anatomie d'un visage : sourcils en haut, yeux dessous, bouche en bas, les paires
-/// gauche/droite en miroir exact autour de `u = 0,5`. Et c'est **la même emprise** que celle
-/// relevée à la grille témoin dans `nie_formats::image_out` — `eye_R_01` donne
-/// `u ∈ [0,258 ; 0,357]`, la grille avait lu `[0,262 ; 0,366]`. Le fichier disait donc déjà ce
-/// qu'une capture a servi à retrouver.
-///
-/// Cinq centres pour six familles : la table est une **référence**, pas une entrée par planche.
-/// Rien ici n'extrapole aux autres variantes.
+/// The table is a reference, not one entry per sheet. Nothing here extrapolates to the other
+/// variants.
 fn centres_de_planches(game_dir: &Path, center: &Json) -> BTreeMap<String, Vec<f64>> {
     let table = numeric_table_by_hash(center, "TEX_PARTS_CENTER_INFO");
     let mut vfs = Vfs::new();
@@ -1214,7 +1195,7 @@ fn centres_de_planches(game_dir: &Path, center: &Json) -> BTreeMap<String, Vec<f
     out
 }
 
-/// Vue résolue d'une part : ce que le catalogue dit, plus ce que le VFS et la base confirment.
+/// Resolved view of a part: what the catalog says, plus what the VFS and the database confirm.
 fn part_json(
     src: &Sources,
     icons: &BTreeMap<u32, String>,
@@ -1238,12 +1219,10 @@ fn part_json(
         "modeles2": if !p.resource_name_str2.starts_with("0x") { resource_paths(src, &p.resource_name_str2) } else { &[] },
         "icone": icons.get(&tex),
         "iconeHash": p.texture_name.to_hex_x8(),
-        // Pas de centre d'atlas ici : `TEX_PARTS_CENTER_INFO` est indexé par nom de PLANCHE, pas
-        // par `resourceName` de part. Le champ `atlasCentre` que portait cette vue cherchait
-        // `hash1` dans cette table et sortait nul sur les 502 parts, sans que rien ne le signale.
-        // Les cinq centres résolus vivent désormais à part — cf. [`centres_de_planches`].
-        // `TEX_PARTS_DEFAULT_TRANS_INFO` = (hash, mode entier, puis les composantes) : le mode
-        // est séparé ici, sinon il se lit comme une translation de 3,0 unité.
+        // No atlas center here: `TEX_PARTS_CENTER_INFO` is keyed by SHEET name, not by part
+        // `resourceName`. The resolved centers live separately, see [`centres_de_planches`].
+        // `TEX_PARTS_DEFAULT_TRANS_INFO` = (hash, integer mode, then the components): the mode
+        // is split off here, otherwise it reads as a translation of 3.0 units.
         "poseTransMode": trans.get(&hash1).and_then(|v| v.first()).map(|m| *m as i64),
         "poseTrans": trans.get(&hash1).map(|v| v.get(1..).unwrap_or_default()),
         "poseScale": scales.get(&hash1),
@@ -1251,11 +1230,11 @@ fn part_json(
     })
 }
 
-/// Point d'entrée de `nie avatar`.
+/// Entry point of `nie avatar`.
 pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
-    // L'analyse des planches ne lit que des textures : la servir avant le catalogue évite de
-    // décoder cinq `cfg.bin` et le bytecode des écrans pour rien, et la rend utilisable même là
-    // où le catalogue ne se résout pas.
+    // Sheet analysis reads only textures: serving it before the catalog avoids
+    // decoding five `cfg.bin` files and the screen bytecode for nothing, and keeps it usable even
+    // where the catalog does not resolve.
     if let AvatarCmd::Depliage { modele, limit } = cmd {
         return depliage(game_dir, modele, *limit);
     }
@@ -1291,9 +1270,9 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
 
     match cmd {
         AvatarCmd::Catalog => {
-            println!("chara_edit — catalogue de l'éditeur d'avatar");
+            println!("chara_edit — avatar editor catalog");
             println!(
-                "  {} parts, {} catégories, {} curseurs, {} couleurs, {} recettes ({} lignes)",
+                "  {} parts, {} categories, {} sliders, {} colors, {} recipes ({} rows)",
                 cfg.parts.len(),
                 cfg.parts_info.len(),
                 cfg.params.len(),
@@ -1302,37 +1281,37 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
                 cfg.preset_data.len()
             );
             println!(
-                "  {} voix, {} personnalités, {} tenues, {} avatars-fichiers",
+                "  {} voices, {} personalities, {} outfits, {} avatar files",
                 cfg.voices.len(),
                 cfg.personalities.len(),
                 cfg.fashions.len(),
                 cfg.preset_files.len()
             );
             println!(
-                "  code de partage : {} bits sur un alphabet de {} caractères ({} emplacements)",
+                "  share code: {} bits over an alphabet of {} characters ({} slots)",
                 cfg.code_bit_width(),
                 cfg.codes.len(),
                 cfg.recipes.len()
             );
             println!(
-                "  modèles de base : {} visages × morphologie, {} accessoires",
+                "  base models: {} faces × body type, {} accessories",
                 src.types.face_data.len(),
                 src.types.body_data.len()
             );
             println!(
-                "  tables de 20_EDIT : {} centres de planche, {} translations, {} échelles",
+                "  20_EDIT tables: {} sheet centers, {} translations, {} scales",
                 centres.len(),
                 trans.len(),
                 scales.len()
             );
-            // Les centres sont peu nombreux et disent où chaque part se pose sur le carré du
-            // visage : les afficher vaut mieux que les compter.
+            // The centers are few and show where each part sits on the face square:
+            // listing them is better than counting them.
             for (nom, rect) in &centres {
                 if let [u, v, w, h] = rect[..] {
                     println!("    {nom:<14} u {u:.4}  v {v:.4}  w {w:.4}  h {h:.4}");
                 }
             }
-            println!("\n  cat  parts  modèles  icônes  préfixe des ressources");
+            println!("\n  cat  parts   models   icons  resource prefix");
             for info in &cfg.parts_info {
                 let parts = cfg.parts_of(info.face_setting_type);
                 let with_model = parts
@@ -1363,15 +1342,15 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
                 .filter(|p| icons.contains_key(&(p.texture_name.get())))
                 .count();
             println!(
-                "\n  résolu : {total_model}/{} modèles dans le VFS, {total_icon}/{} icônes dans hash_name",
+                "\n  resolved: {total_model}/{} models in the VFS, {total_icon}/{} icons in hash_name",
                 cfg.parts.len(),
                 cfg.parts.len()
             );
             if src.rubriques.is_empty() {
-                println!("  rubriques : aucune suite de libellés trouvée dans le script de liste");
+                println!("  sections: no label run found in the list script");
             } else {
                 println!(
-                    "\n  rubriques de l'éditeur, dans l'ordre du jeu ({}) :",
+                    "\n  editor sections, in game order ({}):",
                     src.rubriques.len()
                 );
                 for (i, (h, libelle)) in src.rubriques.iter().enumerate() {
@@ -1381,7 +1360,7 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
             if !src.shaders.is_empty() {
                 let octets: u64 = src.shaders.iter().map(|(_, t)| *t).sum();
                 println!(
-                    "  shaders : {} fichiers `chr_edit_toon*` ({:.1} Kio) — identifies par nom, DXBC non desassemble",
+                    "  shaders: {} `chr_edit_toon*` files ({:.1} KiB), identified by name, DXBC not disassembled",
                     src.shaders.len(),
                     octets as f64 / 1024.0
                 );
@@ -1392,7 +1371,7 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
                 .filter(|p| src.textes.contains_key(&p.view_text_id.get()))
                 .count();
             println!(
-                "  libellés : {libelles}/{} personnalités nommées par menu_text (fr)",
+                "  labels: {libelles}/{} personalities named by menu_text (fr)",
                 cfg.personalities.len()
             );
         }
@@ -1417,17 +1396,17 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
                         .get(&(p.texture_name.get()))
                         .cloned()
                         .unwrap_or_else(|| p.texture_name.to_hex_x8()),
-                    paths.first().map_or("(modèle absent)", String::as_str)
+                    paths.first().map_or("(no model)", String::as_str)
                 );
             }
             if sel.len() > *limit {
-                println!("  … {} de plus (--limit)", sel.len() - *limit);
+                println!("  … {} more (--limit)", sel.len() - *limit);
             }
         }
 
         AvatarCmd::Preset { id } => match id {
             None => {
-                println!("{} visage(s) prédéfini(s)", cfg.preset_info.len());
+                println!("{} preset face(s)", cfg.preset_info.len());
                 for pi in &cfg.preset_info {
                     let nom = cfg
                         .parts
@@ -1441,12 +1420,12 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
                         .filter_map(|(bt, ok)| ok.then_some(*bt))
                         .collect();
                     println!(
-                        "  {} {:<20} {:>3} lignes  morphologies: {}",
+                        "  {} {:<20} {:>3} rows  body types: {}",
                         pi.preset_id.to_hex_x8(),
                         nom,
                         pi.data_count,
                         if morph.len() == 8 {
-                            String::from("toutes")
+                            String::from("all")
                         } else {
                             morph.join(",")
                         }
@@ -1455,7 +1434,7 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
             }
             Some(arg) => {
                 let hash = if let Some(hex) = arg.strip_prefix("0x") {
-                    u32::from_str_radix(hex, 16).context("hash de preset invalide")?
+                    u32::from_str_radix(hex, 16).context("invalid preset hash")?
                 } else {
                     cfgbin::crc32(arg.as_bytes())
                 };
@@ -1463,10 +1442,10 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
                 let recipe = cfg.recipe_of(key);
                 anyhow::ensure!(
                     !recipe.is_empty(),
-                    "aucune recette pour {arg} (0x{hash:08X})"
+                    "no recipe for {arg} (0x{hash:08X})"
                 );
-                println!("recette {arg} (0x{hash:08X}) — {} lignes", recipe.len());
-                println!("  empl.  cat  val  couleur  part");
+                println!("recipe {arg} (0x{hash:08X}) — {} rows", recipe.len());
+                println!("   slot  cat  val    color  part");
                 for line in recipe {
                     let r = cfg
                         .recipes
@@ -1509,7 +1488,7 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
                             .collect::<Vec<_>>(),
                         "couleurs": cfg.colors_of(info.face_setting_type).iter()
                             .map(|h| h.to_hex_x8()).collect::<Vec<_>>(),
-                        // Grille de la palette, recoupée par le nom des écrans du jeu.
+                        // Palette grid, cross-checked against the game screen names.
                         "ecran": ecran_de_categorie(&category_resource_prefix(cfg, info.face_setting_type), &src.ecrans),
                         "grillePalette": geometrie_palette(cfg.colors_of(info.face_setting_type).len())
                             .map(|(c, l)| json!({ "colonnes": c, "lignes": l })),
@@ -1540,9 +1519,9 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
 
             let doc = json!({
                 "source": "chara_edit + chara_edit_parts_type_config + 20_EDIT/{center,texPartsDefaultPose,editCharaMdlParts}",
-                // Où chaque planche se pose sur le carré du visage, en fraction de texture.
-                // Indexé par nom de PLANCHE — c'est ce que la table hache, et non un
-                // `resourceName` de part. Cf. `centres_de_planches`.
+                // Where each sheet sits on the face square, as a texture fraction.
+                // Keyed by SHEET name, which is what the table hashes, not a part
+                // `resourceName`. See `centres_de_planches`.
                 "centresDePlanches": centres.iter().map(|(nom, r)| json!({
                     "planche": nom,
                     "u": r.first(), "v": r.get(1), "largeur": r.get(2), "hauteur": r.get(3),
@@ -1555,20 +1534,20 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
                         "categorie": r.category, "param": r.category_param, "paramSub": r.category_param_sub,
                     })).collect::<Vec<_>>(),
                 },
-                // Ordre et libellés établis ; l'association à un `faceSettingType` ne l'est pas.
+                // Order and labels are established; the link to a `faceSettingType` is not.
                 "shaders": src.shaders.iter().map(|(nom, taille)| json!({
                     "fichier": nom, "octets": taille,
                 })).collect::<Vec<_>>(),
                 "rubriques": src.rubriques.iter().map(|(h, libelle)| json!({
                     "hash": format!("{h:08X}"), "libelle": libelle,
                 })).collect::<Vec<_>>(),
-                // Les sept axes du radar de statistiques, dans l'ordre du dessin.
+                // The statistics radar axes, in drawing order.
                 "statsRadar": STATS_RADAR.iter().map(|h| json!({
                     "hash": format!("{h:08X}"),
                     "libelle": src.textes.get(h).cloned().unwrap_or_default(),
                 })).collect::<Vec<_>>(),
-                // Les libellés que chaque panneau affiche, lus dans son script : c'est la source
-                // des titres de sections et de curseurs, aucun n'est écrit à la main.
+                // The labels each panel shows, read from its script: this is the source
+                // of section and slider titles, none is written by hand.
                 "panneaux": src.panneaux.iter().map(|p| json!({
                     "nom": p.nom,
                     "libelles": p.libelles.iter().map(|(h, l, g)| json!({
@@ -1621,9 +1600,9 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
                 std::fs::create_dir_all(parent).ok();
             }
             std::fs::write(out, serde_json::to_vec_pretty(&doc)?)
-                .with_context(|| format!("écriture {}", out.display()))?;
+                .with_context(|| format!("writing {}", out.display()))?;
             println!(
-                "écrit {} — {} catégories, {} parts, {} presets",
+                "wrote {} — {} categories, {} parts, {} presets",
                 out.display(),
                 cfg.parts_info.len(),
                 cfg.parts.len(),
@@ -1637,7 +1616,7 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
             out,
         } => return roi(ecran, layouts, out.as_deref()),
 
-        // Déjà traitées en tête, avant le chargement des sources.
+        // Already handled at the top, before the sources are loaded.
         AvatarCmd::Planches { .. } | AvatarCmd::Depliage { .. } => {}
 
         AvatarCmd::Icons {
@@ -1645,7 +1624,7 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
             atlas_prefix,
             limit,
         } => {
-            // Les noms voulus : l'icône de chaque part, résolue depuis `hash_name`.
+            // The wanted names: the icon of each part, resolved from `hash_name`.
             let voulus: BTreeMap<u32, String> = cfg
                 .parts
                 .iter()
@@ -1654,13 +1633,13 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
                     icons.get(&h).map(|n| (h, n.clone()))
                 })
                 .collect();
-            println!("{} icône(s) nommée(s) à localiser", voulus.len());
+            println!("{} named icon(s) to locate", voulus.len());
 
             let mut vfs = Vfs::new();
             vfs.init(src.game_dir.join("data")).context("init VFS")?;
             let localisees = index_atlases(&vfs, atlas_prefix, &voulus);
             println!(
-                "  {}/{} localisées dans les atlas sous {atlas_prefix}",
+                "  {}/{} located in atlases under {atlas_prefix}",
                 localisees.len(),
                 voulus.len()
             );
@@ -1670,7 +1649,7 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
                 .collect();
             if !manquantes.is_empty() {
                 println!(
-                    "  {} non localisée(s), ex. {}",
+                    "  {} not located, e.g. {}",
                     manquantes.len(),
                     manquantes
                         .iter()
@@ -1694,7 +1673,7 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
                 return Ok(());
             };
             std::fs::create_dir_all(dir)?;
-            // Un atlas de 6 Mo ne se décode qu'une fois, quel que soit le nombre d'icônes.
+            // An atlas is decoded only once, whatever the number of icons.
             let mut cache: BTreeMap<(String, String), Option<Rgba>> = BTreeMap::new();
             let (mut ecrits, mut echecs) = (0usize, 0usize);
             for (nom, loc) in localisees.iter().take(*limit) {
@@ -1726,7 +1705,7 @@ pub fn run(cmd: &AvatarCmd, game_dir: &Path, db_path: &Path) -> Result<()> {
                 }
             }
             println!(
-                "  {ecrits} PNG écrits dans {}, {echecs} échec(s)",
+                "  {ecrits} PNG written to {}, {echecs} failure(s)",
                 dir.display()
             );
         }

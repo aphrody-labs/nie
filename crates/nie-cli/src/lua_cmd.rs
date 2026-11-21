@@ -1,34 +1,32 @@
-//! `nie lua` — analyse statique des sources Lua, fichier isolé ou arborescence.
+//! `nie lua`: static analysis of Lua sources, single file or tree.
 //!
-//! L'analyse elle-même n'est pas ici : elle vient de [`nie_lua::static_analysis`], partagée
-//! avec le reste du moteur. Ce module ne fait que le parcours d'entrée et le rendu en lignes
-//! `clé=valeur`.
+//! The analysis itself lives in [`nie_lua::static_analysis`], shared with the rest of the
+//! engine. This module only walks the input and renders `key=value` lines.
 //!
-//! Chaque ligne de détail répète le chemin du fichier : c'est ce qui rend la sortie
-//! exploitable au `grep` quand l'entrée est une arborescence de plusieurs centaines de
-//! scripts, où un en-tête par fichier serait perdu à la première redirection.
+//! Every detail line repeats the file path, so the output stays greppable when the input is a
+//! tree of many scripts, where a per-file header would be lost on the first redirect.
 
 use std::path::Path;
 
 use anyhow::{Context, bail};
 
-/// Rubriques de détail demandées en plus de la ligne de synthèse.
+/// Detail sections requested in addition to the summary line.
 #[derive(Debug, Clone, Copy)]
 pub struct Detail {
-    /// Détaille les fonctions déclarées.
+    /// Detail the declared functions.
     pub functions: bool,
-    /// Détaille les cibles d'appel, agrégées par fréquence.
+    /// Detail the call targets, aggregated by frequency.
     pub calls: bool,
-    /// Détaille les chaînes littérales retenues.
+    /// Detail the retained string literals.
     pub strings: bool,
-    /// Détaille les chaînes passées à `CRC32`, avec leur hash.
+    /// Detail the strings passed to `CRC32`, with their hash.
     pub crc32: bool,
-    /// Nombre maximal de lignes par rubrique et par fichier ; `0` = illimité.
+    /// Maximum lines per section and per file; `0` = unlimited.
     pub limit: usize,
 }
 
 impl Detail {
-    /// Borne un nombre d'éléments par [`Self::limit`].
+    /// Caps an item count by [`Self::limit`].
     fn take(self, total: usize) -> usize {
         if self.limit == 0 {
             total
@@ -38,7 +36,7 @@ impl Detail {
     }
 }
 
-/// Compteurs cumulés sur une arborescence.
+/// Counters accumulated over a tree.
 #[derive(Default)]
 struct Totals {
     files: usize,
@@ -51,20 +49,19 @@ struct Totals {
     errors: usize,
 }
 
-/// Analyse un fichier `.lua` ou une arborescence et rend le résultat sur la sortie standard.
+/// Analyzes a `.lua` file or a tree and prints the result to standard output.
 ///
-/// # Erreurs
-/// Si `src` n'existe pas, si un fichier isolé n'est pas lisible, ou si une arborescence ne
-/// contient aucun `.lua`.
+/// # Errors
+/// If `src` does not exist, a single file is unreadable, or a tree contains no `.lua` file.
 pub fn run(src: &Path, detail: Detail) -> anyhow::Result<()> {
     if src.is_dir() {
         let files = nie_lua::static_analysis::collect_lua_files(src);
         if files.is_empty() {
-            bail!("aucun fichier .lua sous {}", src.display());
+            bail!("no .lua file under {}", src.display());
         }
         let mut totals = Totals::default();
         for path in &files {
-            // Un fichier illisible ne doit pas annuler le lot : on le signale et on continue.
+            // An unreadable file must not cancel the batch: report it and continue.
             match nie_lua::static_analysis::analyze_file(path) {
                 Ok(a) => report(&a, path, detail, &mut totals),
                 Err(e) => println!("lua={} ok=false reason={e}", path.display()),
@@ -87,13 +84,13 @@ pub fn run(src: &Path, detail: Detail) -> anyhow::Result<()> {
     }
 
     let analysis = nie_lua::static_analysis::analyze_file(src)
-        .with_context(|| format!("analyse de {}", src.display()))?;
+        .with_context(|| format!("analyzing {}", src.display()))?;
     let mut totals = Totals::default();
     report(&analysis, src, detail, &mut totals);
     Ok(())
 }
 
-/// Écrit la synthèse d'un fichier, puis les rubriques de détail demandées.
+/// Prints a file's summary, then the requested detail sections.
 fn report(
     a: &nie_lua::static_analysis::LuaAnalysis,
     path: &Path,
@@ -124,8 +121,8 @@ fn report(
     totals.crc32 += a.crc32_strings.len();
     totals.errors += a.errors.len();
 
-    // Les erreurs sortent sans qu'on les demande : c'est le seul résultat qui invalide
-    // tout le reste de l'analyse, le taire par défaut serait trompeur.
+    // Errors are printed unasked: they are the only result that invalidates the rest of the
+    // analysis, so hiding them by default would mislead.
     for e in a.errors.iter().take(detail.take(a.errors.len())) {
         println!(
             "error={path} line={} col={} kind={} text={}",
@@ -172,8 +169,8 @@ fn report(
             .iter()
             .take(detail.take(a.crc32_strings.len()))
         {
-            // Le moteur adresse ces noms par leur hash : sans lui, la chaîne ne se
-            // raccorde à rien dans les données binaires.
+            // The engine addresses these names by hash: without it, the string does not
+            // map to anything in the binary data.
             println!(
                 "crc32={path} value={s} hash=0x{:08X}",
                 nie_formats::cfgbin::crc32(s.as_bytes())
@@ -208,7 +205,7 @@ mod tests {
             limit: 3,
         };
         assert_eq!(d.take(100), 3);
-        // Une rubrique plus courte que la limite n'est pas allongée.
+        // A section shorter than the limit is not extended.
         assert_eq!(d.take(2), 2);
     }
 

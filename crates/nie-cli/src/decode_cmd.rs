@@ -1,7 +1,7 @@
-//! `nie decode` (fichier ou arborescence → JSON / PNG) et `nie format` (détection seule).
+//! `nie decode` (file or tree -> JSON / PNG) and `nie format` (detection only).
 //!
-//! Le dispatch de format n'est pas réimplémenté ici : il vient de
-//! [`nie_formats::decode`], partagé avec la FFI. Le parallélisme vient de rayon.
+//! Format dispatch is not reimplemented here: it comes from [`nie_formats::decode`], shared with
+//! the FFI. Parallelism comes from rayon.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -10,18 +10,18 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use anyhow::{Context, bail};
 use rayon::prelude::*;
 
-/// Extensions décodées vers JSON.
+/// Extensions decoded to JSON.
 const EXT_JSON: &[&str] = &[
     "bin", "objbin", "g4pkm", "lip", "p3lip", "mev", "mevbin", "g4md", "g4pk", "cfg",
 ];
-/// Extensions décodées vers PNG.
+/// Extensions decoded to PNG.
 const EXT_PNG: &[&str] = &["g4tx"];
 
-/// Décode un tampon : rend `(octets, extension de sortie)`.
+/// Decodes a buffer: returns `(bytes, output extension)`.
 ///
-/// G4TX passe par le décodeur de textures (PNG) ; tout le reste par le dispatch JSON. `basename`
-/// (le nom du fichier source sans extension) départage les conteneurs multi-textures — sans lui,
-/// un `icon_item05.g4tx` rendrait une de ses 80 icônes au hasard.
+/// G4TX goes through the texture decoder (PNG); everything else goes through the JSON dispatch.
+/// `basename` (the source file name without extension) disambiguates multi-texture containers;
+/// without it, an `icon_item05.g4tx` would render one of its icons at random.
 fn decode_bytes(
     data: &[u8],
     basename: &str,
@@ -31,18 +31,17 @@ fn decode_bytes(
         return nie_formats::g4tx_decode::decode_best_to_png(data, basename)
             .map(|png| (png, "png", "g4tx"));
     }
-    // Le bytecode Lua 5.2 (`\x1bLua`, les 1 197 `.lua.bin` du jeu) n'a plus de branche ici :
-    // `nie-formats` dépend désormais de `nie-lua` (feature `lua`) et le route lui-même, donc la
-    // FFI et le MCP le décodent aussi. Une seule table de dispatch, comme le dit l'en-tête.
+    // Lua bytecode is routed by `nie-formats` itself (feature `lua`), so the FFI and the MCP
+    // decode it too. One dispatch table, as the header says.
     nie_formats::decode::decode(data).map(|d| (d.json, "json", d.format))
 }
 
-/// Décode un fichier unique vers `out` (ou à côté de la source si `out` est un répertoire).
+/// Decodes a single file to `out` (or next to the source if `out` is a directory).
 ///
-/// # Erreurs
-/// Lecture impossible, format non reconnu, écriture impossible.
+/// # Errors
+/// Unreadable input, unrecognized format, or write failure.
 pub fn file(src: &Path, out: Option<&Path>, quiet: bool) -> anyhow::Result<()> {
-    let data = fs::read(src).with_context(|| format!("lecture de {}", src.display()))?;
+    let data = fs::read(src).with_context(|| format!("reading {}", src.display()))?;
     let as_png = src
         .extension()
         .and_then(|e| e.to_str())
@@ -51,7 +50,7 @@ pub fn file(src: &Path, out: Option<&Path>, quiet: bool) -> anyhow::Result<()> {
     let basename = src.file_stem().and_then(|s| s.to_str()).unwrap_or_default();
     let Some((bytes, ext, format)) = decode_bytes(&data, basename, as_png) else {
         bail!(
-            "format non décodé : {} ({})",
+            "undecoded format: {} ({})",
             src.display(),
             nie_formats::decode::format_name(&data)
         );
@@ -67,7 +66,7 @@ pub fn file(src: &Path, out: Option<&Path>, quiet: bool) -> anyhow::Result<()> {
     if let Some(parent) = dest.parent() {
         fs::create_dir_all(parent).ok();
     }
-    fs::write(&dest, &bytes).with_context(|| format!("écriture de {}", dest.display()))?;
+    fs::write(&dest, &bytes).with_context(|| format!("writing {}", dest.display()))?;
     if !quiet {
         println!(
             "decode={} format={} out={} bytes={}",
@@ -80,7 +79,7 @@ pub fn file(src: &Path, out: Option<&Path>, quiet: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Liste récursivement les fichiers décodables d'un répertoire.
+/// Recursively lists the decodable files of a directory.
 fn collect(dir: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
     let Ok(rd) = fs::read_dir(dir) else {
@@ -100,17 +99,17 @@ fn collect(dir: &Path) -> Vec<PathBuf> {
     out
 }
 
-/// Décode récursivement un répertoire vers `out`, en parallèle (rayon).
+/// Recursively decodes a directory to `out`, in parallel (rayon).
 ///
-/// L'arborescence source est préservée sous `out`. Les fichiers dont le format n'est pas
-/// reconnu sont comptés, pas fatals : un dump complet contient toujours des inconnus.
+/// The source tree is preserved under `out`. Files whose format is not recognized are counted,
+/// not fatal: a full dump always contains unknown files.
 ///
-/// # Erreurs
-/// Si la source n'est pas lisible.
+/// # Errors
+/// If the source is unreadable.
 pub fn dir(src: &Path, out: &Path, quiet: bool) -> anyhow::Result<()> {
     let files = collect(src);
     if files.is_empty() {
-        bail!("aucun fichier décodable sous {}", src.display());
+        bail!("no decodable file under {}", src.display());
     }
     let ok = AtomicUsize::new(0);
     let skipped = AtomicUsize::new(0);
@@ -154,8 +153,8 @@ pub fn dir(src: &Path, out: &Path, quiet: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Liste récursivement les `*.cfg.bin` d'un répertoire (famille RDBN/T2B uniquement — les
-/// textures/lua n'ont pas de forme « étiquetée »).
+/// Recursively lists the `*.cfg.bin` files of a directory (RDBN/T2B family only; textures and
+/// Lua have no tagged form).
 #[cfg(feature = "host")]
 fn collect_cfg_bin(dir: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
@@ -173,21 +172,21 @@ fn collect_cfg_bin(dir: &Path) -> Vec<PathBuf> {
     out
 }
 
-/// Régénère, à côté de chaque `*.cfg.bin` sous `dir`, le `*.cfg.bin.json` en forme **étiquetée**
-/// (`nie_formats::cfgbin::to_tagged_json` — RDBN `{lists}` / T2B `{entries}`) : c'est la forme
-/// que lisent les parseurs typés de `nie-data` (golden tests, `export_*`), à distinguer du JSON
-/// structurel brut que rend `nie decode` sans `--typed`.
+/// Regenerates, next to each `*.cfg.bin` under `dir`, the `*.cfg.bin.json` in **tagged** form
+/// (`nie_formats::cfgbin::to_tagged_json`, RDBN `{lists}` / T2B `{entries}`). This is the form
+/// read by the typed parsers of `nie-data` (golden tests, `export_*`), as opposed to the raw
+/// structural JSON that `nie decode` emits without `--typed`.
 ///
-/// `force=false` saute un `.json` déjà plus récent que son `.cfg.bin` (même convention que
-/// `DataPathExporter.cs`, pour rester idempotent sur un corpus déjà à jour).
+/// `force=false` skips a `.json` already newer than its `.cfg.bin` (same convention as
+/// `DataPathExporter.cs`), so the call is idempotent on an up-to-date corpus.
 ///
-/// # Erreurs
-/// Si `dir` ne contient aucun `.cfg.bin`.
+/// # Errors
+/// If `dir` contains no `.cfg.bin`.
 #[cfg(feature = "host")]
 pub fn refresh_typed(dir: &Path, force: bool, quiet: bool) -> anyhow::Result<()> {
     let files = collect_cfg_bin(dir);
     if files.is_empty() {
-        bail!("aucun .cfg.bin sous {}", dir.display());
+        bail!("no .cfg.bin under {}", dir.display());
     }
     let ok = AtomicUsize::new(0);
     let skipped_fresh = AtomicUsize::new(0);
@@ -239,18 +238,18 @@ pub fn refresh_typed(dir: &Path, force: bool, quiet: bool) -> anyhow::Result<()>
     Ok(())
 }
 
-/// Rapporte le format d'un fichier ou de chaque fichier d'une arborescence, sans rien écrire.
+/// Reports the format of a file or of every file in a tree, writing nothing.
 ///
-/// Deux colonnes distinctes : `detect` = ce que dit le magic, `decode` = le parseur qui réussit
-/// réellement. Elles divergent sur les conteneurs T2B, que la détection range tous en `inconnu`.
+/// Two distinct columns: `detect` is what the magic bytes say, `decode` is the parser that
+/// actually succeeds. They diverge on T2B containers, which detection reports as `unknown`.
 ///
-/// # Erreurs
-/// Si la source est illisible ou si un répertoire ne contient aucun fichier décodable.
+/// # Errors
+/// If the source is unreadable or a directory contains no decodable file.
 pub fn format(src: &Path) -> anyhow::Result<()> {
     let files = if src.is_dir() {
         let f = collect(src);
         if f.is_empty() {
-            bail!("aucun fichier décodable sous {}", src.display());
+            bail!("no decodable file under {}", src.display());
         }
         f
     } else {
@@ -258,7 +257,7 @@ pub fn format(src: &Path) -> anyhow::Result<()> {
     };
 
     for p in &files {
-        let data = fs::read(p).with_context(|| format!("lecture de {}", p.display()))?;
+        let data = fs::read(p).with_context(|| format!("reading {}", p.display()))?;
         let detect = nie_formats::decode::format_name(&data);
         let decode = nie_formats::decode::decode(&data).map_or("-", |d| d.format);
         println!(
@@ -278,9 +277,9 @@ mod tests {
 
     #[test]
     fn les_extensions_png_et_json_sont_disjointes() {
-        // Un même suffixe dans les deux listes rendrait la sortie non déterministe.
+        // The same suffix in both lists would make the output non-deterministic.
         for e in EXT_PNG {
-            assert!(!EXT_JSON.contains(e), "{e} est dans les deux listes");
+            assert!(!EXT_JSON.contains(e), "{e} is in both lists");
         }
     }
 

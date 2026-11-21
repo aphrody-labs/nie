@@ -23,13 +23,13 @@ const MAX_LS_LIMIT: usize = 5000;
 
 #[derive(Debug, Args)]
 pub struct ServeArgs {
-    /// Address to bind (`127.0.0.1` by default; `0.0.0.0` inside Docker/Kubernetes).
+    /// Address to bind (127.0.0.1 by default; 0.0.0.0 to listen on every interface).
     #[arg(long, env = "NIE_HOST", default_value = "127.0.0.1")]
     pub host: String,
     /// TCP port to listen on.
     #[arg(long, env = "NIE_PORT", default_value_t = 8790)]
     pub port: u16,
-    /// Optional local directory or remote URI (`r2://...`, `ievr-vfs:`, `s3://...`, `https://...`).
+    /// Local directory or remote URI (http://, https://, ssh://, sftp://, rclone://, r2://, s3://, gdrive://).
     #[arg(long, env = "NIE_GAME_SOURCE")]
     pub source: Option<String>,
     /// Fail startup immediately if the VFS source cannot be mounted.

@@ -1,14 +1,7 @@
-//! `nie img` — édition d'image en ligne de commande.
+//! `nie img`: command-line image editing.
 //!
-//! Socle : [`image`], la bibliothèque de référence de l'écosystème Rust (décodeurs/encodeurs
-//! PNG, JPEG, WebP, GIF, BMP, TIFF + opérations géométriques). Elle est déjà une dépendance du
-//! crate pour le pré-décodage des sprites de menu ; l'exposer en commandes évite de sortir du
-//! dépôt pour un recadrage ou une conversion.
-//!
-//! Ce qui n'est PAS pris : `imageproc` (dessin, filtres, vision) et `fast_image_resize`
-//! (redimensionnement SIMD). Le premier ne sert pas l'édition simple, le second n'apporte de
-//! gain qu'à un volume qu'on n'a pas ici — `image` redimensionne en Lanczos3, qui est le bon
-//! filtre par défaut.
+//! Built on [`image`] (PNG, JPEG, WebP, GIF, BMP, TIFF codecs and geometric operations), already
+//! a dependency of this crate for menu sprite pre-decoding. Resizing uses Lanczos3 by default.
 
 use std::path::{Path, PathBuf};
 
@@ -17,29 +10,29 @@ use image::imageops::FilterType;
 use image::{GenericImageView, ImageReader};
 use nie_formats::imgmetric::{self, Roi, RoiKind, ScoreRegion};
 
-/// Charge une image en devinant le format par le contenu, pas par l'extension.
+/// Loads an image, guessing the format from the content, not the extension.
 fn load(src: &Path) -> Result<image::DynamicImage> {
     ImageReader::open(src)
-        .with_context(|| format!("ouverture {}", src.display()))?
+        .with_context(|| format!("opening {}", src.display()))?
         .with_guessed_format()
-        .with_context(|| format!("format indéterminé : {}", src.display()))?
+        .with_context(|| format!("unknown format: {}", src.display()))?
         .decode()
-        .with_context(|| format!("décodage {}", src.display()))
+        .with_context(|| format!("decoding {}", src.display()))
 }
 
-/// Enregistre en déduisant l'encodeur de l'extension de `dst`.
+/// Saves, picking the encoder from the extension of `dst`.
 fn save(img: &image::DynamicImage, dst: &Path) -> Result<()> {
     if let Some(parent) = dst.parent()
         && !parent.as_os_str().is_empty()
     {
         std::fs::create_dir_all(parent)
-            .with_context(|| format!("création {}", parent.display()))?;
+            .with_context(|| format!("creating {}", parent.display()))?;
     }
     img.save(dst)
-        .with_context(|| format!("écriture {}", dst.display()))
+        .with_context(|| format!("writing {}", dst.display()))
 }
 
-/// Traduit le nom d'un filtre en [`FilterType`].
+/// Maps a filter name to a [`FilterType`].
 fn filter_of(name: &str) -> Result<FilterType> {
     Ok(match name.to_ascii_lowercase().as_str() {
         "nearest" => FilterType::Nearest,
@@ -48,53 +41,53 @@ fn filter_of(name: &str) -> Result<FilterType> {
         "gaussian" => FilterType::Gaussian,
         "lanczos3" | "lanczos" => FilterType::Lanczos3,
         other => {
-            bail!("filtre inconnu « {other} » (nearest|triangle|catmullrom|gaussian|lanczos3)")
+            bail!("unknown filter \"{other}\" (nearest|triangle|catmullrom|gaussian|lanczos3)")
         }
     })
 }
 
-/// `nie img recolor` — applique le filtre couleur de [`nie_formats::recolor`] à une image.
+/// `nie img recolor`: applies the [`nie_formats::recolor`] color filter to an image.
 ///
-/// L'image est forcée en RGBA8 : le filtre travaille sur quatre octets par pixel, et une source
-/// en niveaux de gris ou en RGB doit donc porter un canal alpha avant d'y entrer. L'alpha
-/// ressort intact — ce filtre ne touche jamais qu'aux trois premiers canaux.
+/// The image is forced to RGBA8: the filter works on four bytes per pixel, so a grayscale or RGB
+/// source needs an alpha channel first. Alpha comes out untouched; the filter only changes the
+/// first three channels.
 pub fn recolor(src: &Path, dst: &Path, filtre: &nie_formats::recolor::Recolor) -> Result<()> {
     if filtre.is_identity() {
-        bail!("le filtre ne change rien — préciser --teinte, --saturation, --valeur ou --rampe");
+        bail!("the filter changes nothing: set --teinte, --saturation, --valeur or --rampe");
     }
     let img = load(src)?;
     let (w, h) = img.dimensions();
     let mut rgba = img.to_rgba8();
     filtre.apply_rgba(rgba.as_mut());
     save(&image::DynamicImage::ImageRgba8(rgba), dst)?;
-    println!("recoloré  {} → {} ({w}×{h})", src.display(), dst.display());
+    println!("recolored  {} -> {} ({w}x{h})", src.display(), dst.display());
     Ok(())
 }
 
-/// `nie img info` — dimensions, format et couleur, sans rien réécrire.
+/// `nie img info`: dimensions, format and color; writes nothing.
 pub fn info(src: &Path) -> Result<()> {
     let reader = ImageReader::open(src)
-        .with_context(|| format!("ouverture {}", src.display()))?
+        .with_context(|| format!("opening {}", src.display()))?
         .with_guessed_format()
-        .with_context(|| format!("format indéterminé : {}", src.display()))?;
+        .with_context(|| format!("unknown format: {}", src.display()))?;
     let format = reader.format();
     let img = reader
         .decode()
-        .with_context(|| format!("décodage {}", src.display()))?;
+        .with_context(|| format!("decoding {}", src.display()))?;
     let (w, h) = img.dimensions();
     let taille = std::fs::metadata(src).map(|m| m.len()).unwrap_or(0);
-    println!("  fichier   {}", src.display());
+    println!("  file      {}", src.display());
     println!(
         "  format    {}",
-        format.map_or("inconnu", |f| f.extensions_str()[0])
+        format.map_or("unknown", |f| f.extensions_str()[0])
     );
     println!("  dimensions {w}x{h}");
-    println!("  couleur   {:?}", img.color());
-    println!("  octets    {taille}");
+    println!("  color     {:?}", img.color());
+    println!("  bytes     {taille}");
     Ok(())
 }
 
-/// `nie img resize` — redimensionne, en préservant le ratio si une seule dimension est donnée.
+/// `nie img resize`: resizes, preserving the ratio if only one dimension is given.
 pub fn resize(
     src: &Path,
     dst: &Path,
@@ -107,7 +100,7 @@ pub fn resize(
     let (w0, h0) = img.dimensions();
     let (tw, th) = match (width, height) {
         (Some(w), Some(h)) => (w, h),
-        // Une seule dimension : l'autre suit le ratio, en arrondissant au plus proche.
+        // One dimension only: the other follows the ratio, rounded to nearest.
         (Some(w), None) => (
             w,
             ((u64::from(h0) * u64::from(w)) as f64 / f64::from(w0)).round() as u32,
@@ -116,13 +109,13 @@ pub fn resize(
             ((u64::from(w0) * u64::from(h)) as f64 / f64::from(h0)).round() as u32,
             h,
         ),
-        (None, None) => bail!("préciser au moins --width ou --height"),
+        (None, None) => bail!("set at least --width or --height"),
     };
     if tw == 0 || th == 0 {
-        bail!("dimensions cibles nulles ({tw}x{th})");
+        bail!("target dimensions are zero ({tw}x{th})");
     }
     let f = filter_of(filter)?;
-    // `resize_exact` déforme ; `resize` inscrit dans la boîte en gardant le ratio.
+    // `resize_exact` distorts; `resize` fits inside the box keeping the ratio.
     let out = if exact {
         img.resize_exact(tw, th, f)
     } else {
@@ -137,12 +130,12 @@ pub fn resize(
     Ok(())
 }
 
-/// `nie img crop` — recadre une région, en refusant de sortir de l'image.
+/// `nie img crop`: crops a region, refusing to go outside the image.
 pub fn crop(src: &Path, dst: &Path, x: u32, y: u32, w: u32, h: u32) -> Result<()> {
     let img = load(src)?;
     let (iw, ih) = img.dimensions();
     if x.saturating_add(w) > iw || y.saturating_add(h) > ih {
-        bail!("région {x},{y} {w}x{h} hors de l'image {iw}x{ih}");
+        bail!("region {x},{y} {w}x{h} is outside image {iw}x{ih}");
     }
     let out = img.crop_imm(x, y, w, h);
     save(&out, dst)?;
@@ -150,7 +143,7 @@ pub fn crop(src: &Path, dst: &Path, x: u32, y: u32, w: u32, h: u32) -> Result<()
     Ok(())
 }
 
-/// `nie img convert` — réencode vers le format déduit de l'extension de sortie.
+/// `nie img convert`: re-encodes to the format implied by the output extension.
 pub fn convert(src: &Path, dst: &Path) -> Result<()> {
     let img = load(src)?;
     let (w, h) = img.dimensions();
@@ -159,10 +152,10 @@ pub fn convert(src: &Path, dst: &Path) -> Result<()> {
     Ok(())
 }
 
-/// `nie img composite` — superpose `overlay` sur `base` à la position donnée (alpha respecté).
+/// `nie img composite`: overlays `overlay` on `base` at the given position (alpha respected).
 ///
-/// C'est l'opération qui recompose un visuel du jeu séparé en calques : un fond et sa couche
-/// de texte localisée vivent dans deux `.g4tx` distincts.
+/// This recomposes a game visual split into layers: a background and its localized text layer
+/// live in two separate `.g4tx` files.
 pub fn composite(base: &Path, overlay: &Path, dst: &Path, x: i64, y: i64) -> Result<()> {
     let mut bottom = load(base)?.to_rgba8();
     let top = load(overlay)?.to_rgba8();
@@ -178,13 +171,13 @@ pub fn composite(base: &Path, overlay: &Path, dst: &Path, x: i64, y: i64) -> Res
     Ok(())
 }
 
-/// Assemble plusieurs images en planche (sprite sheet) et écrit son manifeste.
+/// Assembles several images into a sprite sheet and writes its manifest.
 ///
-/// Le manifeste est ce qui distingue une planche d'une image : sans les rectangles, la sortie
-/// se regarde mais ne se réutilise pas. Il porte, pour chaque case, son nom (le nom du fichier
-/// source, sans extension) et le rectangle **de l'image**, jamais celui de la cellule.
+/// The manifest is what makes a sheet reusable: without the rectangles the output can only be
+/// looked at. For each cell it holds the name (source file name without extension) and the
+/// rectangle of the image itself, never that of the cell.
 ///
-/// Aucune image n'est redimensionnée : les plus petites sont centrées dans leur cellule.
+/// No image is resized: smaller ones are centered in their cell.
 pub fn planche(
     srcs: &[PathBuf],
     dst: &Path,
@@ -195,7 +188,7 @@ pub fn planche(
     fond: [u8; 4],
 ) -> Result<()> {
     if srcs.is_empty() {
-        anyhow::bail!("aucune image source");
+        anyhow::bail!("no source image");
     }
 
     let mut cases = Vec::with_capacity(srcs.len());
@@ -203,8 +196,8 @@ pub fn planche(
         let img = load(src)?.to_rgba8();
         let (w, h) = img.dimensions();
         cases.push(nie_formats::image_out::CasePlanche {
-            // Le nom du fichier fait le nom de la case : c'est ce que l'appelant reconnaîtra
-            // dans le manifeste, et il l'a déjà choisi en nommant ses fichiers.
+            // The file name is the cell name: it is what the caller will recognize in the
+            // manifest, since they already chose it when naming their files.
             nom: src.file_stem().map_or_else(
                 || "sans-nom".to_string(),
                 |s| s.to_string_lossy().into_owned(),
@@ -223,7 +216,7 @@ pub fn planche(
     let p = nie_formats::image_out::composer_planche(&cases, colonnes, marge, gouttiere, fond);
 
     let img = image::RgbaImage::from_raw(p.largeur, p.hauteur, p.rgba)
-        .context("planche composée incohérente (dimensions vs tampon)")?;
+        .context("inconsistent composed sheet (dimensions vs buffer)")?;
     save(&image::DynamicImage::ImageRgba8(img), dst)?;
 
     if let Some(chemin) = manifeste {
@@ -253,14 +246,14 @@ pub fn planche(
             && !parent.as_os_str().is_empty()
         {
             std::fs::create_dir_all(parent)
-                .with_context(|| format!("création {}", parent.display()))?;
+                .with_context(|| format!("creating {}", parent.display()))?;
         }
         std::fs::write(chemin, serde_json::to_vec_pretty(&doc)?)
-            .with_context(|| format!("écriture {}", chemin.display()))?;
+            .with_context(|| format!("writing {}", chemin.display()))?;
     }
 
     println!(
-        "planche {}x{} — {} case(s), {} colonne(s) -> {}{}",
+        "sheet {}x{}: {} cell(s), {} column(s) -> {}{}",
         p.largeur,
         p.hauteur,
         p.cases.len(),
@@ -271,23 +264,23 @@ pub fn planche(
     Ok(())
 }
 
-/// Lit une couleur `RRGGBB` ou `RRGGBBAA` hexadécimale.
+/// Parses a hexadecimal `RRGGBB` or `RRGGBBAA` color.
 ///
-/// Sans alpha, la couleur est opaque : un fond que l'appelant écrit à six chiffres est un fond
-/// qu'il veut voir, pas un fond transparent.
+/// Without alpha the color is opaque: a six-digit background is one the caller wants to see, not
+/// a transparent one.
 pub fn couleur_hex(s: &str) -> Result<[u8; 4]> {
     let t = s.trim_start_matches('#');
     let lire = |i: usize| -> Result<u8> {
-        u8::from_str_radix(&t[i..i + 2], 16).with_context(|| format!("couleur invalide : {s}"))
+        u8::from_str_radix(&t[i..i + 2], 16).with_context(|| format!("invalid color: {s}"))
     };
     match t.len() {
         6 => Ok([lire(0)?, lire(2)?, lire(4)?, 255]),
         8 => Ok([lire(0)?, lire(2)?, lire(4)?, lire(6)?]),
-        _ => anyhow::bail!("couleur attendue en RRGGBB ou RRGGBBAA, reçu : {s}"),
+        _ => anyhow::bail!("expected RRGGBB or RRGGBBAA color, got: {s}"),
     }
 }
 
-/// Sous-commandes de `nie img`, résolues depuis `main`.
+/// `nie img` subcommands, resolved from `main`.
 pub enum Op {
     Info {
         src: PathBuf,
@@ -343,7 +336,7 @@ pub enum Op {
     },
 }
 
-/// Exécute une opération d'image.
+/// Runs an image operation.
 pub fn run(op: &Op) -> Result<()> {
     match op {
         Op::Info { src } => info(src),
@@ -407,10 +400,11 @@ pub fn run(op: &Op) -> Result<()> {
     }
 }
 
-/// Lit un fichier de régions.
+/// Reads a regions file.
 ///
-/// Forme : `[{"nom": "avatar3d", "rect": [x, y, w, h], "kind": "dynamique"}]`. `kind` vaut
-/// `dynamique` (retirée de la mesure) ou `nommee` (mesurée à part, sans sortir du global).
+/// Shape: `[{"nom": "avatar3d", "rect": [x, y, w, h], "kind": "dynamique"}]`. `kind` is
+/// `dynamique` (excluded from the measurement) or `nommee` (measured separately, still counted
+/// in the global score).
 fn charger_rois(chemin: &Path) -> Result<Vec<Roi>> {
     #[derive(serde::Deserialize)]
     struct Entree {
@@ -420,16 +414,16 @@ fn charger_rois(chemin: &Path) -> Result<Vec<Roi>> {
         kind: Option<String>,
     }
     let txt =
-        std::fs::read_to_string(chemin).with_context(|| format!("lecture {}", chemin.display()))?;
+        std::fs::read_to_string(chemin).with_context(|| format!("reading {}", chemin.display()))?;
     let brut: Vec<Entree> =
-        serde_json::from_str(&txt).with_context(|| format!("format {}", chemin.display()))?;
+        serde_json::from_str(&txt).with_context(|| format!("parsing {}", chemin.display()))?;
     brut.into_iter()
         .map(|e| {
             let kind = match e.kind.as_deref().unwrap_or("nommee") {
                 "dynamique" => RoiKind::Dynamique,
                 "nommee" | "nommée" => RoiKind::Nommee,
                 autre => bail!(
-                    "kind inconnu « {autre} » (dynamique|nommee) pour « {} »",
+                    "unknown kind \"{autre}\" (dynamique|nommee) for \"{}\"",
                     e.nom
                 ),
             };
@@ -442,20 +436,19 @@ fn charger_rois(chemin: &Path) -> Result<Vec<Roi>> {
         .collect()
 }
 
-/// Une ligne de tableau pour un score.
+/// One table row for a score.
 fn ligne_score(s: &ScoreRegion) -> String {
     format!(
-        "  {:<22} {:>10} px   T0 {:>6.2} %   ΔE≤1 {:>6.2} %   ΔE moy {:>6.2}   p99 {:>6.2}   SSIM {:>6.4}",
+        "  {:<22} {:>10} px   T0 {:>6.2} %   ΔE≤1 {:>6.2} %   ΔE mean {:>6.2}   p99 {:>6.2}   SSIM {:>6.4}",
         s.nom, s.px, s.exact_pct, s.de1_pct, s.de_moyen, s.de_p99, s.ssim
     )
 }
 
-/// `nie img diff` — compare un rendu à une capture du vrai jeu.
+/// `nie img diff`: compares a render to a capture of the real game.
 ///
-/// La sortie est **par région** : un score global mélange toujours une zone juste et une zone
-/// fausse, et ne dit pas laquelle. Les régions marquées `dynamique` (personnage 3D, particules,
-/// curseur) sortent de la mesure, et la part de surface ainsi retirée est imprimée — un score dont
-/// on ignore ce qu'il ne couvre pas ne vaut rien.
+/// Output is per region: a global score always mixes a correct area with a wrong one without
+/// saying which. Regions marked `dynamique` (3D character, particles, cursor) are excluded from
+/// the measurement, and the surface share removed this way is printed.
 pub fn diff(
     rendu: &Path,
     reference: &Path,
@@ -478,12 +471,12 @@ pub fn diff(
     }
     if (aw, ah) != (bw, bh) {
         let piste = if (bw, bh) == (aw * 2, ah * 2) {
-            " — la référence fait exactement le double : `--downscale-ref` la ramène en lumière \
-             linéaire, mais rendre nativement à sa taille mesure mieux"
+            "; the reference is exactly double size: `--downscale-ref` reduces it in linear \
+             light, but rendering natively at its size measures better"
         } else {
             ""
         };
-        bail!("dimensions incompatibles : rendu {aw}×{ah}, référence {bw}×{bh}{piste}");
+        bail!("incompatible dimensions: render {aw}x{ah}, reference {bw}x{bh}{piste}");
     }
 
     let rois = match roi {
@@ -502,17 +495,17 @@ pub fn diff(
         println!("{}", ligne_score(r));
     }
     println!(
-        "  surface exclue (régions dynamiques) : {:.2} %   ·   rendu opaque sur {:.2} % des pixels mesurés",
+        "  excluded surface (dynamic regions): {:.2} %   |   render opaque on {:.2} % of measured pixels",
         rapport.surface_exclue_pct, rapport.couverture_opaque_pct
     );
     if rapport.couverture_opaque_pct < 99.99 {
         println!(
-            "  ATTENTION : le rendu laisse voir le canvas — une part du score porte sur du vide, pas sur des pixels."
+            "  warning: the render shows the canvas; part of the score covers empty space, not pixels."
         );
     }
 
     let Some(dir) = out else { return Ok(()) };
-    std::fs::create_dir_all(dir).with_context(|| format!("création {}", dir.display()))?;
+    std::fs::create_dir_all(dir).with_context(|| format!("creating {}", dir.display()))?;
 
     let json = serde_json::json!({
         "rendu": rendu.display().to_string(),
@@ -531,13 +524,13 @@ pub fn diff(
     let delta = imgmetric::delta_rgba(aw, ah, &a, &bpix, &rois, amplification);
     ecrire_png(&dir.join("delta.png"), aw, ah, &delta)?;
     println!(
-        "  écrits : {}/rapport.json · heatmap.png · delta.png",
+        "  written: {}/rapport.json | heatmap.png | delta.png",
         dir.display()
     );
     Ok(())
 }
 
-/// Sérialise un score.
+/// Serializes a score.
 fn json_score(s: &ScoreRegion) -> serde_json::Value {
     serde_json::json!({
         "nom": s.nom,
@@ -552,11 +545,11 @@ fn json_score(s: &ScoreRegion) -> serde_json::Value {
     })
 }
 
-/// Écrit un tampon RGBA8 en PNG.
+/// Writes an RGBA8 buffer as PNG.
 fn ecrire_png(dst: &Path, w: u32, h: u32, rgba: &[u8]) -> Result<()> {
     let buf: image::RgbaImage = image::ImageBuffer::from_raw(w, h, rgba.to_vec())
-        .ok_or_else(|| anyhow::anyhow!("tampon RGBA de mauvaise taille pour {w}×{h}"))?;
+        .ok_or_else(|| anyhow::anyhow!("RGBA buffer has the wrong size for {w}x{h}"))?;
     image::DynamicImage::ImageRgba8(buf)
         .save(dst)
-        .with_context(|| format!("écriture {}", dst.display()))
+        .with_context(|| format!("writing {}", dst.display()))
 }

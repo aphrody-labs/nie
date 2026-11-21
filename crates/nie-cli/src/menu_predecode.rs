@@ -1,18 +1,17 @@
-//! Pré-décodage des sprites menu IEVR : g4tx -> DDS -> RGBA -> PNG écrit dans le dump disque.
+//! Menu sprite pre-decoding: g4tx -> DDS -> RGBA -> PNG written to the disk dump.
 //!
-//! # Fonctionnement
+//! # How it works
 //!
-//! Pour chaque chemin g4tx du sous-arbre `data/dx11/menu/**` indexé dans Redis db3
-//! (`iev:file:index`), on :
+//! For each g4tx path under `data/dx11/menu/**` indexed in Redis db3 (`iev:file:index`):
 //!
-//! 1. Lit le fichier depuis le CPK (via `CpkReader` + index Redis).
-//! 2. Parse le conteneur G4TX pour extraire le payload DDS.
-//! 3. Décode le DDS (BC1/BC3/BC7/RGBA8) en RGBA via `image_dds`.
-//! 4. Encode en PNG et écrit à `<dump_root>/<chemin relatif sans data/>.png` (idempotent).
+//! 1. Read the file from the CPK (via `CpkReader` and the Redis index).
+//! 2. Parse the G4TX container to extract the DDS payload.
+//! 3. Decode the DDS (BC1/BC3/BC7/RGBA8) to RGBA via `image_dds`.
+//! 4. Encode as PNG and write to `<dump_root>/<relative path without data/>.png` (idempotent).
 //!
 //! The CLI scans every indexed menu texture, covering localized and base variants.
 //!
-//! Concurrence : pool Rayon (threads = nb CPUs, saturé sur les décodages BCn).
+//! Concurrency: Rayon pool (threads = CPU count, saturated by BCn decoding).
 
 #![allow(clippy::pedantic)]
 
@@ -41,13 +40,13 @@ pub struct PredecodeStats {
 }
 
 // ---------------------------------------------------------------------------
-// Entrée principale
+// Entry point
 // ---------------------------------------------------------------------------
 
-/// Pré-décode tous les sprites menu ciblés et écrit les PNG dans `dump_root`.
+/// Pre-decodes all targeted menu sprites and writes the PNGs under `dump_root`.
 ///
-/// `priority_paths` : si non-vide, traite ces chemins en premier ; le reste du sous-arbre
-/// menu est traité si `all_menu` est vrai.
+/// `priority_paths`: if non-empty, these paths are processed first; the rest of the menu
+/// subtree is processed if `all_menu` is true.
 pub fn run(
     dump_root: &Path,
     packs_dir: &Path,
@@ -55,12 +54,12 @@ pub fn run(
     priority_paths: &[String],
     all_menu: bool,
 ) -> anyhow::Result<PredecodeStats> {
-    // --- Connexion Redis ---
+    // --- Redis connection ---
     let client =
-        redis::Client::open(redis_url).with_context(|| format!("connexion Redis {redis_url}"))?;
+        redis::Client::open(redis_url).with_context(|| format!("connecting to Redis {redis_url}"))?;
     let mut conn = client.get_connection().context("get_connection Redis")?;
 
-    // --- Collecte des chemins à traiter ---
+    // --- Collect the paths to process ---
     let mut indexed = Vec::new();
 
     // Resolve explicitly prioritized paths first. The current CLI passes none;
@@ -81,7 +80,7 @@ pub fn run(
     }
 
     if all_menu {
-        // Scan HSCAN de tous les g4tx menu (fr, en, pt, de, es, it, zh_hans, ko, base).
+        // HSCAN over every menu g4tx (all locales and base).
         let mut cursor: u64 = 0;
         loop {
             let result: redis::Value = redis::cmd("HSCAN")
@@ -104,24 +103,23 @@ pub fn run(
 
     let plan = plan(priority_paths, &indexed, all_menu, &["fr", "en"]);
     let total = plan.paths.len();
-    eprintln!("predecode total={total} sprites à traiter");
+    eprintln!("predecode total={total} sprites to process");
 
-    // --- Traitement parallèle ---
+    // --- Parallel processing ---
     let decoded = AtomicU32::new(0);
     let skipped = AtomicU32::new(0);
     let failed = AtomicU32::new(0);
 
-    // Index CPK déjà ouverts : chargés une fois par CPK (mmap-like via std::fs::read).
-    // Chaque thread Rayon a son propre CPK buffer (clone minimal — taille ~10-50 MB/CPK).
-    // Pour éviter de relire le même CPK plusieurs fois, on groupe par CPK.
+    // CPK indexes already opened: loaded once per CPK (mmap-like via std::fs::read).
+    // To avoid re-reading the same CPK several times, sprites are grouped by CPK.
     for path in &plan.missing_archive {
-        eprintln!("warn: pas de CPK pour {path}");
+        eprintln!("warning: no CPK for {path}");
         failed.fetch_add(1, Ordering::Relaxed);
     }
 
     let cpk_groups: Vec<(String, Vec<String>)> = plan.by_archive.into_iter().collect();
     let total_cpks = cpk_groups.len();
-    eprintln!("predecode {total_cpks} CPK distincts");
+    eprintln!("predecode {total_cpks} distinct CPKs");
 
     cpk_groups
         .into_par_iter()
@@ -130,7 +128,7 @@ pub fn run(
             let cpk_data = match std::fs::read(&cpk_path) {
                 Ok(d) => d,
                 Err(e) => {
-                    eprintln!("error: lecture CPK {cpk_name}: {e}");
+                    eprintln!("error: reading CPK {cpk_name}: {e}");
                     failed.fetch_add(sprite_paths.len() as u32, Ordering::Relaxed);
                     return;
                 }
@@ -145,7 +143,7 @@ pub fn run(
                 }
             };
 
-            // Index par chemin logique (directory + "/" + filename).
+            // Index by logical path (directory + "/" + filename).
             let entry_map: HashMap<String, usize> = reader
                 .entries
                 .iter()
@@ -167,7 +165,7 @@ pub fn run(
                 let png_out =
                     dump_root.join(format!("{}.png", sprite_path.trim_end_matches(".g4tx")));
 
-                // Idempotent : skip si le PNG existe et est non-vide.
+                // Idempotent: skip if the PNG exists and is non-empty.
                 if png_out.exists() {
                     let meta = std::fs::metadata(&png_out).ok();
                     if meta.is_some_and(|m| m.len() > 0) {
@@ -176,18 +174,18 @@ pub fn run(
                     }
                 }
 
-                // Rechercher l'entrée dans le CPK.
-                // Le chemin dans le CPK est "data/<sprite_path>".
+                // Look up the entry in the CPK.
+                // The path inside the CPK is "data/<sprite_path>".
                 let cpk_inner = format!("data/{sprite_path}");
                 let entry_idx = entry_map.get(&cpk_inner).copied().or_else(|| {
-                    // Fallback : juste le chemin sans "data/"
+                    // Fallback: the path without "data/"
                     entry_map.get(sprite_path).copied()
                 });
 
                 let entry_idx = match entry_idx {
                     Some(i) => i,
                     None => {
-                        eprintln!("warn: entrée introuvable dans CPK {cpk_name}: {cpk_inner}");
+                        eprintln!("warning: entry not found in CPK {cpk_name}: {cpk_inner}");
                         failed.fetch_add(1, Ordering::Relaxed);
                         return;
                     }
@@ -206,14 +204,14 @@ pub fn run(
                 match g4tx_to_png(&g4tx_bytes, sprite_path) {
                     Ok(png_bytes) => {
                         if let Err(e) = write_png(&png_out, &png_bytes) {
-                            eprintln!("error: écriture PNG {}: {e}", png_out.display());
+                            eprintln!("error: writing PNG {}: {e}", png_out.display());
                             failed.fetch_add(1, Ordering::Relaxed);
                         } else {
                             decoded.fetch_add(1, Ordering::Relaxed);
                         }
                     }
                     Err(e) => {
-                        eprintln!("error: décodage {sprite_path}: {e}");
+                        eprintln!("error: decoding {sprite_path}: {e}");
                         failed.fetch_add(1, Ordering::Relaxed);
                     }
                 }
@@ -228,40 +226,40 @@ pub fn run(
 }
 
 // ---------------------------------------------------------------------------
-// Décodage G4TX -> PNG
+// G4TX -> PNG decoding
 // ---------------------------------------------------------------------------
 
-/// Décode un fichier g4tx (DDS payload) en PNG.
-/// Seule la première texture principale (mip 0) est exportée.
+/// Decodes a g4tx file (DDS payload) to PNG.
+/// Only the first main texture (mip 0) is exported.
 fn g4tx_to_png(data: &[u8], debug_path: &str) -> anyhow::Result<Vec<u8>> {
-    // Parse le conteneur G4TX pour trouver le payload DDS.
+    // Parse the G4TX container to find the DDS payload.
     let g4tx =
         nie_formats::g4tx::parse(data).with_context(|| format!("parse G4TX {debug_path}"))?;
 
     let tex = g4tx
         .textures
         .first()
-        .ok_or_else(|| anyhow::anyhow!("g4tx vide (aucune texture) : {debug_path}"))?;
+        .ok_or_else(|| anyhow::anyhow!("empty g4tx (no texture): {debug_path}"))?;
 
     let payload = data
         .get(tex.data_offset..tex.data_offset + tex.data_size)
         .ok_or_else(|| {
             anyhow::anyhow!(
-                "payload DDS hors limites offset={} size={} total={} : {debug_path}",
+                "DDS payload out of bounds offset={} size={} total={}: {debug_path}",
                 tex.data_offset,
                 tex.data_size,
                 data.len()
             )
         })?;
 
-    // Décode le DDS en RgbaImage via image_dds.
+    // Decode the DDS to an RgbaImage via image_dds.
     let dds = Dds::read(Cursor::new(payload)).with_context(|| format!("parse DDS {debug_path}"))?;
 
     let rgba_image =
         image_dds::image_from_dds(&dds, 0).with_context(|| format!("decode DDS {debug_path}"))?;
 
-    // Encode en PNG lossless, deflate au niveau rapide : ces PNG sont un cache disque relu par
-    // le service, la taille compte moins que le temps de pré-décodage.
+    // Encode as lossless PNG with fast deflate: these PNGs are a disk cache read back by the
+    // service, so size matters less than pre-decoding time.
     let mut png_bytes: Vec<u8> = Vec::new();
     image::ImageEncoder::write_image(
         image::codecs::png::PngEncoder::new_with_quality(
@@ -280,28 +278,28 @@ fn g4tx_to_png(data: &[u8], debug_path: &str) -> anyhow::Result<Vec<u8>> {
 }
 
 // ---------------------------------------------------------------------------
-// Écriture PNG (crée les dossiers parents)
+// PNG writing (creates parent directories)
 // ---------------------------------------------------------------------------
 
 fn write_png(out: &Path, bytes: &[u8]) -> anyhow::Result<()> {
     if let Some(parent) = out.parent() {
         std::fs::create_dir_all(parent)
-            .with_context(|| format!("création dossiers {}", parent.display()))?;
+            .with_context(|| format!("creating directories {}", parent.display()))?;
     }
-    std::fs::write(out, bytes).with_context(|| format!("écriture {}", out.display()))?;
+    std::fs::write(out, bytes).with_context(|| format!("writing {}", out.display()))?;
     Ok(())
 }
 
 // ---------------------------------------------------------------------------
-// Helpers Redis
+// Redis helpers
 // ---------------------------------------------------------------------------
 
-/// Parse le résultat HSCAN Redis en (next_cursor, Vec<(field, value)>).
+/// Parses a Redis HSCAN result into (next_cursor, Vec<(field, value)>).
 fn parse_hscan_result(val: redis::Value) -> anyhow::Result<(u64, Vec<(String, String)>)> {
     use redis::Value;
     if let Value::Array(outer) = val {
         if outer.len() != 2 {
-            anyhow::bail!("HSCAN: format de réponse inattendu (len={})", outer.len());
+            anyhow::bail!("HSCAN: unexpected response format (len={})", outer.len());
         }
         let cursor_val = &outer[0];
         let items_val = &outer[1];
@@ -326,7 +324,7 @@ fn parse_hscan_result(val: redis::Value) -> anyhow::Result<(u64, Vec<(String, St
         }
         Ok((cursor, pairs))
     } else {
-        anyhow::bail!("HSCAN: réponse non-Array");
+        anyhow::bail!("HSCAN: response is not an Array");
     }
 }
 
