@@ -15,7 +15,7 @@ coverage/
 *.tsbuildinfo
 *.log
 
-# Secrets and local state (STANDARD.md section 2)
+# Secrets and local state
 .env
 .env.*
 !.env.example

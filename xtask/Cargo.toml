@@ -7,7 +7,7 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 publish = false
-description = "cargo xtask: the one developer and CI entrypoint behind the justfile (map, lint, fmt, test, compile, check, repro, kernel, os, web, app-pack, libernt-closure, bindings-smoke)"
+description = "cargo xtask: the one developer and CI entrypoint behind the justfile (map, skill, lint, fmt, test, compile, check, remote, repro, release, web, app-pack, libernt-closure, bindings-smoke)"
 
 [lints]
 workspace = true

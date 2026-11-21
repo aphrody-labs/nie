@@ -93,13 +93,13 @@ mod tests {
         let host = BuildHost::from_vars(Some("box".into()), Some("/work/nie".into()));
         let (outer, log) = launch(
             &host,
-            &["kernel-cycle".to_owned(), "x y".to_owned()],
+            &["ci-bindings".to_owned(), "x y".to_owned()],
             "nie-s-1",
         );
         assert_eq!(log, "/work/nie/log/nie-s-1.log");
         assert!(outer.starts_with("mkdir -p /work/nie/log && tmux new-session -d -s nie-s-1 "));
         assert!(outer.contains("NIE_ON_BUILD_HOST=1"));
-        assert!(outer.contains("just kernel-cycle"));
+        assert!(outer.contains("just ci-bindings"));
         assert!(outer.contains("exit"));
     }
 }

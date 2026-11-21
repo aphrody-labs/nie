@@ -6,7 +6,7 @@
 //! modules a LiberNT build produced, and writes the keep list as JSON.
 //!
 //! ```text
-//! cargo xtask libernt-closure --game ssh://prd/<dir> --build <LiberNT output dir> \
+//! cargo xtask libernt-closure --game ssh://<host>/<dir> --build <LiberNT output dir> \
 //!     --source <LiberNT checkout> --drivers <name,name,...> --out docs/specs/libernt-closure.json
 //! ```
 

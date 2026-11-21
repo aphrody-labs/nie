@@ -21,6 +21,10 @@ fn run() -> Result<()> {
     let Some(cmd) = args.next() else {
         bail!("{USAGE}")
     };
+    if matches!(cmd.as_str(), "-h" | "--help") {
+        println!("{USAGE}");
+        return Ok(());
+    }
     let mut root = PathBuf::from("docs/specs");
     let mut check = false;
     let mut local_as = None;
@@ -43,7 +47,10 @@ fn run() -> Result<()> {
                     .next()
                     .ok_or_else(|| anyhow::anyhow!("--prefix needs a value"))?
             }
-            "-h" | "--help" => bail!("{USAGE}"),
+            "-h" | "--help" => {
+                println!("{USAGE}");
+                return Ok(());
+            }
             _ => rest.push(a),
         }
     }

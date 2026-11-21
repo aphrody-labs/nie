@@ -194,11 +194,6 @@ ci-release-windows version: (_release-toolchain "")
     ./target/release/nie-model-serve.exe --version
     cargo xtask release archive --name "nie-v{{ version }}-x86_64-pc-windows-msvc" --bin-dir target/release --bins nie.exe,nie-model-serve.exe --zip
 
-# release.yml release: checksums of the downloaded assets, then the GitHub Release (tags only).
-ci-release-publish version:
-    cd assets && sha256sum -- * > SHA256SUMS && cat SHA256SUMS
-    gh release create "${GITHUB_REF_NAME}" assets/* --repo "${GITHUB_REPOSITORY}" --verify-tag --generate-notes --title "nie {{ version }}"
-
 # repro.yml: two builds in two directories, the manifest written to the given path.
 ci-repro manifest="dist/repro-manifest.json": _toolchain
     cargo xtask repro --manifest {{ manifest }}

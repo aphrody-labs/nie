@@ -25,7 +25,7 @@ pub struct Args {
 fn unit(path: &str) -> String {
     let parts: Vec<&str> = path.split('/').collect();
     let depth = match parts[0] {
-        "plugins" | "vendor" | "third_party" => 3,
+        "plugins" => 3,
         "crates" | "apps" | "tools" => 2,
         _ => 1,
     };
@@ -64,14 +64,12 @@ fn tier_and_gate(unit: &str, layering: &str) -> (String, String) {
             "cargo test --manifest-path tools/nie-mcp-launch/Cargo.toml".to_owned(),
         ),
         "tools" => ("tool", "none".to_owned()),
-        "vendor" | "third_party" => ("submodule", "fr1 only (see AGENTS.md)".to_owned()),
         "bindings" => ("generated", "nie bindgen --check".to_owned()),
         "contract" => ("generated", "cargo test -p nie-shell".to_owned()),
         "include" => ("generated", "cargo test -p nie-abi".to_owned()),
         "docs" => ("doc", "none".to_owned()),
-        "deploy" => ("deploy", "nie-deploy check".to_owned()),
+        "deploy" => ("deploy", "cargo nextest run -p nie-deploy".to_owned()),
         "gui" => ("gui", "fr1 only: just ci-gui-linux".to_owned()),
-        "os" => ("kernel", "fr1 only: just os-test".to_owned()),
         "tests" => ("test", "just ci-bindings".to_owned()),
         _ => ("meta", "none".to_owned()),
     };

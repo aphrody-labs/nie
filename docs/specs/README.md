@@ -14,5 +14,3 @@ Official specifications nie relies on, with version, content hash and the extrac
 | [DXBC / DXIL shader container](dxbc.md) | 1.0 | `10b3328a915e` | 6 |
 | [CUDA toolkit and compute capability](cuda.md) | 13.5 | - | 6 |
 | [NVIDIA GeForce RTX 4070 (Ada Lovelace, compute capability 8.9)](rtx-4070.md) | RTX 4070 | - | 5 |
-
-Graphics stack decision: [gfx-stack-evaluation.md](gfx-stack-evaluation.md).

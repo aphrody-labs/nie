@@ -3,7 +3,6 @@ name: Targets
 # Cross-OS matrix of the framework crates and the application scaffolds, the no_std core on bare
 # metal and the generated language bindings against the real cdylib (the reproducible build is
 # repro.yml).
-# Targets that cannot pass are listed with their reason in docs/specs/targets.md.
 
 on:
   push:
@@ -61,8 +60,7 @@ jobs:
         with:
           tool: just@1.59.0
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      # nie-formats is checked by the `os` job of ci.yml; nie-save fails until its std-only
-      # dependencies are gated (docs/specs/targets.md).
+      # nie-formats is checked by the `os` job of ci.yml; this job checks nie-data.
       - run: just ci-nostd
 
   bindings:

@@ -237,10 +237,6 @@ pub fn render_index(lock: &Lock) -> String {
             sp.facts.len()
         );
     }
-    let _ = writeln!(
-        s,
-        "\nGraphics stack decision: [gfx-stack-evaluation.md](gfx-stack-evaluation.md)."
-    );
     s
 }
 
@@ -309,7 +305,10 @@ pub fn run(root: &Path, only: &[String], check: bool) -> Result<()> {
         drift.len()
     );
     if check && !drift.is_empty() {
-        bail!("specs out of date");
+        bail!(
+            "{} spec file(s) out of date; run `nie-specs sync` and commit the result",
+            drift.len()
+        );
     }
     Ok(())
 }

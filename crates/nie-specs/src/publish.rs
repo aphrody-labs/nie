@@ -5,7 +5,7 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 use serde_json::{Value, json};
 
 /// Commit changed files to `branch` through the GitHub contents API (no checkout needed), used by
-/// the fr1 timer. Returns the paths actually written. Token: `GH_TOKEN` or `GITHUB_TOKEN`.
+/// the scheduled refresh job. Returns the paths actually written. Token: `GH_TOKEN` or `GITHUB_TOKEN`.
 pub fn publish(
     repo: &str,
     branch: &str,
@@ -72,7 +72,7 @@ pub fn publish(
     Ok(written)
 }
 
-/// Download files of the repository into `root` (public raw URLs): the timer on fr1 has no
+/// Download files of the repository into `root` (public raw URLs): the scheduled refresh job has no
 /// checkout, so `sources.toml` and the host JSON of the machines it cannot reach come from here.
 /// A missing file (404) is skipped.
 pub fn pull(repo: &str, branch: &str, prefix: &str, root: &Path, rels: &[String]) -> Result<()> {

@@ -1,73 +1,73 @@
 unit	files	bytes	tier	gate
-(root)	18	415739	meta	none
+(root)	18	416233	meta	none
 .cargo	1	41	meta	none
-.claude	46	230316	meta	none
-.github	7	17676	meta	none
+.claude	40	203989	meta	none
+.github	7	17530	meta	none
 apps/hello	7	2327	app	cargo nextest run -p hello
 apps/rg-mcp	4	9123	app	cargo nextest run -p rg-mcp
 bindings	8	10739	generated	nie bindgen --check
-contract	2	32469	generated	cargo test -p nie-shell
+contract	2	32483	generated	cargo test -p nie-shell
 crates/nie-abi	7	46745	framework	cargo nextest run -p nie-abi
-crates/nie-app	6	25074	app	cargo nextest run -p nie-app
+crates/nie-app	6	25069	app	cargo nextest run -p nie-app
 crates/nie-assets	12	33279	app	cargo nextest run -p nie-assets
 crates/nie-bindgen	5	31686	framework	cargo nextest run -p nie-bindgen
 crates/nie-browser	11	128149	framework	cargo nextest run -p nie-browser
 crates/nie-cfgsql	10	57519	app	cargo nextest run -p nie-cfgsql
-crates/nie-cli	54	1216793	app	cargo nextest run -p nie-cli
+crates/nie-cli	54	1190876	app	cargo nextest run -p nie-cli
 crates/nie-comp	12	68930	framework	cargo nextest run -p nie-comp
-crates/nie-data	256	2830743	app	cargo nextest run -p nie-data
-crates/nie-deploy	10	125766	app	cargo nextest run -p nie-deploy
+crates/nie-data	256	2830756	app	cargo nextest run -p nie-data
+crates/nie-deploy	10	125771	app	cargo nextest run -p nie-deploy
 crates/nie-edge	10	53385	app	cargo nextest run -p nie-edge
 crates/nie-explore	56	685181	app	cargo nextest run -p nie-explore
-crates/nie-ffi	10	113945	app	cargo nextest run -p nie-ffi
-crates/nie-formats	125	2238370	app	cargo nextest run -p nie-formats
+crates/nie-ffi	10	113082	app	cargo nextest run -p nie-ffi
+crates/nie-formats	125	2238335	app	cargo nextest run -p nie-formats
 crates/nie-gpu	2	7251	framework	cargo nextest run -p nie-gpu
 crates/nie-health	3	8463	framework	cargo nextest run -p nie-health
 crates/nie-link	18	142879	app	cargo nextest run -p nie-link
-crates/nie-lua	42	940075	app	cargo nextest run -p nie-lua
-crates/nie-model-serve	11	370579	app	cargo nextest run -p nie-model-serve
-crates/nie-ocgen	18	158805	app	cargo nextest run -p nie-ocgen
+crates/nie-lua	42	939741	app	cargo nextest run -p nie-lua
+crates/nie-model-serve	11	370221	app	cargo nextest run -p nie-model-serve
+crates/nie-ocgen	18	156494	app	cargo nextest run -p nie-ocgen
 crates/nie-plugin	3	12850	framework	cargo nextest run -p nie-plugin
-crates/nie-render3d	22	453118	app	cargo nextest run -p nie-render3d
-crates/nie-rgdeploy	3	24185	app	cargo nextest run -p nie-rgdeploy
+crates/nie-render3d	22	453092	app	cargo nextest run -p nie-render3d
+crates/nie-rgdeploy	3	24264	app	cargo nextest run -p nie-rgdeploy
 crates/nie-scaffold	22	32979	framework	cargo nextest run -p nie-scaffold
-crates/nie-shell	4	7711	app	cargo nextest run -p nie-shell
-crates/nie-specs	10	46168	framework	cargo nextest run -p nie-specs
-crates/nie-sql	8	51233	framework	cargo nextest run -p nie-sql
+crates/nie-shell	4	7719	app	cargo nextest run -p nie-shell
+crates/nie-specs	10	46334	framework	cargo nextest run -p nie-specs
+crates/nie-sql	8	51237	framework	cargo nextest run -p nie-sql
 crates/nie-ssh	7	43486	framework	cargo nextest run -p nie-ssh
 crates/nie-sshd	8	45623	framework	cargo nextest run -p nie-sshd
 crates/nie-syscalls	5	19894	framework	cargo nextest run -p nie-syscalls
 crates/nie-tls	2	2260	framework	cargo nextest run -p nie-tls
-crates/nie-wasm	8	491616	app	cargo nextest run -p nie-wasm
+crates/nie-wasm	8	491534	app	cargo nextest run -p nie-wasm
 crates/nie-wiki-vfs	15	167626	app	cargo nextest run -p nie-wiki-vfs
-deploy	4	5039	deploy	nie-deploy check
-docs	56	618213	doc	none
-gui	39	806185	gui	fr1 only: just ci-gui-linux
+deploy	4	5039	deploy	cargo nextest run -p nie-deploy
+docs	55	600666	doc	none
+gui	39	806173	gui	fr1 only: just ci-gui-linux
 include	16	13007	generated	cargo test -p nie-abi
 packages	168	14232536	meta	none
-plugins/bevy/nie-bevy	8	48210	plugin	cargo nextest run -p nie-bevy
-plugins/exe/nie-camera	15	202499	plugin	cargo nextest run -p nie-camera
-plugins/exe/nie-computer-use	6	39800	plugin	cargo nextest run -p nie-computer-use
+plugins/bevy/nie-bevy	8	48207	plugin	cargo nextest run -p nie-bevy
+plugins/exe/nie-camera	15	202350	plugin	cargo nextest run -p nie-camera
+plugins/exe/nie-computer-use	6	39799	plugin	cargo nextest run -p nie-computer-use
 plugins/exe/nie-dbxv2-re	49	556237	plugin	cargo nextest run -p nie-dbxv2-re
-plugins/exe/nie-forge	18	188528	plugin	cargo nextest run -p nie-forge
-plugins/exe/nie-index	11	190196	plugin	cargo nextest run -p nie-index
-plugins/exe/nie-pe	5	5602	plugin	cargo nextest run -p nie-pe
+plugins/exe/nie-forge	18	188687	plugin	cargo nextest run -p nie-forge
+plugins/exe/nie-index	11	190175	plugin	cargo nextest run -p nie-index
+plugins/exe/nie-pe	5	5616	plugin	cargo nextest run -p nie-pe
 plugins/exe/nie-queue	4	21703	plugin	cargo nextest run -p nie-queue
-plugins/exe/nie-re	45	928384	plugin	cargo nextest run -p nie-re
-plugins/exe/nie-re-core	32	348372	plugin	cargo nextest run -p nie-re-core
+plugins/exe/nie-re	45	928366	plugin	cargo nextest run -p nie-re
+plugins/exe/nie-re-core	32	348302	plugin	cargo nextest run -p nie-re-core
 plugins/exe/nie-recomp	9	98190	plugin	cargo nextest run -p nie-recomp
 plugins/exe/nie-seed	9	86384	plugin	cargo nextest run -p nie-seed
 plugins/exe/nie-sniff	6	33708	plugin	cargo nextest run -p nie-sniff
-plugins/exe/nie-trace	11	192535	plugin	cargo nextest run -p nie-trace
+plugins/exe/nie-trace	11	192510	plugin	cargo nextest run -p nie-trace
 plugins/exe/nie-win32	7	20428	plugin	cargo nextest run -p nie-win32
-plugins/launcher/nie-launcher	14	268713	plugin	cargo nextest run -p nie-launcher
-plugins/launcher/nie-viola	19	176662	plugin	cargo nextest run -p nie-viola
-plugins/save/nie-save	11	154115	plugin	cargo nextest run -p nie-save
+plugins/launcher/nie-launcher	14	268794	plugin	cargo nextest run -p nie-launcher
+plugins/launcher/nie-viola	19	176066	plugin	cargo nextest run -p nie-viola
+plugins/save/nie-save	11	153869	plugin	cargo nextest run -p nie-save
 plugins/shell-desktop/nie-shell-desktop	4	11377	plugin	cargo nextest run -p nie-shell-desktop
-plugins/steam/nie-steam	30	329224	plugin	cargo nextest run -p nie-steam
+plugins/steam/nie-steam	30	329117	plugin	cargo nextest run -p nie-steam
 plugins/tui/nie-tui	22	130939	plugin	cargo nextest run -p nie-tui
 tests	10	6409	test	just ci-bindings
-tools/claude	3	4779	tool	none
+tools/claude	3	4765	tool	none
 tools/nie-mcp-launch	5	25088	tool	cargo test --manifest-path tools/nie-mcp-launch/Cargo.toml
-tools/nie-perf	5	23244	tool	none
-xtask	25	232555	tool	cargo nextest run -p nie-xtask
+tools/nie-perf	5	23241	tool	none
+xtask	24	225792	tool	cargo nextest run -p nie-xtask

@@ -5,7 +5,6 @@
 
 mod app_pack;
 mod bindings;
-mod claude_stop;
 mod dev;
 mod libernt;
 mod map;
@@ -36,8 +35,6 @@ enum Cmd {
     BindingsSmoke(bindings::Args),
     /// Browser bundle of the GPUI apps: pack, serve, shot.
     Web(web::Args),
-    /// Claude Code Stop hook: keep the session going while the plan has open tasks.
-    ClaudeStop(claude_stop::Args),
     /// clippy, shear and gitleaks.
     Lint(dev::lint::Args),
     /// rustfmt and taplo.
@@ -66,7 +63,6 @@ fn main() -> anyhow::Result<()> {
         Cmd::LiberntClosure(a) => libernt::run(a),
         Cmd::BindingsSmoke(a) => bindings::run(a),
         Cmd::Web(a) => web::run(a),
-        Cmd::ClaudeStop(a) => claude_stop::run(a),
         Cmd::Lint(a) => dev::lint::run(a),
         Cmd::Fmt(a) => dev::fmt::run(a),
         Cmd::Test(a) => dev::test::run(a),
