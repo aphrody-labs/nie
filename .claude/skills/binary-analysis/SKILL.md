@@ -10,7 +10,6 @@ Read the reference that matches the task in full before acting. Paths written in
 
 | Reference | Use when |
 | --- | --- |
-| [references/core.md](references/core.md) | Former body of this skill (read first) |
 | [references/binary-triage.md](references/binary-triage.md) | Triage an unfamiliar binary with a fast static first pass covering architecture, imports, strings, capabilities, and concrete next steps. |
 | [references/ghidra-workflows.md](references/ghidra-workflows.md) | Route common Ghidra tasks in Codex: installation status, binary triage, readable decompilation, vulnerability review, and headless batch analysis. |
 | [references/ghidra-headless.md](references/ghidra-headless.md) | Runs official Ghidra headless analysis from yolo-re, exports decompilation evidence, and routes results through the Rust pipeline, Bun CLI, or REA MCP server. |
@@ -20,6 +19,5 @@ Read the reference that matches the task in full before acting. Paths written in
 | [references/malware-analyst.md](references/malware-analyst.md) | Perform static malware analysis to extract indicators, classify behavior, identify persistence and C2 patterns, and report evidence without executing samples. |
 | [references/firmware-analyst.md](references/firmware-analyst.md) | Analyze embedded firmware, raw ARM or MIPS images, bootloaders, RTOS code, and peripheral access patterns with static Ghidra workflows. |
 | [references/ctf-solver.md](references/ctf-solver.md) | Solve authorized reverse-engineering CTF challenges and compact puzzles using static analysis of common encodings, validation logic, and virtual machines. |
-| [references/python-re.md](references/python-re.md) | Use yolo-re's isolated uv Python project for binary RE, target evidence ingestion, local RAG/ML, and native PyGhidra. |
 
 <!-- merge-skill-families:v1 -->

@@ -5,7 +5,7 @@ The plugin `exe` (package `nie-re-core`, `plugins/exe/nie-re-core`) owns these c
 `coverage`, `atlas`, `mem`, `computer-use`. MCP tool of each: `cli_<command>` (`cli_seed_ui`, `cli_computer_use`).
 `nie exe lint` (MCP: none) belongs to `nie-cli`, not to the plugin. Authoritative list: [commands.md](commands.md).
 
-The knowledge database is SQLite, default `var/nie.sqlite` (`--db`, `NIE_SQLITE`), schema
+The knowledge database is SQLite, default `var/nie.sqlite` (`--db`; `NIE_SQLITE` is read by the MCP server only), schema
 `plugins/exe/nie-index/src/schema.sql`: `binary`, `section`, `function`, `xref`, `str`, `func_str_ref`, `func_const`,
 `rtti_class`, `rtti_base`, `pdata_func`, `symbol`, `format`, `hash_name`, `anchor`, `hypothesis`, `coverage`,
 `forge_unit`, plus the camera tables `cam_*`. Redis is optional (`NIE_REDIS`, default `redis://127.0.0.1/`).
@@ -27,7 +27,7 @@ build host, on the binary of an installation you own; the binary is read in plac
 | 6 rebuild | `nie rebuild --exe E --db D [--rounds N]` | rebases the map on `.pdata`, re-anchors Ghidra, disasm and propagate; honest coverage | `nie coverage` |
 | 7 leaves | `nie recover --exe E --db D [--dry-run] [--ghidra-csv F]` | leaf functions invisible to `.pdata` | `--dry-run` first |
 | 8 spread | `nie propagate --db D [--rounds N]` | labels on the call graph, string anchoring and label spreading | `nie coverage` |
-| 9 seed | `nie seed --db D --index research/nie-index.json [--exe E]`, `nie seed-ui --db D [--textures]` | merged Ghidra knowledge, UI names into `hash_name` (reverses the CRC-32 in `cfg.bin`, `objbin` and the binary) | counts printed |
+| 9 seed | `nie seed --db D --json research/nie-index.json [--exe E]`, `nie seed-ui --db D [--textures]` | merged Ghidra knowledge, UI names into `hash_name` (reverses the CRC-32 in `cfg.bin`, `objbin` and the binary) | counts printed |
 | 10 measure | `nie coverage --db D`, `nie exe lint --db D [--json]` | classified-function coverage; which classes and functions have a typed Rust equivalent | `nie exe lint` |
 
 `nie queue push|pop|len|reset` is the Redis BFS frontier shared by parallel workers (`--redis`, `--tag`). `nie atlas`

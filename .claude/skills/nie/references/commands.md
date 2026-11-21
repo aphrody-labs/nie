@@ -82,7 +82,7 @@
 | `asset_get` | Read and decode a VFS asset in process as raw bytes, JSON, PNG, or WAV; model codes use the bounded native HTTP client for nie-model-serve |
 | `explorer_navigate` | Navigate the connected explorer to a VFS prefix and optionally select one entry |
 | `explorer_open` | Open one VFS file in the connected explorer detail panel |
-| `explorer_status` | Report whether the native loopback bridge is listening and whether an Inacord explorer client is connected |
+| `explorer_status` | Report whether the bridge is listening and an explorer client is connected |
 | `explorer_tab` | Switch the connected explorer to one known tab: editor, explorer, search, data, cpk, save, mods, re, lua, or settings |
 | `explorer_toast` | Display an info, success, or error notification in the connected explorer |
 | `re_coverage` | Return the current reverse-engineering coverage report from the canonical CLI library |

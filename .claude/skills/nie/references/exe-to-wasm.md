@@ -1,4 +1,4 @@
-# Workflow: nie.exe to wasm (task #18)
+# Workflow: nie.exe to wasm
 
 Goal: replace Wine/Proton by statically recompiling `nie.exe` against a Rust Win32/D3D11 runtime and run it in a
 browser. Status is read from the code as of this page; re-check each "exists" line with `cargo check` and the commands
@@ -29,7 +29,7 @@ Boundaries that apply to every step:
 | 4 | wasm32 build | `just ci-wasm-core` (nie-formats, nie-data, nie-assets, nie-explore, nie-wiki-vfs, nie-render3d, nie-wasm), `just ci-gui-wasm` (GPUI apps), `just ci-targets wasm32-unknown-unknown check`; there is no `just ci-wasm` and no recipe for the recompiled game | the recipes pass; for the recompiled game: `cargo check --target wasm32-unknown-unknown` of the generated crate and of `nie-win32` with its `cfg(unix)` modules replaced | exists for the framework, open for the recompiled game |
 | 5 | browser proof | `just web-pack`, `just web-serve`, `just web-shot <url> <png>` (headless Chrome: `navigator.gpu`, console errors, screenshot), `just ci-browser`; agent-browser for DOM probe and screenshot; `nie img diff` for the pixel comparison | screenshots inspected by eye, pixel difference across targets (`test-tui`, agent-desktop, agent-browser) within the agreed tolerance, and a scripted scene at 1280x720 with a frame time of at most 8.33 ms (120 fps); results in `docs/research/log` | exists for the GPUI apps; open for the recompiled game |
 
-Steps 2c, 3 (beyond kernel32), 4 (recompiled game) and 5 (recompiled game) are the open work of task #18. Nothing in
+Steps 2c, 3 (beyond kernel32), 4 (recompiled game) and 5 (recompiled game) are the open work of this chain. Nothing in
 this chain is "done" until its gate has run and the output was read.
 
 ## Design facts the code forces
@@ -37,8 +37,8 @@ this chain is "done" until its gate has run and the output was read.
 - The guest address space is the host address space: `nie-win32` maps the PE image at its preferred base
   (`0x1_4000_0000` in `crates/nie-cli/src/main.rs`, `NIE_IMAGE_BASE`) and a guest pointer is a host pointer. A wasm32
   linear memory is 32-bit, so that base does not fit. A wasm32 target therefore needs guest-to-host address
-  translation (or memory64) in the runtime; decide this before emitting code for it. Task #24 (qemu-wasm, wasm64 TCG) is
-  the neighbouring effort.
+  translation (or memory64) in the runtime; decide this before emitting code for it. A qemu-wasm (wasm64 TCG) effort is
+  the neighbouring option.
 - Cranelift has no wasm32 backend, so `nie-recomp`'s object path is native only. A wasm output comes from an emitter
   to Rust or C (the `nie-re` pipeline's `emit_rust`, `emit_c`) compiled with `rustc --target wasm32-unknown-unknown`, or
   from a wasm emitter that does not exist yet.

@@ -33,7 +33,7 @@ Linux-only, on Windows use `nie mem`).
   blake3 only). `download` and `sync` write to the target.
 - The launch chain (EAC, EOS, Steamworks, signed third-party components) is supplied by Steam, which is why
   `nie steam` is the only route to a startable installation. `nie info` prints the chain.
-- EAC/EOS rule (AGENTS.md): LiberNT (`vendor/libernt`) implements only documented NT/Win32 behaviour; nothing spoofs
+- EAC/EOS rule (AGENTS.md): LiberNT (`fw-nt/third_party/LiberNT`) implements only documented NT/Win32 behaviour; nothing spoofs
   Windows to EAC or patches, stubs or skips an EAC check; online modes stay off until Epic and Level-5 answer.
 
 ## Saves, launcher, mods

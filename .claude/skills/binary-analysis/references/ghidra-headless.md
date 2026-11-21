@@ -9,45 +9,22 @@ description: >-
 > Runs official Ghidra headless analysis from yolo-re, exports decompilation evidence, and routes results through the Rust pipeline, Bun CLI, or REA MCP server.
 
 
-# Ghidra headless in yolo-re
+# Ghidra headless
 
-Use the installed upstream Ghidra distribution through GHIDRA_INSTALL_DIR. Keep the
-runtime separate from the checked-in upstream source at vendor/ghidra; the source
-submodule is for source and extension work, not the runtime install. Ghidra selects its
+Use the installed upstream Ghidra distribution through GHIDRA_INSTALL_DIR. Ghidra selects its
 supported JDK from the install configuration; set JAVA_HOME when the runtime requires it.
 
 ## Pick an entry point
-
-Probe the configured installation and runtime:
-
-~~~powershell
-bun run re ghidra-win probe
-~~~
 
 Run the native staged pipeline. Ghidra analysis and decompilation are optional external
 stages; the report records per-stage status and partial exports:
 
 ~~~powershell
-bun run re pipeline .\sample.exe --target os --out .\out --external
+nie-re-core pipeline run .\sample.exe --target os --out .\out --external
 ~~~
 
-Run the maintained cross-platform Bun headless wrapper directly. The script directory
-tools/ie/ghidra is added automatically; exported files go to the exact argument passed
-to the Java script:
-
-~~~powershell
-$out = Join-Path $PWD 'ghidra export'
-bun tools/ghidra-headless/scripts/ghidra-analyze.ts --script ExportDecompiled.java --script-arg $out --output (Join-Path $PWD 'ghidra logs') --process-timeout 1800 .\sample.exe
-~~~
-
-Use --script-arg once per exact Java argument. It preserves spaces. The older
---script-args option intentionally splits one value on whitespace.
-
-The shipped IE scripts are ExportDecompiled.java, ExportSingleFunction.java,
-ExportSymbols.java, and IECODEAnalyzer.java. They are real Ghidra Java scripts
-under tools/ie/ghidra; this repository does not ship the generic ExportAll.java,
-ExportFunctions.java, ExportStrings.java, or ExportCalls.java scripts sometimes found
-in third-party skill bundles.
+Run the headless wrapper directly (`references/ghidra-headless/scripts/ghidra-analyze.ps1` or `.sh`;
+`--help` lists its options).
 
 ## Rust and Java bridge
 

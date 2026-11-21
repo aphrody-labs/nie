@@ -4,7 +4,7 @@
 //! nie-perf vfs prepare --root DIR [--packs 8] [--files 1500]
 //! nie-perf vfs read    --root DIR [--rounds 3] [--parallel]            # Vfs::read of every file
 //! nie-perf vfs extract --root DIR --out DIR [--parallel]               # the `nie vfs extract` loop
-//! nie-perf texture [--mode via-png|via-png-default|direct] [--size 1024] [--count 16]
+//! nie-perf texture [--mode via-png|via-png-fast|direct] [--size 1024] [--count 16]
 //! nie-perf frame [--frames 600] [--width 1280] [--height 720] [--timestamps on|off]   # feature gpu
 //! ```
 //!

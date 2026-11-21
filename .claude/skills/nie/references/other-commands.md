@@ -52,16 +52,16 @@ Everything these write goes to a path you give, outside the repository; never co
 
 ## Terminal and desktop (plugin `tui`)
 
-`nie fm` is the three-column read-only VFS explorer (parent, current, preview; `--cd`, `--select`, `--snapshot WxH`,
+`nie fm` is the three-column VFS explorer (no editing mode yet) (parent, current, preview; `--cd`, `--select`, `--snapshot WxH`,
 `--protocol kitty|sixel|iterm2|halfblocks`, `--metrics f.json`), `docs/fm.md`. `nie term` (feature `term`) is the GPU terminal
 that hosts `nie fm` or any command after `--`; `--screenshot <png>` renders one frame offscreen, `docs/term.md`. The
 `shell-desktop` plugin owns no CLI command: it is the model of the desktop shell, the programs are `nie-shell` and
-`nie-comp` (GPUI toolkit under `gui/`, its own workspace, built and tested on the build host with `vendor/zed`).
+`nie-comp` (GPUI toolkit under `gui/`, its own workspace, built and tested on the build host against the sibling `../aphrody` checkout (`just _gpui`)).
 
 ## Release, CI and ops (`just`, not `nie`)
 
-`just` lists recipes. `check lint fmt test compile repro map skill bindgen app-pack web-pack web-serve web-shot deploy
-kernel-* os-*` are developer entrypoints; `ci-*` recipes are the jobs of `.github/workflows`, one each. `just fr1
+`just` lists recipes. `check lint fmt test compile repro map skill bindgen app-pack libernt-closure fr1 web-pack web-serve web-shot deploy`
+are developer entrypoints; `ci-*` recipes are the jobs of `.github/workflows`, one each. `just fr1
 <recipe>` runs any recipe on the build host in a detached tmux session. Contract and ABI regeneration:
 `cargo run -p nie-shell -- contract > contract/nie-app.json`, `cargo run -p nie-abi -- crates/nie-ffi`,
 `cargo run -p nie-abi -- --crlib .`; each has a drift test that fails when the committed files differ.

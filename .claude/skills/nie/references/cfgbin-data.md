@@ -29,7 +29,7 @@ invented. Repository tests never carry game bytes: they build synthetic fixtures
 3. Typed read: `nie wiki tables`, `nie wiki table <table> <class>` (entries of one class as stored), or the typed
    route `/typed` of `nie-model-serve`.
 4. Edit: `nie mod set|get|texture|recolor` (the `cfgbin`/`g4tx` encoders of `nie-formats`), then `nie mod validate`
-   and `install`. A writer needs a round-trip test; task #39 tracks writers for every parsed format.
+   and `install`. A writer needs a round-trip test (`AGENTS.md`: read and write, never read-only).
 5. A new family: add `crates/nie-data/src/<family>.rs`, register it in `typed::decode_by_key` and in `lib.rs`, write the
    golden test, run `cargo test -p nie-data` and `just ci-nostd` (the crate must stay `no_std`) and
    `just ci-wasm-core` (wasm32).

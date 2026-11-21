@@ -19,7 +19,7 @@ structure (`just map`).
 - Heavy work (builds, lifts, RE passes) runs on the build host of `deploy/build.toml` in tmux, in your own scratch
   directory, deleted at the end. Never on the PC. Commit by path on `main`, no AI attribution.
 - Licensing questions are listed in `docs/research/level5-questions.md`, nothing is decided in code.
-- EAC: nothing spoofs Windows to EAC or patches, stubs or skips an EAC check (AGENTS.md, vendor/libernt).
+- EAC: nothing spoofs Windows to EAC or patches, stubs or skips an EAC check (AGENTS.md, `fw-nt/third_party/LiberNT`).
 
 ## Pick the entry point
 
@@ -69,6 +69,6 @@ source when a command changes.
   `cargo test --locked -p nie-plugin --test layering`.
 - `just check|lint|fmt|test|compile|repro` dispatch to the build host (`--local` / `--remote` force it);
   `just fr1 <recipe>` runs any recipe there in a detached tmux session.
-- AGENTS.md also writes `nie lint|fmt|test|compile|check|repro`; clap has none of them. They are `cargo xtask`
-  subcommands behind the same-named `just` recipes. The typed-coverage checks are `nie vfs lint` and `nie exe lint`.
+- `lint|fmt|test|compile|check|repro` are `just` recipes over `cargo xtask`, not `nie` subcommands. The
+  typed-coverage checks are `nie vfs lint` and `nie exe lint`.
 - A UI is done only with `test-tui`, agent-desktop and agent-browser proofs and the 120 fps gate (AGENTS.md).

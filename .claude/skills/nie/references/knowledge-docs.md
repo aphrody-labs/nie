@@ -12,7 +12,7 @@ Four stores, each with one rule: facts are computed, then cited.
 ## Atlas (`nie atlas`, MCP `cli_atlas`, plugin `exe`)
 
 Read-only: `status` (one measured line), `menu` (inventory of the real menu screens and their coverage), `search
-<pattern> [--type doc|symbol|tool|artifact|crate]`, `gaps` (remaining work x weight), `next` (the best-ranked gap as
+<pattern> [--kind doc|symbol|tool|artifact|crate]`, `gaps` (remaining work x weight), `next` (the best-ranked gap as
 JSON, for the autonomous loop), `docs` (documents ranked by machine anchoring: addresses, symbols, hashes), `dupes`.
 Writes the atlas database: `build` (files, crates, docs, knowledge digest, binaries, tools, metrics, gaps; flags skip
 the knowledge digest or the symbol-to-source matching, the costly part), `sync` (and its Redis mirror), `metric`

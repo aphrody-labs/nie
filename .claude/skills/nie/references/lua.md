@@ -2,7 +2,7 @@
 
 The game drives menus, scenes and events with Lua 5.2 bytecode (`.lua.bin`, under `data/common/script/lua/`). To
 reproduce it exactly, nie runs those chunks in the same VM: `crates/nie-lua` uses mlua with PUC-Rio Lua 5.2.4 vendored
-and loads the bytecode directly. Task #31 (native AOT, retiring the mlua VM) is in progress: `nie_lua::aot`, `rt` and
+and loads the bytecode directly. A native AOT (retiring the mlua VM) is in progress: `nie_lua::aot`, `rt` and
 `inspection` already exist next to the VM, check their state before relying on either.
 
 ## Commands
@@ -32,6 +32,6 @@ the invariant and bounds execution with an instruction limit. Never run an untru
 ## Where Lua meets the rest
 
 - The menu catalogue and screens: `nie mode`, `nie atlas menu`, `crates/nie-formats` `menu*` modules.
-- Task #36 (pending): drive `nie-ui` GPUI views from the game's real Lua. Task #38 (pending): Lua mods in a Bevy plugin on
-  stand-in assets. Neither exists yet; do not describe them as working.
+- Driving `nie-ui` GPUI views from the game's real Lua, and Lua mods in a Bevy plugin on stand-in assets, do not exist
+  yet; do not describe them as working.
 - CRC-32 names in scripts are reversed through `hash_name` (`nie seed-ui`), see [re-index.md](re-index.md).
