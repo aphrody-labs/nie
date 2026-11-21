@@ -10,8 +10,8 @@
 //!
 //! # La frontière, et pourquoi elle est là
 //!
-//! `docs/STACK.md` écarte les ECS pour le **cœur** du jeu : la reconstruction byte-exact exige
-//! des structs 1:1 avec le layout C++, qu'un ECS éclaterait. Bevy est donc la **coquille** —
+//! An ECS is ruled out for the **core** of the game: byte-exact reconstruction requires
+//! structs 1:1 with the C++ layout, which an ECS would break apart. Bevy est donc la **coquille** —
 //! assets, fenêtre, entrées, rendu, plateformes — et jamais la simulation. Cette crate est du
 //! bon côté de cette ligne : elle transforme des octets en assets, elle ne décide de rien.
 //!

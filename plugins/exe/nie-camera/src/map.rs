@@ -51,8 +51,7 @@ pub const DISPATCH_ROUTINE_VA: u64 = 0x1_40CA_7550;
 /// Réservoir global des commandes `funcLua*` en `.data` initialisée : 3 660 entrées de 16 octets.
 ///
 /// **Non segmenté par dispatcher** : les handlers y sont rangés par adresse décroissante, sans
-/// frontière observable entre sections. C'est ce bloc qu'extrait
-/// `scripts/tools/data/extract_funclua_table.py`.
+/// frontière observable entre sections.
 pub const FUNCLUA_POOL_VA: u64 = 0x1_41CB_5500;
 
 /// Nombre d'entrées du réservoir [`FUNCLUA_POOL_VA`].

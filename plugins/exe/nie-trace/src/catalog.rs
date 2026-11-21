@@ -8,7 +8,7 @@
 //! ## Provenance
 //!
 //! Les signatures et offsets sont des **faits sur `nie.exe`** établis en exploitant un dump
-//! full-memory du jeu (cf. `docs/game-data/dump-exploitation.md`) : census RTTI, carte AOB→RVA,
+//! full-memory du jeu : census RTTI, carte AOB→RVA,
 //! décodage d'opérandes. Ex. la tension : l'AOB `8B 80 58 10 00 00` décode littéralement
 //! `mov eax,[rax+0x1058]` → la valeur vit à `entity+0x1058`.
 //!

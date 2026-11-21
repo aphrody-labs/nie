@@ -4,8 +4,8 @@
 //! réellement lues en aval, et lesquelles ne le sont jamais. Les retrouver demanderait de
 //! ré-auditer les consommateurs ; elles sont donc portées telles quelles, commentaires compris.
 //!
-//! ⚠️ Les chemins du `cpk_list` sont **préfixés `data/`** et le matching est ancré : tout glob
-//! doit inclure ce préfixe, sinon il matche zéro fichier. C'est le piège n°1 de ce fichier.
+//! Warning: `cpk_list` paths are **prefixed with `data/`** and matching is anchored: every glob
+//! must include that prefix, otherwise it matches zero files. This is the main pitfall of this file.
 //!
 //! La syntaxe est celle de [`crate::filtre::Filtre`] (listes séparées par des virgules, `**`,
 //! préfixe `!` pour exclure).

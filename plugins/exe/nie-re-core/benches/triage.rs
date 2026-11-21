@@ -26,7 +26,7 @@
 // figure that travels into `docs/PERFORMANCE-HISTORY.md`.
 //
 // Reproduce:
-//   cargo bench -p bun-re --bench triage
+//   cargo bench -p nie-re-core --bench triage
 
 use std::hint::black_box;
 

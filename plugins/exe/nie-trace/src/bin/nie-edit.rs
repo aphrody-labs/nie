@@ -1,13 +1,14 @@
-//! `nie-edit` — éditeur mémoire **live** d'`nie.exe`, piloté par le catalogue dérivé du dump.
+//! `nie-edit`: **live** memory editor for `nie.exe`, driven by the catalog derived from the dump.
 //!
-//! Instrument de RE : lit **et écrit** la mémoire du vrai jeu Windows natif (via
-//! `ReadProcessMemory`/`WriteProcessMemory`, backend [`nie_trace::win_memory`]) pour *valider au réel*
-//! les structures reversées — change une valeur, observe l'effet, confirme l'offset. Cross-compilé
-//! depuis WSL (`cargo build -p nie-trace --bin nie-edit --target x86_64-pc-windows-gnu`) et lancé via
-//! l'interop. Compile aussi sous Linux (backend Wine `process_vm_writev`).
+//! RE instrument: reads **and writes** the memory of the real native Windows game (through
+//! `ReadProcessMemory`/`WriteProcessMemory`, backend [`nie_trace::win_memory`]) to *validate
+//! against the real game* the reversed structures: change a value, observe the effect, confirm
+//! the offset. Cross-compiled from WSL (`cargo build -p nie-trace --bin nie-edit --target
+//! x86_64-pc-windows-gnu`) and launched through interop. Also builds on Linux (Wine backend
+//! `process_vm_writev`).
 //!
-//! Les écritures sur un process **actif** peuvent le déstabiliser : elles exigent `--force`
-//! (sinon « dry-run » qui n'imprime que ce qui serait écrit). Jeu **possédé**, en local, hors-ligne.
+//! Writes to a **running** process can destabilize it: they require `--force` (otherwise a dry
+//! run that only prints what would be written). Owned game, local, offline.
 
 use std::collections::HashMap;
 use std::process::ExitCode;
@@ -46,29 +47,29 @@ fn main() -> ExitCode {
 }
 
 const USAGE: &str = "\
-nie-edit — éditeur mémoire live d'nie.exe (catalogue dérivé du dump)
+nie-edit: live memory editor for nie.exe (catalog derived from the dump)
 
-INSPECTION
+Inspection
   nie-edit list [--category player|match|shop|spirit|passive]
   nie-edit info  <name>
-  nie-edit slide [--pid N]                  base de chargement + slide ASLR
-  nie-edit resolve <name | --all> [--pid N] scanne l'AOB live, vérifie vs la RVA du dump
+  nie-edit slide [--pid N]                  load base + ASLR slide
+  nie-edit resolve <name | --all> [--pid N] scans the live AOB, checks it against the dump RVA
 
-VALEURS (lecture/écriture typées)
-  nie-edit get  <name> [--base 0xADDR]      StructField : --base requis (objet)
+Values (typed read/write)
+  nie-edit get  <name> [--base 0xADDR]      StructField: --base required (object)
   nie-edit set  <name> <val> [--base 0xADDR] --force
   nie-edit get-va <0xVA | nie.exe+0xRVA> :TYPE
   nie-edit set-va <0xVA | nie.exe+0xRVA> :TYPE <val> --force
   nie-edit ptr  <0xBASE | nie.exe+0xRVA> +off1 +off2 ... [:TYPE]
   nie-edit watch <name --base 0xADDR | 0xVA :TYPE> [--interval 500] [--count 0]
 
-BAS NIVEAU (RE)
+Low level (RE)
   nie-edit scan  <'48 8B ?? 10'> [--limit 20] [--pid N]
-  nie-edit patch <0xVA> <'90 90'> [--save FICHIER] --force
-  nie-edit nop   <0xVA> <len> [--save FICHIER] --force
+  nie-edit patch <0xVA> <'90 90'> [--save FILE] --force
+  nie-edit nop   <0xVA> <len> [--save FILE] --force
 
-TYPE ∈ u8 u16 u32 i32 u64 f32. --pid 0 (défaut) auto-détecte nie.exe.
-Les écritures exigent --force (sinon dry-run).";
+TYPE ∈ u8 u16 u32 i32 u64 f32. --pid 0 (default) auto-detects nie.exe.
+Writes require --force (otherwise dry run).";
 
 fn run(args: &[String]) -> Result<(), String> {
     let Some(cmd) = args.first() else {
@@ -242,12 +243,12 @@ fn cmd_resolve(pos: &[String], flags: &Flags) -> Result<(), String> {
                     let cands = scan_regions_masked(pid, &regions, Some(base), &pat_noyau, 32);
                     if cands.is_empty() {
                         println!(
-                            "  {:<26} ✗ aucun hit (noyau « {noyau} » absent aussi)",
+                            "  {:<26} miss: no hit (core \"{noyau}\" also absent)",
                             e.id
                         );
                     } else {
                         println!(
-                            "  {:<26} ✗ signature complète absente — noyau « {noyau} » : {} candidat(s)",
+                            "  {:<26} miss: full signature absent; core \"{noyau}\": {} candidate(s)",
                             e.id,
                             cands.len()
                         );
@@ -262,7 +263,7 @@ fn cmd_resolve(pos: &[String], flags: &Flags) -> Result<(), String> {
                 }
                 // Pas de noyau exploitable : la signature est presque entièrement du contexte
                 // (cas des cooldowns), il n'y a rien de sémantique à rattraper.
-                None => println!("  {:<26} ✗ aucun hit", e.id),
+                None => println!("  {:<26} miss: no hit", e.id),
             }
             miss += 1;
             continue;
@@ -272,7 +273,7 @@ fn cmd_resolve(pos: &[String], flags: &Flags) -> Result<(), String> {
             let tag = match classify_rva(e.rva, rva) {
                 RvaVerdict::Match => {
                     ok += 1;
-                    "✓ = dump".to_owned()
+                    "ok = dump".to_owned()
                 }
                 RvaVerdict::Drift(expected) => {
                     drift += 1;
@@ -288,7 +289,7 @@ fn cmd_resolve(pos: &[String], flags: &Flags) -> Result<(), String> {
             println!("  {:<26} 0x{:X}  rva 0x{rva:X}  {tag}{extra}", e.id, h.addr);
         }
     }
-    println!("\n  {ok} ✓   {drift} drift   {miss} introuvable");
+    println!("\n  {ok} ok   {drift} drift   {miss} miss");
     Ok(())
 }
 

@@ -98,7 +98,7 @@ struct Target {
     /// Cloudflare API base.
     #[arg(long, default_value = cloudflare::API_BASE)]
     api_base: String,
-    /// nftables table to extend instead of creating one (prd: "inet fleet").
+    /// nftables table to extend instead of creating one (e.g. "inet fleet").
     #[arg(long, env = "NIE_FIREWALL_TABLE")]
     firewall_table: Option<String>,
 }

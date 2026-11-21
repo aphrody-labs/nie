@@ -25,7 +25,7 @@ fn main() {
             dist.join("manifest.json").display()
         );
         for line in text.lines() {
-            // One object per line: {"name":"..","type":"..","immutable":true,"br":true,"entry":false}
+            // One object per line: {"name","type","immutable","entry","bytes","brotli","blake3"}
             let field = |key: &str| -> Option<String> {
                 let at = line.find(&format!("\"{key}\":"))? + key.len() + 3;
                 let rest = line[at..].trim_start();

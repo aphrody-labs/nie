@@ -21,7 +21,7 @@
 //! d'octets réellement générés par du code Rust**. On ne « presque » produit
 //! jamais le fichier : il est byte-exact en permanence, et la conquête est
 //! interne. C'est la discipline des projets de décompilation *matching*, avec
-//! l'oracle en plus (`scripts/audit/uemu/uemu.py` valide le comportement, la forge valide
+//! l'oracle en plus (un émulateur valide le comportement, la forge valide
 //! les octets).
 //!
 //! ## Statuts de correspondance

@@ -2,7 +2,7 @@
 //!
 //! Trois capacités, implémentées au fil de la boucle :
 //! - `rtti` : récupération RTTI MSVC (`.rdata` → classes `lives::*`/`game::*` + hiérarchie).
-//! - `indexer` : ré-indexation du binaire (goblin + iced-x86 via `bun-re`) pour
+//! - `indexer` : ré-indexation du binaire (goblin + iced-x86 via `nie-re-core`) pour
 //!   vérification/reproductibilité quand `nie.exe` change.
 //! - `disasm` : récupération des arêtes d'appel manquantes par désassemblage `iced-x86`
 //!   de `.text` (enrichit le call-graph au-delà du plafond de l'export Ghidra).

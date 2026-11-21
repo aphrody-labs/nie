@@ -233,9 +233,9 @@ pub fn report(
 /// How an external owner is detected.
 #[derive(Debug, Clone, Copy)]
 pub enum Probe {
-    /// Path relative to yolo-re first, then the optional emulator checkout.
+    /// Path relative to the nie checkout first, then the optional emulator checkout.
     Path(&'static str),
-    /// Path relative to the yolo-re workspace.
+    /// Path relative to the nie checkout.
     RePath(&'static str),
     /// Command on `PATH`.
     Command(&'static str),
@@ -327,7 +327,7 @@ fn resolve_probe_path(
         }
     }
     Err(format!(
-        "owner path `{rel}` absent from yolo-re and the optional emulator checkout"
+        "owner path `{rel}` absent from the nie checkout and the optional emulator checkout"
     ))
 }
 
@@ -347,8 +347,8 @@ impl ExternalAdapter {
                 Some(root) if gitmodule_declared(&root, rel) => {
                     Err(format!("declared submodule `{rel}` is not checked out"))
                 }
-                Some(_) => Err(format!("owner path `{rel}` absent from yolo-re")),
-                None => Err("yolo-re workspace not found (set NIE_RE_ROOT)".to_string()),
+                Some(_) => Err(format!("owner path `{rel}` absent from the nie checkout")),
+                None => Err("nie checkout not found (set NIE_RE_ROOT)".to_string()),
             },
             Probe::Path(rel) => probe_path(rel, find_re_root().as_deref(), opts.root.as_deref()),
             Probe::Command(c) => which(c)
@@ -916,7 +916,7 @@ mod workspace_probe_tests {
         let mut options = Options::new("", TargetKind::Os, ".");
         options.root = None;
         if find_re_root().is_none() {
-            return eprintln!("skip: no yolo-re workspace (set NIE_RE_ROOT)");
+            return eprintln!("skip: no nie checkout (set NIE_RE_ROOT)");
         }
         for id in ["re-steam", "rea"] {
             if id == "rea"

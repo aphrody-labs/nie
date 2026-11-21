@@ -45,6 +45,7 @@
       "s3",
       "gdrive",
       "rclone",
+      "http",
       "https"
     ],
     "cache_env": [

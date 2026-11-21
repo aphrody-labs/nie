@@ -1,72 +1,71 @@
-//! `nie-ffi` — Frontière FFI C-ABI.
+//! `nie-ffi`: C-ABI FFI boundary.
 //!
-//! Expose la logique nie à des runtimes extérieurs (Bun, Node, C, Python…) via une interface
-//! `extern "C"` stable.
+//! Exposes nie logic to external runtimes (Bun, Node, C, Python...) through a stable
+//! `extern "C"` interface.
 //!
-//! # Fonctions exportées — existantes
+//! # Exported functions: base
 //!
-//! | Symbole C              | Sémantique Rust                                           |
+//! | C symbol               | Rust semantics                                            |
 //! |------------------------|-----------------------------------------------------------|
-//! | `nie_crc32`            | CRC32 IEEE 802.3 d'un tampon `(ptr, len)`                 |
-//! | `nie_version`          | Version du crate en C-string statique                     |
+//! | `nie_crc32`            | CRC32 IEEE 802.3 of a `(ptr, len)` buffer                 |
+//! | `nie_version`          | Crate version as a static C string                        |
 //!
-//! # Fonctions exportées — décodage formats + VFS
+//! # Exported functions: format decoding + VFS
 //!
-//! | Symbole C                  | Sémantique Rust                                                  |
-//! |----------------------------|------------------------------------------------------------------|
-//! | `nie_bytes_free`           | Libère un `NieBytes` (exactement une fois, via `Vec::from_raw`) |
-//! | `nie_bytes_free_fields`    | Libère par champs (`ptr, len, cap`) — pratique Bun FFI           |
-//! | `nie_detect`               | Détecte le format d'un tampon → discriminant `u32` stable        |
-//! | `nie_format_name`          | Nom court du format (C-string statique)                          |
-//! | `nie_decode_json`          | Auto-détection → JSON UTF-8 ; `NieBytes::empty` si non supporté |
-//! | `nie_decode_json_out`      | Idem, via paramètre de sortie `*mut NieBytes` (Bun FFI-friendly)|
-//! | `nie_menu_setting_json_out`| `*_menu_setting.cfg.bin` → structure de menu typée       |
-//! | `nie_g4tx_to_png`          | Première texture G4TX → octets PNG ; empty sur erreur            |
-//! | `nie_g4tx_to_png_out`      | Idem, via `*mut NieBytes`                                        |
-//! | `nie_vfs_open`             | Monte le VFS (AES-256-CBC cpk_list) ; null sur erreur            |
-//! | `nie_vfs_read`             | Lit un fichier virtuel → octets bruts                            |
-//! | `nie_vfs_read_out`         | Idem, via `*mut NieBytes`                                        |
-//! | `nie_vfs_list_json`        | JSON `[{path,cpk,size}]` ; plafonné à 50 000 entrées             |
-//! | `nie_vfs_list_json_out`    | Idem, via `*mut NieBytes`                                        |
-//! | `nie_vfs_count`            | Nombre total d'entrées indexées (sans plafond)                   |
-//! | `nie_vfs_is_readable`      | Présence servable d'un chemin, **sans lire le contenu**          |
-//! | `nie_vfs_list_range_json_out` | Tranche `[offset, offset+limit)` de l'index, via `*mut NieBytes` |
-//! | `nie_vfs_free`             | Libère le handle VFS                                             |
+//! | C symbol                  | Rust semantics                                                   |
+//! |---------------------------|------------------------------------------------------------------|
+//! | `nie_bytes_free`          | Frees a `NieBytes` (exactly once, via `Vec::from_raw`)           |
+//! | `nie_bytes_free_fields`   | Frees by fields (`ptr, len, cap`), convenient for Bun FFI        |
+//! | `nie_detect`              | Detects the format of a buffer, returns a stable `u32` tag       |
+//! | `nie_format_name`         | Short format name (static C string)                              |
+//! | `nie_decode_json`         | Auto-detection to UTF-8 JSON; `NieBytes::empty` if unsupported   |
+//! | `nie_decode_json_out`     | Same, through an output parameter `*mut NieBytes` (Bun FFI)      |
+//! | `nie_menu_setting_json_out` | `*_menu_setting.cfg.bin` to a typed menu structure             |
+//! | `nie_g4tx_to_png`         | First G4TX texture to PNG bytes; empty on error                  |
+//! | `nie_g4tx_to_png_out`     | Same, through `*mut NieBytes`                                    |
+//! | `nie_vfs_open`            | Mounts the VFS (AES-256-CBC cpk_list); null on error             |
+//! | `nie_vfs_read`            | Reads a virtual file to raw bytes                                |
+//! | `nie_vfs_read_out`        | Same, through `*mut NieBytes`                                    |
+//! | `nie_vfs_list_json`       | JSON `[{path,cpk,size}]`; capped at 50,000 entries               |
+//! | `nie_vfs_list_json_out`   | Same, through `*mut NieBytes`                                    |
+//! | `nie_vfs_count`           | Total number of indexed entries (uncapped)                       |
+//! | `nie_vfs_is_readable`     | Whether a path is servable, **without reading its content**      |
+//! | `nie_vfs_list_range_json_out` | Slice `[offset, offset+limit)` of the index, through `*mut NieBytes` |
+//! | `nie_vfs_free`            | Frees the VFS handle                                             |
 //!
-//! # Fonctions exportées — rendu de texte (police du jeu)
+//! # Exported functions: text rendering (game font)
 //!
-//! | Symbole C                  | Sémantique Rust                                                  |
-//! |----------------------------|------------------------------------------------------------------|
-//! | `nie_font_open`            | Charge métriques + atlas depuis le VFS → handle `FontCtx`         |
-//! | `nie_font_render_text`     | Rend une chaîne UTF-8 avec la police → octets PNG RGBA8          |
-//! | `nie_font_render_text_out` | Idem, via `*mut NieBytes` (Bun FFI-friendly)                     |
-//! | `nie_font_free`            | Libère le handle `FontCtx`                                       |
-//! | `nie_emu_registry_json_out` | Expose la matrice backend/capability de `bun_engine::backend`               |
+//! | C symbol                   | Rust semantics                                                  |
+//! |----------------------------|-----------------------------------------------------------------|
+//! | `nie_font_open`            | Loads metrics + atlas from the VFS, returns a `FontCtx` handle  |
+//! | `nie_font_render_text`     | Renders a UTF-8 string with the font to RGBA8 PNG bytes         |
+//! | `nie_font_render_text_out` | Same, through `*mut NieBytes` (Bun FFI)                         |
+//! | `nie_font_free`            | Frees the `FontCtx` handle                                      |
 //!
-//! # Invariants de sécurité pour les appelants
+//! # Safety invariants for callers
 //!
-//! - Les handles VFS / `FontCtx` sont des pointeurs opaques alloués par ce crate.
-//! - Chaque handle doit être libéré **exactement une fois** via la fonction `_free` correspondante.
-//! - `null` est accepté en entrée par toutes les fonctions `unsafe` (no-op ou retour vide).
-//! - `NieBytes` retourné par valeur utilise la convention sret x86-64 : **en Bun FFI, utiliser
-//!   les variantes `_out` (paramètre `*mut NieBytes`) pour éviter le sret implicite.**
+//! - VFS / `FontCtx` handles are opaque pointers allocated by this crate.
+//! - Every handle must be freed **exactly once** through the matching `_free` function.
+//! - `null` is accepted as input by every `unsafe` function (no-op or empty return).
+//! - A `NieBytes` returned by value uses the x86-64 sret convention: **with Bun FFI, use the
+//!   `_out` variants (`*mut NieBytes` parameter) to avoid the implicit sret.**
 //!
-//! # Utilisation Bun — variantes `_out` recommandées
+//! # Bun usage: recommended `_out` variants
 //!
 //! ```js
 //! import { dlopen, FFIType, ptr, toArrayBuffer, suffix } from "bun:ffi";
-//! // 1. Allouer un slot de sortie de 24 octets (sizeof NieBytes sur x86-64)
+//! // 1. Allocate a 24-byte output slot (sizeof NieBytes on x86-64)
 //! const outBuf = new Uint8Array(24);
-//! // 2. Appeler la variante _out
+//! // 2. Call the _out variant
 //! symbols.nie_decode_json_out(inputPtr, BigInt(inputLen), ptr(outBuf));
-//! // 3. Lire les champs depuis le slot via DataView
+//! // 3. Read the fields from the slot through a DataView
 //! const dv  = new DataView(outBuf.buffer);
 //! const p   = Number(dv.getBigUint64(0, true));   // ptr
 //! const len = Number(dv.getBigUint64(8, true));   // len
-//! const cap = dv.getBigUint64(16, true);           // cap (BigInt pour free)
-//! // 4. Copier les données avant de libérer
+//! const cap = dv.getBigUint64(16, true);           // cap (BigInt for free)
+//! // 4. Copy the data before freeing
 //! const copy = new Uint8Array(toArrayBuffer(p, 0, len));
-//! // 5. Libérer l'allocation Rust
+//! // 5. Free the Rust allocation
 //! symbols.nie_bytes_free_fields(BigInt(p), BigInt(len), cap);
 //! ```
 

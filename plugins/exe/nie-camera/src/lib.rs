@@ -20,8 +20,7 @@
 //!
 //! ## Provenance des faits
 //!
-//! Tout ce qui est affirmé ici est **vérifié sur le binaire ou sur les données** (cf.
-//! `docs/game-data/camera.md`). Ce qui n'a pas pu être confirmé est signalé comme tel dans la
+//! Tout ce qui est affirmé ici est **vérifié sur le binaire ou sur les données**. Ce qui n'a pas pu être confirmé est signalé comme tel dans la
 //! doc de l'item concerné plutôt que deviné — en particulier l'encodage des flux de keyframes
 //! sur 2 octets ([`g4cm::Track::Raw16`]).
 

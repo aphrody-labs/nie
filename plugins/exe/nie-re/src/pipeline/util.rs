@@ -195,7 +195,7 @@ pub fn find_root() -> Option<PathBuf> {
     }
 }
 
-/// Locate the yolo-re workspace independently of the engine checkout.
+/// Locate the nie checkout independently of the current directory.
 #[must_use]
 pub fn find_re_root() -> Option<PathBuf> {
     fn resolve_workspace(path: &Path) -> Option<PathBuf> {
@@ -207,7 +207,7 @@ pub fn find_re_root() -> Option<PathBuf> {
         }
         None
     }
-    // `NIE_RE_ROOT` names the RE workspace.
+    // `NIE_RE_ROOT` names the nie checkout.
     if let Some(root) = std::env::var_os("NIE_RE_ROOT")
         .map(PathBuf::from)
         && let Some(found) = resolve_workspace(&root)

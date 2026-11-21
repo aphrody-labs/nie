@@ -118,7 +118,7 @@ pub fn contract() -> AppContract {
             asset_source: "game",
             config_env: "NIE_ASSETS_CONFIG",
             source_env: "NIE_GAME_SOURCE",
-            schemes: &["ssh", "sftp", "r2", "s3", "gdrive", "rclone", "https"],
+            schemes: &["ssh", "sftp", "r2", "s3", "gdrive", "rclone", "http", "https"],
             cache_env: &["NIE_ASSETS_CACHE_DIR", "NIE_ASSETS_CACHE_MAX_MIB"],
             ships_game_assets: false,
         },

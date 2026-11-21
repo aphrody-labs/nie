@@ -75,8 +75,8 @@ use nie_model_serve::catalog::{
 #[derive(Parser)]
 #[command(name = "nie-model-serve", version, about)]
 struct Cli {
-    /// Source du jeu cloud-first : chemin local ou URI distante (`r2://...`, `ievr-vfs:`,
-    /// `s3://...`, `gdrive://...`, `https://...`). Prioritaire sur `--game-dir`.
+    /// Local directory or remote URI (http://, https://, ssh://, sftp://, rclone://, r2://, s3://, gdrive://).
+    /// Takes precedence over `--game-dir`.
     #[arg(long, env = "NIE_GAME_SOURCE")]
     source: Option<String>,
 

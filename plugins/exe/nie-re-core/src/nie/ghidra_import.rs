@@ -58,9 +58,9 @@ fn is_structural(name_source: &str) -> bool {
     )
 }
 
-/// Ingère le CSV produit par `scripts/tools/ghidra_export_functions.py`.
+/// Ingests a Ghidra function-export CSV.
 ///
-/// Format attendu : `vaddr,name,source,size,params,cc`, une ligne d'en-tête.
+/// Expected format: `vaddr,name,source,size,params,cc`, one header line.
 ///
 /// # Errors
 ///

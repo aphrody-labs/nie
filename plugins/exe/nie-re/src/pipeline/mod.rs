@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Cross-OS / BIOS / firmware RE pipeline: acquire, identify, unpack, analyze, lift, decompile,
 //! rebuild, verify. Every stage reports through the typed [`contract`]; external owners
-//! plug in as [`registry::StageAdapter`]s. See `docs/re-pipeline.md`.
+//! plug in as [`registry::StageAdapter`]s.
 
 pub mod contract;
 pub mod emit_c;

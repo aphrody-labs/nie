@@ -407,15 +407,15 @@ fn tlv_read_u32(area: &[u8], target_hash: u32) -> Option<u32> {
     Some(u32::from_le_bytes(data.try_into().ok()?))
 }
 
-/// Cherche le premier TLV dont les 4 premiers octets (hash LE) valent `target_hash`.
+/// Finds the first TLV whose first 4 bytes (LE hash) equal `target_hash`.
 ///
-/// Retourne l'offset du TLV (début du hash) dans `area`.
-/// Utilise un scan linéaire sur tous les octets de `area` (pas de walk structurel
-/// pour rester robuste aux sections OPAQUE).
+/// Returns the TLV offset (start of the hash) within `area`.
+/// Uses a linear scan over every byte of `area` (no structural walk, to stay robust
+/// against OPAQUE sections).
 ///
-/// La recherche est faite sur le pattern 4-octet exact, indépendamment de l'alignement.
-/// Ceci est intentionnel : les TLVs dans le body ne sont pas garantis alignés sur 4 octets
-/// (prouvé par observations : TLV roster à offset%4=3 dans le body réel).
+/// The search matches the exact 4-byte pattern, regardless of alignment.
+/// This is intentional: TLVs in the body are not guaranteed to be 4-byte aligned
+/// (observed: roster TLV at offset%4=3 in the real body).
 fn find_tlv_by_hash(area: &[u8], target_hash: u32) -> Option<usize> {
     let needle = target_hash.to_le_bytes();
     find_bytes(area, &needle)

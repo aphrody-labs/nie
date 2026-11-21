@@ -1,7 +1,7 @@
 //! `nie-pe` — thin façade re-exporting [`nie_re::pe_forge`].
 //!
 //! All PE64 partitioning, byte-exact rebuild, MSVC-dialect x86-64 assembly,
-//! COFF inspection, and `.pdata` scanning live canonically in `nie-re-core` (`crates/re`).
+//! COFF inspection, and `.pdata` scanning live canonically in `nie-re-core` (`plugins/exe/nie-re-core`).
 
 pub use nie_re::pe_forge::{
     CoffHeader, Cover, DataDirectory, OptionalHeader64, PeError, PeImage, Result, SectionHeader,

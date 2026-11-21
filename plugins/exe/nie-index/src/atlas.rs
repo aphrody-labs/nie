@@ -39,7 +39,7 @@ pub const ATLAS_SCHEMA_VERSION: &str = "1";
 pub const DEFAULT_ATLAS_PATH: &str = "var/nie-atlas.sqlite";
 
 /// Redis database reserved for the atlas mirror (db0 = BFS frontier + bot, db1 = RAG
-/// vectors, db3 = CPK/texture cache — see `docs/RE.md`).
+/// vectors, db3 = CPK/texture cache).
 pub const DEFAULT_ATLAS_REDIS: &str = "redis://127.0.0.1/4";
 
 /// Roots walked by [`Atlas::scan`], relative to the repository. Explicit rather than

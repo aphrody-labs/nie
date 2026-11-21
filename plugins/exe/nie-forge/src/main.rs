@@ -1,4 +1,4 @@
-//! CLI de la forge : `split` / `build` / `verify` / `report` / `match` / `unit`.
+//! nie-forge CLI: split, build, verify, report, match, unit, cc, lift, kb, candidates.
 //!
 //! Sortie **terse** (une ligne `clé=valeur`), conformément aux conventions du
 //! projet ; les détails passent par `--json`.
@@ -35,10 +35,10 @@ struct Paths {
     /// Répertoire de travail de la forge (hors dépôt).
     #[arg(long, global = true, default_value = "var/forge")]
     forge: PathBuf,
-    /// Registre de correspondance.
+    /// Match registry (an empty registry is used when the file does not exist; this repository ships none).
     #[arg(long, global = true, default_value = "forge/registry.json")]
     registry: PathBuf,
-    /// Répertoire de la source assembleur régénérable.
+    /// Directory of the regenerable assembly source (this repository ships none; `lift` writes into it).
     #[arg(long, global = true, default_value = "forge/asm")]
     asm: PathBuf,
     /// Base de connaissance RE : noms de fonctions et racines `.pdata`.
@@ -143,7 +143,7 @@ enum Cmd {
     Cc {
         #[command(flatten)]
         paths: Paths,
-        /// Fichier `.c` ou répertoire à compiler (défaut : `src/decomp/functions`).
+        /// `.c` file or directory to compile (default `src/decomp/functions`, which this repository does not ship: pass the real path).
         #[arg(long, default_value = "src/decomp/functions")]
         src: PathBuf,
         /// Chemin explicite de `cl.exe` (sinon `$NIE_CL`, puis vswhere).

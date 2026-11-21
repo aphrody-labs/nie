@@ -243,7 +243,7 @@ impl ReSession {
     }
 }
 
-/// Unified read-and-write facade over `bun-re` (nie) + `nie-trace` in YOLO mode.
+/// Unified read-and-write facade over `nie-re-core` + `nie-trace` in YOLO mode.
 #[cfg(feature = "host")]
 pub struct NieComputerUse;
 

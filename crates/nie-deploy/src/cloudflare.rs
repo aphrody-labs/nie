@@ -143,7 +143,7 @@ pub fn plan(p: &Params) -> String {
          \x20               `nie-edge check`, then the supervised `nie-edge` service restarts (`nie-deploy up`)\n\
          \x20               rollback: restore the previous edge.toml (kept as edge.toml.bak)\n\
          4 firewall      {fw}: tcp dport {port} accepted from the Cloudflare ranges (GET /ips) only\n\
-         \x20               (prd's `inet fleet` chain ends in a drop, so the accept rule must live in that table)\n\
+         \x20               (the host's `inet fleet` chain ends in a drop, so the accept rule must live in that table)\n\
          \x20               rollback: `nie-deploy cloudflare rollback --step firewall`\n\
          5 ssl-mode      GET /zones/{{zone}}/settings/ssl; when not strict, configuration rule `{REF_SSL}` in phase\n\
          \x20               http_config_settings: (http.host eq \"{h}\") -> set_config {{ssl:\"strict\"}} (an Origin CA\n\

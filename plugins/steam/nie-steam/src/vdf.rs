@@ -4,9 +4,8 @@
 //! encoding (`shortcuts.vdf`, the payload of `appinfo.vdf` / `packageinfo.vdf`) with a writer,
 //! and the `appinfo.vdf` / `packageinfo.vdf` container readers.
 //!
-//! Pure functions over `&str` / `&[u8]`: no filesystem access, usable from `wasm32`. The Bun
-//! counterpart is `packages/steam/src/vdf.ts`; both parse the shared fixtures in
-//! `plugins/steam/nie-steam/tests/fixtures`.
+//! Pure functions over `&str` / `&[u8]`: no filesystem access, usable from `wasm32`. The parsers are
+//! tested against the fixtures in `plugins/steam/nie-steam/tests/fixtures`.
 
 use serde::{Deserialize, Serialize};
 

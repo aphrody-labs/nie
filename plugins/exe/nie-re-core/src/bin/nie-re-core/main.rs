@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-//! `nie-re-core`: the native half of the Bun OS `re` product. One binary, one subcommand per capability:
+//! `nie-re-core`: reverse-engineering binary of nie. One subcommand per capability:
 //! `pipeline` (cross-OS RE pipeline, feature `pipeline`), `recompile` (static recompilation of
 //! console BIOS/ROM images to native executables and WebAssembly over the pipeline), plus the
-//! host probes and binary inspectors. Steam depot acquisition is `nie-steam-depot` (crate `nie-steam`).
+//! host probes and binary inspectors. Steam depot acquisition is `nie steam`.
 
 #[cfg(feature = "decompile")]
 mod decompile;

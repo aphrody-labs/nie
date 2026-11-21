@@ -1,6 +1,6 @@
 [package]
 name = "nie-shell"
-description = "The desktop shell of the nie OS on GPUI: panels, launcher and notifications as wlr-layer-shell windows"
+description = "The desktop shell of nie: a top panel, an app launcher and notifications over wlr-layer-shell."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

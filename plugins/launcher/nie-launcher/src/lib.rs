@@ -43,7 +43,7 @@ impl nie_plugin::Plugin for LauncherPlugin {
     fn info(&self) -> nie_plugin::PluginInfo {
         nie_plugin::PluginInfo {
             id: "launcher",
-            summary: "Ultimate Team launcher, .utmod mods and Viola archive operations",
+            summary: "Ultimate Team launcher (team crypto, .utmod inspection, save parking), mod authoring (init, edit, validate, install) and Viola archive operations",
             package: "nie-launcher",
             commands: &["launcher", "mod", "viola"],
         }

@@ -70,7 +70,7 @@ fn appliquer_recette_fichier(
             apercu.join(", "),
             res.erreur
                 .as_ref()
-                .map_or_else(String::new, |e| format!("  ⚠ {e}"))
+                .map_or_else(String::new, |e| format!("  warning: {e}"))
         );
     }
     println!(
@@ -96,21 +96,21 @@ fn main() -> ExitCode {
 }
 
 const USAGE: &str = "\
-nie-mem — lecteur/éditeur mémoire d'nie.exe (Windows natif via Read/WriteProcessMemory, ou Wine via process_vm_readv/writev)
+nie-mem: memory reader and editor for nie.exe (native Windows via Read/WriteProcessMemory, or Wine via process_vm_readv/writev)
 
-USAGE:
-  nie-mem find-pid [nom=nie.exe]
+Usage:
+  nie-mem find-pid [name=nie.exe]
   nie-mem maps   [--pid N] [--module nie.exe] [--all]
   nie-mem base   [--pid N] [--module nie.exe]
-  nie-mem read   <0xADDR | module+0xRVA> [--len N=256] [--pid N] [--out FICHIER]
-  nie-mem write  <0xADDR | module+0xRVA> <hex '48 8B' | str:Texte> [--in FICHIER] [--pid N] --force
-  nie-mem dump   [--pid N] [--module nie.exe] [--all] [--out DOSSIER=./memdump]
-  nie-mem scan   <hex '48 8B 0D' | str:Texte | wstr:Titre> [--pid N] [--module nie.exe] [--all] [--limit N=20]
+  nie-mem read   <0xADDR | module+0xRVA> [--len N=256] [--pid N] [--out FILE]
+  nie-mem write  <0xADDR | module+0xRVA> <hex '48 8B' | str:Text> [--in FILE] [--pid N] [--force]   (without --force: dry run, writes nothing)
+  nie-mem dump   [--pid N] [--module nie.exe] [--all] [--out DIR=./memdump]
+  nie-mem scan   <hex '48 8B 0D' | str:Text | wstr:Title> [--pid N] [--module nie.exe] [--all] [--limit N=20]
 
-LIVE MODDING
-  nie-mem apply  <recette.txt> [--pid N] [--force]
+Live modding
+  nie-mem apply  <recipe.txt> [--pid N] [--force]
 
---pid 0 (défaut) auto-détecte nie.exe.";
+--pid 0 (default) auto-detects nie.exe.";
 
 fn run(args: &[String]) -> Result<(), String> {
     let Some(cmd) = args.first() else {

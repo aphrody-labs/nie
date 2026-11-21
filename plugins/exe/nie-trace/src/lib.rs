@@ -17,8 +17,9 @@
 //!
 //! ## `unsafe`
 //!
-//! Seul crate de nie à faire de la FFI OS (libc / windows-sys), confinée aux backends et
-//! documentée `SAFETY`. Le reste (types, scan) est sûr. Pas de `forbid(unsafe_code)`.
+//! Reads and writes foreign process memory through libc and windows-sys; the `unsafe` code is
+//! confined to the backends (`win_memory`, `wine_memory`). The rest (types, scan) is safe.
+//! There is no `forbid(unsafe_code)`.
 //!
 //! Building with `--no-default-features` keeps only the portable [`aob`] scanner and [`catalog`]
 //! lookup surface. The default `host` feature preserves the process-memory, recipe,

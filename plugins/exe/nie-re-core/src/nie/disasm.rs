@@ -624,7 +624,7 @@ mod tests {
 
     /// Diagnostic manuel (ignoré) : décode une fonction connue du vrai binaire
     /// et imprime ses branches near résolues, pour comparer aux callees Ghidra.
-    /// `NIE_EXE=<chemin> NIE_FUNC=0x140024b80 cargo test -p bun-re --features nie diag_decode -- --ignored --nocapture`
+    /// `NIE_EXE=<chemin> NIE_FUNC=0x140024b80 cargo test -p nie-re-core --features nie diag_decode -- --ignored --nocapture`
     #[test]
     #[ignore = "diagnostic manuel : nécessite NIE_EXE + NIE_FUNC"]
     fn diag_decode_known_function() {

@@ -1168,58 +1168,58 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // Tests de robustesse : garantit zéro panic sur input arbitraire
+    // Robustness tests: guarantee zero panics on arbitrary input
     // -----------------------------------------------------------------------
 
-    /// Fuzz léger : itère sur des inputs tronqués de taille 0..DATA_START+20.
+    /// Light fuzz: iterates over truncated inputs of size 0..DATA_START+20.
     ///
-    /// Aucun de ces appels ne doit paniquer ; tous doivent retourner `Err`.
+    /// None of these calls may panic; all must return `Err`.
     #[test]
-    fn robustesse_inputs_tronques() {
+    fn robustness_truncated_inputs() {
         let plain = build_synthetic_lives();
         let enc = encrypt_buf(&plain, FAKE_SLOT_NAME);
-        // Tester des troncations progressives : 0 octet → DATA_START + 20 octets.
+        // Test progressive truncations: 0 bytes up to DATA_START + 20 bytes.
         for len in 0..DATA_START + 20 {
             let input = &enc[..len.min(enc.len())];
-            // Toujours un Err (trop court ou CRC invalide), jamais un panic.
+            // Always an Err (too short or invalid CRC), never a panic.
             let _ = parse(input, FAKE_SLOT_NAME);
         }
     }
 
-    /// Fuzz léger : buffer plein de 0x00 (longueur DATA_START + 100).
+    /// Light fuzz: buffer full of 0x00 (length DATA_START + 100).
     #[test]
-    fn robustesse_buffer_nul() {
+    fn robustness_zero_buffer() {
         let input = vec![0u8; DATA_START + 100];
-        // 0x00000000 != LIVES_MAGIC → BadMagic (pas de panic).
+        // 0x00000000 != LIVES_MAGIC -> BadMagic (no panic).
         let result = parse(&input, "FAKE-SLOT");
         assert!(matches!(result, Err(SaveError::BadMagic { .. })));
     }
 
-    /// Fuzz léger : buffer plein de 0xFF (longueur DATA_START + 100).
+    /// Light fuzz: buffer full of 0xFF (length DATA_START + 100).
     #[test]
-    fn robustesse_buffer_ff() {
+    fn robustness_buffer_ff() {
         let input = vec![0xFFu8; DATA_START + 100];
         let result = parse(&input, "FAKE-SLOT");
-        // Doit retourner BadMagic ou BadCrc, jamais paniquer.
+        // Must return BadMagic or BadCrc, never panic.
         assert!(result.is_err());
     }
 
-    /// Overflow d'offset : entrée de répertoire avec blob_offset = u32::MAX.
+    /// Offset overflow: directory entry with blob_offset = u32::MAX.
     ///
-    /// Sur wasm32 (usize=32 bits), DATA_START + u32::MAX déborderait sans checked_add.
-    /// Doit retourner Corrupt ou TooShort, jamais paniquer ni produire un conteneur invalide.
+    /// On wasm32 (usize = 32 bits), DATA_START + u32::MAX would overflow without checked_add.
+    /// Must return Corrupt or TooShort, never panic nor produce an invalid container.
     #[test]
-    fn robustesse_overflow_blob_offset() {
+    fn robustness_overflow_blob_offset() {
         let mut plain = build_synthetic_lives();
-        // Injecter blob_offset = u32::MAX dans l'entrée de répertoire [0x58..0x5C].
+        // Inject blob_offset = u32::MAX into the directory entry [0x58..0x5C].
         plain[0x58..0x5C].copy_from_slice(&u32::MAX.to_le_bytes());
-        // Recalculer le CRC header (octets [8..0x800]) car on a modifié le header.
+        // Recompute the header CRC (bytes [8..0x800]) since the header was modified.
         let hdr_crc = crc32_of(&plain[8..DATA_START]);
         plain[4..8].copy_from_slice(&hdr_crc.to_le_bytes());
-        // Chiffrer avec la bonne clé.
+        // Encrypt with the right key.
         let enc = encrypt_buf(&plain, FAKE_SLOT_NAME);
         let result = parse(&enc, FAKE_SLOT_NAME);
-        // TooShort ou Corrupt selon le chemin d'exécution — jamais panic.
+        // TooShort or Corrupt depending on the execution path; never a panic.
         assert!(
             matches!(
                 result,
@@ -1227,22 +1227,22 @@ mod tests {
                     | Err(SaveError::Corrupt(_))
                     | Err(SaveError::BadCrc { .. })
             ),
-            "blob_offset=u32::MAX doit retourner une erreur, pas paniquer"
+            "blob_offset=u32::MAX must return an error, not panic"
         );
     }
 
-    /// Overflow de taille : entrée de répertoire avec blob_size = u32::MAX.
+    /// Size overflow: directory entry with blob_size = u32::MAX.
     #[test]
-    fn robustesse_overflow_blob_size() {
+    fn robustness_overflow_blob_size() {
         let mut plain = build_synthetic_lives();
-        // Injecter blob_size = u32::MAX dans l'entrée de répertoire [0x54..0x58].
+        // Inject blob_size = u32::MAX into the directory entry [0x54..0x58].
         plain[0x54..0x58].copy_from_slice(&u32::MAX.to_le_bytes());
-        // Recalculer le CRC header.
+        // Recompute the header CRC.
         let hdr_crc = crc32_of(&plain[8..DATA_START]);
         plain[4..8].copy_from_slice(&hdr_crc.to_le_bytes());
         let enc = encrypt_buf(&plain, FAKE_SLOT_NAME);
         let result = parse(&enc, FAKE_SLOT_NAME);
-        // Doit retourner TooShort ou Corrupt — jamais panic.
+        // Must return TooShort or Corrupt; never a panic.
         assert!(
             matches!(
                 result,
@@ -1250,16 +1250,16 @@ mod tests {
                     | Err(SaveError::Corrupt(_))
                     | Err(SaveError::BadCrc { .. })
             ),
-            "blob_size=u32::MAX doit retourner une erreur"
+            "blob_size=u32::MAX must return an error"
         );
     }
 
-    /// Fuzz léger : variations aléatoires déterministes du conteneur chiffré.
+    /// Light fuzz: deterministic variations of the encrypted container.
     ///
-    /// Mute chaque octet de la fixture à 0x00/0xFF/0x41 sur les 512 premiers octets.
-    /// Aucun appel ne doit paniquer.
+    /// Mutates each byte of the fixture to 0x00/0xFF/0x41 over the first 512 bytes.
+    /// No call may panic.
     #[test]
-    fn robustesse_mutations_deterministiques() {
+    fn robustness_deterministic_mutations() {
         let plain = build_synthetic_lives();
         let enc = encrypt_buf(&plain, FAKE_SLOT_NAME);
         let limit = enc.len().min(512);
@@ -1267,39 +1267,39 @@ mod tests {
             for &mutation in &[0x00u8, 0xFFu8, 0x41u8] {
                 let mut mutated = enc.clone();
                 mutated[i] = mutation;
-                // Jamais paniquer, quel que soit le résultat.
+                // Never panic, whatever the result.
                 let _ = parse(&mutated, FAKE_SLOT_NAME);
             }
         }
     }
 
-    /// Fuzz body autosave : itère sur des inputs tronqués → zéro panic.
+    /// Autosave body fuzz: iterates over truncated inputs; zero panics.
     #[test]
-    fn robustesse_autosave_inputs_tronques() {
+    fn robustness_autosave_truncated_inputs() {
         use crate::body::autosave::parse_autosave_layout;
         use crate::body::autosave_roster::parse_autosave_roster;
-        // Tester des tailles de 0 à 100 octets (zéro, sous-taille, etc.)
+        // Test sizes from 0 to 100 bytes (zero, undersized, etc.)
         for len in 0..=100usize {
             let input = vec![0u8; len];
             let _ = parse_autosave_layout(&input);
             let _ = parse_autosave_roster(&input);
         }
-        // Body de taille DATA_START : version=1 BE, reste nul → ne doit pas paniquer.
+        // Body of size DATA_START: version=1 BE, rest zero; must not panic.
         let mut buf = vec![0u8; DATA_START];
         buf[3] = 0x01; // version=1
         let _ = parse_autosave_layout(&buf);
         let _ = parse_autosave_roster(&buf);
     }
 
-    /// Fuzz body headersave : itère sur des inputs tronqués → zéro panic.
+    /// Headersave body fuzz: iterates over truncated inputs; zero panics.
     #[test]
-    fn robustesse_headersave_inputs_tronques() {
+    fn robustness_headersave_truncated_inputs() {
         use crate::body::headersave::parse_headersave;
         for len in 0..=100usize {
             let input = vec![0u8; len];
             let _ = parse_headersave(&input);
         }
-        // Body juste à la taille minimale avec format_version=1 et champs nuls.
+        // Body at exactly the minimum size with format_version=1 and zeroed fields.
         use crate::body::headersave::HEADERSAVE_MIN_LEN;
         let mut buf = vec![0u8; HEADERSAVE_MIN_LEN];
         buf[3] = 0x01; // format_version=1 BE

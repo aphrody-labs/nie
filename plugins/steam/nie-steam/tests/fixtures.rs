@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Shared Bun/Rust VDF fixtures (`tests/fixtures`). The Bun parser of `packages/steam` reads
-//! the same files and must produce the same `*.expected.json`. `NIE_STEAM_WRITE_FIXTURES=1`
+//! VDF fixtures (`tests/fixtures`): each parser must produce the matching `*.expected.json`. `NIE_STEAM_WRITE_FIXTURES=1`
 //! regenerates the binary fixtures from the typed documents below.
 
 use std::path::PathBuf;

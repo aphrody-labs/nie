@@ -1,29 +1,20 @@
-//! Opérations de modding LEVEL-5 — le périmètre de l'outil **Viola** (`SuperTavor/Viola`), en
-//! Rust pur : *dump*, *pack*, *merge*, et le (dé)chiffrement Criware.
+//! Native Rust implementation of the LEVEL-5 mod operations: dump, verify, pack, merge and Criware (de)encryption.
 //!
-//! # Pourquoi ce crate existe
+//! # Not ported
 //!
-//! Le dépôt portait déjà ces opérations deux fois — en C# (`csharp/le C# d'origine) et en C++
-//! (`src/viola/`) — mais aucune n'était atteignable depuis `nie-explorer` ni `nie` sans
-//! lancer un binaire construit à côté. La doctrine du dépôt met la CLI, la GUI et le cœur en
-//! Rust ; ce crate est ce cœur, et il s'appelle en process.
+//! The fifth Viola button, *Decrypt/Encrypt Criware*, needed no port: it already existed in
+//! [`nie_formats::cpk::decrypt_block`], a faithful port of `CriwareCrypt.DecryptBlock`. The
+//! [`crypto`] module only gives it a file facade and names the property that makes the operation
+//! unique: the XOR is **involutive**, so encrypting and decrypting are the same computation.
 //!
-//! # Ce qui n'est pas ici
+//! # Deliberate differences from upstream
 //!
-//! Le cinquième bouton de Viola, *Decrypt/Encrypt Criware*, n'a pas eu besoin d'être porté : il
-//! existait déjà dans [`nie_formats::cpk::decrypt_block`], port fidèle de
-//! `CriwareCrypt.DecryptBlock`. Le module [`crypto`] ne fait que lui donner une façade fichier
-//! et nommer la propriété qui rend l'opération unique : le XOR est **involutif**, chiffrer et
-//! déchiffrer sont le même calcul.
-//!
-//! # Écarts assumés avec l'amont
-//!
-//! * Le `pack` C++ ne connaît que l'enveloppe XorShift, alors que le `cpk_list.cfg.bin` d'IEVR
-//!   est chiffré en **AES-256-CBC** (clé et IV reversés de `nie.exe`). [`pack`] relit et
-//!   réécrit dans l'enveloppe réellement trouvée, quelle qu'elle soit.
-//! * Le `dump` amont attribue un thread par pack en piochant dans une liste non triée ; [`dump`]
-//!   ordonnance les packs par volume décroissant, les mappe en mémoire et sait reprendre un
-//!   dump interrompu. Le détail et les raisons sont dans la documentation de ce module.
+//! * Upstream `pack` only knows the XorShift envelope, while IEVR's `cpk_list.cfg.bin` is
+//!   encrypted with **AES-256-CBC** (key and IV reversed from `nie.exe`). [`pack`] re-reads and
+//!   re-writes in the envelope it actually finds, whatever it is.
+//! * Upstream `dump` assigns one thread per pack drawing from an unsorted list; [`dump`] orders
+//!   the packs by decreasing size, memory-maps them and can resume an interrupted dump. Details
+//!   and reasons are in that module's documentation.
 
 #![warn(missing_docs)]
 

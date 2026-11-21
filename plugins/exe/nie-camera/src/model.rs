@@ -1,7 +1,7 @@
 //! Modèle d'état de caméra et taxonomie des contrôleurs natifs.
 //!
 //! L'état ([`CameraState`]) reprend les champs que `CGameCameraCtrl` expose réellement dans
-//! `nie.exe` (noms de propriétés reversés, cf. `docs/game-data/camera.md` §4) : position, point
+//! `nie.exe` (noms de propriétés reversés) : position, point
 //! de référence visé, FOV, roll, plans de clipping. Les matrices produites suivent la convention
 //! de [`nie_formats`]/`nie-render3d` : repère main droite, look-at, `focal = 1/tan(fov_y/2)`.
 

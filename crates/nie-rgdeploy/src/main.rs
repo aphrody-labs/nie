@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-//! `rgd`: deploys one service of infra/services.toml to the host of its role (infra/hosts.toml).
+//! `rgd`: deploys one service of services.toml to the host of its role (hosts.toml); both files live in the `--infra` directory.
 //!
 //! deploy = `git archive <rev>` -> zstd -> one ssh stream unpacked into `<srv_root>/deploy/<service>/releases/<rev>`,
 //! the service `prepare` command (install, build) run inside the release, then, under the `deploy.lock` flock:
-//! unit files installed, the service's own `current` swapped atomically,
+//! systemd unit files installed, the service's own `current` swapped atomically,
 //! the unit restarted and its health URL probed; a failed probe swaps `current` back and restarts.
 //! Nothing runs on the build side besides git and ssh; the host needs tar, zstd, flock, curl, systemd.
 
@@ -18,7 +18,7 @@ use std::process::{Command, Stdio};
 #[derive(Parser)]
 #[command(name = "rgd", version, about = "Rose Griffon deploy")]
 struct Cli {
-    /// Directory holding hosts.toml and services.toml.
+    /// Directory holding hosts.toml and services.toml (required; this repository ships none).
     #[arg(long, default_value = "infra", global = true)]
     infra: PathBuf,
     /// Run on the target host itself: remote steps go to a local bash instead of ssh (no upload over the network).
